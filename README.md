@@ -1,2 +1,3 @@
-# prisma
-A unified interface for working with LLMs
+# Prisma
+
+A powerful PHP package for integrating media related Large Language Models (LLMs) into your applications using a unified interface.
