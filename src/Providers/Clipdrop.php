@@ -40,9 +40,8 @@ class Clipdrop
 
         $request = $this->request( $data + $options, ['image_file' => $image] );
         $response = $this->client()->post( $url, $request );
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
-        return $this->withUsage( FileResponse::fromBinary( $response->getBody(), $mimeType ) );
+        return $this->toResponse( $response );
     }
 
 
@@ -50,13 +49,21 @@ class Clipdrop
     {
         $request = $this->request( $options, ['image_file' => $image, 'mask_file' => $mask] );
         $response = $this->client()->post( 'cleanup/v1', $request );
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
-        return $this->withUsage( FileResponse::fromBinary( $response->getBody(), $mimeType ) );
+        return $this->toResponse( $response );
     }
 
 
-    public function uncrop( Image $image,  int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+    public function image( string $prompt ) : FileResponse
+    {
+        $request = $this->request( ['prompt' => $prompt] + $options );
+        $response = $this->client()->post( 'text-to-image/v1', $request );
+
+        return $this->toResponse( $response );
+    }
+
+
+    public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
         $data = [
             'extend_up' => min( $top, 2048 ),
@@ -67,9 +74,8 @@ class Clipdrop
 
         $request = $this->request( $data + $options, ['image_file' => $image] );
         $response = $this->client()->post( 'uncrop/v1', $request );
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
-        return $this->withUsage( FileResponse::fromBinary( $response->getBody(), $mimeType ) );
+        return $this->toResponse( $response );
     }
 
 
@@ -82,17 +88,19 @@ class Clipdrop
 
         $request = $this->request( $data + $options, ['image_file' => $image] );
         $response = $this->client()->post( 'image-upscaling/v1/upscale', $request );
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
-        return $this->withUsage( FileResponse::fromBinary( $response->getBody(), $mimeType ) );
+        return $this->toResponse( $response );
     }
 
 
-    protected function withUsage( FileResponse $file, ResponseInterface $response ) : FileResponse
+    protected function toResponse( ResponseInterface $response ) : FileResponse
     {
-        return $file->withUsage(
-            $response->getHeader( 'x-credits-consumed' )[0] ?? null,
-            $response->getHeader( 'x-remaining-credits' )[0] ?? null
-        );
+        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
+
+        return FileResponse::fromBinary( $response->getBody(), $mimeType )
+            ->withUsage(
+                $response->getHeader( 'x-credits-consumed' )[0] ?? null,
+                $response->getHeader( 'x-remaining-credits' )[0] ?? null
+            );
     }
 }
