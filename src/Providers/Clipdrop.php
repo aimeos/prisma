@@ -3,7 +3,9 @@
 namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Concerns\Background;
+use Aimeos\Prisma\Concerns\Detext;
 use Aimeos\Prisma\Concerns\Erase;
+use Aimeos\Prisma\Concerns\Studio;
 use Aimeos\Prisma\Concerns\Uncrop;
 use Aimeos\Prisma\Concerns\Upscale;
 use Aimeos\Prisma\Contracts\Provider;
@@ -14,7 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Clipdrop
     extends Base
-    implements Background, Erase, Uncrop, Upscale
+    implements Background, Detext, Erase, Studio, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -45,6 +47,15 @@ class Clipdrop
     }
 
 
+    public function detext( Image $image, array $options = [] ) : FileResponse
+    {
+        $request = $this->request( $options, ['image_file' => $image] );
+        $response = $this->client()->post( 'remove-text/v1', $request );
+
+        return $this->toResponse( $response );
+    }
+
+
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         $request = $this->request( $options, ['image_file' => $image, 'mask_file' => $mask] );
@@ -54,10 +65,19 @@ class Clipdrop
     }
 
 
-    public function image( string $prompt ) : FileResponse
+    public function image( string $prompt, array $options = [] ) : FileResponse
     {
         $request = $this->request( ['prompt' => $prompt] + $options );
         $response = $this->client()->post( 'text-to-image/v1', $request );
+
+        return $this->toResponse( $response );
+    }
+
+
+    public function studio( Image $image, array $options = [] ) : FileResponse
+    {
+        $request = $this->request( $options, ['image_file' => $image] );
+        $response = $this->client()->post( 'product-photography/v1', $request );
 
         return $this->toResponse( $response );
     }
