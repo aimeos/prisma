@@ -29,7 +29,7 @@ class Prisma
 
         $provider = new $classname( $config );
 
-        if( !( $provider instanceof Provider::class ) ) {
+        if( !( $provider instanceof Provider ) ) {
             throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', $classname, Provider::class ) );
         }
 

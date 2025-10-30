@@ -7,20 +7,20 @@ class Image extends File
 {
     public function mimeType() : ?string
     {
-        $mimetype = parent::mimeType( $mimeType );
+        $mimeType = parent::mimeType();
 
-        if( !strncmp( $mimeType, 'image/', 6) ) {
-            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type' ) );
+        if( strncmp( $mimeType, 'image/', 6 ) ) {
+            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
-        return $mimetype;
+        return $mimeType;
     }
 
 
     public function setMimeType( ?string $mimeType ) : self
     {
-        if( $mimeType && !strncmp( $mimeType, 'image/', 6) ) {
-            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type' ) );
+        if( $mimeType && strncmp( $mimeType, 'image/', 6 ) ) {
+            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
         return parent::setMimeType( $mimeType );

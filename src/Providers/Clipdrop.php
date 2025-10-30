@@ -2,13 +2,13 @@
 
 namespace Aimeos\Prisma\Providers;
 
-use Aimeos\Prisma\Concerns\Background;
-use Aimeos\Prisma\Concerns\Detext;
-use Aimeos\Prisma\Concerns\Erase;
-use Aimeos\Prisma\Concerns\Image;
-use Aimeos\Prisma\Concerns\Studio;
-use Aimeos\Prisma\Concerns\Uncrop;
-use Aimeos\Prisma\Concerns\Upscale;
+use Aimeos\Prisma\Contracts\Background;
+use Aimeos\Prisma\Contracts\Detext;
+use Aimeos\Prisma\Contracts\Erase;
+use Aimeos\Prisma\Contracts\Image;
+use Aimeos\Prisma\Contracts\Studio;
+use Aimeos\Prisma\Contracts\Uncrop;
+use Aimeos\Prisma\Contracts\Upscale;
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Responses\FileResponse;

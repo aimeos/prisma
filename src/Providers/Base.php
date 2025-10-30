@@ -107,7 +107,7 @@ abstract class Base implements Provider
      */
     public function withSystemPrompt( ?string $prompt ) : self
     {
-        $this->sysPrompt = $prompt;
+        $this->systemPrompt = $prompt;
         return $this;
     }
 
