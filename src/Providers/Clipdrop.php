@@ -5,18 +5,19 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\Background;
 use Aimeos\Prisma\Concerns\Detext;
 use Aimeos\Prisma\Concerns\Erase;
+use Aimeos\Prisma\Concerns\Image;
 use Aimeos\Prisma\Concerns\Studio;
 use Aimeos\Prisma\Concerns\Uncrop;
 use Aimeos\Prisma\Concerns\Upscale;
 use Aimeos\Prisma\Contracts\Provider;
-use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Clipdrop
     extends Base
-    implements Background, Detext, Erase, Studio, Uncrop, Upscale
+    implements Background, Detext, Erase, Image, Studio, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -29,7 +30,7 @@ class Clipdrop
     }
 
 
-    public function background( Image $image, ?string $prompt = null, array $options = [] ) : FileResponse
+    public function background( ImageFile $image, ?string $prompt = null, array $options = [] ) : FileResponse
     {
         $data = [];
         $url = 'remove-background/v1';
@@ -49,7 +50,7 @@ class Clipdrop
     }
 
 
-    public function detext( Image $image, array $options = [] ) : FileResponse
+    public function detext( ImageFile $image, array $options = [] ) : FileResponse
     {
         $request = $this->request( $options, ['image_file' => $image] );
         $response = $this->client()->post( 'remove-text/v1', $request );
@@ -58,7 +59,7 @@ class Clipdrop
     }
 
 
-    public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
+    public function erase( ImageFile $image, ImageFile $mask, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['mode'] );
         $request = $this->request( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
@@ -77,7 +78,7 @@ class Clipdrop
     }
 
 
-    public function studio( Image $image, array $options = [] ) : FileResponse
+    public function studio( ImageFile $image, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['background_color_choice', 'light_theta', 'light_phi', 'light_size', 'shadow_darkness'] );
         $request = $this->request( $options, ['image_file' => $image] );
@@ -87,7 +88,7 @@ class Clipdrop
     }
 
 
-    public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+    public function uncrop( ImageFile $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
         $data = [
             'extend_up' => min( $top, 2048 ),
@@ -104,7 +105,7 @@ class Clipdrop
     }
 
 
-    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( ImageFile $image, int $width, int $height, array $options = [] ) : FileResponse
     {
         $data = [
             'target_width' => min( $width, 4096 ),
