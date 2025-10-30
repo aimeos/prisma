@@ -113,6 +113,19 @@ abstract class Base implements Provider
 
 
     /**
+     * Returns only the allowed options from the given list.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @param array $allowed List of allowed option names
+     * @return array Filtered list of name/value pairs
+     */
+    protected function allowed( array $options, array $allowed ) : array
+    {
+        return array_intersect_key( $options, array_flip( $allowed ) );
+    }
+
+
+    /**
      * Set the base URL for the HTTP client.
      *
      * @param string|null $url Base URL

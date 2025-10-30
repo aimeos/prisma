@@ -33,14 +33,16 @@ class Clipdrop
     {
         $data = [];
         $url = 'remove-background/v1';
+        $allowed = $this->allowed( $options, ['transparency_handling'] );
 
         if( $prompt )
         {
+            $allowed = [];
             $data = ['prompt' => $prompt];
             $url = 'replace-background/v1';
         }
 
-        $request = $this->request( $data + $options, ['image_file' => $image] );
+        $request = $this->request( $data + $allowed, ['image_file' => $image] );
         $response = $this->client()->post( $url, $request );
 
         return $this->toResponse( $response );
@@ -58,7 +60,8 @@ class Clipdrop
 
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
-        $request = $this->request( $options, ['image_file' => $image, 'mask_file' => $mask] );
+        $allowed = $this->allowed( $options, ['mode'] );
+        $request = $this->request( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
         $response = $this->client()->post( 'cleanup/v1', $request );
 
         return $this->toResponse( $response );
@@ -76,6 +79,7 @@ class Clipdrop
 
     public function studio( Image $image, array $options = [] ) : FileResponse
     {
+        $allowed = $this->allowed( $options, ['background_color_choice', 'light_theta', 'light_phi', 'light_size', 'shadow_darkness'] );
         $request = $this->request( $options, ['image_file' => $image] );
         $response = $this->client()->post( 'product-photography/v1', $request );
 
@@ -92,21 +96,22 @@ class Clipdrop
             'extend_right' => min( $right, 2048 ),
         ];
 
-        $request = $this->request( $data + $options, ['image_file' => $image] );
+        $allowed = $this->allowed( $options, ['seed'] );
+        $request = $this->request( $data + $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'uncrop/v1', $request );
 
         return $this->toResponse( $response );
     }
 
 
-    public function upscale( Image $image, int $width, int $height ) : FileResponse
+    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
     {
         $data = [
             'target_width' => min( $width, 4096 ),
             'target_height' => min( $height, 4096 ),
         ];
 
-        $request = $this->request( $data + $options, ['image_file' => $image] );
+        $request = $this->request( $data, ['image_file' => $image] );
         $response = $this->client()->post( 'image-upscaling/v1/upscale', $request );
 
         return $this->toResponse( $response );
