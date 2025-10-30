@@ -15,6 +15,13 @@ abstract class Base implements Provider
     private $model = null;
 
 
+    /**
+     * Handles calls to methods that are not implemented by the provider.
+     *
+     * @param string $name Method name
+     * @param array $arguments Method arguments
+     * @throws NotImplementedException
+     */
     public function __call( string $name, array $arguments )
     {
         throw new NotImplementedException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this), $name ) );
@@ -26,7 +33,7 @@ abstract class Base implements Provider
      *
      * @param string $method Method name
      * @return Provider
-     * @throws \Aimeos\Prisma\Exceptions\NotImplemented
+     * @throws NotImplementedException
      */
     public function ensure( string $method ) : self
     {
@@ -105,6 +112,12 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Set the base URL for the HTTP client.
+     *
+     * @param string|null $url Base URL
+     * @return self Provider interface
+     */
     protected function baseUrl( ?string $url ) : self
     {
         $this->clientOptions['base_uri'] = $url;
@@ -112,6 +125,11 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Returns the HTTP client instance.
+     *
+     * @return Client HTTP client instance
+     */
     protected function client() : Client
     {
         if( !isset( $this->client ) ) {
@@ -122,6 +140,13 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Returns the data for the HTTP request.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @param array $files Associative list of file name/File instances
+     * @return array Request data
+     */
     protected function data( array $options, array $files = [] ) : array
     {
         $data = [];
@@ -146,6 +171,13 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Set a header for the HTTP client.
+     *
+     * @param string $name Header name
+     * @param string $value Header value
+     * @return self Provider interface
+     */
     protected function header( string $name, string $value ) : self
     {
         $this->clientOptions['headers'][$name] = $value;
@@ -153,12 +185,22 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Returns the model name.
+     *
+     * @return string|null Model name
+     */
     protected function modelName() : ?string
     {
         return $this->model;
     }
 
 
+    /**
+     * Returns the system prompt.
+     *
+     * @return string|null System prompt
+     */
     protected function systemPrompt() : ?string
     {
         return $this->systemPrompt;
