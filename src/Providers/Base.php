@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Contracts\Provider;
+use Aimeos\Prisma\Exceptions\NotImplementedException;
 use GuzzleHttp\Client;
 
 
@@ -16,7 +17,33 @@ abstract class Base implements Provider
 
     public function __call( string $name, array $arguments )
     {
-        throw new \RuntimeException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this), $name ) );
+        throw new NotImplementedException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this), $name ) );
+    }
+
+
+    public function ensure( string $method ) : self
+    {
+        if( !$this->has( $name ) ) {
+            throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', get_call( $this ), $method ) );
+        }
+
+        return $this;
+    }
+
+
+    public function has( string $method ) : bool
+    {
+        $name = '\\Aimeos\\Prisma\\Contracts\\' . ucfirst( $method );
+
+        if( !interface_exists( $name ) ) {
+            return false;
+        }
+
+        if( !( $this instanceof $name ) ) {
+            return false;
+        }
+
+        return true;
     }
 
 
