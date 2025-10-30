@@ -3,6 +3,6 @@
 namespace Aimeos\Prisma\Exceptions;
 
 
-class NotExistsException extends PrismaException
+class RateLimitException extends PrismaException
 {
 }

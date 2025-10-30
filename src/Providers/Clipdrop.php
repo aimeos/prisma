@@ -121,6 +121,7 @@ class Clipdrop
 
     protected function toResponse( ResponseInterface $response ) : FileResponse
     {
+        $this->validate( $response );
         $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
         return FileResponse::fromBinary( $response->getBody(), $mimeType )
@@ -128,5 +129,21 @@ class Clipdrop
                 $response->getHeader( 'x-credits-consumed' )[0] ?? null,
                 $response->getHeader( 'x-remaining-credits' )[0] ?? null
             );
+    }
+
+
+    protected function validate( ResponseInterface $response ) : void
+    {
+        switch( $response->getStatusCode() )
+        {
+            case 200: return;
+            case 400:
+            case 406: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getStatusText() );
+            case 401:
+            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getStatusText() );
+            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $response->getStatusText() );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getStatusText() );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getStatusText() );
+        }
     }
 }
