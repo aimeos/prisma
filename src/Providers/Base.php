@@ -11,7 +11,7 @@ abstract class Base implements Provider
 {
     private $client;
     private $clientOptions = [];
-    private $sysPrompt = null;
+    private $systemPrompt = null;
     private $model = null;
 
 
@@ -21,6 +21,13 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Ensures that the provider has implemented the method.
+     *
+     * @param string $method Method name
+     * @return Provider
+     * @throws \Aimeos\Prisma\Exceptions\NotImplemented
+     */
     public function ensure( string $method ) : self
     {
         if( !$this->has( $name ) ) {
@@ -31,6 +38,12 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Tests if the provider has implemented the method.
+     *
+     * @param string $method Method name
+     * @return bool TRUE if implemented, FALSE if absent
+     */
     public function has( string $method ) : bool
     {
         $name = '\\Aimeos\\Prisma\\Contracts\\' . ucfirst( $method );
@@ -47,6 +60,15 @@ abstract class Base implements Provider
     }
 
 
+    /**
+     * Use the model passed by its name.
+     *
+     * Used if the provider supports more than one model and allows to select
+     * between the different models. Otherwise, it's ignored.
+     *
+     * @param string|null $model Model name
+     * @return self Provider interface
+     */
     public function model( ?string $model ) : self
     {
         $this->model = $model;
@@ -54,14 +76,29 @@ abstract class Base implements Provider
     }
 
 
-    public function options( array $options ) : self
+    /**
+     * Add options for the Guzzle HTTP client.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @return self Provider interface
+     */
+    public function withClientOptions( array $options ) : self
     {
         $this->clientOptions = array_replace_recursive( $clientOptions, $options );
         return $this;
     }
 
 
-    public function systemPrompt( ?string $prompt ) : self
+    /**
+     * Add a system prompt for the LLM.
+     *
+     * It may be used by providers supporting system prompts. Otherwise, it's
+     * ignored.
+     *
+     * @param string|null $prompt System prompt
+     * @return self Provider interface
+     */
+    public function withSystemPrompt( ?string $prompt ) : self
     {
         $this->sysPrompt = $prompt;
         return $this;
@@ -122,8 +159,8 @@ abstract class Base implements Provider
     }
 
 
-    protected function sysPrompt() : ?string
+    protected function systemPrompt() : ?string
     {
-        return $this->sysPrompt;
+        return $this->systemPrompt;
     }
 }

@@ -30,4 +30,37 @@ interface Provider
      * @return bool TRUE if implemented, FALSE if absent
      */
     public function has( string $method ) : bool;
+
+
+    /**
+     * Use the model passed by its name.
+     *
+     * Used if the provider supports more than one model and allows to select
+     * between the different models. Otherwise, it's ignored.
+     *
+     * @param string|null $model Model name
+     * @return self Provider interface
+     */
+    public function model( ?string $model ) : self;
+
+
+    /**
+     * Add options for the Guzzle HTTP client.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @return self Provider interface
+     */
+    public function withClientOptions( array $options ) : self;
+
+
+    /**
+     * Add a system prompt for the LLM.
+     *
+     * It may be used by providers supporting system prompts. Otherwise, it's
+     * ignored.
+     *
+     * @param string|null $prompt System prompt
+     * @return self Provider interface
+     */
+    public function withSystemPrompt( ?string $prompt ) : self;
 }
