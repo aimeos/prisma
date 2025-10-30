@@ -18,7 +18,7 @@ interface Provider
      *
      * @param string $method Method name
      * @return Provider
-     * @throws \Aimeos\Prisma\Exceptions\NotImplemented
+     * @throws \Aimeos\Prisma\Exceptions\NotImplementedException
      */
     public function ensure( string $method ) : self;
 
