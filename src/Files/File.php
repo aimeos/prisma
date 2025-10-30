@@ -6,6 +6,7 @@ namespace Aimeos\Prisma\Files;
 class File
 {
     protected ?string $url = null;
+    protected ?string $base64 = null;
     protected ?string $binary = null;
     protected ?string $localpath = null;
     protected ?string $filename = null;

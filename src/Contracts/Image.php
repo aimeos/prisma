@@ -2,6 +2,8 @@
 
 namespace Aimeos\Prisma\Contracts;
 
+use Aimeos\Prisma\Responses\FileResponse;
+
 
 interface Image
 {

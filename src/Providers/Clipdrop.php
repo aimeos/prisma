@@ -138,12 +138,12 @@ class Clipdrop
         {
             case 200: return;
             case 400:
-            case 406: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getStatusText() );
+            case 406: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
             case 401:
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getStatusText() );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $response->getStatusText() );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getStatusText() );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getStatusText() );
+            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
+            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $response->getReasonPhrase() );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
         }
     }
 }

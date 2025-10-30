@@ -91,7 +91,7 @@ abstract class Base implements Provider
      */
     public function withClientOptions( array $options ) : self
     {
-        $this->clientOptions = array_replace_recursive( $clientOptions, $options );
+        $this->clientOptions = array_replace_recursive( $this->clientOptions, $options );
         return $this;
     }
 
@@ -146,41 +146,10 @@ abstract class Base implements Provider
     protected function client() : Client
     {
         if( !isset( $this->client ) ) {
-            $this->client = new Client( $this->clientOptions );
+            $this->client = new Client( $this->clientOptions + ['http_errors' => false] );
         }
 
         return $this->client;
-    }
-
-
-    /**
-     * Returns the data for the HTTP request.
-     *
-     * @param array $options Associative list of name/value pairs
-     * @param array $files Associative list of file name/File instances
-     * @return array Request data
-     */
-    protected function data( array $options, array $files = [] ) : array
-    {
-        $data = [];
-
-        foreach( $options as $key => $val ) {
-            $data[] = ['name' => $key, 'contents' => $val];
-        }
-
-        foreach( $files as $name => $file )
-        {
-            $data[] = [
-                'name' => $name,
-                'contents' => $file->binary(),
-                'filename' => $file->filename() ?: 'file',
-                'headers'  => [
-                    'Content-Type' => $file->mimeType()
-                ]
-            ];
-        }
-
-        return !empty( $files ) ? $data : ['multipart' => $data];
     }
 
 
@@ -206,6 +175,37 @@ abstract class Base implements Provider
     protected function modelName() : ?string
     {
         return $this->model;
+    }
+
+
+    /**
+     * Returns the data for the HTTP request.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @param array $files Associative list of file name/File instances
+     * @return array Request data
+     */
+    protected function request( array $options, array $files = [] ) : array
+    {
+        $data = [];
+
+        foreach( $options as $key => $val ) {
+            $data[] = ['name' => $key, 'contents' => $val];
+        }
+
+        foreach( $files as $name => $file )
+        {
+            $data[] = [
+                'name' => $name,
+                'contents' => $file->binary(),
+                'filename' => $file->filename() ?: 'file',
+                'headers'  => [
+                    'Content-Type' => $file->mimeType()
+                ]
+            ];
+        }
+
+        return !empty( $files ) ? ['multipart' => $data] : $data;
     }
 
 

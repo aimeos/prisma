@@ -17,5 +17,6 @@ trait HasUsage
     public function withUsage( ?int $used, ?int $available = null, array $more = [] ) : self
     {
         $this->usage = ['used' => $used, 'available' => $available] + $more;
+        return $this;
     }
 }
