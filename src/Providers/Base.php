@@ -3,7 +3,9 @@
 namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Contracts\Provider;
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Files\File;
 use GuzzleHttp\Client;
 
 
@@ -194,16 +196,41 @@ abstract class Base implements Provider
             $data[] = ['name' => $key, 'contents' => $val];
         }
 
-        foreach( $files as $name => $file )
+        foreach( $files as $name => $entry )
         {
-            $data[] = [
-                'name' => $name,
-                'contents' => $file->binary(),
-                'filename' => $file->filename() ?: 'file',
-                'headers'  => [
-                    'Content-Type' => $file->mimeType()
-                ]
-            ];
+            if( is_array( $entry ) )
+            {
+                foreach( $entry as $i => $file )
+                {
+                    if( !$file instanceof File ) {
+                        throw new BadRequestException( sprintf( 'Invalid file object for "%s"', $name ) );
+                    }
+
+                    $data[] = [
+                        'name' => $name . "[$i]",
+                        'contents' => $file->binary(),
+                        'filename' => $file->filename() ?: "file-$i",
+                        'headers'  => [
+                            'Content-Type' => $file->mimeType()
+                        ]
+                    ];
+                }
+            }
+            else
+            {
+                if( !$file instanceof File ) {
+                    throw new BadRequestException( sprintf( 'Invalid file object for "%s"', $name ) );
+                }
+
+                $data[] = [
+                    'name' => $name,
+                    'contents' => $entry->binary(),
+                    'filename' => $entry->filename() ?: 'file',
+                    'headers'  => [
+                        'Content-Type' => $entry->mimeType()
+                    ]
+                ];
+            }
         }
 
         return !empty( $files ) ? ['multipart' => $data] : $data;
