@@ -3,13 +3,21 @@
 namespace Aimeos\Prisma\Files;
 
 
+/**
+ * Image file content.
+ */
 class Image extends File
 {
+    /**
+     * Returns the mime type.
+     *
+     * @return string|null Mime type
+     */
     public function mimeType() : ?string
     {
         $mimeType = parent::mimeType();
 
-        if( strncmp( $mimeType, 'image/', 6 ) ) {
+        if( !str_starts_with( $mimeType, 'image/' ) ) {
             throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
@@ -17,9 +25,15 @@ class Image extends File
     }
 
 
+    /**
+     * Sets the mime type.
+     *
+     * @param string|null $mimeType Mime type
+     * @return self File instance
+     */
     public function setMimeType( ?string $mimeType ) : self
     {
-        if( $mimeType && strncmp( $mimeType, 'image/', 6 ) ) {
+        if( $mimeType && !str_starts_with( $mimeType, 'image/' ) ) {
             throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
