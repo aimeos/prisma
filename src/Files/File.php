@@ -29,11 +29,9 @@ class File
     public static function fromBase64( string $base64, ?string $mimeType = null ) : static
     {
         $instance = new static;
-
         $instance->base64 = $base64;
-        $instance->setMimeType( $mimeType );
 
-        return $instance;
+        return $instance->withMimeType( $mimeType );
     }
 
 
@@ -47,11 +45,9 @@ class File
     public static function fromBinary( string $binary, ?string $mimeType = null ) : static
     {
         $instance = new static;
-
         $instance->binary = $binary;
-        $instance->setMimeType( $mimeType );
 
-        return $instance;
+        return $instance->withMimeType( $mimeType );
     }
 
 
@@ -69,12 +65,10 @@ class File
         }
 
         $instance = new static;
-
         $instance->binary = $content;
         $instance->filename = basename( $path );
-        $instance->setMimeType( $mimeType );
 
-        return $instance;
+        return $instance->withMimeType( $mimeType );
     }
 
 
@@ -100,12 +94,10 @@ class File
         }
 
         $instance = new static;
-
         $instance->binary = $content;
         $instance->filename = basename( $path );
-        $instance->setMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
 
-        return $instance;
+        return $instance->withMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
     }
 
 
@@ -119,11 +111,9 @@ class File
     public static function fromUrl( string $url, ?string $mimeType = null ) : static
     {
         $instance = new static;
-
         $instance->url = $url;
-        $instance->setMimeType( $mimeType );
 
-        return $instance;
+        return $instance->withMimeType( $mimeType );
     }
 
 
@@ -206,19 +196,6 @@ class File
         }
 
         return $this->mimeType;
-    }
-
-
-    /**
-     * Sets the mime type.
-     *
-     * @param string|null $mimeType Mime type
-     * @return self File instance
-     */
-    public function setMimeType( ?string $mimeType ) : self
-    {
-        $this->mimeType = $mimeType;
-        return $this;
     }
 
 

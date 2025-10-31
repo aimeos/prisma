@@ -134,8 +134,9 @@ class Clipdrop extends Base
         $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
 
         return FileResponse::fromBinary( $response->getBody(), $mimeType )->withUsage(
-            $response->getHeader( 'x-credits-consumed' )[0] ?? null,
-            $response->getHeader( 'x-remaining-credits' )[0] ?? null
+            $response->getHeader( 'x-credits-consumed' )[0] ?? null, [
+                'x-remaining-credits' => $response->getHeader( 'x-remaining-credits' )[0] ?? null
+            ]
         );
     }
 }

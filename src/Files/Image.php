@@ -31,12 +31,12 @@ class Image extends File
      * @param string|null $mimeType Mime type
      * @return self File instance
      */
-    public function setMimeType( ?string $mimeType ) : self
+    public function withMimeType( ?string $mimeType ) : self
     {
         if( $mimeType && !str_starts_with( $mimeType, 'image/' ) ) {
             throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
-        return parent::setMimeType( $mimeType );
+        return parent::withMimeType( $mimeType );
     }
 }
