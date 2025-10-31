@@ -1,19 +1,19 @@
 <?php
 
-namespace Aimeos\Prisma\Contracts;
+namespace Aimeos\Prisma\Contracts\Image;
 
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-interface Detext
+interface Clear
 {
     /**
-     * Remove all text from the image.
+     * Remove the image background.
      *
      * @param Image $image Input image object
      * @param array $options Provider specific options
      * @return FileResponse Response file
      */
-    public function detext( Image $image, array $options = [] ) : FileResponse;
+    public function clear( Image $image, array $options = [] ) : FileResponse;
 }

@@ -1,23 +1,22 @@
 <?php
 
-namespace Aimeos\Prisma\Providers;
+namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Background;
-use Aimeos\Prisma\Contracts\Detext;
-use Aimeos\Prisma\Contracts\Erase;
-use Aimeos\Prisma\Contracts\Image;
-use Aimeos\Prisma\Contracts\Studio;
-use Aimeos\Prisma\Contracts\Uncrop;
-use Aimeos\Prisma\Contracts\Upscale;
-use Aimeos\Prisma\Contracts\Provider;
+use Aimeos\Prisma\Contracts\Image\Background;
+use Aimeos\Prisma\Contracts\Image\Detext;
+use Aimeos\Prisma\Contracts\Image\Erase;
+use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Studio;
+use Aimeos\Prisma\Contracts\Image\Uncrop;
+use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Clipdrop
-    extends Base
-    implements Background, Detext, Erase, Image, Studio, Uncrop, Upscale
+class Clipdrop extends Base
+    implements Background, Clear, Detext, Erase, Image, Studio, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -30,23 +29,22 @@ class Clipdrop
     }
 
 
-    public function background( ImageFile $image, ?string $prompt = null, array $options = [] ) : FileResponse
+    public function background( ImageFile $image, string $prompt, array $options = [] ) : FileResponse
     {
-        $data = [];
-        $url = 'remove-background/v1';
+        $request = $this->request( ['prompt' => $prompt], ['image_file' => $image] );
+        $response = $this->client()->post( 'replace-background/v1', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function clear( ImageFile $image, array $options = [] ) : FileResponse
+    {
         $allowed = $this->allowed( $options, ['transparency_handling'] );
+        $request = $this->request( $allowed, ['image_file' => $image] );
+        $response = $this->client()->post( 'remove-background/v1', $request );
 
-        if( $prompt )
-        {
-            $allowed = [];
-            $data = ['prompt' => $prompt];
-            $url = 'replace-background/v1';
-        }
-
-        $request = $this->request( $data + $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( $url, $request );
-
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -55,7 +53,7 @@ class Clipdrop
         $request = $this->request( $options, ['image_file' => $image] );
         $response = $this->client()->post( 'remove-text/v1', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -65,7 +63,7 @@ class Clipdrop
         $request = $this->request( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
         $response = $this->client()->post( 'cleanup/v1', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -74,7 +72,7 @@ class Clipdrop
         $request = $this->request( ['prompt' => $prompt] + $options );
         $response = $this->client()->post( 'text-to-image/v1', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -84,7 +82,7 @@ class Clipdrop
         $request = $this->request( $options, ['image_file' => $image] );
         $response = $this->client()->post( 'product-photography/v1', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -101,7 +99,7 @@ class Clipdrop
         $request = $this->request( $data + $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'uncrop/v1', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
@@ -115,28 +113,15 @@ class Clipdrop
         $request = $this->request( $data, ['image_file' => $image] );
         $response = $this->client()->post( 'image-upscaling/v1/upscale', $request );
 
-        return $this->toResponse( $response );
+        return $this->toFileResponse( $response );
     }
 
 
-    protected function toResponse( ResponseInterface $response ) : FileResponse
-    {
-        $this->validate( $response );
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
-
-        return FileResponse::fromBinary( $response->getBody(), $mimeType )
-            ->withUsage(
-                $response->getHeader( 'x-credits-consumed' )[0] ?? null,
-                $response->getHeader( 'x-remaining-credits' )[0] ?? null
-            );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
+    protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
         switch( $response->getStatusCode() )
         {
-            case 200: return;
+            case 200: break;
             case 400:
             case 406: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
             case 401:
@@ -145,5 +130,12 @@ class Clipdrop
             case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
         }
+
+        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
+
+        return FileResponse::fromBinary( $response->getBody(), $mimeType )->withUsage(
+            $response->getHeader( 'x-credits-consumed' )[0] ?? null,
+            $response->getHeader( 'x-remaining-credits' )[0] ?? null
+        );
     }
 }

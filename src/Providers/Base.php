@@ -53,7 +53,8 @@ abstract class Base implements Provider
      */
     public function has( string $method ) : bool
     {
-        $name = '\\Aimeos\\Prisma\\Contracts\\' . ucfirst( $method );
+        $type = current( array_slice( explode( '\\', get_class( $this ) ), -2, 1 ) );
+        $name = '\\Aimeos\\Prisma\\Contracts\\' . $type . '\\' . ucfirst( $method );
 
         if( !interface_exists( $name ) ) {
             return false;

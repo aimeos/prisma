@@ -1,6 +1,6 @@
 <?php
 
-namespace Aimeos\Prisma\Contracts;
+namespace Aimeos\Prisma\Contracts\Image;
 
 use Aimeos\Prisma\Responses\FileResponse;
 
