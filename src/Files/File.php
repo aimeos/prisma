@@ -83,14 +83,14 @@ class File
     public static function fromStoragePath( string $path, ?string $disk = null, ?string $mimeType = null ) : static
     {
         if( !class_exists( '\Illuminate\Support\Facades\Storage' ) ) {
-            throw new NotExistsException( 'Laravel storage facade is not available' );
+            throw new NotFoundException( 'Laravel storage facade is not available' );
         }
 
         $disk = \Illuminate\Support\Facades\Storage::disk( $disk );
         $content = $disk->get($path);
 
         if( !( $content = $disk->get( $path ) ) ) {
-            throw new NotExistsException( sprintf( 'Laravel storage disk "%1$s" does not contain "%2$s" or the file is empty', $disk, $path ) );
+            throw new NotFoundException( sprintf( 'Laravel storage disk "%1$s" does not contain "%2$s" or the file is empty', $disk, $path ) );
         }
 
         $instance = new static;

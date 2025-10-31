@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma;
 
 use Aimeos\Prisma\Contracts\Provider;
-use Aimeos\Prisma\Exceptions\NotExistsException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 
 
@@ -38,7 +37,7 @@ class Prisma
         $classname = '\\Aimeos\\Prisma\\Providers\\' . ucfirst( $this->type ) . '\\' . ucfirst( $name );
 
         if( !class_exists( $classname ) ) {
-            throw new NotExistsException( sprintf( 'Provider "%1$s" not found', $classname ) );
+            throw new NotImplementedException( sprintf( 'Provider "%1$s" not found', $classname ) );
         }
 
         $provider = new $classname( $config );
