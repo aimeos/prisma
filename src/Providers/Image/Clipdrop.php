@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
+use Aimeos\Prisma\Contracts\Image\Clear;
 use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
@@ -69,7 +70,7 @@ class Clipdrop extends Base
 
     public function image( string $prompt, array $options = [] ) : FileResponse
     {
-        $request = $this->request( ['prompt' => $prompt] + $options );
+        $request = $this->request( ['prompt' => $prompt] );
         $response = $this->client()->post( 'text-to-image/v1', $request );
 
         return $this->toFileResponse( $response );
@@ -131,11 +132,11 @@ class Clipdrop extends Base
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
         }
 
-        $mimeType = $response->getHeader( 'Content-Type' )[0] ?? null;
+        $mimeType = $response->getHeaderLine( 'Content-Type' );
 
         return FileResponse::fromBinary( $response->getBody(), $mimeType )->withUsage(
-            $response->getHeader( 'x-credits-consumed' )[0] ?? null, [
-                'x-remaining-credits' => $response->getHeader( 'x-remaining-credits' )[0] ?? null
+            $response->getHeaderLine( 'x-credits-consumed' ), [
+                'x-remaining-credits' => $response->getHeaderLine( 'x-remaining-credits' )
             ]
         );
     }
