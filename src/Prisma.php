@@ -4,6 +4,7 @@ namespace Aimeos\Prisma;
 
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Providers\Fake;
 
 
 /**
@@ -11,6 +12,7 @@ use Aimeos\Prisma\Exceptions\NotImplementedException;
  */
 class Prisma
 {
+    private static ?Provider $fake = null;
     private $type;
 
 
@@ -46,7 +48,13 @@ class Prisma
             throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', $classname, Provider::class ) );
         }
 
-        return $provider;
+        return self::$fake ? self::$fake->use( $provider ) : $provider;
+    }
+
+
+    public static function fake( array $responses = [] ) : void
+    {
+        self::$fake = new Fake( $responses );
     }
 
 
