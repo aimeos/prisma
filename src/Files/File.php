@@ -12,6 +12,7 @@ class File
     protected ?string $base64 = null;
     protected ?string $binary = null;
     protected ?string $filename = null;
+    protected ?string $mimeType = null;
 
 
     private function __construct()
@@ -31,7 +32,7 @@ class File
         $instance = new static;
         $instance->base64 = $base64;
 
-        return $instance->withMimeType( $mimeType );
+        return $instance->setMimeType( $mimeType );
     }
 
 
@@ -47,7 +48,7 @@ class File
         $instance = new static;
         $instance->binary = $binary;
 
-        return $instance->withMimeType( $mimeType );
+        return $instance->setMimeType( $mimeType );
     }
 
 
@@ -68,7 +69,7 @@ class File
         $instance->binary = $content;
         $instance->filename = basename( $path );
 
-        return $instance->withMimeType( $mimeType );
+        return $instance->setMimeType( $mimeType );
     }
 
 
@@ -97,7 +98,7 @@ class File
         $instance->binary = $content;
         $instance->filename = basename( $path );
 
-        return $instance->withMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
+        return $instance->setMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
     }
 
 
@@ -113,7 +114,7 @@ class File
         $instance = new static;
         $instance->url = $url;
 
-        return $instance->withMimeType( $mimeType );
+        return $instance->setMimeType( $mimeType );
     }
 
 
@@ -196,6 +197,19 @@ class File
         }
 
         return $this->mimeType;
+    }
+
+
+    /**
+     * Sets the mime type.
+     *
+     * @param string|null $mimeType Mime type
+     * @return self File instance
+     */
+    protected function setMimeType( ?string $mimeType ) : self
+    {
+        $this->mimeType = $mimeType;
+        return $this;
     }
 
 
