@@ -6,6 +6,7 @@ use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Files\File;
+use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Client;
 
 
@@ -13,6 +14,7 @@ abstract class Base implements Provider
 {
     private $client;
     private $clientOptions = [];
+    private $clientHandler = null;
     private $systemPrompt = null;
     private $model = null;
 
@@ -87,6 +89,19 @@ abstract class Base implements Provider
 
 
     /**
+     * Add client handler for the Guzzle HTTP client.
+     *
+     * @param \GuzzleHttp\HandlerStack $stack List of Guzzle middleware
+     * @return self Provider interface
+     */
+    public function withClientHandler( HandlerStack $stack ) : self
+    {
+        $this->clientHandler = $stack;
+        return $this;
+    }
+
+
+    /**
      * Add options for the Guzzle HTTP client.
      *
      * @param array $options Associative list of name/value pairs
@@ -149,7 +164,7 @@ abstract class Base implements Provider
     protected function client() : Client
     {
         if( !isset( $this->client ) ) {
-            $this->client = new Client( $this->clientOptions + ['http_errors' => false] );
+            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->clientHandler] );
         }
 
         return $this->client;
@@ -202,7 +217,7 @@ abstract class Base implements Provider
             {
                 foreach( $entry as $i => $file )
                 {
-                    if( !$file instanceof File ) {
+                    if( !( $file instanceof File ) ) {
                         throw new BadRequestException( sprintf( 'Invalid file object for "%s"', $name ) );
                     }
 
@@ -218,7 +233,7 @@ abstract class Base implements Provider
             }
             else
             {
-                if( !$file instanceof File ) {
+                if( !( $entry instanceof File ) ) {
                     throw new BadRequestException( sprintf( 'Invalid file object for "%s"', $name ) );
                 }
 

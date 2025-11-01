@@ -45,6 +45,15 @@ interface Provider
 
 
     /**
+     * Add client handler for the Guzzle HTTP client.
+     *
+     * @param \GuzzleHttp\HandlerStack $stack List of Guzzle middleware
+     * @return self Provider interface
+     */
+    public function withClientHandler( \GuzzleHttp\HandlerStack $stack ) : self;
+
+
+    /**
      * Add options for the Guzzle HTTP client.
      *
      * @param array $options Associative list of name/value pairs
