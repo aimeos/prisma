@@ -190,9 +190,9 @@ abstract class Base implements Provider
      *
      * @return string|null Model name
      */
-    protected function modelName() : ?string
+    protected function modelName( string $default = null ) : ?string
     {
-        return $this->model;
+        return $this->model ?: $default;
     }
 
 
