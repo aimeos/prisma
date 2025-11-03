@@ -31,13 +31,7 @@ class Gemini extends Base implements Image, Repaint
 
         $request = [
             'contents' => [[
-                'role' => 'system',
-                'parts' => [[
-                    ['text' => $this->systemPrompt()]
-                ]]
-            ], [
-                'role' => 'user',
-                'parts' => [[
+                'parts' => [
                     ...array_map( fn( ImageFile $img ) => [
                         'inlineData' => [
                             'data' => $img->base64(),
@@ -45,11 +39,13 @@ class Gemini extends Base implements Image, Repaint
                         ],
                     ], $images ),
                     ['text' => $prompt]
-                ]]
+                ]
             ]],
-            ...$allowed
+            'generationConfig' => [
+                ...$allowed
+            ]
         ];
-        $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', $request );
+        $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
         return $this->toFileResponse( $response );
     }
