@@ -1,0 +1,159 @@
+<?php
+
+namespace Aimeos\Prisma\Providers\Image;
+
+use Aimeos\Prisma\Contracts\Image\Clear;
+use Aimeos\Prisma\Contracts\Image\Inpaint;
+use Aimeos\Prisma\Contracts\Image\Erase;
+use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Uncrop;
+use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\FileResponse;
+use Psr\Http\Message\ResponseInterface;
+
+
+class Stabilityai extends Base
+    implements Clear, Inpaint, Erase, Image, Uncrop, Upscale
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+        }
+
+        $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
+        $this->baseUrl( 'https://api.stability.ai' );
+    }
+
+
+    public function clear( ImageFile $image, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['output_format'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        $request = $this->request( $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function erase( ImageFile $image, ImageFile $mask, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['grow_mask', 'seed', 'output_format'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        $request = $this->request( $allowed, ['image' => $image, 'mask' => $mask] );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/erase', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['aspect_ratio', 'negative_prompt', 'output_format', 'seed', 'strength', 'style_preset'] );
+        $allowed = $this->sanitize( $allowed, [
+            'aspect_ratio' => ['16:9', '1:1', '21:9', '2:3', '3:2', '4:5', '5:4', '9:16', '9:21'],
+            'output_format' => ['png', 'jpeg', 'webp'],
+        ] );
+
+        $files = !empty( $images ) ? ['image' => current( $images )] : [];
+        $model = $this->modelName( 'ultra' );
+
+        if( str_starts_with( $model, 'sd3' ) )
+        {
+            $allowed = $this->allowed( $options, ['cfg_scale', 'negative_prompt', 'output_format', 'seed', 'strength', 'style_preset'] );
+            $allowed['model'] = $model;
+            $model = 'sd3';
+
+            if( !empty( $files ) ) {
+                $allowed['mode'] = 'image-to-image';
+            }
+        }
+
+        if( !empty( $files ) && !isset( $allowed['strength'] ) ) {
+            $allowed['strength'] = '0.5';
+        }
+
+        $request = $this->request( ['prompt' => $prompt] + $allowed, $files );
+        $response = $this->client()->post( 'v2beta/stable-image/generate/' . $model, $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['negative_prompt', 'seed', 'output_format', 'style_preset'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/inpaint', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function uncrop( ImageFile $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+    {
+        $data = [
+            'up' => min( $top, 2000 ),
+            'down' => min( $bottom, 2000 ),
+            'left' => min( $left, 2000 ),
+            'right' => min( $right, 2000 ),
+        ];
+
+        $allowed = $this->allowed( $options, ['creativity', 'output_format', 'prompt', 'seed', 'style_preset'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        $request = $this->request( $data + $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/outpaint', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function upscale( ImageFile $image, int $width, int $height, array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'conservative' );
+        $allowed = $this->allowed( $options, match( $model ) {
+            'conservative' => ['creativity', 'negative_prompt', 'output_format', 'seed'],
+            'creative' => ['creativity', 'negative_prompt', 'output_format', 'seed', 'style_preset'],
+            default => ['output_format'],
+        } );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        if( $model !== 'fast' && !isset( $allowed['prompt'] ) ) {
+            $allowed['prompt'] = ' ';
+        }
+
+        $request = $this->request( $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v2beta/stable-image/upscale/' . $model, $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    {
+        if( $response->getStatusCode() !== 200 )
+        {
+            $errors = join( ', ', json_decode( $response->getBody()->getContents() )?->errors );
+
+            switch( $response->getStatusCode() )
+            {
+                case 400:
+                case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
+                case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddentException( $errors );
+                case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
+                default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
+            }
+        }
+
+        $mimeType = $response->getHeaderLine( 'Content-Type' );
+        return FileResponse::fromBinary( $response->getBody(), $mimeType );
+    }
+}
