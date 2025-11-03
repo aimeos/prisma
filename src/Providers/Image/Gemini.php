@@ -31,6 +31,12 @@ class Gemini extends Base implements Image, Repaint
 
         $request = [
             'contents' => [[
+                'role' => 'system',
+                'parts' => [[
+                    ['text' => $this->systemPrompt()]
+                ]]
+            ], [
+                'role' => 'user',
                 'parts' => [[
                     ...array_map( fn( ImageFile $img ) => [
                         'inlineData' => [
@@ -38,7 +44,7 @@ class Gemini extends Base implements Image, Repaint
                             'mimeType' => $img->mimeType()
                         ],
                     ], $images ),
-                    ['text' => $prompt ]
+                    ['text' => $prompt]
                 ]]
             ]],
             ...$allowed
