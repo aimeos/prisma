@@ -190,9 +190,9 @@ class File
         if( !$this->mimeType )
         {
             if( $this->binary || $this->base64 ) {
-                $this->mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer( $this->binary() ) ?: null;
+                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $this->binary() ) ?: null;
             } elseif( $this->url && ( $content = file_get_contents( $this->url, false, null, 0, 255 ) ) ) {
-                $this->mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null;
+                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null;
             }
         }
 

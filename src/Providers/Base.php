@@ -175,12 +175,15 @@ abstract class Base implements Provider
      * Set a header for the HTTP client.
      *
      * @param string $name Header name
-     * @param string $value Header value
+     * @param string|null $value Header value
      * @return self Provider interface
      */
-    protected function header( string $name, string $value ) : self
+    protected function header( string $name, ?string $value ) : self
     {
-        $this->clientOptions['headers'][$name] = $value;
+        if( $value !== null ) {
+            $this->clientOptions['headers'][$name] = $value;
+        }
+
         return $this;
     }
 
