@@ -253,6 +253,26 @@ abstract class Base implements Provider
 
 
     /**
+     * Sanitize the options by only allowing the specified values.
+     *
+     * @param array $options Associative list of name/value pairs
+     * @param array $allowed Associative list of name/allowed values
+     * @return array Sanitized list of name/value pairs
+     */
+    protected function sanitize( array $options, array $allowed ) : array
+    {
+        foreach( $allowed as $name => $values )
+        {
+            if( isset( $options[$name] ) && !in_array( $options[$name], $values ) ) {
+                unset( $options[$name] );
+            }
+        }
+
+        return $options;
+    }
+
+
+    /**
      * Returns the system prompt.
      *
      * @return string|null System prompt
