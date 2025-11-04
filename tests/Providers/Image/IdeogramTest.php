@@ -78,8 +78,8 @@ class IdeogramTest extends TestCase
             }' )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                'prompt'
+                'prompt',
+                ImageFile::fromBinary( 'PNG', 'image/png' )
             );
 
         $this->assertPrismaRequest( function( $request, $options ) {
