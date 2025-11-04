@@ -44,4 +44,19 @@ class RemovebgTest extends TestCase
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
     }
+
+
+    public function testStudio()
+    {
+        $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
+            ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->studio( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.remove.bg/v1.0/removebg', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'PNG', $file->binary() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+    }
 }
