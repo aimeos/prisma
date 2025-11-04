@@ -33,7 +33,7 @@ class Clipdrop extends Base
     public function background( ImageFile $image, string $prompt, array $options = [] ) : FileResponse
     {
         $request = $this->request( ['prompt' => $prompt], ['image_file' => $image] );
-        $response = $this->client()->post( 'replace-background/v1', $request );
+        $response = $this->client()->post( 'replace-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -43,7 +43,7 @@ class Clipdrop extends Base
     {
         $allowed = $this->allowed( $options, ['transparency_handling'] );
         $request = $this->request( $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( 'remove-background/v1', $request );
+        $response = $this->client()->post( 'remove-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -52,7 +52,7 @@ class Clipdrop extends Base
     public function detext( ImageFile $image, array $options = [] ) : FileResponse
     {
         $request = $this->request( $options, ['image_file' => $image] );
-        $response = $this->client()->post( 'remove-text/v1', $request );
+        $response = $this->client()->post( 'remove-text/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -62,7 +62,7 @@ class Clipdrop extends Base
     {
         $allowed = $this->allowed( $options, ['mode'] );
         $request = $this->request( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
-        $response = $this->client()->post( 'cleanup/v1', $request );
+        $response = $this->client()->post( 'cleanup/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -81,7 +81,7 @@ class Clipdrop extends Base
     {
         $allowed = $this->allowed( $options, ['background_color_choice', 'light_theta', 'light_phi', 'light_size', 'shadow_darkness'] );
         $request = $this->request( $options, ['image_file' => $image] );
-        $response = $this->client()->post( 'product-photography/v1', $request );
+        $response = $this->client()->post( 'product-photography/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -98,7 +98,7 @@ class Clipdrop extends Base
 
         $allowed = $this->allowed( $options, ['seed'] );
         $request = $this->request( $data + $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( 'uncrop/v1', $request );
+        $response = $this->client()->post( 'uncrop/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -112,7 +112,7 @@ class Clipdrop extends Base
         ];
 
         $request = $this->request( $data, ['image_file' => $image] );
-        $response = $this->client()->post( 'image-upscaling/v1/upscale', $request );
+        $response = $this->client()->post( 'image-upscaling/v1/upscale', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

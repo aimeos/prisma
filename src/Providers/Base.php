@@ -216,6 +216,10 @@ abstract class Base implements Provider
 
         foreach( $files as $name => $entry )
         {
+            if( !$entry ) {
+                continue;
+            }
+
             if( is_array( $entry ) )
             {
                 foreach( $entry as $i => $file )
@@ -251,7 +255,7 @@ abstract class Base implements Provider
             }
         }
 
-        return !empty( $files ) ? ['multipart' => $data] : $data;
+        return $data;
     }
 
 

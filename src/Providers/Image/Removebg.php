@@ -32,7 +32,7 @@ class Removebg extends Base implements Relocate, Clear
         $allowed = $this->sanitize( $allowed, $this->options() );
 
         $request = $this->request( $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( 'v1.0/removebg', $request );
+        $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -47,7 +47,7 @@ class Removebg extends Base implements Relocate, Clear
         $allowed = $this->sanitize( $allowed, $this->options() );
 
         $request = $this->request( $allowed, ['image_file' => $image, 'bg_image_file' => $bgimage] );
-        $response = $this->client()->post( 'v1.0/removebg', $request );
+        $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

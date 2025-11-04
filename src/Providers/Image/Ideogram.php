@@ -39,7 +39,7 @@ class Ideogram
         $files = $this->toFiles( $options, ['style_reference_images'] );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
-        $response = $this->client()->post( 'v1/ideogram-v3/replace-background', $request );
+        $response = $this->client()->post( 'v1/ideogram-v3/replace-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -56,7 +56,7 @@ class Ideogram
         $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask'] );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['style_reference_images' => $images] + $files );
-        $response = $this->client()->post( 'v1/ideogram-v3/generate', $request );
+        $response = $this->client()->post( 'v1/ideogram-v3/generate', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -75,7 +75,7 @@ class Ideogram
         $files = $this->toFiles( $options, $fileOptions );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
-        $response = $this->client()->post( 'v1/ideogram-v3/edit', $request );
+        $response = $this->client()->post( 'v1/ideogram-v3/edit', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -92,7 +92,7 @@ class Ideogram
         $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask', 'style_reference_images'] );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
-        $response = $this->client()->post( 'v1/ideogram-v3/remix', $request );
+        $response = $this->client()->post( 'v1/ideogram-v3/remix', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -104,7 +104,7 @@ class Ideogram
         $allowed = $this->sanitize( $allowed, $this->options() );
 
         $request = $this->request( ['image_request' => json_encode( $allowed )], ['image_file' => $image] );
-        $response = $this->client()->post( 'upscale', $request );
+        $response = $this->client()->post( 'upscale', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

@@ -34,7 +34,7 @@ class Stabilityai extends Base
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
         $request = $this->request( $allowed, ['image' => $image] );
-        $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', $request );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -46,7 +46,7 @@ class Stabilityai extends Base
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
         $request = $this->request( $allowed, ['image' => $image, 'mask' => $mask] );
-        $response = $this->client()->post( 'v2beta/stable-image/edit/erase', $request );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/erase', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -79,7 +79,7 @@ class Stabilityai extends Base
         }
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, $files );
-        $response = $this->client()->post( 'v2beta/stable-image/generate/' . $model, $request );
+        $response = $this->client()->post( 'v2beta/stable-image/generate/' . $model, ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -91,7 +91,7 @@ class Stabilityai extends Base
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] );
-        $response = $this->client()->post( 'v2beta/stable-image/edit/inpaint', $request );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/inpaint', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -110,7 +110,7 @@ class Stabilityai extends Base
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
         $request = $this->request( $data + $allowed, ['image' => $image] );
-        $response = $this->client()->post( 'v2beta/stable-image/edit/outpaint', $request );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/outpaint', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -131,7 +131,7 @@ class Stabilityai extends Base
         }
 
         $request = $this->request( $allowed, ['image' => $image] );
-        $response = $this->client()->post( 'v2beta/stable-image/upscale/' . $model, $request );
+        $response = $this->client()->post( 'v2beta/stable-image/upscale/' . $model, ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
