@@ -7,6 +7,7 @@ use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Image;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -20,7 +21,7 @@ class Ideogram
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+            throw new PrismaException( sprintf( 'No API key' ) );
         }
 
         $this->header( 'Api-Key', (string) $config['api_key'] );

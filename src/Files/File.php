@@ -2,6 +2,10 @@
 
 namespace Aimeos\Prisma\Files;
 
+use Aimeos\Prisma\Exceptions\NotFoundException;
+use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Exceptions\PrismaException;
+
 
 /**
  * The file content.
@@ -62,7 +66,7 @@ class File
     public static function fromLocalPath( string $path, ?string $mimeType = null ) : static
     {
         if( !( $content = file_get_contents( $path ) ) ) {
-            throw new InvalidArgumentException( "Unable to read file from $path or it is empty" );
+            throw new PrismaException( "Unable to read file from $path or it is empty" );
         }
 
         $instance = new static;
@@ -84,7 +88,7 @@ class File
     public static function fromStoragePath( string $path, ?string $disk = null, ?string $mimeType = null ) : static
     {
         if( !class_exists( '\Illuminate\Support\Facades\Storage' ) ) {
-            throw new NotFoundException( 'Laravel storage facade is not available' );
+            throw new NotImplementedException( 'Laravel storage facade is not available' );
         }
 
         $disk = \Illuminate\Support\Facades\Storage::disk( $disk );
@@ -162,7 +166,7 @@ class File
         }
 
         if( $this->url && !( $this->binary = file_get_contents( $this->url ) ?: null ) ) {
-            throw new InvalidArgumentException( "Unable to fetch URL from {$this->url} or it is empty" );
+            throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
         }
 
         return $this->binary;

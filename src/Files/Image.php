@@ -2,6 +2,8 @@
 
 namespace Aimeos\Prisma\Files;
 
+use Aimeos\Prisma\Exceptions\PrismaException;
+
 
 /**
  * Image file content.
@@ -18,7 +20,7 @@ class Image extends File
         $mimeType = parent::mimeType();
 
         if( !str_starts_with( $mimeType, 'image/' ) ) {
-            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
+            throw new PrismaException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
         return $mimeType;
@@ -34,7 +36,7 @@ class Image extends File
     protected function setMimeType( ?string $mimeType ) : self
     {
         if( $mimeType && !str_starts_with( $mimeType, 'image/' ) ) {
-            throw new \InvalidArgumentException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
+            throw new PrismaException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
         return parent::setMimeType( $mimeType );

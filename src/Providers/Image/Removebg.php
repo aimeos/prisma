@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers\Image;
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Studio;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -16,7 +17,7 @@ class Removebg extends Base implements Relocate, Isolate, Studio
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+            throw new PrismaException( sprintf( 'No API key' ) );
         }
 
         $this->header( 'X-API-Key', $config['api_key'] );

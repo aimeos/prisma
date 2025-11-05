@@ -8,6 +8,7 @@ use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -20,7 +21,7 @@ class Stabilityai extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+            throw new PrismaException( sprintf( 'No API key' ) );
         }
 
         $this->header( 'authorization', 'Bearer ' . $config['api_key'] );

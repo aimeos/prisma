@@ -4,6 +4,7 @@ namespace Aimeos\Prisma;
 
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Fake;
 
 
@@ -30,12 +31,16 @@ class Prisma
     /**
      * Create a new provider by name.
      *
-     * @param string $name Provider name in lower case
+     * @param string|null $name Provider name in lower case
      * @param array $config Configuration parameter for the provider
      * @return Provider Provider instance
      */
-    public function using( string $name, array $config = [] ) : Provider
+    public function using( ?string $name, array $config = [] ) : Provider
     {
+        if( !$name ) {
+            throw new PrismaException( 'No provider name given' );
+        }
+
         $classname = '\\Aimeos\\Prisma\\Providers\\' . ucfirst( $this->type ) . '\\' . ucfirst( $name );
 
         if( !class_exists( $classname ) ) {

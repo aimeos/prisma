@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Image;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -15,7 +16,7 @@ class Openai extends Base implements Image, Inpaint
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+            throw new PrismaException( sprintf( 'No API key' ) );
         }
 
         $this->header( 'OpenAI-Organization', $config['organization'] ?? null );

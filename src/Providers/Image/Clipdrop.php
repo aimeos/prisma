@@ -10,6 +10,7 @@ use Aimeos\Prisma\Contracts\Image\Image;
 use Aimeos\Prisma\Contracts\Image\Studio;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image as ImageFile;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -22,7 +23,7 @@ class Clipdrop extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new \InvalidArgumentException( sprintf( 'No API key' ) );
+            throw new PrismaException( sprintf( 'No API key' ) );
         }
 
         $this->header( 'x-api-key', (string) $config['api_key'] );
