@@ -73,7 +73,7 @@ class Stabilityai extends Base
     }
 
 
-    public function inpaint( ImageFile $image, string $prompt, ?ImageFile $mask = null, array $options = [] ) : FileResponse
+    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['negative_prompt', 'seed', 'output_format', 'style_preset'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );

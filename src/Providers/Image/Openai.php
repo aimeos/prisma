@@ -33,7 +33,7 @@ class Openai extends Base implements Image, Inpaint
     }
 
 
-    public function inpaint( ImageFile $image, string $prompt, ?ImageFile $mask = null, array $options = [] ) : FileResponse
+    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $request = $this->request( $this->params( $prompt, $options ), ['image' => [$image], 'mask' => $mask] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );

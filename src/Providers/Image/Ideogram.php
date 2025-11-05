@@ -62,7 +62,7 @@ class Ideogram
     }
 
 
-    public function inpaint( ImageFile $image, string $prompt, ?ImageFile $mask = null, array $options = [] ) : FileResponse
+    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'character_reference_images', 'character_reference_images_mask', 'color_palette',
@@ -70,9 +70,7 @@ class Ideogram
             'style_reference_images', 'style_type'
         ] );
         $allowed = $this->sanitize( $allowed, $this->options() );
-
-        $fileOptions = ['character_reference_images', 'character_reference_images_mask', 'style_reference_images'];
-        $files = $this->toFiles( $options, $fileOptions );
+        $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask', 'style_reference_images'] );
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/edit', ['multipart' => $request] );

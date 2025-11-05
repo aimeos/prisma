@@ -53,8 +53,8 @@ class StabilityaiTest extends TestCase
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
-                'prompt',
-                ImageFile::fromBinary( 'PNG', 'image/png' )
+                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                'prompt'
             );
 
         $this->assertPrismaRequest( function( $request, $options ) {
