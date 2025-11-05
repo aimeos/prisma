@@ -42,7 +42,7 @@ abstract class Base implements Provider
     public function ensure( string $method ) : self
     {
         if( !$this->has( $method ) ) {
-            throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', get_call( $this ), $method ) );
+            throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', get_class( $this ), $method ) );
         }
 
         return $this;

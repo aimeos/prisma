@@ -3,10 +3,10 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
-use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Studio;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
@@ -18,7 +18,7 @@ use Psr\Http\Message\ResponseInterface;
 
 
 class Clipdrop extends Base
-    implements Background, Isolate, Detext, Erase, Image, Studio, Uncrop, Upscale
+    implements Background, Detext, Erase, Image, Isolate, Studio, Uncrop, Upscale
 {
     public function __construct( array $config )
     {

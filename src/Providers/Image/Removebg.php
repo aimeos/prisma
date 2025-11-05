@@ -12,7 +12,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Removebg extends Base implements Relocate, Isolate, Studio
+class Removebg extends Base implements Isolate, Relocate, Studio
 {
     public function __construct( array $config )
     {

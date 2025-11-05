@@ -2,10 +2,10 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Image\Isolate;
-use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Inpaint;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -16,7 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 
 
 class Stabilityai extends Base
-    implements Isolate, Inpaint, Erase, Image, Uncrop, Upscale
+    implements Erase, Image, Inpaint, Isolate, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
