@@ -27,8 +27,7 @@ class Openai extends Base implements Image, Inpaint
 
     public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $request = $this->request( $this->params( $prompt, $options ) );
-        $response = $this->client()->post( 'v1/images/generations', $request );
+        $response = $this->client()->post( 'v1/images/generations', ['json' => $this->params( $prompt, $options )] );
 
         return $this->toFileResponse( $response );
     }
@@ -96,17 +95,19 @@ class Openai extends Base implements Image, Inpaint
 
         $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
 
-        if( !isset( $result['data']['b64_json'] ) ) {
+        if( !isset( $result['data'][0]['b64_json'] ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
         $meta = $result;
         unset( $meta['data'], $meta['usage'] );
 
-        return FileResponse::fromBase64( $result['data']['b64_json'] )->withMeta( $meta )->withUsage(
-            $result['usage']['total_tokens'] ?? null,
-            $result['usage'] ?? [],
-        );
+        return FileResponse::fromBase64( $result['data'][0]['b64_json'] )
+            ->withUsage(
+                $result['usage']['total_tokens'] ?? null,
+                $result['usage'] ?? [],
+            )
+            ->withMeta( $meta );
     }
 
 

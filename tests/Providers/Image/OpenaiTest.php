@@ -18,7 +18,7 @@ class OpenaiTest extends TestCase
         $file = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
             ->response( json_encode( [
                 'created' => 1713833628,
-                'data' => ['b64_json' => $base64],
+                'data' => [['b64_json' => $base64]],
                 'usage' => [
                     "total_tokens" => 100,
                     "input_tokens" => 50,
@@ -58,7 +58,7 @@ class OpenaiTest extends TestCase
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
         $file = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
             ->response( json_encode( [
-                'data' => ['b64_json' => $base64],
+                'data' => [['b64_json' => $base64]],
             ] ) )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
