@@ -12,23 +12,6 @@ class StabilityaiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testClear()
-    {
-        $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
-            ->response( 'PNG', ['Content-Type' => 'image/png'] )
-            ->clear( ImageFile::fromBinary( 'PNG', 'image/png' ) );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
-            $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/edit/remove-background', (string) $request->getUri() );
-        } );
-
-        $this->assertEquals( 'PNG', $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
-    }
-
-
     public function testErase()
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
@@ -39,6 +22,8 @@ class StabilityaiTest extends TestCase
             );
 
         $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
             $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/edit/erase', (string) $request->getUri() );
         } );
 
@@ -74,6 +59,21 @@ class StabilityaiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/edit/inpaint', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'PNG', $file->binary() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
+    public function testIsolate()
+    {
+        $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
+            ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/edit/remove-background', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );

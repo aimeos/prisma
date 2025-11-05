@@ -3,7 +3,7 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
-use Aimeos\Prisma\Contracts\Image\Clear;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
@@ -17,7 +17,7 @@ use Psr\Http\Message\ResponseInterface;
 
 
 class Clipdrop extends Base
-    implements Background, Clear, Detext, Erase, Image, Studio, Uncrop, Upscale
+    implements Background, Isolate, Detext, Erase, Image, Studio, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -34,16 +34,6 @@ class Clipdrop extends Base
     {
         $request = $this->request( ['prompt' => $prompt], ['image_file' => $image] );
         $response = $this->client()->post( 'replace-background/v1', ['multipart' => $request] );
-
-        return $this->toFileResponse( $response );
-    }
-
-
-    public function clear( ImageFile $image, array $options = [] ) : FileResponse
-    {
-        $allowed = $this->allowed( $options, ['transparency_handling'] );
-        $request = $this->request( $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( 'remove-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -72,6 +62,16 @@ class Clipdrop extends Base
     {
         $request = $this->request( ['prompt' => $prompt] );
         $response = $this->client()->post( 'text-to-image/v1', $request );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function isolate( ImageFile $image, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['transparency_handling'] );
+        $request = $this->request( $allowed, ['image_file' => $image] );
+        $response = $this->client()->post( 'remove-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

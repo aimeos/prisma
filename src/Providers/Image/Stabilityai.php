@@ -2,7 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Image\Clear;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Image;
@@ -15,7 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 
 
 class Stabilityai extends Base
-    implements Clear, Inpaint, Erase, Image, Uncrop, Upscale
+    implements Isolate, Inpaint, Erase, Image, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -25,18 +25,6 @@ class Stabilityai extends Base
 
         $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
         $this->baseUrl( 'https://api.stability.ai' );
-    }
-
-
-    public function clear( ImageFile $image, array $options = [] ) : FileResponse
-    {
-        $allowed = $this->allowed( $options, ['output_format'] );
-        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
-
-        $request = $this->request( $allowed, ['image' => $image] );
-        $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', ['multipart' => $request] );
-
-        return $this->toFileResponse( $response );
     }
 
 
@@ -92,6 +80,18 @@ class Stabilityai extends Base
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] );
         $response = $this->client()->post( 'v2beta/stable-image/edit/inpaint', ['multipart' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function isolate( ImageFile $image, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['output_format'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
+
+        $request = $this->request( $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

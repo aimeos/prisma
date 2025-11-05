@@ -2,7 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Image\Clear;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Studio;
 use Aimeos\Prisma\Files\Image;
@@ -11,7 +11,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Removebg extends Base implements Relocate, Clear, Studio
+class Removebg extends Base implements Relocate, Isolate, Studio
 {
     public function __construct( array $config )
     {
@@ -24,7 +24,7 @@ class Removebg extends Base implements Relocate, Clear, Studio
     }
 
 
-    public function clear( Image $image, array $options = [] ) : FileResponse
+    public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'add_shadow', 'bg_color', 'channels', 'crop', 'crop_margin', 'format', 'position', 'roi',

@@ -12,11 +12,11 @@ class RemovebgTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testClear()
+    public function testIsolate()
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'] )
-            ->clear( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );

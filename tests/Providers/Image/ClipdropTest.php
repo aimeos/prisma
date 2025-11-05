@@ -30,22 +30,6 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testClear()
-    {
-        $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
-            ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
-            ->clear( ImageFile::fromBinary( 'PNG', 'image/png' ) );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://clipdrop-api.co/remove-background/v1', (string) $request->getUri() );
-        } );
-
-        $this->assertEquals( 'PNG', $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
-    }
-
-
     public function testDetext()
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
@@ -86,6 +70,22 @@ class ClipdropTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/text-to-image/v1', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'PNG', $file->binary() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+    }
+
+
+    public function testIsolate()
+    {
+        $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
+            ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://clipdrop-api.co/remove-background/v1', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );

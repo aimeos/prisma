@@ -6,7 +6,7 @@ use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-interface Clear
+interface Isolate
 {
     /**
      * Remove the image background.
@@ -15,5 +15,5 @@ interface Clear
      * @param array $options Provider specific options
      * @return FileResponse Response file
      */
-    public function clear( Image $image, array $options = [] ) : FileResponse;
+    public function isolate( Image $image, array $options = [] ) : FileResponse;
 }
