@@ -62,11 +62,11 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testImage()
+    public function testImagine()
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
-            ->image( 'prompt' );
+            ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/text-to-image/v1', (string) $request->getUri() );

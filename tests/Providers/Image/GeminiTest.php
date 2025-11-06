@@ -12,7 +12,7 @@ class GeminiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testImage()
+    public function testImagine()
     {
         $file = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
@@ -29,7 +29,7 @@ class GeminiTest extends TestCase
                     ]
                 ]]
             ] ) )
-            ->image( 'prompt' );
+            ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );

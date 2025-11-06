@@ -25,9 +25,9 @@ class FakeTest extends TestCase
         $fake = new Fake($responses);
         $fake->use( new \Aimeos\Prisma\Providers\Image\Gemini( ['api_key' => 'test'] ) );
 
-        $this->assertEquals('first', $fake->image());
-        $this->assertEquals('second', $fake->image());
-        $this->assertEquals('third', $fake->image());
+        $this->assertEquals('first', $fake->imagine());
+        $this->assertEquals('second', $fake->imagine());
+        $this->assertEquals('third', $fake->imagine());
     }
 
     public function testCallThrowsExceptionWhenMethodNotExists()

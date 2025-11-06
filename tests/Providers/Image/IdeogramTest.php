@@ -49,7 +49,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testImage()
+    public function testImagine()
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -57,7 +57,7 @@ class IdeogramTest extends TestCase
                     "url": "https://placehold.co/10x10.png"
                 }]
             }' )
-            ->image( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/generate', (string) $request->getUri() );

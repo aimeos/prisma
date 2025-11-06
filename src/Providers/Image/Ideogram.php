@@ -4,11 +4,11 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
-use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -16,7 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Inpaint, Image, Repaint, Upscale
+    implements Background, Inpaint, Imagine, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -29,7 +29,7 @@ class Ideogram
     }
 
 
-    public function background( ImageFile $image, string $prompt, array $options = [] ) : FileResponse
+    public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'color_palette', 'magic_prompt', 'rendering_speed', 'seed', 'style_codes',
@@ -46,7 +46,7 @@ class Ideogram
     }
 
 
-    public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
@@ -63,7 +63,7 @@ class Ideogram
     }
 
 
-    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
+    public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'character_reference_images', 'character_reference_images_mask', 'color_palette',
@@ -80,7 +80,7 @@ class Ideogram
     }
 
 
-    public function repaint( ImageFile $image, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
@@ -97,7 +97,7 @@ class Ideogram
     }
 
 
-    public function upscale( ImageFile $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['detail', 'magic_prompt_option', 'prompt', 'resemblance', 'seed'] );
         $allowed = $this->sanitize( $allowed, $this->options() );

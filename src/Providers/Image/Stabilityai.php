@@ -3,20 +3,20 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Erase;
-use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Stabilityai extends Base
-    implements Erase, Image, Inpaint, Isolate, Uncrop, Upscale
+    implements Erase, Imagine, Inpaint, Isolate, Uncrop, Upscale
 {
     public function __construct( array $config )
     {
@@ -29,7 +29,7 @@ class Stabilityai extends Base
     }
 
 
-    public function erase( ImageFile $image, ImageFile $mask, array $options = [] ) : FileResponse
+    public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['grow_mask', 'seed', 'output_format'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
@@ -41,7 +41,7 @@ class Stabilityai extends Base
     }
 
 
-    public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['aspect_ratio', 'negative_prompt', 'output_format', 'seed', 'strength', 'style_preset'] );
         $allowed = $this->sanitize( $allowed, [
@@ -74,7 +74,7 @@ class Stabilityai extends Base
     }
 
 
-    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
+    public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['negative_prompt', 'seed', 'output_format', 'style_preset'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
@@ -86,7 +86,7 @@ class Stabilityai extends Base
     }
 
 
-    public function isolate( ImageFile $image, array $options = [] ) : FileResponse
+    public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['output_format'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
@@ -98,7 +98,7 @@ class Stabilityai extends Base
     }
 
 
-    public function uncrop( ImageFile $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+    public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
         $data = [
             'up' => min( $top, 2000 ),
@@ -117,7 +117,7 @@ class Stabilityai extends Base
     }
 
 
-    public function upscale( ImageFile $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'conservative' );
         $allowed = $this->allowed( $options, match( $model ) {

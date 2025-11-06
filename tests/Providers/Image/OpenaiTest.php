@@ -12,7 +12,7 @@ class OpenaiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testImage()
+    public function testImagine()
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
         $file = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
@@ -29,7 +29,7 @@ class OpenaiTest extends TestCase
                     ]
                 ]
             ] ) )
-            ->image( 'prompt' );
+            ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );

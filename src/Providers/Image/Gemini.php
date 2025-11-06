@@ -2,16 +2,16 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Gemini extends Base implements Image, Repaint
+class Gemini extends Base implements Imagine, Repaint
 {
     public function __construct( array $config )
     {
@@ -24,7 +24,7 @@ class Gemini extends Base implements Image, Repaint
     }
 
 
-    public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'gemini-2.5-flash-image' );
         $names = ['cachedContent', 'imageConfig', 'responseModalities', 'safetySettings', 'thinkingConfig'];
@@ -33,7 +33,7 @@ class Gemini extends Base implements Image, Repaint
         $request = [
             'contents' => [[
                 'parts' => [
-                    ...array_map( fn( ImageFile $img ) => [
+                    ...array_map( fn( Image $img ) => [
                         'inlineData' => [
                             'data' => $img->base64(),
                             'mimeType' => $img->mimeType()
@@ -52,9 +52,9 @@ class Gemini extends Base implements Image, Repaint
     }
 
 
-    public function repaint( ImageFile $image, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->image( $prompt, [$image], $options );
+        return $this->imagine( $prompt, [$image], $options );
     }
 
 

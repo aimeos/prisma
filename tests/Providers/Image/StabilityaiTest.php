@@ -32,11 +32,11 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testImage()
+    public function testImagine()
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
-            ->image( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/generate/ultra', (string) $request->getUri() );

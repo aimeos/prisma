@@ -2,16 +2,16 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Contracts\Image\Image;
+use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Openai extends Base implements Image, Inpaint
+class Openai extends Base implements Imagine, Inpaint
 {
     public function __construct( array $config )
     {
@@ -26,7 +26,7 @@ class Openai extends Base implements Image, Inpaint
     }
 
 
-    public function image( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $response = $this->client()->post( 'v1/images/generations', ['json' => $this->params( $prompt, $options )] );
 
@@ -34,7 +34,7 @@ class Openai extends Base implements Image, Inpaint
     }
 
 
-    public function inpaint( ImageFile $image, ImageFile $mask, string $prompt, array $options = [] ) : FileResponse
+    public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $request = $this->request( $this->params( $prompt, $options ), ['image' => [$image], 'mask' => $mask] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );
