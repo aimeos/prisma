@@ -13,7 +13,7 @@ use GuzzleHttp\Client;
 abstract class Base implements Provider
 {
     private $client;
-    private $clientOptions = [];
+    private $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
     private $clientHandler = null;
     private $systemPrompt = null;
     private $model = null;
