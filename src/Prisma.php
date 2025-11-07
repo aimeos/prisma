@@ -70,4 +70,23 @@ class Prisma
     {
         return new self( 'image' );
     }
+
+
+    /**
+     * Tests if the specified provider supports the given method.
+     *
+     * @param string $type Provider type
+     * @param string $provider Provider name
+     * @param string $method Method name
+     * @param array $config Configuration parameter for the provider
+     * @return bool TRUE if supported, FALSE if not
+     */
+    public static function supports( string $type, string $provider, string $method, array $config ) : bool
+    {
+        try {
+            return ( new self( $type ) )->using( $provider, $config )->has( $method );
+        } catch( PrismaException ) {
+            return false;
+        }
+    }
 }
