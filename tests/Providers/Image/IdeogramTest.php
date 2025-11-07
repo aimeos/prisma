@@ -49,6 +49,24 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testDescribe()
+    {
+        $response = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "descriptions": [{
+                    "text": "an image description"
+                }]
+            }' )
+            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.ideogram.ai/describe', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'an image description', $response->text() );
+    }
+
+
     public function testImagine()
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )

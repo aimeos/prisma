@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
+use Aimeos\Prisma\Contracts\Image\Describe;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
@@ -11,12 +12,13 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Ideogram
     extends Base
-    implements Background, Inpaint, Imagine, Repaint, Upscale
+    implements Background, Describe, Inpaint, Imagine, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -43,6 +45,22 @@ class Ideogram
         $response = $this->client()->post( 'v1/ideogram-v3/replace-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
+    }
+
+
+    public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $allowed = $this->allowed( $options, ['describe_model_version'] );
+
+        $request = $this->request( $allowed, ['image_file' => $image] );
+        $response = $this->client()->post( 'describe', ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $item = current( $result['descriptions'] ?? [] ) ?: null;
+
+        return TextResponse::fromText( $item['text'] ?? null );
     }
 
 
@@ -147,7 +165,7 @@ class Ideogram
     }
 
 
-    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    protected function validate( ResponseInterface $response ) : void
     {
         switch( $response->getStatusCode() )
         {
@@ -158,6 +176,12 @@ class Ideogram
             case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
         }
+    }
+
+
+    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    {
+        $this->validate( $response );
 
         $result = json_decode( $response->getBody(), true ) ?? [];
         $data = current( $result['data'] ?? [] ) ?: [];
