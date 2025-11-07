@@ -12,6 +12,35 @@ class OpenaiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testDescribe()
+    {
+        $response = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
+            ->response( '{
+                "id": "resp_abc123",
+                "status": "completed",
+                "model": "gpt-4.1",
+                "output": [{
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{
+                        "type": "output_text",
+                        "text": "an image description"
+                    }]
+                }],
+                "usage": {
+                    "total_tokens": 154
+                }
+            }' )
+            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'an image description', $response->text() );
+    }
+
+
     public function testImagine()
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';

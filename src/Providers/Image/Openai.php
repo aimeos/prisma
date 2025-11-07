@@ -8,6 +8,7 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -23,6 +24,40 @@ class Openai extends Base implements Imagine, Inpaint
         $this->header( 'OpenAI-Project', $config['project'] ?? null );
         $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
         $this->baseUrl( 'https://api.openai.com' );
+    }
+
+
+    public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $response = $this->client()->post( 'v1/responses', ['json' => [
+            'model' => $this->modelName( 'gpt-5' ),
+            'input' => [[
+                "role" => "user",
+                "content" => [[
+                    "type" => "input_text",
+                    "text" => "Describe the image in the language of ISO code \"" . ($lang ?? 'en') . "\"."
+                ], [
+                    "type" => "input_image",
+                    "image_url" => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
+                ]]
+            ]]
+        ]] );
+
+        $this->validate( $response );
+
+        $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $output = current( $result['output'] ?? [] ) ?: [];
+        $content = current( $output['content'] ?? [] ) ?: [];
+
+        $meta = $result;
+        unset( $meta['output'], $meta['usage'] );
+
+        return TextResponse::fromText( $content['text'] )
+            ->withUsage(
+                $result['usage']['total_tokens'] ?? null,
+                $result['usage'] ?? [],
+            )
+            ->withMeta( $meta );
     }
 
 
