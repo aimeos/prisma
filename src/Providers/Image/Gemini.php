@@ -8,6 +8,7 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -21,6 +22,39 @@ class Gemini extends Base implements Imagine, Repaint
 
         $this->header( 'x-goog-api-key', $config['api_key'] );
         $this->baseUrl( 'https://generativelanguage.googleapis.com' );
+    }
+
+
+    public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $model = $this->modelName( 'gemini-2.5-flash-image' );
+        $names = ['cachedContent', 'imageConfig', 'safetySettings', 'thinkingConfig'];
+        $allowed = ['responseModalities' => ['TEXT']] + $this->allowed( $options, $names );
+
+        $request = [
+            'contents' => [[
+                'parts' => [
+                    'inlineData' => [
+                        'data' => $image->base64(),
+                        'mimeType' => $image->mimeType()
+                    ],
+                    ['text' => 'Describe the image in the language of ISO code "' . ( $lang ?? 'en' ) . '".']
+                ]
+            ]],
+            'generationConfig' => [
+                ...$allowed
+            ]
+        ];
+        $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+
+        $this->validate( $response );
+
+        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = current( $data['candidates'] ?? [] ) ?: [];
+        $part = current( $data['content']['parts'] ?? [] ) ?: [];
+
+        return TextResponse::fromText( $part['text'] ?? null )
+            ->withMeta( $data['metadata'] ?? [] );
     }
 
 

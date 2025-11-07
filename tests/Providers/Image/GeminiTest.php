@@ -12,6 +12,28 @@ class GeminiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testDescribe()
+    {
+        $response = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'an image description'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'an image description', $response->text() );
+    }
+
+
     public function testImagine()
     {
         $file = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
