@@ -12,7 +12,7 @@ class StabilityaiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testErase()
+    public function testErase() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -32,7 +32,7 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testImagine()
+    public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -47,7 +47,7 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testInpaint()
+    public function testInpaint() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -66,7 +66,7 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testIsolate()
+    public function testIsolate() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -81,7 +81,7 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testUncrop()
+    public function testUncrop() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -96,7 +96,7 @@ class StabilityaiTest extends TestCase
     }
 
 
-    public function testUpscale()
+    public function testUpscale() : void
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )

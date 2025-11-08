@@ -15,6 +15,7 @@ use PHPUnit\Framework\Assert;
 
 trait MakesPrismaRequests
 {
+    /** @var array<int, array<string, mixed>> */
     protected array $prismaHistory = [];
     protected ?MockHandler $prismaHandler = null;
     protected ?Provider $prismaProvider = null;
@@ -22,6 +23,10 @@ trait MakesPrismaRequests
 
     /**
      * Assert that a Prisma request matching the callback was sent.
+     *
+     * @param callable $callback Callback to validate the request and options
+     * @param string $message Error message
+     * @return void
      */
     protected function assertPrismaRequest( callable $callback, string $message = '' ) : void
     {
@@ -39,6 +44,10 @@ trait MakesPrismaRequests
 
     /**
      * Create a Prisma provider instance.
+     *
+     * @param string $type Prisma provider type
+     * @param string $name Prisma provider name
+     * @param array<string, mixed> $config Configuration options
      */
     protected function prisma( string $type, string $name, array $config = [] ) : static
     {
@@ -57,6 +66,12 @@ trait MakesPrismaRequests
 
     /**
      * Add a fake response, optionally return the Provider for direct use.
+     *
+     * @param string|array<string, mixed> $body Response body
+     * @param array<string, int|string> $headers Response headers
+     * @param int $status HTTP status code
+     * @param string $reason Reason phrase
+     * @return Provider Provider instance if needed
      */
     protected function response( string|array $body = '', array $headers = [], int $status = 200, string $reason = '' ) : Provider
     {
@@ -74,6 +89,8 @@ trait MakesPrismaRequests
 
     /**
      * Get all recorded requests.
+     *
+     * @return array<RequestInterface> List of requests
      */
     protected function requests(): array
     {
@@ -83,6 +100,8 @@ trait MakesPrismaRequests
 
     /**
      * Get the underlying provider instance.
+     *
+     * @return Provider Prisma provider instance
      */
     protected function provider() : Provider
     {

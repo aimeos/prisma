@@ -12,7 +12,7 @@ class GeminiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testDescribe()
+    public function testDescribe() : void
     {
         $response = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
@@ -34,7 +34,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testImagine()
+    public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
@@ -64,7 +64,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testRepaint()
+    public function testRepaint() : void
     {
         $file = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [

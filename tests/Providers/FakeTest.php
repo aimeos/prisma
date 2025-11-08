@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class FakeTest extends TestCase
 {
-    public function testConstructorSetsResponses()
+    public function testConstructorSetsResponses() : void
     {
         $responses = ['response1', 'response2'];
         $fake = new Fake($responses);
@@ -18,7 +18,7 @@ class FakeTest extends TestCase
         $this->assertInstanceOf(Fake::class, $fake);
     }
 
-    public function testCallReturnsResponsesInOrder()
+    public function testCallReturnsResponsesInOrder() : void
     {
         $responses = ['first', 'second', 'third'];
 
@@ -30,7 +30,8 @@ class FakeTest extends TestCase
         $this->assertEquals('third', $fake->imagine());
     }
 
-    public function testCallThrowsExceptionWhenMethodNotExists()
+
+    public function testCallThrowsExceptionWhenMethodNotExists() : void
     {
         $provider = $this->createMock(Provider::class);
 
@@ -41,7 +42,8 @@ class FakeTest extends TestCase
         $fake->nonExistentMethod();
     }
 
-    public function testEnsureCallsProviderEnsure()
+
+    public function testEnsureCallsProviderEnsure() : void
     {
         $provider = $this->createMock(Provider::class);
         $provider->expects($this->once())
@@ -56,7 +58,8 @@ class FakeTest extends TestCase
         $this->assertSame($fake, $result);
     }
 
-    public function testEnsureThrowsExceptionWhenNoProvider()
+
+    public function testEnsureThrowsExceptionWhenNoProvider() : void
     {
         $fake = new Fake(['response']);
 
@@ -64,7 +67,8 @@ class FakeTest extends TestCase
         $fake->ensure('testMethod');
     }
 
-    public function testHasReturnsTrueWhenProviderHasMethod()
+
+    public function testHasReturnsTrueWhenProviderHasMethod() : void
     {
         $provider = $this->createMock(Provider::class);
         $provider->method('has')
@@ -78,7 +82,7 @@ class FakeTest extends TestCase
     }
 
 
-    public function testHasReturnsFalseWhenProviderDoesNotHaveMethod()
+    public function testHasReturnsFalseWhenProviderDoesNotHaveMethod() : void
     {
         $provider = $this->createMock(Provider::class);
         $provider->method('has')->with('testMethod')->willReturn(false);
@@ -90,7 +94,7 @@ class FakeTest extends TestCase
     }
 
 
-    public function testUseSetsProvider()
+    public function testUseSetsProvider() : void
     {
         $fake = new Fake(['response']);
         $result = $fake->use($this->createMock(Provider::class));

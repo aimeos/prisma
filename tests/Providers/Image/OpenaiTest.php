@@ -12,7 +12,7 @@ class OpenaiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testDescribe()
+    public function testDescribe() : void
     {
         $response = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
             ->response( '{
@@ -41,7 +41,7 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testImagine()
+    public function testImagine() : void
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
         $file = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
@@ -82,7 +82,7 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testInpaint()
+    public function testInpaint() : void
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
         $file = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )

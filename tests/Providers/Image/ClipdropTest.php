@@ -12,7 +12,7 @@ class ClipdropTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testBackground()
+    public function testBackground() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -30,7 +30,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testDetext()
+    public function testDetext() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -46,7 +46,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testErase()
+    public function testErase() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -62,7 +62,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testImagine()
+    public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -78,7 +78,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testIsolate()
+    public function testIsolate() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -94,7 +94,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testStudio()
+    public function testStudio() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -110,7 +110,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testUncrop()
+    public function testUncrop() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
@@ -126,7 +126,7 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testUpscale()
+    public function testUpscale() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )

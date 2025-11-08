@@ -8,7 +8,7 @@ use Aimeos\Prisma\Exceptions\NotImplementedException;
 
 class Fake extends Base
 {
-    /** @var array<int, \GuzzleHttp\Psr7\Response> */
+    /** @var array<int, mixed> */
     private array $responses = [];
     private ?Provider $provider = null;
 
@@ -16,7 +16,7 @@ class Fake extends Base
     /**
      * Creates a new fake provider with the given responses.
      *
-     * @param array<int, \GuzzleHttp\Psr7\Response> $responses
+     * @param array<int, mixed> $responses
      */
     public function __construct( array $responses )
     {

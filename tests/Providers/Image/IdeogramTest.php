@@ -12,7 +12,7 @@ class IdeogramTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testBackground()
+    public function testBackground() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -49,7 +49,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testDescribe()
+    public function testDescribe() : void
     {
         $response = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -67,7 +67,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testImagine()
+    public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -86,7 +86,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testInpaint()
+    public function testInpaint() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -109,7 +109,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testRepaint()
+    public function testRepaint() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
@@ -131,7 +131,7 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testUpscale()
+    public function testUpscale() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{

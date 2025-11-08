@@ -12,7 +12,7 @@ class RemovebgTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testIsolate()
+    public function testIsolate() : void
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'] )
@@ -31,7 +31,7 @@ class RemovebgTest extends TestCase
     }
 
 
-    public function testRelocate()
+    public function testRelocate() : void
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
@@ -46,7 +46,7 @@ class RemovebgTest extends TestCase
     }
 
 
-    public function testStudio()
+    public function testStudio() : void
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
