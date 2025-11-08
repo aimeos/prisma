@@ -19,7 +19,7 @@ class File
     protected ?string $mimeType = null;
 
 
-    private function __construct()
+    final private function __construct()
     {
     }
 
@@ -35,8 +35,9 @@ class File
     {
         $instance = new static;
         $instance->base64 = $base64;
+        $instance->setMimeType( $mimeType );
 
-        return $instance->setMimeType( $mimeType );
+        return $instance;
     }
 
 
@@ -51,8 +52,9 @@ class File
     {
         $instance = new static;
         $instance->binary = $binary;
+        $instance->setMimeType( $mimeType );
 
-        return $instance->setMimeType( $mimeType );
+        return $instance;
     }
 
 
@@ -72,8 +74,9 @@ class File
         $instance = new static;
         $instance->binary = $content;
         $instance->filename = basename( $path );
+        $instance->setMimeType( $mimeType );
 
-        return $instance->setMimeType( $mimeType );
+        return $instance;
     }
 
 
@@ -101,8 +104,9 @@ class File
         $instance = new static;
         $instance->binary = $content;
         $instance->filename = basename( $path );
+        $instance->setMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
 
-        return $instance->setMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
+        return $instance;
     }
 
 
@@ -117,8 +121,9 @@ class File
     {
         $instance = new static;
         $instance->url = $url;
+        $instance->setMimeType( $mimeType );
 
-        return $instance->setMimeType( $mimeType );
+        return $instance;
     }
 
 
@@ -194,9 +199,9 @@ class File
         if( !$this->mimeType )
         {
             if( $this->binary || $this->base64 ) {
-                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $this->binary() ) ?: null;
+                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
             } elseif( $this->url && ( $content = file_get_contents( $this->url, false, null, 0, 255 ) ) ) {
-                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null;
+                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $content ) ?: null;
             }
         }
 

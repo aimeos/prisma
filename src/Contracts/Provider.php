@@ -56,7 +56,7 @@ interface Provider
     /**
      * Add options for the Guzzle HTTP client.
      *
-     * @param array $options Associative list of name/value pairs
+     * @param array<string, mixed> $options Associative list of name/value pairs
      * @return self Provider interface
      */
     public function withClientOptions( array $options ) : self;

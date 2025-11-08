@@ -70,6 +70,11 @@ class Removebg extends Base implements Isolate, Relocate, Studio
     }
 
 
+    /**
+     * Returns the allowed options and their possible values.
+     *
+     * @return array<string, array<string>> List of allowed options and their possible values
+     */
     protected function options() : array
     {
         return [
@@ -88,7 +93,7 @@ class Removebg extends Base implements Isolate, Relocate, Studio
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $errors = json_decode( $response->getBody()->getContents() )?->errors ?? [];
+            $errors = json_decode( $response->getBody()->getContents() )?->errors ?: [];
             $errors = join( ', ', array_column( $errors, 'title' ) );
 
             switch( $response->getStatusCode() )

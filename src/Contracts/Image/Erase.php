@@ -13,7 +13,7 @@ interface Erase
      *
      * @param Image $image Input image object
      * @param Image $mask Mask image object
-     * @param array $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      */
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse;

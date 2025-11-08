@@ -52,7 +52,11 @@ class Stabilityai extends Base
         $files = !empty( $images ) ? ['image' => current( $images )] : [];
         $model = $this->modelName( 'ultra' );
 
-        if( str_starts_with( $model, 'sd3' ) )
+        if( !empty( $files ) ) {
+            $allowed += ['strength' => '0.5'];
+        }
+
+        if( str_starts_with( (string) $model, 'sd3' ) )
         {
             $allowed = $this->allowed( $options, ['cfg_scale', 'negative_prompt', 'output_format', 'seed', 'strength', 'style_preset'] );
             $allowed['model'] = $model;
@@ -61,10 +65,6 @@ class Stabilityai extends Base
             if( !empty( $files ) ) {
                 $allowed['mode'] = 'image-to-image';
             }
-        }
-
-        if( !empty( $files ) && !isset( $allowed['strength'] ) ) {
-            $allowed['strength'] = '0.5';
         }
 
         $request = $this->request( ['prompt' => $prompt] + $allowed, $files );
@@ -148,7 +148,7 @@ class Stabilityai extends Base
             {
                 case 400:
                 case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
-                case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddentException( $errors );
+                case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $errors );
                 case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
                 default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
             }

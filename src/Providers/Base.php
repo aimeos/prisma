@@ -12,23 +12,26 @@ use GuzzleHttp\Client;
 
 abstract class Base implements Provider
 {
-    private $client;
-    private $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
-    private $clientHandler = null;
-    private $systemPrompt = null;
-    private $model = null;
+    private Client $client;
+    private ?HandlerStack $clientHandler = null;
+    private ?string $systemPrompt = null;
+    private ?string $model = null;
+
+    /** @var array<string, mixed|array<string, mixed>> */
+    private array $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
 
 
     /**
      * Handles calls to methods that are not implemented by the provider.
      *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
+     * @param string $method Method name
+     * @param array<string, mixed> $arguments Method arguments
+     * @return mixed
      * @throws NotImplementedException
      */
-    public function __call( string $name, array $arguments )
+    public function __call( string $method, array $arguments ) : mixed
     {
-        throw new NotImplementedException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this), $name ) );
+        throw new NotImplementedException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this), $method ) );
     }
 
 
@@ -36,10 +39,10 @@ abstract class Base implements Provider
      * Ensures that the provider has implemented the method.
      *
      * @param string $method Method name
-     * @return Provider
+     * @return static Provider instance
      * @throws NotImplementedException
      */
-    public function ensure( string $method ) : self
+    public function ensure( string $method ) : static
     {
         if( !$this->has( $method ) ) {
             throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', get_class( $this ), $method ) );
@@ -104,7 +107,7 @@ abstract class Base implements Provider
     /**
      * Add options for the Guzzle HTTP client.
      *
-     * @param array $options Associative list of name/value pairs
+     * @param array<string, mixed> $options Associative list of name/value pairs
      * @return self Provider interface
      */
     public function withClientOptions( array $options ) : self
@@ -133,9 +136,9 @@ abstract class Base implements Provider
     /**
      * Returns only the allowed options from the given list.
      *
-     * @param array $options Associative list of name/value pairs
-     * @param array $allowed List of allowed option names
-     * @return array Filtered list of name/value pairs
+     * @param array<string, mixed> $options Associative list of name/value pairs
+     * @param array<string> $allowed List of allowed option names
+     * @return array<string, mixed> Filtered list of name/value pairs
      */
     protected function allowed( array $options, array $allowed ) : array
     {
@@ -202,9 +205,9 @@ abstract class Base implements Provider
     /**
      * Returns the data for the HTTP request.
      *
-     * @param array $options Associative list of name/value pairs
-     * @param array $files Associative list of file name/File instances
-     * @return array Request data
+     * @param array<string, mixed> $options Associative list of name/value pairs
+     * @param array<string, File|array<int, File>> $files Associative list of file name/File instances
+     * @return array<int, array<string, mixed>> Request data
      */
     protected function request( array $options, array $files = [] ) : array
     {
@@ -262,9 +265,9 @@ abstract class Base implements Provider
     /**
      * Sanitize the options by only allowing the specified values.
      *
-     * @param array $options Associative list of name/value pairs
-     * @param array $allowed Associative list of name/allowed values
-     * @return array Sanitized list of name/value pairs
+     * @param array<string, mixed> $options Associative list of name/value pairs
+     * @param array<string, array<string>> $allowed Associative list of name/allowed values
+     * @return array<string, mixed> Sanitized list of name/value pairs
      */
     protected function sanitize( array $options, array $allowed ) : array
     {

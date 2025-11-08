@@ -8,6 +8,9 @@ use Aimeos\Prisma\Concerns\HasUsage;
 use Aimeos\Prisma\Files\File;
 
 
+/**
+ * File based response.
+ */
 class FileResponse extends File
 {
     use HasDescription, HasMeta, HasUsage;

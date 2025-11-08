@@ -8,13 +8,14 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait HasUsage
 {
+    /** @var array<string, mixed> */
     private array $usage = [];
 
 
     /**
      * Returns the usage information.
      *
-     * @return array Usage information
+     * @return array<string, mixed> Usage information
      */
     public function usage() : array
     {
@@ -26,7 +27,7 @@ trait HasUsage
      * Sets the usage information.
      *
      * @param float|null $used Used units
-     * @param array $more Additional usage information
+     * @param array<string, mixed> $more Additional usage information
      * @return self
      */
     public function withUsage( ?float $used, array $more = [] ) : self

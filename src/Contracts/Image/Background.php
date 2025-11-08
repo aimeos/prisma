@@ -13,7 +13,7 @@ interface Background
      *
      * @param Image $image Input image object
      * @param string $prompt Prompt describing the new background
-     * @param array $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      */
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse;

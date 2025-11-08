@@ -127,6 +127,11 @@ class Ideogram
     }
 
 
+    /**
+     * Returns the list of available options and their possible values.
+     *
+     * @return array<string, array<string>> List of option names and their possible values
+     */
     protected function options() : array
     {
         return [
@@ -165,20 +170,12 @@ class Ideogram
     }
 
 
-    protected function validate( ResponseInterface $response ) : void
-    {
-        switch( $response->getStatusCode() )
-        {
-            case 200: break;
-            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
-            case 422: throw new \Aimeos\Prisma\Exceptions\ForbiddentException( json_decode( $response->getBody() )?->error ?? $response->getReasonPhrase() );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
-        }
-    }
-
-
+    /**
+     * Converts the HTTP response into a FileResponse instance.
+     *
+     * @param ResponseInterface $response Guzzle HTTP response
+     * @return FileResponse File response instance
+     */
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
         $this->validate( $response );
@@ -196,17 +193,45 @@ class Ideogram
     }
 
 
+    /**
+     * Converts the given options into a list of files.
+     *
+     * @param array<string, mixed> $options Associative list of name/value pairs
+     * @param array<string> $names List of option names to convert
+     * @return array<string, array<int, Image>> Associative list of file name/Image instances
+     */
     protected function toFiles( array $options, array $names ) : array
     {
         $files = [];
 
         foreach( $names as $name )
         {
-            foreach( (array) ( $options[$name] ?? [] ) as $i => $file ) {
-                $files[$name][$i] = $file;
+            foreach( (array) ( $options[$name] ?? [] ) as $file ) {
+                $files[$name][] = $file;
             }
         }
 
         return $files;
+    }
+
+
+    /**
+     * Validates the response and throws exceptions for error codes.
+     *
+     * @param ResponseInterface $response Guzzle HTTP response
+     * @return void
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException
+     */
+    protected function validate( ResponseInterface $response ) : void
+    {
+        switch( $response->getStatusCode() )
+        {
+            case 200: break;
+            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
+            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
+            case 422: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( json_decode( $response->getBody() )?->error ?: $response->getReasonPhrase() );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
+        }
     }
 }

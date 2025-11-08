@@ -19,7 +19,7 @@ class Image extends File
     {
         $mimeType = parent::mimeType();
 
-        if( !str_starts_with( $mimeType, 'image/' ) ) {
+        if( !str_starts_with( (string) $mimeType, 'image/' ) ) {
             throw new PrismaException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
@@ -31,14 +31,15 @@ class Image extends File
      * Sets the mime type.
      *
      * @param string|null $mimeType Mime type
-     * @return self File instance
+     * @return static Image instance
      */
-    protected function setMimeType( ?string $mimeType ) : self
+    protected function setMimeType( ?string $mimeType ) : static
     {
-        if( $mimeType && !str_starts_with( $mimeType, 'image/' ) ) {
+        if( $mimeType && !str_starts_with( (string) $mimeType, 'image/' ) ) {
             throw new PrismaException( sprintf( 'Must be an image mime type, got "%1$s"', $mimeType ) );
         }
 
-        return parent::setMimeType( $mimeType );
+        parent::setMimeType( $mimeType );
+        return $this;
     }
 }

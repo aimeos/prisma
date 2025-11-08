@@ -13,7 +13,7 @@ interface Describe
      *
      * @param Image $image Input image object
      * @param string|null $lang ISO language code the description should be generated in
-     * @param array $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options
      * @return TextResponse Response text
      */
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse;

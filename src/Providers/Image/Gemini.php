@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
+use Aimeos\Prisma\Contracts\Image\Describe;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Gemini extends Base implements Imagine, Repaint
+class Gemini extends Base implements Describe, Imagine, Repaint
 {
     public function __construct( array $config )
     {
@@ -20,7 +21,7 @@ class Gemini extends Base implements Imagine, Repaint
             throw new PrismaException( sprintf( 'No API key' ) );
         }
 
-        $this->header( 'x-goog-api-key', $config['api_key'] );
+        $this->header( 'x-goog-api-key', (string) $config['api_key'] );
         $this->baseUrl( 'https://generativelanguage.googleapis.com' );
     }
 
@@ -124,7 +125,7 @@ class Gemini extends Base implements Imagine, Repaint
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?? $response->getReasonPhrase();
+            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
 
             switch( $response->getStatusCode() )
             {

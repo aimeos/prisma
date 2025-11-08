@@ -8,13 +8,14 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait HasMeta
 {
+    /** @var array<string, mixed> */
     private array $meta = [];
 
 
     /**
      * Returns the meta information.
      *
-     * @return array Meta information
+     * @return array<string, mixed> Meta information
      */
     public function meta() : array
     {
@@ -25,7 +26,7 @@ trait HasMeta
     /**
      * Sets the meta information.
      *
-     * @param array $meta Meta information
+     * @param array<string, mixed> $meta Meta information
      * @return self
      */
     public function withMeta( array $meta ) : self

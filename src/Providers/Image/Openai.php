@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
+use Aimeos\Prisma\Contracts\Image\Describe;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Openai extends Base implements Imagine, Inpaint
+class Openai extends Base implements Describe, Imagine, Inpaint
 {
     public function __construct( array $config )
     {
@@ -78,6 +79,13 @@ class Openai extends Base implements Imagine, Inpaint
     }
 
 
+    /**
+     * Builds the parameters for the image requests.
+     *
+     * @param string $prompt Prompt describing the image
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed>
+     */
     protected function params( string $prompt, array $options ) : array
     {
         $model = $this->modelName( 'dall-e-3' );
@@ -125,6 +133,12 @@ class Openai extends Base implements Imagine, Inpaint
     }
 
 
+    /**
+     * Converts the Guzzle response into a file response.
+     *
+     * @param ResponseInterface $response Guzzle HTTP response
+     * @return FileResponse File based response
+     */
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
         $this->validate( $response );
@@ -147,11 +161,18 @@ class Openai extends Base implements Imagine, Inpaint
     }
 
 
+    /**
+     * Validates the response and throws exceptions for error codes.
+     *
+     * @param ResponseInterface $response Guzzle HTTP response
+     * @return void
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException
+     */
     protected function validate( ResponseInterface $response ) : void
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?? $response->getReasonPhrase();
+            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
 
             switch( $response->getStatusCode() )
             {

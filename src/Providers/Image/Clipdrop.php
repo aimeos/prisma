@@ -59,7 +59,7 @@ class Clipdrop extends Base
     }
 
 
-    public function imagine( string $prompt, array $options = [] ) : FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $request = $this->request( ['prompt' => $prompt] );
         $response = $this->client()->post( 'text-to-image/v1', $request );
@@ -136,7 +136,7 @@ class Clipdrop extends Base
         $mimeType = $response->getHeaderLine( 'Content-Type' );
 
         return FileResponse::fromBinary( $response->getBody(), $mimeType )->withUsage(
-            $response->getHeaderLine( 'x-credits-consumed' ), [
+            (float) $response->getHeaderLine( 'x-credits-consumed' ), [
                 'x-remaining-credits' => $response->getHeaderLine( 'x-remaining-credits' )
             ]
         );

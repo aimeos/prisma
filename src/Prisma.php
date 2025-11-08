@@ -13,8 +13,8 @@ use Aimeos\Prisma\Providers\Fake;
  */
 class Prisma
 {
-    private static ?Provider $fake = null;
-    private $type;
+    private static ?Fake $fake = null;
+    private string $type;
 
 
     /**
@@ -32,7 +32,7 @@ class Prisma
      * Create a new provider by name.
      *
      * @param string|null $name Provider name in lower case
-     * @param array $config Configuration parameter for the provider
+     * @param array<string, mixed> $config Configuration parameter for the provider
      * @return Provider Provider instance
      */
     public function using( ?string $name, array $config = [] ) : Provider
@@ -57,6 +57,12 @@ class Prisma
     }
 
 
+    /**
+     * Sets a fake provider for testing purposes.
+     *
+     * @param array<int, \GuzzleHttp\Psr7\Response> $responses Responses to return for the fake provider
+     * @return void
+     */
     public static function fake( array $responses = [] ) : void
     {
         self::$fake = new Fake( $responses );
@@ -65,6 +71,8 @@ class Prisma
 
     /**
      * Creates a new Prisma factory instance for image generation.
+     *
+     * @return self
      */
     public static function image() : self
     {
@@ -78,7 +86,7 @@ class Prisma
      * @param string $type Provider type
      * @param string $provider Provider name
      * @param string $method Method name
-     * @param array $config Configuration parameter for the provider
+     * @param array<string, mixed> $config Configuration parameter for the provider
      * @return bool TRUE if supported, FALSE if not
      */
     public static function supports( string $type, string $provider, string $method, array $config ) : bool

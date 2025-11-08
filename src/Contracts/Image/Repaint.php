@@ -13,7 +13,7 @@ interface Repaint
      *
      * @param Image $image Input image object
      * @param string $prompt Prompt describing the changes
-     * @param array $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      */
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse;

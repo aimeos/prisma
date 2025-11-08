@@ -13,7 +13,7 @@ interface Relocate
      *
      * @param Image $image Input image with foreground object
      * @param Image $bgimage Background image
-     * @param array $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      */
     public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse;
