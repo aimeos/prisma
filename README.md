@@ -6,20 +6,20 @@ A powerful PHP package for integrating media related Large Language Models (LLMs
 
 ### Image
 
-           | Clipdrop | Gemini  | Ideogram |  OpenAI | RemoveBG | StabilityAI
-   :---    |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:
-Background |     +    |    -    |    +     |    -    |    -     |    -
-Describe   |     -    |    +    |    +     |    +    |    -     |    -
-Detext     |     +    |    -    |    -     |    -    |    -     |    -
-Erase      |     +    |    -    |    -     |    -    |    -     |    +
-Imagine    |     +    |    +    |    +     |    +    |    -     |    +
-Inpaint    |     -    |    -    |    +     |    +    |    -     |    +
-Isolate    |     +    |    -    |    -     |    -    |    +     |    +
-Relocate   |     -    |    -    |    -     |    -    |    +     |    -
-Repaint    |     -    |    +    |    +     |    -    |    -     |    -
-Studio     |     +    |    -    |    -     |    -    |    +     |    -
-Uncrop     |     +    |    -    |    -     |    -    |    -     |    +
-Upscale    |     +    |    -    |    +     |    -    |    -     |    +
+|            | Clipdrop | Gemini  | Ideogram |  OpenAI | RemoveBG | StabilityAI |
+| :---       |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
+| Background |     +    |    -    |    +     |    -    |    -     |    -        |
+| Describe   |     -    |    +    |    +     |    +    |    -     |    -        |
+| Detext     |     +    |    -    |    -     |    -    |    -     |    -        |
+| Erase      |     +    |    -    |    -     |    -    |    -     |    +        |
+| Imagine    |     +    |    +    |    +     |    +    |    -     |    +        |
+| Inpaint    |     -    |    -    |    +     |    +    |    -     |    +        |
+| Isolate    |     +    |    -    |    -     |    -    |    +     |    +        |
+| Relocate   |     -    |    -    |    -     |    -    |    +     |    -        |
+| Repaint    |     -    |    +    |    +     |    -    |    -     |    -        |
+| Studio     |     +    |    -    |    -     |    -    |    +     |    -        |
+| Uncrop     |     +    |    -    |    -     |    -    |    -     |    +        |
+| Upscale    |     +    |    -    |    +     |    -    |    -     |    +        |
 
 ## Installation
 
@@ -41,6 +41,28 @@ $image = Prisma::image()
     ->imagine( 'a grumpy cat' )
     ->binary();
 ```
+
+## Table of contents
+
+1. [Common API](#common-api)
+    * [ensure](#ensure)
+    * [has](#has)
+    * [model](#model)
+    * [withClientOptions](#withClientOptions)
+    * [withSystemPrompt](#withSystemPrompt)
+2. [Image API](#image-api)
+    * [background](#background)
+    * [describe](#describe)
+    * [detext](#detext)
+    * [erase](#erase)
+    * [imagine](#imagine)
+    * [inpaint](#inpaint)
+    * [isolate](#isolate)
+    * [relocate](#relocate)
+    * [repaint](#repaint)
+    * [studio](#studio)
+    * [uncrop](#uncrop)
+    * [upscale](#upscale)
 
 ## Common API
 
