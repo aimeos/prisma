@@ -16,6 +16,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'background' )
             ->background( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -34,6 +35,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'detext' )
             ->detext( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -50,6 +52,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'erase' )
             ->erase( ImageFile::fromBinary( 'PNG', 'image/png' ), ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -66,6 +69,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -82,6 +86,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'isolate' )
             ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -98,6 +103,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'studio' )
             ->studio( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -114,6 +120,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'uncrop' )
             ->uncrop( ImageFile::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -130,6 +137,7 @@ class ClipdropTest extends TestCase
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
+            ->ensure( 'upscale' )
             ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 2000, 2000 );
 
         $this->assertPrismaRequest( function( $request, $options ) {

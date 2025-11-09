@@ -16,6 +16,7 @@ class RemovebgTest extends TestCase
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'] )
+            ->ensure( 'isolate' )
             ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -35,6 +36,7 @@ class RemovebgTest extends TestCase
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'relocate' )
             ->relocate( ImageFile::fromBinary( 'PNG', 'image/png' ), ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -50,6 +52,7 @@ class RemovebgTest extends TestCase
     {
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'studio' )
             ->studio( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {

@@ -26,6 +26,7 @@ class IdeogramTest extends TestCase
                     "style_type": "GENERAL"
                 }]
             }' )
+            ->ensure( 'background' )
             ->background( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -57,6 +58,7 @@ class IdeogramTest extends TestCase
                     "text": "an image description"
                 }]
             }' )
+            ->ensure( 'describe' )
             ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -75,6 +77,7 @@ class IdeogramTest extends TestCase
                     "url": "https://placehold.co/10x10.png"
                 }]
             }' )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -94,6 +97,7 @@ class IdeogramTest extends TestCase
                     "url": "https://placehold.co/10x10.png"
                 }]
             }' )
+            ->ensure( 'inpaint' )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
@@ -117,6 +121,7 @@ class IdeogramTest extends TestCase
                     "url": "https://placehold.co/10x10.png"
                 }]
             }' )
+            ->ensure( 'repaint' )
             ->repaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
                 'prompt'
@@ -139,6 +144,7 @@ class IdeogramTest extends TestCase
                     "url": "https://placehold.co/10x10.png"
                 }]
             }' )
+            ->ensure( 'upscale' )
             ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 1000, 1000 );
 
         $this->assertPrismaRequest( function( $request, $options ) {

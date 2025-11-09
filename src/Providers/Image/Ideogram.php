@@ -18,7 +18,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Inpaint, Imagine, Repaint, Upscale
+    implements Background, Describe, Imagine, Inpaint, Repaint, Upscale
 {
     public function __construct( array $config )
     {

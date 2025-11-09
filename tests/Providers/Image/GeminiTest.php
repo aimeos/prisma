@@ -24,6 +24,7 @@ class GeminiTest extends TestCase
                     ]
                 ]]
             ] ) )
+            ->ensure( 'describe' )
             ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -51,6 +52,7 @@ class GeminiTest extends TestCase
                     ]
                 ]]
             ] ) )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -79,6 +81,7 @@ class GeminiTest extends TestCase
                     ]
                 ]]
             ] ) )
+            ->ensure( 'repaint' )
             ->repaint( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertEquals( 'PNG', $file->binary() );

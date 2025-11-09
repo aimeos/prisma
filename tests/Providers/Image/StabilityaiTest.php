@@ -16,6 +16,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'erase' )
             ->erase(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
                 ImageFile::fromBinary( 'PNG', 'image/png' )
@@ -36,6 +37,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -51,6 +53,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'inpaint' )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
@@ -70,6 +73,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'isolate' )
             ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -85,6 +89,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'uncrop' )
             ->uncrop( ImageFile::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -100,6 +105,7 @@ class StabilityaiTest extends TestCase
     {
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
+            ->ensure( 'upscale' )
             ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 1000, 1000 );
 
         $this->assertPrismaRequest( function( $request, $options ) {

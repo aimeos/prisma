@@ -31,6 +31,7 @@ class OpenaiTest extends TestCase
                     "total_tokens": 154
                 }
             }' )
+            ->ensure( 'describe' )
             ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -58,6 +59,7 @@ class OpenaiTest extends TestCase
                     ]
                 ]
             ] ) )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -89,6 +91,7 @@ class OpenaiTest extends TestCase
             ->response( json_encode( [
                 'data' => [['b64_json' => $base64]],
             ] ) )
+            ->ensure( 'inpaint' )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
