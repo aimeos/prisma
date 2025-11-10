@@ -1,25 +1,32 @@
 # PHP Prisma
 
-A powerful PHP package for integrating media related Large Language Models (LLMs) into your applications using a unified interface.
+Light-weight PHP package for integrating multi-media related Large Language Models (LLMs) into your applications using a unified interface.
 
 ## Supported providers
 
 ### Image
 
-|            | Clipdrop | Gemini  | Ideogram |  OpenAI | RemoveBG | StabilityAI |
+- [Clipdrop](https://clipdrop.co/apis)
+- [Gemini](https://aistudio.google.com/models/gemini-2-5-flash-image)
+- [Ideogram](https://ideogram.ai/api)
+- [OpenAI](https://openai.com/api/)
+- [RemoveBG](https://www.remove.bg/api)
+- [StabilityAI](https://platform.stability.ai/)
+
+|            | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
 | :---       |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
-| Background |     +    |    -    |    +     |    -    |    -     |    -        |
-| Describe   |     -    |    +    |    +     |    +    |    -     |    -        |
-| Detext     |     +    |    -    |    -     |    -    |    -     |    -        |
-| Erase      |     +    |    -    |    -     |    -    |    -     |    +        |
-| Imagine    |     +    |    +    |    +     |    +    |    -     |    +        |
-| Inpaint    |     -    |    -    |    +     |    +    |    -     |    +        |
-| Isolate    |     +    |    -    |    -     |    -    |    +     |    +        |
-| Relocate   |     -    |    -    |    -     |    -    |    +     |    -        |
-| Repaint    |     -    |    +    |    +     |    -    |    -     |    -        |
-| Studio     |     +    |    -    |    -     |    -    |    +     |    -        |
-| Uncrop     |     +    |    -    |    -     |    -    |    -     |    +        |
-| Upscale    |     +    |    -    |    +     |    -    |    -     |    +        |
+| Background |    yes   |         |   yes    |         |          |             |
+| Describe   |          |   yes   |   yes    |   yes   |          |             |
+| Detext     |    yes   |         |          |         |          |             |
+| Erase      |    yes   |         |          |         |          |   yes       |
+| Imagine    |    yes   |   yes   |   yes    |   yes   |          |   yes       |
+| Inpaint    |          |         |   yes    |   yes   |          |   yes       |
+| Isolate    |    yes   |         |          |         |   yes    |   yes       |
+| Relocate   |          |         |          |         |   yes    |             |
+| Repaint    |          |   yes   |   yes    |         |          |             |
+| Studio     |    yes   |         |          |         |   yes    |             |
+| Uncrop     |    yes   |         |          |         |          |   yes       |
+| Upscale    |    yes   |         |   yes    |         |          |   yes       |
 
 ## Installation
 
