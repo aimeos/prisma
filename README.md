@@ -2,6 +2,30 @@
 
 Light-weight PHP package for integrating multi-media related Large Language Models (LLMs) into your applications using a unified interface.
 
+1. [Supported providers](#supported-providers)
+    * [Image](#image)
+2. [Installation](#installation)
+3. [API usage](#api-usage)
+4. [Common API](#common-api)
+    * [ensure](#ensure)
+    * [has](#has)
+    * [model](#model)
+    * [withClientOptions](#withClientOptions)
+    * [withSystemPrompt](#withSystemPrompt)
+5. [Image API](#image-api)
+    * [background](#background)
+    * [describe](#describe)
+    * [detext](#detext)
+    * [erase](#erase)
+    * [imagine](#imagine)
+    * [inpaint](#inpaint)
+    * [isolate](#isolate)
+    * [relocate](#relocate)
+    * [repaint](#repaint)
+    * [studio](#studio)
+    * [uncrop](#uncrop)
+    * [upscale](#upscale)
+
 ## Supported providers
 
 ### Image
@@ -13,20 +37,20 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 
-|                | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
-| :---           |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
-| **Background** |    yes   |         |   yes    |         |          |             |
-| **Describe**   |          |   yes   |   yes    |   yes   |          |             |
-| **Detext**     |    yes   |         |          |         |          |             |
-| **Erase**      |    yes   |         |          |         |          |   yes       |
-| **Imagine**    |    yes   |   yes   |   yes    |   yes   |          |   yes       |
-| **Inpaint**    |          |         |   yes    |   yes   |          |   yes       |
-| **Isolate**    |    yes   |         |          |         |   yes    |   yes       |
-| **Relocate**   |          |         |          |         |   yes    |             |
-| **Repaint**    |          |   yes   |   yes    |         |          |             |
-| **Studio**     |    yes   |         |          |         |   yes    |             |
-| **Uncrop**     |    yes   |         |          |         |          |   yes       |
-| **Upscale**    |    yes   |         |   yes    |         |          |   yes       |
+|                           | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
+| :---                      |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
+| [background](#background) |    yes   |         |   yes    |         |          |             |
+| [describe](#describe)     |          |   yes   |   yes    |   yes   |          |             |
+| [detext](#detext)         |    yes   |         |          |         |          |             |
+| [erase](#erase)           |    yes   |         |          |         |          |   yes       |
+| [imagine](#imagine)       |    yes   |   yes   |   yes    |   yes   |          |   yes       |
+| [inpaint](#inpaint)       |          |         |   yes    |   yes   |          |   yes       |
+| [isolate](#isolate)       |    yes   |         |          |         |   yes    |   yes       |
+| [relocate](#relocate)     |          |         |          |         |   yes    |             |
+| [repaint](#repaint)       |          |   yes   |   yes    |         |          |             |
+| [studio](#studio)         |    yes   |         |          |         |   yes    |             |
+| [uncrop](#uncrop)         |    yes   |         |          |         |          |   yes       |
+| [upscale](#upscale)       |    yes   |         |   yes    |         |          |   yes       |
 
 ## Installation
 
@@ -48,28 +72,6 @@ $image = Prisma::image()
     ->imagine( 'a grumpy cat' )
     ->binary();
 ```
-
-## Table of contents
-
-1. [Common API](#common-api)
-    * [ensure](#ensure)
-    * [has](#has)
-    * [model](#model)
-    * [withClientOptions](#withClientOptions)
-    * [withSystemPrompt](#withSystemPrompt)
-2. [Image API](#image-api)
-    * [background](#background)
-    * [describe](#describe)
-    * [detext](#detext)
-    * [erase](#erase)
-    * [imagine](#imagine)
-    * [inpaint](#inpaint)
-    * [isolate](#isolate)
-    * [relocate](#relocate)
-    * [repaint](#repaint)
-    * [studio](#studio)
-    * [uncrop](#uncrop)
-    * [upscale](#upscale)
 
 ## Common API
 
