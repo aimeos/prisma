@@ -13,20 +13,20 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 
-|            | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
-| :---       |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
-| Background |    yes   |         |   yes    |         |          |             |
-| Describe   |          |   yes   |   yes    |   yes   |          |             |
-| Detext     |    yes   |         |          |         |          |             |
-| Erase      |    yes   |         |          |         |          |   yes       |
-| Imagine    |    yes   |   yes   |   yes    |   yes   |          |   yes       |
-| Inpaint    |          |         |   yes    |   yes   |          |   yes       |
-| Isolate    |    yes   |         |          |         |   yes    |   yes       |
-| Relocate   |          |         |          |         |   yes    |             |
-| Repaint    |          |   yes   |   yes    |         |          |             |
-| Studio     |    yes   |         |          |         |   yes    |             |
-| Uncrop     |    yes   |         |          |         |          |   yes       |
-| Upscale    |    yes   |         |   yes    |         |          |   yes       |
+|                | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
+| :---           |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
+| **Background** |    yes   |         |   yes    |         |          |             |
+| **Describe**   |          |   yes   |   yes    |   yes   |          |             |
+| **Detext**     |    yes   |         |          |         |          |             |
+| **Erase**      |    yes   |         |          |         |          |   yes       |
+| **Imagine**    |    yes   |   yes   |   yes    |   yes   |          |   yes       |
+| **Inpaint**    |          |         |   yes    |   yes   |          |   yes       |
+| **Isolate**    |    yes   |         |          |         |   yes    |   yes       |
+| **Relocate**   |          |         |          |         |   yes    |             |
+| **Repaint**    |          |   yes   |   yes    |         |          |             |
+| **Studio**     |    yes   |         |          |         |   yes    |             |
+| **Uncrop**     |    yes   |         |          |         |          |   yes       |
+| **Upscale**    |    yes   |         |   yes    |         |          |   yes       |
 
 ## Installation
 
@@ -231,7 +231,7 @@ It returns an associative array whose content depends on the provider. If the pr
 usage information, the **used** array key is available and contains a number. What the number
 represents depdends on the provider too.
 
-## background
+### background
 
 Replace image background with a background described by the prompt.
 
