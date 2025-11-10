@@ -125,7 +125,7 @@ between the different models. Otherwise, it's ignored.
 public function model( ?string $model ) : self
 ```
 
-* @param string|null $model Model name
+* @param string&#124;null $model Model name
 * @return self Provider interface
 
 **Example:**
@@ -166,7 +166,7 @@ ignored.
 public function withSystemPrompt( ?string $prompt ) : self
 ```
 
-* @param string|null $prompt System prompt
+* @param string&#124;null $prompt System prompt
 * @return self Provider interface
 
 **Example:**
@@ -243,7 +243,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * @param Image $image Input image object
 * @param string $prompt Prompt describing the new background
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -268,8 +268,8 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 ```
 
 * @param Image $image Input image object
-* @param string|null $lang ISO language code the description should be generated in
-* @param array<string, mixed> $options Provider specific options
+* @param string&#124;null $lang ISO language code the description should be generated in
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return TextResponse Response text
 
 **Example:**
@@ -294,7 +294,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param Image $image Input image object
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -320,7 +320,7 @@ public function erase( Image $image, Image $mask, array $options = [] ) : FileRe
 
 * @param Image $image Input image object
 * @param Image $mask Mask image object
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 The mask must be an image with black parts (#000000) to keep and white parts (#FFFFFF)
@@ -349,8 +349,8 @@ public function imagine( string $prompt, array $images = [], array $options = []
 ```
 
 * @param string $prompt Prompt describing the image
-* @param array<int, \Aimeos\Prisma\Files\Image> $images Associative list of file name/Image instances
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;int, \Aimeos\Prisma\Files\Image&#62; $images Associative list of file name/Image instances
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -374,7 +374,7 @@ public function inpaint( Image $image, Image $mask, string $prompt, array $optio
 * @param Image $image Input image object
 * @param Image $mask Input mask image object
 * @param string $prompt Prompt describing the changes
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -400,7 +400,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param Image $image Input image object
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -426,7 +426,7 @@ public function relocate( Image $image, Image $bgimage, array $options = [] ) : 
 
 * @param Image $image Input image with foreground object
 * @param Image $bgimage Background image
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -453,7 +453,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 * @param Image $image Input image object
 * @param string $prompt Prompt describing the changes
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -478,7 +478,7 @@ public function studio( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param Image $image Input image object
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -507,7 +507,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 * @param int $right Number of pixels to extend to the right
 * @param int $bottom Number of pixels to extend to the bottom
 * @param int $left Number of pixels to extend to the left
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
@@ -534,7 +534,7 @@ public function upscale( Image $image, int $width, int $height, array $options =
 * @param Image $image Input image object
 * @param int $width Width of the upscaled image in pixels
 * @param int $height Height of the upscaled image in pixels
-* @param array<string, mixed> $options Provider specific options
+* @param array&#60;string, mixed&#62; $options Provider specific options
 * @return FileResponse Response file
 
 **Example:**
