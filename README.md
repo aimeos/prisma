@@ -32,25 +32,26 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 - [Clipdrop](https://clipdrop.co/apis)
 - [Gemini](https://aistudio.google.com/models/gemini-2-5-flash-image)
-- [Ideogram](https://ideogram.ai/api)
+- [Ideogram](https://ideogram.ai/api) (beta)
+- [Google Imagen](https://cloud.google.com/vertex-ai/generative-ai/docs) (beta)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
-- [StabilityAI](https://platform.stability.ai/)
+- [StabilityAI](https://platform.stability.ai/) (beta)
 
-|                           | Clipdrop | Gemini  | Ideogram | OpenAI  | RemoveBG | StabilityAI |
-| :---                      |   :---:  |  :---:  |  :---:   |  :---:  |  :---:   |  :---:      |
-| [background](#background) |    yes   |         |   yes    |         |          |             |
-| [describe](#describe)     |          |   yes   |   yes    |   yes   |          |             |
-| [detext](#detext)         |    yes   |         |          |         |          |             |
-| [erase](#erase)           |    yes   |         |          |         |          |   yes       |
-| [imagine](#imagine)       |    yes   |   yes   |   yes    |   yes   |          |   yes       |
-| [inpaint](#inpaint)       |          |         |   yes    |   yes   |          |   yes       |
-| [isolate](#isolate)       |    yes   |         |          |         |   yes    |   yes       |
-| [relocate](#relocate)     |          |         |          |         |   yes    |             |
-| [repaint](#repaint)       |          |   yes   |   yes    |         |          |             |
-| [studio](#studio)         |    yes   |         |          |         |   yes    |             |
-| [uncrop](#uncrop)         |    yes   |         |          |         |          |   yes       |
-| [upscale](#upscale)       |    yes   |         |   yes    |         |          |   yes       |
+|                           | Clipdrop | Gemini  | Ideogram | Imagen  | OpenAI  | RemoveBG | StabilityAI |
+| :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |
+| [background](#background) |   yes    |         |   yes    |   yes   |         |          |             |
+| [describe](#describe)     |          |   yes   |   yes    |         |         |          |             |
+| [detext](#detext)         |   yes    |         |          |         |         |          |             |
+| [erase](#erase)           |   yes    |         |          |         |         |          |   yes       |
+| [imagine](#imagine)       |   yes    |   yes   |   yes    |   yes   |   yes   |          |   yes       |
+| [inpaint](#inpaint)       |          |         |   yes    |   yes   |   yes   |          |   yes       |
+| [isolate](#isolate)       |   yes    |         |          |         |         |   yes    |   yes       |
+| [relocate](#relocate)     |          |         |          |         |         |   yes    |             |
+| [repaint](#repaint)       |          |   yes   |   yes    |         |         |          |             |
+| [studio](#studio)         |   yes    |         |          |         |         |   yes    |             |
+| [uncrop](#uncrop)         |   yes    |         |          |         |         |          |   yes       |
+| [upscale](#upscale)       |   yes    |         |   yes    |   yes   |         |          |   yes       |
 
 ## Installation
 
