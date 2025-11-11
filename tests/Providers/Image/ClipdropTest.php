@@ -135,10 +135,11 @@ class ClipdropTest extends TestCase
 
     public function testUpscale() : void
     {
+        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 2000, 2000 );
+            ->upscale( ImageFile::fromBase64( $base64, 'image/png' ), 2 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/image-upscaling/v1/upscale', (string) $request->getUri() );

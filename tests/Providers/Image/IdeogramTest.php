@@ -145,7 +145,7 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 1000, 1000 );
+            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 2 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.ideogram.ai/upscale', (string) $request->getUri() );

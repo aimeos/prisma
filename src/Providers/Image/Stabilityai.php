@@ -117,7 +117,7 @@ class Stabilityai extends Base
     }
 
 
-    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'conservative' );
         $allowed = $this->allowed( $options, match( $model ) {

@@ -106,7 +106,7 @@ class StabilityaiTest extends TestCase
         $file = $this->prisma( 'image', 'stabilityai', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 1000, 1000 );
+            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 2 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.stability.ai/v2beta/stable-image/upscale/conservative', (string) $request->getUri() );

@@ -5,6 +5,7 @@
   "license": "LGPL-2.1+",
   "require": {
     "php": "^8.1",
+    "ext-gd": "*",
     "ext-fileinfo": "*",
     "guzzlehttp/guzzle": "^7.0"
   },

@@ -105,11 +105,15 @@ class Clipdrop extends Base
     }
 
 
-    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
+        if( ( $size = getimagesizefromstring( (string) $image->binary() ) ) === false ) {
+            throw new PrismaException( 'Unable to get image size' );
+        }
+
         $data = [
-            'target_width' => min( $width, 4096 ),
-            'target_height' => min( $height, 4096 ),
+            'target_width' => min( $size[0] * $factor, 4096 ),
+            'target_height' => min( $size[1] * $factor, 4096 ),
         ];
 
         $request = $this->request( $data, ['image_file' => $image] );

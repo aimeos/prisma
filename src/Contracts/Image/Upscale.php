@@ -12,10 +12,9 @@ interface Upscale
      * Scale up the image.
      *
      * @param Image $image Input image object
-     * @param int $width Width of the upscaled image in pixels
-     * @param int $height Height of the upscaled image in pixels
+     * @param int $factor Upscaling factor between 2 and the maximum value supported by the provider
      * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      */
-    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse;
+    public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse;
 }

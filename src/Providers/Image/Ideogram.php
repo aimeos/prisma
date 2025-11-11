@@ -115,7 +115,7 @@ class Ideogram
     }
 
 
-    public function upscale( Image $image, int $width, int $height, array $options = [] ) : FileResponse
+    public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['detail', 'magic_prompt_option', 'prompt', 'resemblance', 'seed'] );
         $allowed = $this->sanitize( $allowed, $this->options() );
