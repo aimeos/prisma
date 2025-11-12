@@ -31,9 +31,9 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 ### Image
 
 - [Clipdrop](https://clipdrop.co/apis)
-- [Gemini](https://aistudio.google.com/models/gemini-2-5-flash-image)
+- [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Ideogram](https://ideogram.ai/api) (beta)
-- [Google Imagen](https://cloud.google.com/vertex-ai/generative-ai/docs) (beta)
+- [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs) (beta)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/) (beta)
