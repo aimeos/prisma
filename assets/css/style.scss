@@ -235,3 +235,21 @@ header svg {
 .highlight .no, .highlight .nv { color: #007b7b }
 .highlight .mi, .highlight .mf { color: #007e7e }
 .highlight .err { color: inherit; background-color: inherit }
+
+/* Table styles */
+
+table tbody tr:nth-child(even) {
+	background-color: #f8fbfe;
+}
+
+table thead {
+	background-color: #f3f6fa;
+}
+
+table th:first-child,
+table td:first-child {
+	background-color: #f3f6fa;
+    position: sticky;
+    z-index: 2;
+    left: 0;
+}
