@@ -36,12 +36,12 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs) (beta)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
-- [StabilityAI](https://platform.stability.ai/) (beta)
+- [StabilityAI](https://platform.stability.ai/)
 
 |                           | Clipdrop | Gemini  | Ideogram | Imagen  | OpenAI  | RemoveBG | StabilityAI |
 | :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |
 | [background](#background) |   yes    |         |   yes    |   yes   |         |          |             |
-| [describe](#describe)     |          |   yes   |   yes    |         |         |          |             |
+| [describe](#describe)     |          |   yes   |   yes    |         |   yes   |          |             |
 | [detext](#detext)         |   yes    |         |          |         |         |          |             |
 | [erase](#erase)           |   yes    |         |          |         |         |          |   yes       |
 | [imagine](#imagine)       |   yes    |   yes   |   yes    |   yes   |   yes   |          |   yes       |
