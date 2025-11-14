@@ -32,26 +32,26 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 - [Clipdrop](https://clipdrop.co/apis)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
-- [Ideogram](https://ideogram.ai/api) (beta)
-- [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs) (beta)
+- [Ideogram](https://ideogram.ai/api)
+- [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 
 |                           | Clipdrop | Gemini  | Ideogram | Imagen  | OpenAI  | RemoveBG | StabilityAI |
 | :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |
-| [background](#background) |   yes    |         |   yes    |   yes   |         |          |             |
-| [describe](#describe)     |          |   yes   |   yes    |         |   yes   |          |             |
+| [background](#background) |   yes    |         |  beta    |  beta   |         |          |             |
+| [describe](#describe)     |          |  beta   |  beta    |         |  beta   |          |             |
 | [detext](#detext)         |   yes    |         |          |         |         |          |             |
 | [erase](#erase)           |   yes    |         |          |         |         |          |   yes       |
-| [imagine](#imagine)       |   yes    |   yes   |   yes    |   yes   |   yes   |          |   yes       |
-| [inpaint](#inpaint)       |          |         |   yes    |   yes   |   yes   |          |   yes       |
+| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |   yes   |          |   yes       |
+| [inpaint](#inpaint)       |          |         |  beta    |  beta   |   yes   |          |   yes       |
 | [isolate](#isolate)       |   yes    |         |          |         |         |   yes    |   yes       |
 | [relocate](#relocate)     |          |         |          |         |         |   yes    |             |
-| [repaint](#repaint)       |          |   yes   |   yes    |         |         |          |             |
+| [repaint](#repaint)       |          |   yes   |  beta    |         |         |          |             |
 | [studio](#studio)         |   yes    |         |          |         |         |   yes    |             |
 | [uncrop](#uncrop)         |   yes    |         |          |         |         |          |   yes       |
-| [upscale](#upscale)       |   yes    |         |   yes    |   yes   |         |          |   yes       |
+| [upscale](#upscale)       |   yes    |         |  beta    |  beta   |         |          |   yes       |
 
 ## Installation
 
