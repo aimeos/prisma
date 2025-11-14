@@ -161,27 +161,21 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     }
 
 
-    /**
-     * Validates the response and throws exceptions for error codes.
-     *
-     * @param ResponseInterface $response Guzzle HTTP response
-     * @return void
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException
-     */
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+        if( $response->getStatusCode() === 200 ) {
+            return;
+        }
 
-            switch( $response->getStatusCode() )
-            {
-                case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-                case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
-                case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-                case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-                default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-            }
+        $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+
+        switch( $response->getStatusCode() )
+        {
+            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
+            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
+            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
         }
     }
 }

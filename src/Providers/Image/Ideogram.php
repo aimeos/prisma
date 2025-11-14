@@ -215,23 +215,14 @@ class Ideogram
     }
 
 
-    /**
-     * Validates the response and throws exceptions for error codes.
-     *
-     * @param ResponseInterface $response Guzzle HTTP response
-     * @return void
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException
-     */
     protected function validate( ResponseInterface $response ) : void
     {
-        switch( $response->getStatusCode() )
+        if( $response->getStatusCode() === 422 )
         {
-            case 200: break;
-            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
-            case 422: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( json_decode( $response->getBody() )?->error ?: $response->getReasonPhrase() );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
+            $msg = json_decode( $response->getBody() )?->error ?: $response->getReasonPhrase();
+            throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $msg );
         }
+
+        parent::validate( $response );
     }
 }

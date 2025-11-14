@@ -8,6 +8,7 @@ use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Files\File;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Client;
+use Psr\Http\Message\ResponseInterface;
 
 
 abstract class Base implements Provider
@@ -290,5 +291,34 @@ abstract class Base implements Provider
     protected function systemPrompt() : ?string
     {
         return $this->systemPrompt;
+    }
+
+
+    /**
+     * Validates the HTTP response.
+     *
+     * @param ResponseInterface $response HTTP response
+     * @return ResponseInterface Validated response
+     * @throws \Aimeos\Prisma\Exceptions\BadRequestException
+     * @throws \Aimeos\Prisma\Exceptions\UnauthorizedException
+     * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
+     * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
+     * @throws \Aimeos\Prisma\Exceptions\NotFoundException
+     * @throws \Aimeos\Prisma\Exceptions\RateLimitException
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException
+     */
+    protected function validate( ResponseInterface $response ) : void
+    {
+        switch( $response->getStatusCode() )
+        {
+            case 200: break;
+            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
+            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
+            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $response->getReasonPhrase() );
+            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $response->getReasonPhrase() );
+            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $response->getReasonPhrase() );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
+        }
     }
 }

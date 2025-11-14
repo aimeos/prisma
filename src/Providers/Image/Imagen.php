@@ -181,20 +181,21 @@ class Imagen extends Base implements Background, Imagine, Inpaint, Upscale
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+        if( $response->getStatusCode() === 200 ) {
+            return;
+        }
 
-            switch( $response->getStatusCode() )
-            {
-                case 400:
-                case 404: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-                case 401:
-                case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-                case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-                case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-                default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-            }
+        $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+
+        switch( $response->getStatusCode() )
+        {
+            case 400:
+            case 404: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
+            case 401:
+            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
+            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
         }
     }
 }

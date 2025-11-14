@@ -140,21 +140,28 @@ class Stabilityai extends Base
 
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $errors = join( ', ', json_decode( $response->getBody()->getContents() )?->errors );
-
-            switch( $response->getStatusCode() )
-            {
-                case 400:
-                case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
-                case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $errors );
-                case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
-                default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
-            }
-        }
+        $this->validate( $response );
 
         $mimeType = $response->getHeaderLine( 'Content-Type' );
         return FileResponse::fromBinary( $response->getBody(), $mimeType );
+    }
+
+
+    protected function validate( ResponseInterface $response ) : void
+    {
+        if( $response->getStatusCode() === 200 ) {
+            return;
+        }
+
+        $errors = join( ', ', json_decode( $response->getBody()->getContents() )?->errors );
+
+        switch( $response->getStatusCode() )
+        {
+            case 400:
+            case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
+            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $errors );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
+        }
     }
 }

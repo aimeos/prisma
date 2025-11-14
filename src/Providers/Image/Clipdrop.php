@@ -125,18 +125,11 @@ class Clipdrop extends Base
 
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
-        switch( $response->getStatusCode() )
-        {
-            case 200: break;
-            case 400:
-            case 406: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
-            case 401:
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $response->getReasonPhrase() );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $response->getReasonPhrase() );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $response->getReasonPhrase() );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $response->getReasonPhrase() );
+        if( $response->getStatusCode() === 406 ) {
+            throw new \Aimeos\Prisma\Exceptions\BadRequestException( $response->getReasonPhrase() );
         }
 
+        $this->validate( $response );
         $mimeType = $response->getHeaderLine( 'Content-Type' );
 
         return FileResponse::fromBinary( $response->getBody(), $mimeType )->withUsage(

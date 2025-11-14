@@ -91,20 +91,7 @@ class Removebg extends Base implements Isolate, Relocate, Studio
 
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $errors = json_decode( $response->getBody()->getContents() )?->errors ?: [];
-            $errors = join( ', ', array_column( $errors, 'title' ) );
-
-            switch( $response->getStatusCode() )
-            {
-                case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
-                case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $errors );
-                case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $errors );
-                case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
-                default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
-            }
-        }
+        $this->validate( $response );
 
         $meta = [];
         $mimeType = $response->getHeaderLine( 'Content-Type' );
@@ -118,5 +105,25 @@ class Removebg extends Base implements Isolate, Relocate, Studio
             ->withUsage(
                 (float) $response->getHeaderLine( 'X-Credits-Charged' )
             );
+    }
+
+
+    protected function validate( ResponseInterface $response ) : void
+    {
+        if( $response->getStatusCode() === 200 ) {
+            return;
+        }
+
+        $errors = json_decode( $response->getBody()->getContents() )?->errors ?: [];
+        $errors = join( ', ', array_column( $errors, 'title' ) );
+
+        switch( $response->getStatusCode() )
+        {
+            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
+            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $errors );
+            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $errors );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
+        }
     }
 }
