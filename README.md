@@ -7,24 +7,25 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 2. [Installation](#installation)
 3. [API usage](#api-usage)
 4. [Common API](#common-api)
-    * [ensure](#ensure)
-    * [has](#has)
-    * [model](#model)
-    * [withClientOptions](#withClientOptions)
-    * [withSystemPrompt](#withSystemPrompt)
+    * [ensure](#ensure): Ensures that the provider has implemented the method
+    * [has](#has): Tests if the provider has implemented the method
+    * [model](#model): Use the model passed by its name
+    * [withClientOptions](#withClientOptions): Add options for the Guzzle HTTP client
+    * [withSystemPrompt](#withSystemPrompt): Add a system prompt for the LLM
 5. [Image API](#image-api)
-    * [background](#background)
-    * [describe](#describe)
-    * [detext](#detext)
-    * [erase](#erase)
-    * [imagine](#imagine)
-    * [inpaint](#inpaint)
-    * [isolate](#isolate)
-    * [relocate](#relocate)
-    * [repaint](#repaint)
-    * [studio](#studio)
-    * [uncrop](#uncrop)
-    * [upscale](#upscale)
+    * [background](#background): Replace background according to the prompt
+    * [describe](#describe): Describe the content of an image
+    * [detext](#detext): Remove all text from the image
+    * [erase](#erase): Erase parts of the image
+    * [imagine](#imagine): Generate an image from the prompt
+    * [inpaint](#inpaint): Edit an image area according to a prompt
+    * [isolate](#isolate): Remove the image background
+    * [recognize](#recognize): Recognizes text in the given image (OCR)
+    * [relocate](#relocate): Place the foreground object on a new background
+    * [repaint](#repaint): Repaint an image according to the prompt
+    * [studio](#studio): Create studio photo of the foreground object
+    * [uncrop](#uncrop): Extend/outpaint the image
+    * [upscale](#upscale): Scale up the image
 
 ## Supported providers
 
