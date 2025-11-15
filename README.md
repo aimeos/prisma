@@ -34,24 +34,26 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Ideogram](https://ideogram.ai/api)
 - [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
+- [Mistral](https://docs.mistral.ai/api)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 
-|                           | Clipdrop | Gemini  | Ideogram | Imagen  | OpenAI  | RemoveBG | StabilityAI |
-| :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |
-| [background](#background) |   yes    |         |  beta    |  beta   |         |          |             |
-| [describe](#describe)     |          |  beta   |  beta    |         |  beta   |          |             |
-| [detext](#detext)         |   yes    |         |          |         |         |          |             |
-| [erase](#erase)           |   yes    |         |          |         |         |          |   yes       |
-| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |   yes   |          |   yes       |
-| [inpaint](#inpaint)       |          |         |  beta    |  beta   |   yes   |          |   yes       |
-| [isolate](#isolate)       |   yes    |         |          |         |         |   yes    |   yes       |
-| [relocate](#relocate)     |          |         |          |         |         |   yes    |             |
-| [repaint](#repaint)       |          |   yes   |  beta    |         |         |          |             |
-| [studio](#studio)         |   yes    |         |          |         |         |   yes    |             |
-| [uncrop](#uncrop)         |   yes    |         |          |         |         |          |   yes       |
-| [upscale](#upscale)       |   yes    |         |  beta    |  beta   |         |          |   yes       |
+|                           | Clipdrop | Gemini  | Ideogram | Imagen  | Mistral | OpenAI  | RemoveBG | StabilityAI |
+| :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:  |  :---:   |  :---:      |
+| [background](#background) |   yes    |         |  beta    |  beta   |         |         |          |             |
+| [describe](#describe)     |          |  beta   |  beta    |         |         |  beta   |          |             |
+| [detext](#detext)         |   yes    |         |          |         |         |         |          |             |
+| [erase](#erase)           |   yes    |         |          |         |         |         |          |   yes       |
+| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |         |   yes   |          |   yes       |
+| [inpaint](#inpaint)       |          |         |  beta    |  beta   |         |   yes   |          |   yes       |
+| [isolate](#isolate)       |   yes    |         |          |         |         |         |   yes    |   yes       |
+| [recognize](#recognize)   |          |         |          |         |  beta   |         |          |             |
+| [relocate](#relocate)     |          |         |          |         |         |         |   yes    |             |
+| [repaint](#repaint)       |          |   yes   |  beta    |         |         |         |          |             |
+| [studio](#studio)         |   yes    |         |          |         |         |         |   yes    |             |
+| [uncrop](#uncrop)         |   yes    |         |          |         |         |         |          |   yes       |
+| [upscale](#upscale)       |   yes    |         |  beta    |  beta   |         |         |          |   yes       |
 
 ## Installation
 
@@ -417,9 +419,34 @@ $response = Prisma::image()
     ->isolate( $image );
 ```
 
+### recognize
+
+Recognizes the text in the given image (OCR).
+
+```php
+public function recognize( Image $image, array $options = [] ) : TextResponse;
+```
+
+* @param Image $image Input image object
+* @param array&#60;string, mixed&#62; $options Provider specific options
+* @return TextResponse Response text object
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+use \Aimeos\Prisma\Files\Image;
+
+$image = Image::fromUrl( 'https://example.com/image.png' );
+
+$response = Prisma::image()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->recognize( $image );
+```
+
 ### relocate
 
-* Place the foreground object on a new background.
+Place the foreground object on a new background.
 
 ```php
 public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
