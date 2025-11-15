@@ -42,19 +42,19 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                           | Clipdrop | Gemini  | Ideogram | Imagen  | Mistral | OpenAI  | RemoveBG | StabilityAI |
 | :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:  |  :---:   |  :---:      |
-| [background](#background) |   yes    |         |  beta    |  beta   |         |         |          |             |
-| [describe](#describe)     |          |  beta   |  beta    |         |         |  beta   |          |             |
-| [detext](#detext)         |   yes    |         |          |         |         |         |          |             |
-| [erase](#erase)           |   yes    |         |          |         |         |         |          |   yes       |
-| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |         |   yes   |          |   yes       |
-| [inpaint](#inpaint)       |          |         |  beta    |  beta   |         |   yes   |          |   yes       |
-| [isolate](#isolate)       |   yes    |         |          |         |         |         |   yes    |   yes       |
-| [recognize](#recognize)   |          |         |          |         |  beta   |         |          |             |
-| [relocate](#relocate)     |          |         |          |         |         |         |   yes    |             |
-| [repaint](#repaint)       |          |   yes   |  beta    |         |         |         |          |             |
-| [studio](#studio)         |   yes    |         |          |         |         |         |   yes    |             |
-| [uncrop](#uncrop)         |   yes    |         |          |         |         |         |          |   yes       |
-| [upscale](#upscale)       |   yes    |         |  beta    |  beta   |         |         |          |   yes       |
+| [background](#background) |   yes    |    -    |  beta    |  beta   |    -    |    -    |    -     |    -        |
+| [describe](#describe)     |    -     |  beta   |  beta    |    -    |    -    |  beta   |    -     |    -        |
+| [detext](#detext)         |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |    -        |
+| [erase](#erase)           |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |   yes       |
+| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |    -    |   yes   |    -     |   yes       |
+| [inpaint](#inpaint)       |    -     |    -    |  beta    |  beta   |    -    |   yes   |    -     |   yes       |
+| [isolate](#isolate)       |   yes    |    -    |    -     |    -    |    -    |    -    |   yes    |   yes       |
+| [recognize](#recognize)   |    -     |    -    |    -     |    -    |  beta   |    -    |    -     |    -        |
+| [relocate](#relocate)     |    -     |    -    |    -     |    -    |    -    |    -    |   yes    |    -        |
+| [repaint](#repaint)       |    -     |   yes   |  beta    |    -    |    -    |    -    |    -     |    -        |
+| [studio](#studio)         |   yes    |    -    |    -     |    -    |    -    |    -    |   yes    |    -        |
+| [uncrop](#uncrop)         |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |   yes       |
+| [upscale](#upscale)       |   yes    |    -    |  beta    |  beta   |    -    |    -    |    -     |   yes       |
 
 ## Installation
 
