@@ -419,7 +419,7 @@ $response = Prisma::image()
 
 ### relocate
 
-* Place the foreground object on a new background.
+Place the foreground object on a new background.
 
 ```php
 public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
