@@ -87,8 +87,8 @@ Ensures that the provider has implemented the method.
 public function ensure( string $method ) : self
 ```
 
-* @param string $method Method name
-* @return Provider
+* @param **string** `$method` Method name
+* @return **Provider**
 * @throws \Aimeos\Prisma\Exceptions\NotImplementedException
 
 **Example:**
@@ -107,8 +107,8 @@ Tests if the provider has implemented the method.
 public function has( string $method ) : bool
 ```
 
-* @param string $method Method name
-* @return bool TRUE if implemented, FALSE if absent
+* @param **string** `$method` Method name
+* @return **bool** TRUE if implemented, FALSE if absent
 
 **Example:**
 
@@ -129,8 +129,8 @@ between the different models. Otherwise, it's ignored.
 public function model( ?string $model ) : self
 ```
 
-* @param string&#124;null $model Model name
-* @return self Provider interface
+* @param **string&#124;null** `$model` Model name
+* @return **self** Provider interface
 
 **Example:**
 
@@ -145,11 +145,11 @@ public function model( ?string $model ) : self
 Add options for the Guzzle HTTP client.
 
 ```php
-public function withClientOptions( array $options ) : self
+public function withClientOptions( array `$options` ) : self
 ```
 
-* @param array<string, mixed> $options Associative list of name/value pairs
-* @return self Provider interface
+* @param ****array&#60;string, mixed&#62;**** `$options` Associative list of name/value pairs
+* @return **self** Provider interface
 
 **Example:**
 
@@ -170,8 +170,8 @@ ignored.
 public function withSystemPrompt( ?string $prompt ) : self
 ```
 
-* @param string&#124;null $prompt System prompt
-* @return self Provider interface
+* @param **string&#124;null** `$prompt` System prompt
+* @return **self** Provider interface
 
 **Example:**
 
@@ -205,8 +205,8 @@ content will be retrieved to determine the mime type if reqested.
 base64) can be derived from the URL content but URLs can't be created from binary/base64
 data.
 
-All methods return a FileResponse object (besides *describe()*, which returns a TextResponse
-object) that contains the file data and optional meta and usage data.
+The methods return a FileResponse or TextResponse object that contains the returned data
+and optional meta and usage data.
 
 **File data** is available by:
 
@@ -242,13 +242,13 @@ represents depdends on the provider too.
 Replace image background with a background described by the prompt.
 
 ```php
-public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
+public function background( Image $image, string $prompt, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param string $prompt Prompt describing the new background
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **string** `$prompt` Prompt describing the new background
+* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -268,13 +268,13 @@ $response = Prisma::image()
 Describe the content of an image.
 
 ```php
-public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+public function describe( Image $image, ?string $lang = null, array `$options` = [] ) : TextResponse
 ```
 
-* @param Image $image Input image object
-* @param string&#124;null $lang ISO language code the description should be generated in
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return TextResponse Response text
+* @param **Image** `$image` Input image object
+* @param **string&#124;null** `$lang` ISO language code the description should be generated in
+* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @return **TextResponse** Response text
 
 **Example:**
 
@@ -294,12 +294,12 @@ $response = Prisma::image()
 Remove all text from the image.
 
 ```php
-public function detext( Image $image, array $options = [] ) : FileResponse
+public function detext( Image $image, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -311,7 +311,7 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->detext( $image );
+    ->detext( `$image` );
 ```
 
 ### erase
@@ -319,13 +319,13 @@ $response = Prisma::image()
 Erase parts of the image.
 
 ```php
-public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
+public function erase( Image $image, Image $mask, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param Image $mask Mask image object
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **Image** `$mask` Mask image object
+* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 The mask must be an image with black parts (#000000) to keep and white parts (#FFFFFF)
 to remove.
@@ -349,13 +349,13 @@ $response = Prisma::image()
 Generate an image from the prompt.
 
 ```php
-public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+public function imagine( string $prompt, array $images = [], array `$options` = [] ) : FileResponse
 ```
 
-* @param string $prompt Prompt describing the image
-* @param array&#60;int, \Aimeos\Prisma\Files\Image&#62; $images Associative list of file name/Image instances
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **string** `$prompt` Prompt describing the image
+* @param **array&#60;int, \Aimeos\Prisma\Files\Image&#62;** `$images` Associative list of file name/Image instances
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -372,14 +372,14 @@ $response = Prisma::image()
 Edit an image by inpainting an area defined by a mask according to a prompt.
 
 ```php
-public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
+public function inpaint( Image $image, Image $mask, string $prompt, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param Image $mask Input mask image object
-* @param string $prompt Prompt describing the changes
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **Image** `$mask` Input mask image object
+* @param **string** `$prompt` Prompt describing the changes
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -400,12 +400,12 @@ $response = Prisma::image()
 Remove the image background.
 
 ```php
-public function isolate( Image $image, array $options = [] ) : FileResponse
+public function isolate( Image $image, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -417,7 +417,7 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->isolate( $image );
+    ->isolate( `$image` );
 ```
 
 ### recognize
@@ -425,12 +425,12 @@ $response = Prisma::image()
 Recognizes the text in the given image (OCR).
 
 ```php
-public function recognize( Image $image, array $options = [] ) : TextResponse;
+public function recognize( Image $image, array `$options` = [] ) : TextResponse;
 ```
 
-* @param Image $image Input image object
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return TextResponse Response text object
+* @param **Image** `$image` Input image object
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text object
 
 **Example:**
 
@@ -442,7 +442,7 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->recognize( $image );
+    ->recognize( `$image` );
 ```
 
 ### relocate
@@ -450,13 +450,13 @@ $response = Prisma::image()
 Place the foreground object on a new background.
 
 ```php
-public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
+public function relocate( Image $image, Image $bgimage, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image with foreground object
-* @param Image $bgimage Background image
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image with foreground object
+* @param **Image** `$bgimage` Background image
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -477,13 +477,13 @@ $response = Prisma::image()
 Repaint an image according to the prompt.
 
 ```php
-public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
+public function repaint( Image $image, string $prompt, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param string $prompt Prompt describing the changes
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **string** `$prompt` Prompt describing the changes
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -503,12 +503,12 @@ $response = Prisma::image()
 Create studio photo from the object in the foreground of the image.
 
 ```php
-public function studio( Image $image, array $options = [] ) : FileResponse
+public function studio( Image $image, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -520,7 +520,7 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->studio( $image );
+    ->studio( `$image` );
 ```
 
 ### uncrop
@@ -528,16 +528,16 @@ $response = Prisma::image()
 Extend/outpaint the image.
 
 ```php
-public function uncrop( Image $image,  int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+public function uncrop( Image $image,  int $top, int $right, int $bottom, int $left, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param int $top Number of pixels to extend to the top
-* @param int $right Number of pixels to extend to the right
-* @param int $bottom Number of pixels to extend to the bottom
-* @param int $left Number of pixels to extend to the left
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **int** `$top` Number of pixels to extend to the top
+* @param **int** `$right` Number of pixels to extend to the right
+* @param **int** `$bottom` Number of pixels to extend to the bottom
+* @param **int** `$left` Number of pixels to extend to the left
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
@@ -557,13 +557,13 @@ $response = Prisma::image()
 Scale up the image.
 
 ```php
-public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
+public function upscale( Image $image, int $factor, array `$options` = [] ) : FileResponse
 ```
 
-* @param Image $image Input image object
-* @param int $factor Upscaling factor between 2 and the maximum value supported by the provider
-* @param array&#60;string, mixed&#62; $options Provider specific options
-* @return FileResponse Response file
+* @param **Image** `$image` Input image object
+* @param **int** `$factor` Upscaling factor between 2 and the maximum value supported by the provider
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Response file
 
 **Example:**
 
