@@ -36,7 +36,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
                 "role" => "user",
                 "content" => [[
                     "type" => "input_text",
-                    "text" => "Describe the image in the language of ISO code \"" . ($lang ?? 'en') . "\"."
+                    "text" => "Short summary of the image in the language of ISO code \"" . ($lang ?? 'en') . "\"."
                 ], [
                     "type" => "input_image",
                     "image_url" => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
