@@ -247,6 +247,11 @@ public function background( Image $image, string $prompt, array `$options` = [] 
 * @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+**Supported options:**
+
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
+* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-product-recontext-api#parameters)
+
 **Example:**
 
 ```php
@@ -272,6 +277,10 @@ public function describe( Image $image, ?string $lang = null, array `$options` =
 * @param **string&#124;null** `$lang` ISO language code the description should be generated in
 * @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
 * @return **TextResponse** Response text
+
+**Supported options:**
+
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/describe#request)
 
 **Example:**
 
@@ -327,6 +336,11 @@ public function erase( Image $image, Image $mask, array `$options` = [] ) : File
 The mask must be an image with black parts (#000000) to keep and white parts (#FFFFFF)
 to remove.
 
+**Supported options:**
+
+* [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
+* [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
+
 **Example:**
 
 ```php
@@ -354,6 +368,18 @@ public function imagine( string $prompt, array $images = [], array `$options` = 
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+**Supported options:**
+
+* [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
+* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
+* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
+* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
+* [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
+* [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
+* [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
+* [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
+
 **Example:**
 
 ```php
@@ -377,6 +403,15 @@ public function inpaint( Image $image, Image $mask, string $prompt, array `$opti
 * @param **string** `$prompt` Prompt describing the changes
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
+
+**Supported options:**
+
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
+* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
+* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
+* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
+* [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
+* [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1inpaint/post)
 
 **Example:**
 
@@ -404,6 +439,12 @@ public function isolate( Image $image, array `$options` = [] ) : FileResponse
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+**Supported options:**
+
+* [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
+* [RemoveBG](https://www.remove.bg/api#api-reference)
+* [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1remove-background/post)
+
 **Example:**
 
 ```php
@@ -429,6 +470,10 @@ public function relocate( Image $image, Image $bgimage, array `$options` = [] ) 
 * @param **Image** `$bgimage` Background image
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
+
+**Supported options:**
+
+* [RemoveBG](https://www.remove.bg/api#api-reference)
 
 **Example:**
 
@@ -457,6 +502,11 @@ public function repaint( Image $image, string $prompt, array `$options` = [] ) :
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+**Supported options:**
+
+* [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/remix-v3#request)
+
 **Example:**
 
 ```php
@@ -481,6 +531,10 @@ public function studio( Image $image, array `$options` = [] ) : FileResponse
 * @param **Image** `$image` Input image object
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
+
+**Supported options:**
+
+* [RemoveBG](https://www.remove.bg/api#api-reference)
 
 **Example:**
 
@@ -511,6 +565,10 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+**Supported options:**
+
+* [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
+
 **Example:**
 
 ```php
@@ -536,6 +594,11 @@ public function upscale( Image $image, int $factor, array `$options` = [] ) : Fi
 * @param **int** `$factor` Upscaling factor between 2 and the maximum value supported by the provider
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
+
+**Supported options:**
+
+* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-upscale-api#parameters)
+* [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
 **Example:**
 
