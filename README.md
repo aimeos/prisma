@@ -145,7 +145,7 @@ Add options for the Guzzle HTTP client.
 public function withClientOptions( array `$options` ) : self
 ```
 
-* @param ****array&#60;string, mixed&#62;**** `$options` Associative list of name/value pairs
+* @param **array&#60;string, mixed&#62;** `$options` Associative list of name/value pairs
 * @return **self** Provider interface
 
 **Example:**
@@ -244,7 +244,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * @param **Image** `$image` Input image object
 * @param **string** `$prompt` Prompt describing the new background
-* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
 **Supported options:**
@@ -275,7 +275,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 * @param **Image** `$image` Input image object
 * @param **string&#124;null** `$lang` ISO language code the description should be generated in
-* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **TextResponse** Response text
 
 **Supported options:**
@@ -304,7 +304,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
-* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
 **Example:**
@@ -330,7 +330,7 @@ public function erase( Image $image, Image $mask, array $options = [] ) : FileRe
 
 * @param **Image** `$image` Input image object
 * @param **Image** `$mask` Mask image object
-* @param ****array&#60;string, mixed&#62;**** `$options` Provider specific options
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
 The mask must be an image with black parts (#000000) to keep and white parts (#FFFFFF)
