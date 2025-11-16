@@ -29,9 +29,6 @@ class Gemini extends Base implements Describe, Imagine, Repaint
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $model = $this->modelName( 'gemini-2.5-flash-image' );
-        $names = ['cachedContent', 'imageConfig', 'safetySettings', 'thinkingConfig'];
-        $allowed = ['responseModalities' => ['TEXT']] + $this->allowed( $options, $names );
-
         $request = [
             'contents' => [[
                 'parts' => [
@@ -43,7 +40,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
                 ]
             ]],
             'generationConfig' => [
-                ...$allowed
+                'responseModalities' => ['TEXT']
             ]
         ];
         $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
