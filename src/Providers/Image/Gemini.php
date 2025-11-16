@@ -62,10 +62,12 @@ class Gemini extends Base implements Describe, Imagine, Repaint
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'gemini-2.5-flash-image' );
-        $names = ['cachedContent', 'imageConfig', 'responseModalities', 'safetySettings', 'thinkingConfig'];
-        $allowed = $this->allowed( $options, $names ) + ['responseModalities' => ['TEXT', 'IMAGE']];
-
         $request = [
+            'system_instruction' => [
+                'parts' => [[
+                    'text' => $this->systemPrompt()
+                ]]
+            ],
             'contents' => [[
                 'parts' => [
                     ...array_map( fn( Image $img ) => [
@@ -78,7 +80,8 @@ class Gemini extends Base implements Describe, Imagine, Repaint
                 ]
             ]],
             'generationConfig' => [
-                ...$allowed
+                'responseModalities' => $options['responseModalities'] ?? ['TEXT', 'IMAGE'],
+                'imageConfig' => $this->allowed( $options, ['aspectRatio'] ),
             ]
         ];
         $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
