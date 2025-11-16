@@ -239,7 +239,7 @@ represents depdends on the provider too.
 Replace image background with a background described by the prompt.
 
 ```php
-public function background( Image $image, string $prompt, array `$options` = [] ) : FileResponse
+public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -270,7 +270,7 @@ $response = Prisma::image()
 Describe the content of an image.
 
 ```php
-public function describe( Image $image, ?string $lang = null, array `$options` = [] ) : TextResponse
+public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -300,7 +300,7 @@ $response = Prisma::image()
 Remove all text from the image.
 
 ```php
-public function detext( Image $image, array `$options` = [] ) : FileResponse
+public function detext( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -325,7 +325,7 @@ $response = Prisma::image()
 Erase parts of the image.
 
 ```php
-public function erase( Image $image, Image $mask, array `$options` = [] ) : FileResponse
+public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -360,7 +360,7 @@ $response = Prisma::image()
 Generate an image from the prompt.
 
 ```php
-public function imagine( string $prompt, array $images = [], array `$options` = [] ) : FileResponse
+public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
 ```
 
 * @param **string** `$prompt` Prompt describing the image
@@ -395,7 +395,7 @@ $response = Prisma::image()
 Edit an image by inpainting an area defined by a mask according to a prompt.
 
 ```php
-public function inpaint( Image $image, Image $mask, string $prompt, array `$options` = [] ) : FileResponse
+public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -432,7 +432,7 @@ $response = Prisma::image()
 Remove the image background.
 
 ```php
-public function isolate( Image $image, array `$options` = [] ) : FileResponse
+public function isolate( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -463,7 +463,7 @@ $response = Prisma::image()
 Place the foreground object on a new background.
 
 ```php
-public function relocate( Image $image, Image $bgimage, array `$options` = [] ) : FileResponse
+public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image with foreground object
@@ -494,7 +494,7 @@ $response = Prisma::image()
 Repaint an image according to the prompt.
 
 ```php
-public function repaint( Image $image, string $prompt, array `$options` = [] ) : FileResponse
+public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -525,7 +525,7 @@ $response = Prisma::image()
 Create studio photo from the object in the foreground of the image.
 
 ```php
-public function studio( Image $image, array `$options` = [] ) : FileResponse
+public function studio( Image $image, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -554,7 +554,7 @@ $response = Prisma::image()
 Extend/outpaint the image.
 
 ```php
-public function uncrop( Image $image,  int $top, int $right, int $bottom, int $left, array `$options` = [] ) : FileResponse
+public function uncrop( Image $image,  int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
@@ -587,7 +587,7 @@ $response = Prisma::image()
 Scale up the image.
 
 ```php
-public function upscale( Image $image, int $factor, array `$options` = [] ) : FileResponse
+public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
 ```
 
 * @param **Image** `$image` Input image object
