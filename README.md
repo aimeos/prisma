@@ -249,6 +249,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 **Supported options:**
 
+* Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
 * [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-product-recontext-api#parameters)
 
@@ -280,7 +281,9 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 **Supported options:**
 
+* Gemini
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/describe#request)
+* OpenAI
 
 **Example:**
 
@@ -306,6 +309,10 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 * @param **Image** `$image` Input image object
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
+
+**Supported options:**
+
+* Clipdrop
 
 **Example:**
 
@@ -338,6 +345,7 @@ to remove.
 
 **Supported options:**
 
+* Clipdrop
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
 
@@ -370,6 +378,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
+* Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
 * [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
@@ -534,6 +543,7 @@ public function studio( Image $image, array $options = [] ) : FileResponse
 
 **Supported options:**
 
+* Clipdrop
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 
 **Example:**
@@ -567,6 +577,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 
 **Supported options:**
 
+* Clipdrop
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
 
 **Example:**
@@ -597,6 +608,8 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 **Supported options:**
 
+* Clipdrop
+* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
 * [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-upscale-api#parameters)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
