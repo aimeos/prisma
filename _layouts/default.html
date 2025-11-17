@@ -35,7 +35,7 @@
 			<p class="project-tagline">{{ page.description | default: site.description | default: site.github.project_tagline }}</p>
 			{% if site.github.is_project_page %}
 				<a href="{{ site.github.repository_url }}" class="btn github">View on GitHub</a>
-				<a href="{{ site.github.repository_url }}" class="icon github">
+				<a href="{{ site.github.repository_url }}" class="icon github" title="View on Github">
 					<img class="octocat" src="/assets/octocat.svg" alt="View on Github" />
 				</a>
 			{% endif %}
@@ -53,7 +53,8 @@
 
 		<div class="container">
 			<nav class="sidebar">
-				<h2>Content</h2>
+				<h2><label for="method-search">Methods</label></h2>
+				<input id="method-search" class="search" placeholder="Search" autofocus />
 				<div class="toc"></div>
 			</nav>
 			<main id="content" class="main-content" role="main">
