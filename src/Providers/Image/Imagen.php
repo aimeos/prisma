@@ -6,15 +6,17 @@ use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Imagen extends Base implements Background, Imagine, Inpaint, Upscale
+class Imagen extends Base implements Background, Imagine, Inpaint, Upscale, Vectorize
 {
     private string $projectid;
     private string $region;
@@ -160,6 +162,35 @@ class Imagen extends Base implements Background, Imagine, Inpaint, Upscale
         $response = $this->client()->post( $url, ['json' => $request] );
 
         return $this->toFileResponse( $response );
+    }
+
+
+    public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $model = $this->modelName( 'multimodalembedding@001' );
+        $request = [
+            'instances' => [
+                ...array_map( fn( Image $image ) => [
+                    'image' => [
+                        'bytesBase64Encoded' => $image->base64(),
+                        'mimeType' => $image->mimeType()
+                    ]
+                ], $images ),
+            ],
+            'parameters' => [
+                'dimension' => $size ?? 512
+            ]
+        ];
+        $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':embedContent';
+        $response = $this->client()->post( $url, ['json' => $request] );
+
+        $this->validate( $response );
+
+        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $vectors = array_map( fn( $entry ) => $entry['imageEmbedding'] ?? [], $data['predictions'] ?? [] );
+
+        return VectorResponse::fromVectors( $vectors )
+            ->withMeta( ['deployedModelId' => $data['deployedModelId'] ?? null] );
     }
 
 

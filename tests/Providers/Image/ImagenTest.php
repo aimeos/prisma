@@ -121,4 +121,23 @@ class ImagenTest extends TestCase
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+            ->response( json_encode( [
+                'predictions' => [[
+                    'imageEmbedding' => [0.1, 0.2, 0.3]
+                ]]
+            ] ) )
+            ->ensure( 'vectorize' )
+            ->vectorize( [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/multimodalembedding@001:embedContent', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+    }
 }

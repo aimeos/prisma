@@ -26,6 +26,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     * [studio](#studio): Create studio photo of the foreground object
     * [uncrop](#uncrop): Extend/outpaint the image
     * [upscale](#upscale): Scale up the image
+    * [vectorize](#vectorize): Creates embedding vectors from images.
 
 ## Supported providers
 
@@ -55,6 +56,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | [studio](#studio)         |   yes    |    -    |    -     |    -    |    -    |    -    |   yes    |    -        |
 | [uncrop](#uncrop)         |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |   yes       |
 | [upscale](#upscale)       |   yes    |    -    |  beta    |  beta   |    -    |    -    |    -     |   yes       |
+| [vectorize](#vectorize)   |    -     |    -    |    -     |  beta   |    -    |    -    |    -     |    -        |
 
 ## Installation
 
@@ -643,4 +645,34 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->upscale( $image, 4 );
+```
+
+### vectorize
+
+Creates embedding vectors of the images' content.
+
+```php
+public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
+```
+
+* @param **array&#60;int, \Aimeos\Prisma\Files\Image&#62;** `$images` List of input image objects
+* @param **int&#124;null** `$size` Size of the resulting vector or null for provider default
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **VectorResponse** Response vector object
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+use \Aimeos\Prisma\Files\Image;
+
+$images = [
+    Image::fromUrl( 'https://example.com/image.png' ),
+    Image::fromUrl( 'https://example.com/image2.png' ),
+];
+
+$vectors = Prisma::image()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->vectorize( $images, 512 )
+    ->vectors();
 ```
