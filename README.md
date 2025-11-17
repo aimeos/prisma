@@ -5,10 +5,9 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 <nav>
 <div class="method-header"><a href="#supported-providers">Supported providers</a></div>
 <ul class="method-list">
-    <li><a href="#image">Image</a></li>
+    <li><a href="#images">Images</a></li>
 </ul>
 <div class="method-header"><a href="#api-usage">API usage</a></div>
-<div class="method-header"><a href="#common-api">Common API</a></div>
 <ul class="method-list">
     <li><a href="#ensure">ensure</a><span>: Ensures that the provider has implemented the method</span></li>
     <li><a href="#has">has</a><span>: Tests if the provider has implemented the method</span></li>
@@ -36,7 +35,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ## Supported providers
 
-### Image
+### Images
 
 - [Clipdrop](https://clipdrop.co/apis)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
@@ -84,8 +83,6 @@ $image = Prisma::image()
     ->imagine( 'a grumpy cat' )
     ->binary();
 ```
-
-## Common API
 
 ### ensure
 
