@@ -9,19 +9,14 @@ body {
 	line-height: 1.75;
 }
 
-a {
-	display: inline-block;
-	line-height: 2.5;
-}
-
 header.page-header {
-	background-color: #2091c5;
-	background-image: linear-gradient(120deg, #16629c, #2091c5);
+	background-color: #25a2db;
+	background-image: linear-gradient(120deg, #16629c, #25a2db);
+	z-index: 1010;
 }
 
 header h1>a {
 	color: #fff;
-	line-height: initial;
 }
 
 header .icon.github {
@@ -30,7 +25,6 @@ header .icon.github {
 
 header .octocat {
 	width: 3rem;
-	margin: 0.25rem 0;
 }
 
 header svg {
@@ -45,11 +39,17 @@ header svg {
 	margin: auto;
 }
 
+.container a {
+	display: inline-block;
+	line-height: 2.5;
+}
+
 .sidebar {
 	position: -webkit-sticky;
 	position: sticky;
 	top: 0;
 	order: 1;
+	z-index: 1000;
 	padding: 1rem;
 	height: 100vh;
 	overflow-y: auto;
@@ -90,7 +90,8 @@ header svg {
 	display: block;
 }
 
-.sidebar a.hide {
+.sidebar li.hide,
+.sidebar li span {
 	display: none;
 }
 
@@ -109,22 +110,12 @@ header svg {
 	margin-top: -1rem;
 }
 
-.main-content nav {
-	column-count: 3;
-	column-width: 8rem;
-}
-
-.main-content nav a {
-	display: block;
-	padding: 0 1rem;
-}
-
 .main-content .highlight pre, .main-content pre {
 	line-height: 1.75;
 }
 
 .method-list {
-	margin-top: 0;
+	margin: 0;
 }
 
 @media screen and (min-width: 64em) {
@@ -236,6 +227,7 @@ header svg {
 .highlight .mi, .highlight .mf { color: #007e7e }
 .highlight .err { color: inherit; background-color: inherit }
 
+
 /* Table styles */
 
 table tbody tr:nth-child(even) {
@@ -250,6 +242,6 @@ table th:first-child,
 table td:first-child {
 	background-color: #f3f6fa;
     position: sticky;
-    z-index: 2;
+    z-index: 1;
     left: 0;
 }

@@ -2,29 +2,36 @@
 
 Light-weight PHP package for integrating multi-media related Large Language Models (LLMs) into your applications using a unified interface.
 
-1. [Supported providers](#supported-providers)
-    * [Image](#image)
-2. [Installation](#installation)
-3. [API usage](#api-usage)
-4. [Common API](#common-api)
-    * [ensure](#ensure): Ensures that the provider has implemented the method
-    * [has](#has): Tests if the provider has implemented the method
-    * [model](#model): Use the model passed by its name
-    * [withClientOptions](#withClientOptions): Add options for the Guzzle HTTP client
-    * [withSystemPrompt](#withSystemPrompt): Add a system prompt for the LLM
-5. [Image API](#image-api)
-    * [background](#background): Replace background according to the prompt
-    * [describe](#describe): Describe the content of an image
-    * [detext](#detext): Remove all text from the image
-    * [erase](#erase): Erase parts of the image
-    * [imagine](#imagine): Generate an image from the prompt
-    * [inpaint](#inpaint): Edit an image area according to a prompt
-    * [isolate](#isolate): Remove the image background
-    * [relocate](#relocate): Place the foreground object on a new background
-    * [repaint](#repaint): Repaint an image according to the prompt
-    * [studio](#studio): Create studio photo of the foreground object
-    * [uncrop](#uncrop): Extend/outpaint the image
-    * [upscale](#upscale): Scale up the image
+<nav>
+<div class="method-header"><a href="#supported-providers">Supported providers</a></div>
+<ul class="method-list">
+    <li><a href="#image">Image</a></li>
+</ul>
+<div class="method-header"><a href="#api-usage">API usage</a></div>
+<div class="method-header"><a href="#common-api">Common API</a></div>
+<ul class="method-list">
+    <li><a href="#ensure">ensure</a><span>: Ensures that the provider has implemented the method</span></li>
+    <li><a href="#has">has</a><span>: Tests if the provider has implemented the method</span></li>
+    <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
+    <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
+    <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
+</ul>
+<div class="method-header"><a href="#image-api">Image API</a></div>
+<ul class="method-list">
+    <li><a href="#background">background</a><span>: Replace background according to the prompt</span></li>
+    <li><a href="#describe">describe</a><span>: Describe the content of an image</span></li>
+    <li><a href="#detext">detext</a><span>: Remove all text from the image</span></li>
+    <li><a href="#erase">erase</a><span>: Erase parts of the image</span></li>
+    <li><a href="#imagine">imagine</a><span>: Generate an image from the prompt</span></li>
+    <li><a href="#inpaint">inpaint</a><span>: Edit an image area according to a prompt</span></li>
+    <li><a href="#isolate">isolate</a><span>: Remove the image background</span></li>
+    <li><a href="#relocate">relocate</a><span>: Place the foreground object on a new background</span></li>
+    <li><a href="#repaint">repaint</a><span>: Repaint an image according to the prompt</span></li>
+    <li><a href="#studio">studio</a><span>: Create studio photo of the foreground object</span></li>
+    <li><a href="#uncrop">uncrop</a><span>: Extend/outpaint the image</span></li>
+    <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
+</ul>
+</nav>
 
 ## Supported providers
 
