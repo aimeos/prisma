@@ -298,7 +298,6 @@ abstract class Base implements Provider
      * Validates the HTTP response.
      *
      * @param ResponseInterface $response HTTP response
-     * @return ResponseInterface Validated response
      * @throws \Aimeos\Prisma\Exceptions\BadRequestException
      * @throws \Aimeos\Prisma\Exceptions\UnauthorizedException
      * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
