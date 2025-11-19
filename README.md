@@ -353,7 +353,6 @@ to remove.
 
 **Supported options:**
 
-* Clipdrop
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
 
