@@ -16,7 +16,7 @@ use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Imagen extends Base implements Background, Imagine, Inpaint, Upscale, Vectorize
+class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Vectorize
 {
     private string $projectid;
     private string $region;

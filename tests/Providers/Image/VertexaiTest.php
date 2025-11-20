@@ -7,14 +7,14 @@ use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
 
-class ImagenTest extends TestCase
+class VertexaiTest extends TestCase
 {
     use MakesPrismaRequests;
 
 
     public function testBackground() : void
     {
-        $file = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -37,7 +37,7 @@ class ImagenTest extends TestCase
 
     public function testImagine() : void
     {
-        $file = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -58,7 +58,7 @@ class ImagenTest extends TestCase
 
     public function testImagineWithReferences() : void
     {
-        $file = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -79,7 +79,7 @@ class ImagenTest extends TestCase
 
     public function testInpaint() : void
     {
-        $file = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -104,7 +104,7 @@ class ImagenTest extends TestCase
 
     public function testUpscale() : void
     {
-        $file = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -125,7 +125,7 @@ class ImagenTest extends TestCase
 
     public function testVectorize() : void
     {
-        $response = $this->prisma( 'image', 'imagen', ['api_key' => 'test', 'project_id' => '123'] )
+        $response = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'imageEmbedding' => [0.1, 0.2, 0.3]

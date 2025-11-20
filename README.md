@@ -40,28 +40,28 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Clipdrop](https://clipdrop.co/apis)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Ideogram](https://ideogram.ai/api)
-- [Imagen (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [Mistral](https://docs.mistral.ai/api)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
+- [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 
-|                           | Clipdrop | Gemini  | Ideogram | Imagen  | Mistral | OpenAI  | RemoveBG | StabilityAI |
-| :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:  |  :---:   |  :---:      |
-| [background](#background) |   yes    |    -    |  beta    |  beta   |    -    |    -    |    -     |    -        |
-| [describe](#describe)     |    -     |  beta   |  beta    |    -    |    -    |  beta   |    -     |    -        |
-| [detext](#detext)         |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |    -        |
-| [erase](#erase)           |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |   yes       |
-| [imagine](#imagine)       |   yes    |   yes   |  beta    |  beta   |    -    |   yes   |    -     |   yes       |
-| [inpaint](#inpaint)       |    -     |    -    |  beta    |  beta   |    -    |   yes   |    -     |   yes       |
-| [isolate](#isolate)       |   yes    |    -    |    -     |    -    |    -    |    -    |   yes    |   yes       |
-| [recognize](#recognize)   |    -     |    -    |    -     |    -    |  beta   |    -    |    -     |    -        |
-| [relocate](#relocate)     |    -     |    -    |    -     |    -    |    -    |    -    |   yes    |    -        |
-| [repaint](#repaint)       |    -     |   yes   |  beta    |    -    |    -    |    -    |    -     |    -        |
-| [studio](#studio)         |   yes    |    -    |    -     |    -    |    -    |    -    |   yes    |    -        |
-| [uncrop](#uncrop)         |   yes    |    -    |    -     |    -    |    -    |    -    |    -     |   yes       |
-| [upscale](#upscale)       |   yes    |    -    |  beta    |  beta   |    -    |    -    |    -     |   yes       |
-| [vectorize](#vectorize)   |    -     |    -    |    -     |  beta   |    -    |    -    |    -     |    -        |
+|                           | Clipdrop | Gemini  | Ideogram | Mistral | OpenAI  | RemoveBG | StabilityAI | VertexAI |
+| :---                      |  :---:   |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |  :---:   |
+| [background](#background) |   yes    |    -    |  beta    |    -    |    -    |    -     |    -        |  beta    |
+| [describe](#describe)     |    -     |  beta   |  beta    |    -    |  beta   |    -     |    -        |    -     |
+| [detext](#detext)         |   yes    |    -    |    -     |    -    |    -    |    -     |    -        |    -     |
+| [erase](#erase)           |   yes    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
+| [imagine](#imagine)       |   yes    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
+| [inpaint](#inpaint)       |    -     |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
+| [isolate](#isolate)       |   yes    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
+| [recognize](#recognize)   |    -     |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |
+| [relocate](#relocate)     |    -     |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
+| [repaint](#repaint)       |    -     |   yes   |  beta    |    -    |    -    |    -     |    -        |    -     |
+| [studio](#studio)         |   yes    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
+| [uncrop](#uncrop)         |   yes    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
+| [upscale](#upscale)       |   yes    |    -    |  beta    |    -    |    -    |    -     |   yes       |  beta    |
+| [vectorize](#vectorize)   |    -     |    -    |    -     |    -    |    -    |    -     |    -        |  beta    |
 
 ## Installation
 
@@ -259,7 +259,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
-* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-product-recontext-api#parameters)
+* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-product-recontext-api#parameters)
 
 **Example:**
 
@@ -388,7 +388,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
-* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
+* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
@@ -420,10 +420,13 @@ public function inpaint( Image $image, Image $mask, string $prompt, array $optio
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Response file
 
+The mask must be an image with black parts (#000000) to keep and white parts (#FFFFFF)
+to edit.
+
 **Supported options:**
 
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
-* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
+* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
@@ -646,7 +649,7 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
-* [Imagen](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-upscale-api#parameters)
+* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-upscale-api#parameters)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
 **Example:**
@@ -677,7 +680,7 @@ public function vectorize( array $images, ?int $size = null, array $options = []
 
 **Supported options:**
 
-* Imagen
+* VertexAI
 
 **Example:**
 
