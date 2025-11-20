@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
+use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
@@ -11,29 +12,58 @@ use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Vectorize
+class Bedrock extends Base implements Imagine, Vectorize
 {
+    private string $region;
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( sprintf( 'No API key' ) );
         }
 
-        $region = $config['region'] ?? 'us-east-1';
+        $this->region = $config['region'] ?? 'us-east-1';
 
+        $this->header( 'Content-Type', 'application/json' );
         $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( 'https://bedrock-runtime.' . $region . '.amazonaws.com' );
+    }
+
+
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
+        $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale', 'seed'] );
+
+        $request = [
+            'taskType' => 'TEXT_IMAGE',
+            'textToImageParams' => [
+                'text' => $prompt,
+                ...$this->allowed( $options, ['controlMode', 'controlStrength', 'negativeText'] )
+            ],
+            'imageGenerationConfig' => $allowed
+        ];
+
+        if( $image = current( $images ) ) {
+            $request['textToImageParams']['conditionImage'] = $image->base64();
+        }
+
+        $response = $this->client()->post( $url, ['json' => $request] );
+
+        return $this->toFileResponse( $response );
     }
 
 
     public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
     {
         $promises = $vectors = [];
-        $uri = 'model/' . $this->modelName( 'amazon.titan-embed-image-v1' ) . '/invoke';
+        $model = $this->modelName( 'amazon.titan-embed-image-v1' );
+        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
 
         foreach( $images as $index => $image )
         {
-            $promises[$index] = $this->client()->postAsync( $uri, [
+            $promises[$index] = $this->client()->postAsync( $url, [
                 'json' => [
                     "inputImage" => $image->base64(),
                     "embeddingConfig" => [
@@ -52,6 +82,20 @@ class Bedrock extends Base implements Vectorize
         }
 
         return VectorResponse::fromVectors( $vectors );
+    }
+
+
+    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    {
+        $this->validate( $response );
+
+        $data = json_decode( $response->getBody()->getContents(), true );
+
+        if( !isset( $data['images'][0] ) ) {
+            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
+        }
+
+        return FileResponse::fromBase64( $data['images'][0], 'image/png' );
     }
 
 
