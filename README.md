@@ -55,7 +55,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | [erase](#erase)           |    -    |   yes    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
 | [imagine](#imagine)       |  beta   |   yes    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
 | [inpaint](#inpaint)       |    -    |    -     |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
-| [isolate](#isolate)       |    -    |   yes    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
+| [isolate](#isolate)       |  beta   |   yes    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
 | [recognize](#recognize)   |    -    |    -     |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |
 | [relocate](#relocate)     |    -    |    -     |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
 | [repaint](#repaint)       |    -    |    -     |   yes   |  beta    |    -    |    -    |    -     |    -        |    -     |
@@ -462,6 +462,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 
 **Supported options:**
 
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1remove-background/post)

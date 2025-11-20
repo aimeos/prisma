@@ -35,6 +35,27 @@ class BedrockTest extends TestCase
     }
 
 
+    public function testIsolate() : void
+    {
+        $file = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
+            ->response( '{
+                "images": [
+                    "' . base64_encode( 'PNG' ) . '"
+                ],
+                "error": "only on failure"
+            }' )
+            ->ensure( 'isolate' )
+            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-image-generator-v2:0/invoke', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'PNG', $file->binary() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
     public function testVectorize() : void
     {
         $response = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
