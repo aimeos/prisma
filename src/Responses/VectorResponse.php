@@ -14,7 +14,7 @@ class VectorResponse
     use HasMeta, HasUsage;
 
 
-    /** @var array<int, array<int, float>> */
+    /** @var array<int, array<int, float>|null> */
     private array $vectors;
 
 
@@ -26,7 +26,7 @@ class VectorResponse
     /**
      * Create a vector response instance.
      *
-     * @param array<int, array<int, float>> $vectors Embedding vectors
+     * @param array<int, array<int, float>|null> $vectors Embedding vectors
      * @return self VectorResponse instance
      */
     public static function fromVectors( array $vectors ) : self
@@ -41,18 +41,18 @@ class VectorResponse
     /**
      * Get the first embedding vector.
      *
-     * @return array<int, float> First embedding vector
+     * @return array<int, float>|null First embedding vector
      */
-    public function first() : array
+    public function first() : ?array
     {
-        return $this->vectors[0] ?? [];
+        return $this->vectors[0] ?? null;
     }
 
 
     /**
      * Get the embedding vectors.
      *
-     * @return array<int, array<int, float>> Embedding vectors
+     * @return array<int, array<int, float>|null> Embedding vectors
      */
     public function vectors() : array
     {
