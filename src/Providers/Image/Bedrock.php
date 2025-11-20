@@ -60,7 +60,6 @@ class Bedrock extends Base implements Imagine, Isolate, Vectorize
     {
         $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
         $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
-        $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale', 'seed'] );
 
         $request = [
             'taskType' => 'BACKGROUND_REMOVAL',
