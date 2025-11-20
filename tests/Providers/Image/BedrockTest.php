@@ -14,7 +14,7 @@ class BedrockTest extends TestCase
 
     public function testVectorize() : void
     {
-        $response = $this->prisma( 'image', 'bedrock', ['access_key' => 'test', 'secret_key' => '123'] )
+        $response = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
             ->response( json_encode( [
                 'embedding' => [0.1, 0.2, 0.3],
                 'metadata' => []
