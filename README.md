@@ -53,7 +53,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | [describe](#describe)     |    -    |    -     |  beta   |  beta    |    -    |  beta   |    -     |    -        |    -     |
 | [detext](#detext)         |    -    |   yes    |    -    |    -     |    -    |    -    |    -     |    -        |    -     |
 | [erase](#erase)           |    -    |   yes    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
-| [imagine](#imagine)       |    -    |   yes    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
+| [imagine](#imagine)       |  beta   |   yes    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
 | [inpaint](#inpaint)       |    -    |    -     |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
 | [isolate](#isolate)       |    -    |   yes    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
 | [recognize](#recognize)   |    -    |    -     |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |
@@ -386,6 +386,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
