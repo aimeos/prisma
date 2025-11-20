@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Imagine, Vectorize
+class Bedrock extends Base implements Imagine, Isolate, Vectorize
 {
     private string $region;
 
@@ -48,6 +49,24 @@ class Bedrock extends Base implements Imagine, Vectorize
         if( $image = current( $images ) ) {
             $request['textToImageParams']['conditionImage'] = $image->base64();
         }
+
+        $response = $this->client()->post( $url, ['json' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function isolate( Image $image, array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
+
+        $request = [
+            'taskType' => 'BACKGROUND_REMOVAL',
+            'backgroundRemovalParams' => [
+                'image' => $image->base64(),
+            ],
+        ];
 
         $response = $this->client()->post( $url, ['json' => $request] );
 
