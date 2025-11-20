@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -13,7 +14,7 @@ use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Imagine, Isolate, Vectorize
+class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 {
     private string $region;
 
@@ -50,6 +51,28 @@ class Bedrock extends Base implements Imagine, Isolate, Vectorize
             $request['textToImageParams']['conditionImage'] = $image->base64();
         }
 
+        $response = $this->client()->post( $url, ['json' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
+        $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale'] );
+
+        $request = [
+            'taskType' => 'TEXT_IMAGE',
+            'inPaintingParams' => [
+                'image' => $image->base64(),
+                'maskImage' => $this->invert( $mask )->base64(),
+                'maskPrompt' => $prompt,
+                ...$this->allowed( $options, ['negativeText'] )
+            ],
+            'imageGenerationConfig' => $allowed
+        ];
         $response = $this->client()->post( $url, ['json' => $request] );
 
         return $this->toFileResponse( $response );
@@ -101,6 +124,30 @@ class Bedrock extends Base implements Imagine, Isolate, Vectorize
         }
 
         return VectorResponse::fromVectors( $vectors );
+    }
+
+
+    protected function invert( Image $image ) : Image
+    {
+        if( ( $img = imagecreatefromstring( (string) $image->binary() ) ) === false ) {
+            throw new PrismaException( "Invalid image/mask data" );
+        }
+
+        if( ( $stream = fopen( 'php://memory', 'r+' ) ) === false ) {
+            throw new PrismaException( "Unable to create image stream" );
+        }
+
+        imagefilter( $img, IMG_FILTER_NEGATE );
+
+        imagepng( $img, $stream );
+        rewind( $stream );
+
+        $png = stream_get_contents( $stream );
+
+        imagedestroy( $img );
+        fclose( $stream );
+
+        return Image::fromBinary( $png, 'image/png' );
     }
 
 

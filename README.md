@@ -54,7 +54,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | [detext](#detext)         |    -    |   yes    |    -    |    -     |    -    |    -    |    -     |    -        |    -     |
 | [erase](#erase)           |    -    |   yes    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
 | [imagine](#imagine)       |  beta   |   yes    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
-| [inpaint](#inpaint)       |    -    |    -     |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
+| [inpaint](#inpaint)       |  beta   |    -     |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
 | [isolate](#isolate)       |  beta   |   yes    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
 | [recognize](#recognize)   |    -    |    -     |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |
 | [relocate](#relocate)     |    -    |    -     |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
@@ -427,6 +427,7 @@ to edit.
 
 **Supported options:**
 
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
 * [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
