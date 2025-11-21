@@ -28,7 +28,7 @@ class CohereTest extends TestCase
                         "is_experimental": true
                     },
                     "billed_units": {
-                        "input_tokens": 2
+                        "images": 1
                     },
                     "warnings": [
                         "You are using an experimental version"
