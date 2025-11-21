@@ -47,6 +47,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
+- [VoyageAI](https://docs.voyageai.com/)
 
 |                           | Bedrock | Clipdrop | Cohere  | Gemini  | Ideogram | Mistral | OpenAI  | RemoveBG | StabilityAI | VertexAI | VoyageAI |
 | :---                      |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |  :---:   |  :---:   |
