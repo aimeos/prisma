@@ -25,6 +25,7 @@ class Mistral extends Base implements Recognize
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
+        $model = $this->modelName( 'mistral-ocr-latest' );
         $allowed = $this->allowed( $options, [
             'bbox_annotation_format', 'document_annotation_format', 'id',
             'image_limit', 'image_min_size', 'include_image_base64', 'pages'
@@ -37,8 +38,9 @@ class Mistral extends Base implements Recognize
                     'url' => $image->url() ?: sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() ),
                 ],
             ],
-            'model' => null,
+            'model' => $model,
         ] + $allowed;
+
         $response = $this->client()->post( 'v1/ocr', ['json' => $request] );
 
         return $this->toTextResponse( $response );
