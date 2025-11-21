@@ -58,13 +58,13 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | [imagine](#imagine)       |  beta   |   yes    |    -    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |    -     |
 | [inpaint](#inpaint)       |  beta   |    -     |    -    |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |    -     |
 | [isolate](#isolate)       |  beta   |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |    -     |
-| [recognize](#recognize)   |    -    |    -     |    -    |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |    -     |
+| [recognize](#recognize)   |    -    |    -     |    -    |    -    |    -     |   yes   |    -    |    -     |    -        |    -     |    -     |
 | [relocate](#relocate)     |    -    |    -     |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |    -     |
 | [repaint](#repaint)       |    -    |    -     |    -    |   yes   |  beta    |    -    |    -    |    -     |    -        |    -     |    -     |
 | [studio](#studio)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |    -     |
 | [uncrop](#uncrop)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |    -     |
 | [upscale](#upscale)       |    -    |   yes    |    -    |    -    |  beta    |    -    |    -    |    -     |   yes       |  beta    |    -     |
-| [vectorize](#vectorize)   |  beta   |    -     |  beta   |    -    |    -     |    -    |    -    |    -     |    -        |  beta    |  beta    |
+| [vectorize](#vectorize)   |  beta   |    -     |   yes   |    -    |    -     |    -    |    -    |    -     |    -        |  beta    |   yes    |
 
 ## Installation
 
