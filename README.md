@@ -49,19 +49,19 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
 
-|             | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | studio | uncrop | upscale | vectorize |
-| :---        | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
-| Bedrock     | -          | -        | -      | -     | beta    | beta    | beta    | -         | -        | -       | -      | -      | -       | beta      |
-| Clipdrop    | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes    | yes     | -         |
-| Cohere      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
-| Gemini      | -          | beta     | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -      | -       | -         |
-| Ideogram    | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | -      | beta    | -         |
-| Mistral     | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -      | -       | -         |
-| OpenAI      | -          | beta     | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | -       | -         |
-| RemoveBG    | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | yes    | -      | -       | -         |
-| StabilityAI | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | -      | yes    | yes     | -         |
-| VertexAI    | beta       | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | -      | beta   | beta    | -         |
-| VoyageAI    | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
+|                 | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | studio | uncrop | upscale | vectorize |
+| :---            | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
+| **Bedrock**     | -          | -        | -      | -     | beta    | beta    | beta    | -         | -        | -       | -      | -      | -       | beta      |
+| **Clipdrop**    | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes    | yes     | -         |
+| **Cohere**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
+| **Gemini**      | -          | beta     | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -      | -       | -         |
+| **Ideogram**    | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | -      | beta    | -         |
+| **Mistral**     | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -      | -       | -         |
+| **OpenAI**      | -          | beta     | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | -       | -         |
+| **RemoveBG**    | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | yes    | -      | -       | -         |
+| **StabilityAI** | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | -      | yes    | yes     | -         |
+| **VertexAI**    | beta       | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | -      | beta   | beta    | -         |
+| **VoyageAI**    | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
 
 ## Installation
 
