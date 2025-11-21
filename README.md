@@ -47,23 +47,24 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
+- [VoyageAI](https://docs.voyageai.com/)
 
-|                           | Bedrock | Clipdrop | Cohere  | Gemini  | Ideogram | Mistral | OpenAI  | RemoveBG | StabilityAI | VertexAI |
-| :---                      |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |  :---:   |
-| [background](#background) |    -    |   yes    |    -    |    -    |  beta    |    -    |    -    |    -     |    -        |  beta    |
-| [describe](#describe)     |    -    |    -     |    -    |  beta   |  beta    |    -    |  beta   |    -     |    -        |    -     |
-| [detext](#detext)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |    -        |    -     |
-| [erase](#erase)           |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
-| [imagine](#imagine)       |  beta   |   yes    |    -    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
-| [inpaint](#inpaint)       |  beta   |    -     |    -    |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |
-| [isolate](#isolate)       |  beta   |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |
-| [recognize](#recognize)   |    -    |    -     |    -    |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |
-| [relocate](#relocate)     |    -    |    -     |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
-| [repaint](#repaint)       |    -    |    -     |    -    |   yes   |  beta    |    -    |    -    |    -     |    -        |    -     |
-| [studio](#studio)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |
-| [uncrop](#uncrop)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |
-| [upscale](#upscale)       |    -    |   yes    |    -    |    -    |  beta    |    -    |    -    |    -     |   yes       |  beta    |
-| [vectorize](#vectorize)   |  beta   |    -     |  beta   |    -    |    -     |    -    |    -    |    -     |    -        |  beta    |
+|                           | Bedrock | Clipdrop | Cohere  | Gemini  | Ideogram | Mistral | OpenAI  | RemoveBG | StabilityAI | VertexAI | VoyageAI |
+| :---                      |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:  |  :---:  |  :---:   |  :---:      |  :---:   |  :---:   |
+| [background](#background) |    -    |   yes    |    -    |    -    |  beta    |    -    |    -    |    -     |    -        |  beta    |    -     |
+| [describe](#describe)     |    -    |    -     |    -    |  beta   |  beta    |    -    |  beta   |    -     |    -        |    -     |    -     |
+| [detext](#detext)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |    -        |    -     |    -     |
+| [erase](#erase)           |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |    -     |
+| [imagine](#imagine)       |  beta   |   yes    |    -    |   yes   |  beta    |    -    |   yes   |    -     |   yes       |  beta    |    -     |
+| [inpaint](#inpaint)       |  beta   |    -     |    -    |    -    |  beta    |    -    |   yes   |    -     |   yes       |  beta    |    -     |
+| [isolate](#isolate)       |  beta   |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |   yes       |    -     |    -     |
+| [recognize](#recognize)   |    -    |    -     |    -    |    -    |    -     |  beta   |    -    |    -     |    -        |    -     |    -     |
+| [relocate](#relocate)     |    -    |    -     |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |    -     |
+| [repaint](#repaint)       |    -    |    -     |    -    |   yes   |  beta    |    -    |    -    |    -     |    -        |    -     |    -     |
+| [studio](#studio)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |   yes    |    -        |    -     |    -     |
+| [uncrop](#uncrop)         |    -    |   yes    |    -    |    -    |    -     |    -    |    -    |    -     |   yes       |    -     |    -     |
+| [upscale](#upscale)       |    -    |   yes    |    -    |    -    |  beta    |    -    |    -    |    -     |   yes       |  beta    |    -     |
+| [vectorize](#vectorize)   |  beta   |    -     |  beta   |    -    |    -     |    -    |    -    |    -     |    -        |  beta    |  beta    |
 
 ## Installation
 
@@ -688,6 +689,7 @@ public function vectorize( array $images, ?int $size = null, array $options = []
 * Bedrock
 * [Cohere](https://docs.cohere.com/reference/embed#request)
 * VertexAI
+* [VoyageAI](https://docs.voyageai.com/reference/multimodal-embeddings-api)
 
 **Example:**
 
