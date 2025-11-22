@@ -94,7 +94,7 @@ class OpenaiTest extends TestCase
             ->ensure( 'inpaint' )
             ->inpaint(
                 ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                ImageFile::fromBase64( $base64, 'image/png' ),
                 'prompt'
             );
 
