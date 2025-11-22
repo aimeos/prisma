@@ -47,8 +47,21 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $this->validate( $response );
 
         $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
-        $output = current( $result['output'] ?? [] ) ?: [];
-        $content = current( $output['content'] ?? [] ) ?: [];
+        $text = null;
+
+        foreach( $result['output'] ?? [] as $data )
+        {
+            foreach( $data['content'] ?? [] as $content )
+            {
+                if( $text = $content['text'] ?? null ) {
+                    break 2;
+                }
+            }
+        }
+
+        if( !$text ) {
+            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No text found in response' );
+        }
 
         $meta = $result;
         unset( $meta['output'], $meta['usage'] );
@@ -72,10 +85,50 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        $request = $this->request( $this->params( $prompt, $options ), ['image' => [$image], 'mask' => $mask] );
+        $params = $this->params( $prompt, $options, 'dall-e-2' );
+        $request = $this->request( $params, ['image' => $image, 'mask' => $this->mask( $mask )] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
+    }
+
+
+    protected function mask( Image $image ) : Image
+    {
+        if( ( $mask = imagecreatefromstring( (string) $image->binary() ) ) === false ) {
+            throw new PrismaException( "Invalid image/mask data" );
+        }
+
+        if( ( $stream = fopen( 'php://memory', 'r+' ) ) === false ) {
+            throw new PrismaException( "Unable to create image stream" );
+        }
+
+        imagesavealpha( $mask, true );
+        imagealphablending( $mask, false );
+
+        $width = imagesx( $mask );
+        $height = imagesy( $mask );
+        $transparent = imagecolorallocatealpha( $mask, 255, 255, 255, 127 ); // fully transparent
+
+        for( $y = 0; $y < $height; $y++ )
+        {
+            for( $x = 0; $x < $width; $x++ )
+            {
+                if( ( imagecolorat( $mask, $x, $y ) & 0xFF ) === 0xFF ) { // white pixel
+                    imagesetpixel( $mask, $x, $y, $transparent );
+                }
+            }
+        }
+
+        imagepng( $mask, $stream );
+        rewind( $stream );
+
+        $png = stream_get_contents( $stream );
+
+        imagedestroy( $mask );
+        fclose( $stream );
+
+        return Image::fromBinary( $png, 'image/png' );
     }
 
 
@@ -84,11 +137,12 @@ class Openai extends Base implements Describe, Imagine, Inpaint
      *
      * @param string $prompt Prompt describing the image
      * @param array<string, mixed> $options Provider specific options
+     * @param string|null $model Optional model name
      * @return array<string, mixed>
      */
-    protected function params( string $prompt, array $options ) : array
+    protected function params( string $prompt, array $options, ?string $model = null ) : array
     {
-        $model = $this->modelName( 'dall-e-3' );
+        $model = $this->modelName( $model ?? 'dall-e-3' );
         $data = ['model' => $model, 'prompt' => $prompt, 'response_format' => 'b64_json'];
 
         $names = match( $model ) {
