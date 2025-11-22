@@ -66,7 +66,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $meta = $result;
         unset( $meta['output'], $meta['usage'] );
 
-        return TextResponse::fromText( $content['text'] )
+        return TextResponse::fromText( $text )
             ->withUsage(
                 $result['usage']['total_tokens'] ?? null,
                 $result['usage'] ?? [],
@@ -108,7 +108,10 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
         $width = imagesx( $mask );
         $height = imagesy( $mask );
-        $transparent = imagecolorallocatealpha( $mask, 255, 255, 255, 127 ); // fully transparent
+
+        if( ( $transparent = imagecolorallocatealpha( $mask, 255, 255, 255, 127 ) ) === false ) {
+            throw new PrismaException( "Unable to allocate transparent color" );
+        }
 
         for( $y = 0; $y < $height; $y++ )
         {
