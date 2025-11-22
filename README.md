@@ -37,7 +37,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Images
 
-- [Bedrock (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
+- [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
