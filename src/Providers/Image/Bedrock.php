@@ -42,9 +42,11 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             'taskType' => 'TEXT_IMAGE',
             'textToImageParams' => [
                 'text' => $prompt,
-                ...$this->allowed( $options, ['controlMode', 'controlStrength', 'negativeText'] )
+                ...$this->allowed( $options, ['controlMode', 'controlStrength', 'negativeText'] ) + ['controlStrength' => 0.25]
             ],
-            'imageGenerationConfig' => $allowed
+            'imageGenerationConfig' => [
+                'numberOfImages' => 1,
+            ] + $allowed
         ];
 
         if( $image = current( $images ) ) {
@@ -64,14 +66,16 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
         $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale'] );
 
         $request = [
-            'taskType' => 'TEXT_IMAGE',
+            'taskType' => 'INPAINTING',
             'inPaintingParams' => [
                 'image' => $image->base64(),
                 'maskImage' => $this->invert( $mask )->base64(),
-                'maskPrompt' => $prompt,
+                'text' => $prompt,
                 ...$this->allowed( $options, ['negativeText'] )
             ],
-            'imageGenerationConfig' => $allowed
+            'imageGenerationConfig' => [
+                'numberOfImages' => 1,
+            ] + $allowed
         ];
         $response = $this->client()->post( $url, ['json' => $request] );
 
@@ -171,7 +175,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             return;
         }
 
-        $error = json_decode( $response->getBody()->getContents() )?->error ?: $response->getReasonPhrase();
+        $error = json_decode( $response->getBody()->getContents() )?->message ?: $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )
         {
