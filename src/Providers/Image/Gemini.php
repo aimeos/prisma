@@ -31,11 +31,11 @@ class Gemini extends Base implements Describe, Imagine, Repaint
         $model = $this->modelName( 'gemini-2.5-flash-image' );
         $request = [
             'contents' => [[
-                'parts' => [
+                'parts' => [[
                     'inlineData' => [
                         'data' => $image->base64(),
                         'mimeType' => $image->mimeType()
-                    ],
+                    ]],
                     ['text' => 'Short summary of the image in the language of ISO code "' . ( $lang ?? 'en' ) . '".']
                 ]
             ]],
@@ -58,13 +58,21 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'gemini-2.5-flash-image' );
-        $request = [
-            'system_instruction' => [
+        $model = $this->modelName( 'gemini-3-pro-image-preview' );
+        $allowed = $this->allowed( $options, ['aspectRatio'] );
+
+        $system = $this->systemPrompt() ? [
+            'systemInstruction' => [
                 'parts' => [[
                     'text' => $this->systemPrompt()
                 ]]
-            ],
+            ]] : [];
+
+        $config = !empty( $allowed ) ? [
+            'imageConfig' => $allowed
+        ] : [];
+
+        $request = $system + [
             'contents' => [[
                 'parts' => [
                     ...array_map( fn( Image $img ) => [
@@ -78,9 +86,10 @@ class Gemini extends Base implements Describe, Imagine, Repaint
             ]],
             'generationConfig' => [
                 'responseModalities' => $options['responseModalities'] ?? ['TEXT', 'IMAGE'],
-                'imageConfig' => $this->allowed( $options, ['aspectRatio'] ),
+                ...$config
             ]
         ];
+
         $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
         return $this->toFileResponse( $response );
