@@ -21,7 +21,7 @@ class MistralTest extends TestCase
 
     public function testRecognize() : void
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/recognize.png' );
+        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
         $response = Prisma::image()
             ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
             ->ensure( 'recognize' )
