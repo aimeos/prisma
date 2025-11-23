@@ -53,7 +53,7 @@ class Stabilityai extends Base
         $model = $this->modelName( 'ultra' );
 
         if( !empty( $files ) ) {
-            $allowed += ['strength' => '0.5'];
+            $allowed += ['strength' => '0.85'];
         }
 
         if( str_starts_with( (string) $model, 'sd3' ) )
