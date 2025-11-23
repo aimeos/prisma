@@ -16,7 +16,7 @@ class BedrockTest extends TestCase
         if( empty( $_ENV['BEDROCK_API_KEY'] ) ) {
             $this->markTestSkipped( 'BEDROCK_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testImagine() : void

@@ -16,7 +16,7 @@ class OpenaiTest extends TestCase
         if( empty( $_ENV['OPENAI_API_KEY'] ) ) {
             $this->markTestSkipped( 'OPENAI_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testDescribe() : void

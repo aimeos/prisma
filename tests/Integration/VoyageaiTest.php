@@ -16,7 +16,7 @@ class VoyageaiTest extends TestCase
         if( empty( $_ENV['VOYAGEAI_API_KEY'] ) ) {
             $this->markTestSkipped( 'VOYAGEAI_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testVectorize() : void

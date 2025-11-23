@@ -16,7 +16,7 @@ class StabilityaiTest extends TestCase
         if( empty( $_ENV['STABILITYAI_API_KEY'] ) ) {
             $this->markTestSkipped( 'STABILITYAI_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testErase() : void

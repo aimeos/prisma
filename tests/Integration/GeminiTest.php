@@ -16,7 +16,7 @@ class GeminiTest extends TestCase
         if( empty( $_ENV['GEMINI_API_KEY'] ) ) {
             $this->markTestSkipped( 'GEMINI_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testDescribe() : void

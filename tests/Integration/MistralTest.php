@@ -16,7 +16,7 @@ class MistralTest extends TestCase
         if( empty( $_ENV['MISTRAL_API_KEY'] ) ) {
             $this->markTestSkipped( 'MISTRAL_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testRecognize() : void

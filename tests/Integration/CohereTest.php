@@ -16,7 +16,7 @@ class CohereTest extends TestCase
         if( empty( $_ENV['COHERE_API_KEY'] ) ) {
             $this->markTestSkipped( 'COHERE_API_KEY is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testVectorize() : void
