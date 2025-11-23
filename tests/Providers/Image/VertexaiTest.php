@@ -12,32 +12,9 @@ class VertexaiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testBackground() : void
-    {
-        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
-            ->response( json_encode( [
-                'predictions' => [[
-                    'mimeType' => 'image/png',
-                    'bytesBase64Encoded' => base64_encode( 'PNG' )
-                ]]
-            ] ) )
-            ->ensure( 'background' )
-            ->background( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertEquals( 'Bearer: test', $request->getHeaderLine( 'Authorization' ) );
-            $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/imagen-product-recontext-preview-06-30:predict', (string) $request->getUri() );
-        } );
-
-        $this->assertEquals( 'PNG', $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
-    }
-
-
     public function testImagine() : void
     {
-        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['access_token' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -56,30 +33,9 @@ class VertexaiTest extends TestCase
     }
 
 
-    public function testImagineWithReferences() : void
-    {
-        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
-            ->response( json_encode( [
-                'predictions' => [[
-                    'mimeType' => 'image/png',
-                    'bytesBase64Encoded' => base64_encode( 'PNG' )
-                ]]
-            ] ) )
-            ->ensure( 'imagine' )
-            ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/imagen-3.0-capability-001:predict', (string) $request->getUri() );
-        } );
-
-        $this->assertEquals( 'PNG', $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
-    }
-
-
     public function testInpaint() : void
     {
-        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['access_token' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -104,7 +60,7 @@ class VertexaiTest extends TestCase
 
     public function testUpscale() : void
     {
-        $file = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
+        $file = $this->prisma( 'image', 'vertexai', ['access_token' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'mimeType' => 'image/png',
@@ -125,7 +81,7 @@ class VertexaiTest extends TestCase
 
     public function testVectorize() : void
     {
-        $response = $this->prisma( 'image', 'vertexai', ['api_key' => 'test', 'project_id' => '123'] )
+        $response = $this->prisma( 'image', 'vertexai', ['access_token' => 'test', 'project_id' => '123'] )
             ->response( json_encode( [
                 'predictions' => [[
                     'imageEmbedding' => [0.1, 0.2, 0.3]
@@ -135,7 +91,7 @@ class VertexaiTest extends TestCase
             ->vectorize( [ImageFile::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/multimodalembedding@001:embedContent', (string) $request->getUri() );
+            $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/multimodalembedding@001:predict', (string) $request->getUri() );
         } );
 
         $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );

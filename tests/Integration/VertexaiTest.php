@@ -9,16 +9,16 @@ use GuzzleHttp\Client;
 use Firebase\JWT\JWT;
 
 
-class VertexTest extends TestCase
+class VertexaiTest extends TestCase
 {
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
 
-        if( empty( $_ENV['VERTEX_API_JSON'] ) ) {
-            $this->markTestSkipped( 'VERTEX_API_JSON is not defined in the environment' );
+        if( empty( $_ENV['VERTEXAI_API_JSON'] ) ) {
+            $this->markTestSkipped( 'VERTEXAI_API_JSON is not defined in the environment' );
         }
-   }
+    }
 
 
     public function testImagine() : void
@@ -26,7 +26,7 @@ class VertexTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::image()
             ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEX_API_JSON'] ) ),
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
                 'project_id' => $_ENV['GOOGLE_PROJECT_ID']
             ] )
             ->ensure( 'imagine' )
@@ -45,7 +45,7 @@ class VertexTest extends TestCase
 
         $response = Prisma::image()
             ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEX_API_JSON'] ) ),
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
                 'project_id' => $_ENV['GOOGLE_PROJECT_ID']
             ] )
             ->ensure( 'inpaint' )
@@ -62,7 +62,7 @@ class VertexTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::image()
             ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEX_API_JSON'] ) ),
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
                 'project_id' => $_ENV['GOOGLE_PROJECT_ID']
             ] )
             ->ensure( 'upscale' )
@@ -80,7 +80,7 @@ class VertexTest extends TestCase
         $image = Image::fromBase64( $base64, 'image/png' );
         $response = Prisma::image()
             ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEX_API_JSON'] ) ),
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
                 'project_id' => $_ENV['GOOGLE_PROJECT_ID']
             ] )
             ->ensure( 'vectorize' )
