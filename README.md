@@ -35,8 +35,6 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ## Supported providers
 
-### Images
-
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
@@ -49,19 +47,21 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
 
-|                 | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | studio | uncrop | upscale | vectorize |
-| :---            | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
-| **Bedrock**     | -          | -        | -      | -     | beta    | beta    | beta    | -         | -        | -       | -      | -      | -       | beta      |
-| **Clipdrop**    | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes    | yes     | -         |
-| **Cohere**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
-| **Gemini**      | -          | beta     | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -      | -       | -         |
-| **Ideogram**    | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | -      | beta    | -         |
-| **Mistral**     | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -      | -       | -         |
-| **OpenAI**      | -          | beta     | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | -       | -         |
-| **RemoveBG**    | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | yes    | -      | -       | -         |
-| **StabilityAI** | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | -      | yes    | yes     | -         |
-| **VertexAI**    | beta       | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | -      | beta   | beta    | -         |
-| **VoyageAI**    | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
+### Images
+
+|                   | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | studio | uncrop | upscale | vectorize |
+| :---              | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
+| **Bedrock Titan** | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -      | -       | yes       |
+| **Clipdrop**      | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | -      | yes    | yes     | -         |
+| **Cohere**        | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
+| **Gemini**        | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -      | -       | -         |
+| **Ideogram**      | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | -      | beta    | -         |
+| **Mistral**       | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -      | -       | -         |
+| **OpenAI**        | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | -       | -         |
+| **RemoveBG**      | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | yes    | -      | -       | -         |
+| **StabilityAI**   | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | -      | yes    | yes     | -         |
+| **VertexAI**      | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | yes     | yes       |
+| **VoyageAI**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
 
 ## Installation
 
