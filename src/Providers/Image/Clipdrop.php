@@ -62,7 +62,7 @@ class Clipdrop extends Base
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $request = $this->request( ['prompt' => $prompt] );
-        $response = $this->client()->post( 'text-to-image/v1', $request );
+        $response = $this->client()->post( 'text-to-image/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -73,16 +73,6 @@ class Clipdrop extends Base
         $allowed = $this->allowed( $options, ['transparency_handling'] );
         $request = $this->request( $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'remove-background/v1', ['multipart' => $request] );
-
-        return $this->toFileResponse( $response );
-    }
-
-
-    public function studio( Image $image, array $options = [] ) : FileResponse
-    {
-        $allowed = $this->allowed( $options, ['background_color_choice', 'light_theta', 'light_phi', 'light_size', 'shadow_darkness'] );
-        $request = $this->request( $options, ['image_file' => $image] );
-        $response = $this->client()->post( 'product-photography/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
