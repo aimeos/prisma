@@ -41,7 +41,7 @@ class BedrockTest extends TestCase
         $response = Prisma::image()
             ->using( 'bedrock', ['api_key' => $_ENV['BEDROCK_API_KEY']])
             ->ensure( 'inpaint' )
-            ->inpaint( $image, $mask, 'add glasses' );
+            ->inpaint( $image, $mask, 'add eye glasses' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

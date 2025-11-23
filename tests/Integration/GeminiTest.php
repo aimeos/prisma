@@ -54,7 +54,7 @@ class GeminiTest extends TestCase
         $response = Prisma::image()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']])
             ->ensure( 'repaint' )
-            ->repaint( $image, 'add glasses' );
+            ->repaint( $image, 'add eye glasses' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

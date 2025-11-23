@@ -54,7 +54,7 @@ class OpenaiTest extends TestCase
         $response = Prisma::image()
             ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']])
             ->ensure( 'inpaint' )
-            ->inpaint( $image, $mask, 'add glasses' );
+            ->inpaint( $image, $mask, 'add eye glasses' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
