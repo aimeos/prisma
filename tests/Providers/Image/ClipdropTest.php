@@ -99,23 +99,6 @@ class ClipdropTest extends TestCase
     }
 
 
-    public function testStudio() : void
-    {
-        $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
-            ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
-            ->ensure( 'studio' )
-            ->studio( ImageFile::fromBinary( 'PNG', 'image/png' ) );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://clipdrop-api.co/product-photography/v1', (string) $request->getUri() );
-        } );
-
-        $this->assertEquals( 'PNG', $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
-    }
-
-
     public function testUncrop() : void
     {
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
