@@ -24,46 +24,19 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
 
     public function __construct( array $config )
     {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+        if( !isset( $config['access_token'] ) ) {
+            throw new PrismaException( sprintf( 'No access token' ) );
         }
 
         if( !isset( $config['project_id'] ) ) {
             throw new PrismaException( sprintf( 'No Google project ID' ) );
         }
 
-        $this->header( 'Authorization', 'Bearer: ' . $config['api_key'] );
+        $this->header( 'Authorization', 'Bearer ' . $config['access_token'] );
         $this->baseUrl( 'https://' . ( isset( $config['region'] ) ? $config['region'] . '-' : '' ) . 'aiplatform.googleapis.com' );
 
         $this->region = $config['region'] ?? 'global';
         $this->projectid = $config['project_id'];
-    }
-
-
-    public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
-    {
-        $model = $this->modelName( 'imagen-product-recontext-preview-06-30' );
-        $allowed = $this->allowed( $options, [
-            'addWatermark', 'enhancePrompt', 'outputOptions', 'personGeneration', 'safetySetting', 'seed', 'storageUri'
-        ] ) + ['sampleCount' => 1];
-
-        $request = [
-            'instances' => [[
-                'prompt' => $prompt,
-                'productImages' => [[
-                    'image' => [
-                        'bytesBase64Encoded' => $image->base64()
-                    ]
-                ]]
-            ]],
-            'parameters' => [
-                ...$allowed
-            ]
-        ];
-        $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':predict';
-        $response = $this->client()->post( $url, ['json' => $request] );
-
-        return $this->toFileResponse( $response );
     }
 
 
@@ -73,10 +46,11 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
         $allowed = $this->allowed( $options, [
             'addWatermark', 'aspectRatio', 'enhancePrompt', 'language', 'negativePrompt', 'outputOptions',
             'personGeneration', 'safetySetting', 'sampleImageSize', 'seed', 'storageUri'
-        ] ) + ['sampleCount' => 1];
+        ] );
 
         $instance = ['prompt' => $prompt];
 
+        /* Results in "Request contains an invalid argument" error
         if( !empty( $images ) )
         {
             $model = 'imagen-3.0-capability-001';
@@ -88,10 +62,11 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
                 ]
             ], $images );
         }
+        */
 
         $request = [
             'instances' => [$instance],
-            'parameters' => [...$allowed]
+            'parameters' => ['sampleCount' => 1] + $allowed
         ];
         $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':predict';
         $response = $this->client()->post( $url, ['json' => $request] );
@@ -106,7 +81,7 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
         $allowed = $this->allowed( $options, [
             'addWatermark', 'baseSteps', 'editMode', 'guidanceScale', 'includeRaiReason', 'includeSafetyAttributes',
             'language', 'negativePrompt', 'outputOptions', 'personGeneration', 'safetySetting', 'seed', 'storageUri'
-        ] ) + ['sampleCount' => 1];
+        ] );
 
         $request = [
             'instances' => [[
@@ -129,9 +104,7 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
                     ],
                 ]
             ]],
-            'parameters' => [
-                ...$allowed
-            ]
+            'parameters' => ['sampleCount' => 1] + $allowed
         ];
         $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':predict';
         $response = $this->client()->post( $url, ['json' => $request] );
@@ -147,6 +120,7 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
 
         $request = [
             'instances' => [[
+                'prompt' => 'Upscale this image',
                 'image' => [
                     'bytesBase64Encoded' => $image->base64()
                 ]
@@ -181,7 +155,7 @@ class Vertexai extends Base implements Background, Imagine, Inpaint, Upscale, Ve
                 'dimension' => $size ?? 512
             ]
         ];
-        $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':embedContent';
+        $url = 'v1/projects/' . $this->projectid . '/locations/' . $this->region . '/publishers/google/models/' . $model . ':predict';
         $response = $this->client()->post( $url, ['json' => $request] );
 
         $this->validate( $response );
