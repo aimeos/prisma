@@ -24,7 +24,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $this->header( 'OpenAI-Organization', $config['organization'] ?? null );
         $this->header( 'OpenAI-Project', $config['project'] ?? null );
         $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( 'https://api.openai.com' );
+        $this->baseUrl( $config['url'] ?? 'https://api.openai.com' );
     }
 
 

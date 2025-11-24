@@ -20,7 +20,7 @@ class Cohere extends Base implements Vectorize
 
         $this->header( 'Content-Type', 'application/json' );
         $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseurl( 'https://api.cohere.ai' );
+        $this->baseurl( $config['url'] ?? 'https://api.cohere.ai' );
     }
 
 

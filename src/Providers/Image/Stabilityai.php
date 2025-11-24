@@ -25,7 +25,7 @@ class Stabilityai extends Base
         }
 
         $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( 'https://api.stability.ai' );
+        $this->baseUrl( $config['url'] ?? 'https://api.stability.ai' );
     }
 
 

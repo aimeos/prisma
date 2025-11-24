@@ -19,7 +19,7 @@ class Mistral extends Base implements Recognize
         }
 
         $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( 'https://api.mistral.ai' );
+        $this->baseUrl( $config['url'] ?? 'https://api.mistral.ai' );
     }
 
 

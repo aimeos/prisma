@@ -16,7 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 {
-    private string $region;
+    private string $baseUrl;
 
 
     public function __construct( array $config )
@@ -25,17 +25,17 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             throw new PrismaException( sprintf( 'No API key' ) );
         }
 
-        $this->region = $config['region'] ?? 'us-east-1';
+        $this->baseUrl = 'https://bedrock-runtime.us-east-1.amazonaws.com';
 
         $this->header( 'Content-Type', 'application/json' );
         $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->baseUrl( $config['url'] ?? $this->baseUrl );
     }
 
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
-        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
         $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale', 'seed'] );
 
         $request = [
@@ -53,7 +53,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             $request['textToImageParams']['conditionImage'] = $image->base64();
         }
 
-        $response = $this->client()->post( $url, ['json' => $request] );
+        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -62,7 +62,6 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
-        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
         $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale'] );
 
         $request = [
@@ -77,7 +76,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
                 'numberOfImages' => 1,
             ] + $allowed
         ];
-        $response = $this->client()->post( $url, ['json' => $request] );
+        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -86,7 +85,6 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
-        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
 
         $request = [
             'taskType' => 'BACKGROUND_REMOVAL',
@@ -95,7 +93,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             ],
         ];
 
-        $response = $this->client()->post( $url, ['json' => $request] );
+        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
         return $this->toFileResponse( $response );
     }
@@ -105,11 +103,10 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
     {
         $promises = $vectors = [];
         $model = $this->modelName( 'amazon.titan-embed-image-v1' );
-        $url = 'https://bedrock-runtime.' . $this->region . '.amazonaws.com/model/' . $model . '/invoke';
 
         foreach( $images as $index => $image )
         {
-            $promises[$index] = $this->client()->postAsync( $url, [
+            $promises[$index] = $this->client()->postAsync( 'model/' . $model . '/invoke', [
                 'json' => [
                     "inputImage" => $image->base64(),
                     "embeddingConfig" => [
