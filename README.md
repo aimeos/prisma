@@ -26,7 +26,6 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#isolate">isolate</a><span>: Remove the image background</span></li>
     <li><a href="#relocate">relocate</a><span>: Place the foreground object on a new background</span></li>
     <li><a href="#repaint">repaint</a><span>: Repaint an image according to the prompt</span></li>
-    <li><a href="#studio">studio</a><span>: Create studio photo of the foreground object</span></li>
     <li><a href="#uncrop">uncrop</a><span>: Extend/outpaint the image</span></li>
     <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
     <li><a href="#vectorize">vectorize</a><span>: Creates embedding vectors from images</span></li>
@@ -49,19 +48,19 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Images
 
-|                   | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | studio | uncrop | upscale | vectorize |
-| :---              | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
-| **Bedrock Titan** | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -      | -       | yes       |
-| **Clipdrop**      | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | -      | yes    | yes     | -         |
-| **Cohere**        | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
-| **Gemini**        | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -      | -       | -         |
-| **Ideogram**      | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | -      | beta    | -         |
-| **Mistral**       | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -      | -       | -         |
-| **OpenAI**        | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | -       | -         |
-| **RemoveBG**      | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | yes    | -      | -       | -         |
-| **StabilityAI**   | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | -      | yes    | yes     | -         |
-| **VertexAI**      | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -      | yes     | yes       |
-| **VoyageAI**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -      | -       | yes       |
+|                   | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
+| :---              | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
+| **Bedrock Titan** | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
+| **Clipdrop**      | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
+| **Cohere**        | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
+| **Gemini**        | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
+| **Ideogram**      | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
+| **Mistral**       | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
+| **OpenAI**        | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
+| **RemoveBG**      | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
+| **StabilityAI**   | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
+| **VertexAI**      | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
+| **VoyageAI**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 
 ## Installation
 
@@ -569,36 +568,6 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 $response = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->repaint( $image, 'Use a van Goch style' );
-```
-
-### studio
-
-Create studio photo from the object in the foreground of the image.
-
-```php
-public function studio( Image $image, array $options = [] ) : FileResponse
-```
-
-* @param **Image** `$image` Input image object
-* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
-* @return **FileResponse** Response file
-
-**Supported options:**
-
-* Clipdrop
-* [RemoveBG](https://www.remove.bg/api#api-reference)
-
-**Example:**
-
-```php
-use Aimeos\Prisma\Prisma;
-use \Aimeos\Prisma\Files\Image;
-
-$image = Image::fromUrl( 'https://example.com/image.png' );
-
-$response = Prisma::image()
-    ->using( '<provider>', ['api_key' => 'xxx'])
-    ->studio( `$image` );
 ```
 
 ### uncrop

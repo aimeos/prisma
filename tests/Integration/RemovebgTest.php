@@ -47,18 +47,4 @@ class RemovebgTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/removebg_relocate.png', $response->binary() );
     }
-
-
-    public function testStudio() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/room.jpg' );
-        $response = Prisma::image()
-            ->using( 'removebg', ['api_key' => $_ENV['REMOVEBG_API_KEY']])
-            ->ensure( 'studio' )
-            ->studio( $image );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/removebg_studio.png', $response->binary() );
-    }
 }

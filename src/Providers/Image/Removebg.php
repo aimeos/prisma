@@ -4,7 +4,6 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Relocate;
-use Aimeos\Prisma\Contracts\Image\Studio;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
@@ -12,7 +11,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Removebg extends Base implements Isolate, Relocate, Studio
+class Removebg extends Base implements Isolate, Relocate
 {
     public function __construct( array $config )
     {
@@ -49,21 +48,6 @@ class Removebg extends Base implements Isolate, Relocate, Studio
         $allowed = $this->sanitize( $allowed, $this->options() );
 
         $request = $this->request( $allowed, ['image_file' => $image, 'bg_image_file' => $bgimage] );
-        $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
-
-        return $this->toFileResponse( $response );
-    }
-
-
-    public function studio( Image $image, array $options = [] ) : FileResponse
-    {
-        $allowed = $this->allowed( $options + ['shadow_type' => 'drop'], [
-            'add_shadow', 'bg_color', 'channels', 'crop', 'crop_margin', 'format', 'position', 'roi',
-            'scale', 'semitransparency', 'shadow_opacity', 'shadow_type', 'size', 'type', 'type_level'
-        ] );
-        $allowed = $this->sanitize( $allowed, $this->options() );
-
-        $request = $this->request( $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
