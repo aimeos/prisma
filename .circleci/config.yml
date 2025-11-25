@@ -60,6 +60,20 @@ jobs:
           key: php84-{{ checksum "composer.json" }}
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
+
+  "php-8.5":
+    docker:
+      - image: aimeos/ci-php:8.5
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - php85-{{ checksum "composer.json" }}
+      - run: composer update -n --prefer-dist
+      - save_cache:
+          key: php85-{{ checksum "composer.json" }}
+          paths: [./vendor]
+      - run: ./vendor/bin/phpunit
       - run: ./vendor/bin/phpstan
 
 workflows:
@@ -70,3 +84,4 @@ workflows:
       - "php-8.2"
       - "php-8.3"
       - "php-8.4"
+      - "php-8.5"
