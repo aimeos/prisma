@@ -19,7 +19,7 @@ class File
     protected ?string $mimeType = null;
 
 
-    final private function __construct()
+    final protected function __construct()
     {
     }
 
@@ -210,6 +210,17 @@ class File
 
 
     /**
+     * Returns the file URL.
+     *
+     * @return string|null File URL
+     */
+    public function url() : ?string
+    {
+        return $this->url;
+    }
+
+
+    /**
      * Sets the mime type.
      *
      * @param string|null $mimeType Mime type
@@ -219,16 +230,5 @@ class File
     {
         $this->mimeType = $mimeType;
         return $this;
-    }
-
-
-    /**
-     * Returns the file URL.
-     *
-     * @return string|null File URL
-     */
-    public function url() : ?string
-    {
-        return $this->url;
     }
 }
