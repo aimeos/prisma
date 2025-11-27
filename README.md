@@ -31,6 +31,10 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
     <li><a href="#vectorize">vectorize</a><span>: Creates embedding vectors from images</span></li>
 </ul>
+<div class="method-header"><a href="#custom-providers">Custom providers</a></div>
+<ul class="method-list">
+    <li><a href="#image-provider">Image provider</a></li>
+</ul>
 </nav>
 
 ## Supported providers
@@ -81,7 +85,7 @@ use Aimeos\Prisma\Prisma;
 $image = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->model( '<modelname>' ) // if model can be selected
-    ->ensure( 'imagine' )
+    ->ensure( 'imagine' ) // make sure interface is implemented
     ->imagine( 'a grumpy cat' )
     ->binary();
 ```
@@ -201,7 +205,7 @@ $file = $response->binary(); // from binary, base64 and URL, waits for async req
 $url = $response->url(); // only if URL is returned, otherwise NULL
 $mime = $response->mimetype(); // image mime type, waits for async requests
 $text = $response->description(); // image description if returned by provider
-$bool = $response->ready(); // False for async APIs until file is available (in loops with delay only!)
+$bool = $response->ready(); // False for async APIs until file is available
 ```
 
 URLs are automatically converted to binary and base64 data if requested and conversion between
@@ -216,7 +220,7 @@ $text = $response->text(); // text content (non-streaming)
 **VectorResponse** objects:
 
 ```php
-$vectors = $response->vectors(); // list of embedding vectors for the passed files in the same order
+$vectors = $response->vectors(); // embedding vectors for the passed files in the same order
 $vector = $response->first(); // first embedding vector if only one file has been passed
 ```
 
@@ -721,4 +725,86 @@ $vectorResponse = Prisma::image()
     ->vectorize( $images, 512 );
 
 $vectors = $vectorResponse->vectors();
+```
+
+## Custom providers
+
+### Image provider
+
+To create a custom Prisma image provider, use this skeleton and implement all
+[Prisma interfaces](https://github.com/aimeos/prisma/tree/master/src/Contracts/Image)
+supported by the API:
+
+```php
+<?php
+
+namespace Aimeos\Prisma\Providers\Image;
+
+use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\FileResponse;
+use Psr\Http\Message\ResponseInterface;
+
+
+class Myprovider extends Base implements Imagine
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( sprintf( 'No API key' ) );
+        }
+
+        // if authentication is done via headers
+        $this->header( '<api key name>', $config['api_key'] );
+        // base url for all requests (no paths)
+        $this->baseUrl( '<provider URL>' );
+    }
+
+
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    {
+        // filter key/value pairs in $options and use the ones allowed by the API
+        $allowed = $this->allow( $options, ['<key1>', '<key2>', /* ... */] );
+        // filter values to pass only allowed option values
+        $allowed = $this->sanitize( $allowed, ['<key1>' => ['<val1>', '<val2>', '<val3>']])
+
+        // Form data
+        $data = $this->request( allowed );
+        // Multipart data
+        $data = ['multipart' => $this->request( allowed, ['image_key' => $image->binary()] )];
+        // JSON data
+        $data = ['json' => ['image_key' => $image->base64()] + allowed];
+
+        // use Guzzle to send the request and get the response from the server
+        $response = $this->client()->post( 'relative/path', $data );
+        return $this->toFileResponse( $response );
+    }
+
+
+    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    {
+        // from Base class, overwrite as needed
+        $this->validate( $response );
+
+        // use binary content or decode JSON content
+        $content = $response->getBody()->getContents();
+
+        // if mime type is available in header
+        $mimetype = $response->getHeaderLine( 'Content-Type' );
+
+        // use fromBinary(), fromBase64() or fromUrl()
+        return FileResponse::fromBinary( content, mimetype )
+            ->withDescription(
+                '' // <optional, if available
+            )
+            ->withUsage(
+                $total, // used tokens, credits, etc. if available or NULL
+                [] // key/value pairs of the rest of the usage data
+            )
+            ->withMeta(
+                [] // if meta data are available as key/value pairs
+            );
+    }
 ```
