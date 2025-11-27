@@ -14,6 +14,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
     <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
+    <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
 </ul>
 <div class="method-header"><a href="#image-api">Image API</a></div>
 <ul class="method-list">
@@ -187,6 +188,56 @@ public function withSystemPrompt( ?string $prompt ) : self
     ->withSystemPrompt( 'You are a professional illustrator' );
 ```
 
+### Response objects
+
+The methods return a *FileResponse*, *TextResponse* or *VectorResponse* object that
+contains the returned data with optional meta/usage/description information.
+
+**FileResponse** objects:
+
+```php
+$base64 = $response->base64(); // from binary, base64 and URL, waits for async requests
+$file = $response->binary(); // from binary, base64 and URL, waits for async requests
+$url = $response->url(); // only if URL is returned, otherwise NULL
+$mime = $response->mimetype(); // image mime type, waits for async requests
+$text = $response->description(); // image description if returned by provider
+$bool = $response->ready(); // False for async APIs until file is available (in loops with delay only!)
+```
+
+URLs are automatically converted to binary and base64 data if requested and conversion between
+binary and base64 data is done on request too.
+
+**TextResponse** objects:
+
+```php
+$text = $response->text(); // text content (non-streaming)
+```
+
+**VectorResponse** objects:
+
+```php
+$vectors = $response->vectors(); // list of embedding vectors for the passed files in the same order
+$vector = $response->first(); // first embedding vector if only one file has been passed
+```
+
+Included **meta data** (optional):
+
+```php
+$meta = $response->meta();
+```
+
+It returns an associative array whose content totally depends on the provider.
+
+Included **usage data** (optional):
+
+```php
+$usage = $response->usage();
+```
+
+It returns an associative array whose content depends on the provider. If the provider returns
+usage information, the `used` array key is available and contains a number. What the number
+represents depdends on the provider too.
+
 ## Image API
 
 Most methods require an image object as input which contains a reference to the image that
@@ -210,38 +261,6 @@ content will be retrieved to determine the mime type if reqested.
 **Note:** It's best to use **fromUrl()** if possible because all other formats (binary and
 base64) can be derived from the URL content but URLs can't be created from binary/base64
 data.
-
-The methods return a FileResponse or TextResponse object that contains the returned data
-and optional meta and usage data.
-
-**File data** is available by:
-
-```php
-$file = $response->binary(); // from binary, base64 and URL
-$base64 = $response->base64(); // from binary, base64 and URL
-$url = $response->url(); // only if URL is returned, otherwise NULL
-```
-
-URLs are automatically converted to binary and base64 data if requested and conversion between
-binary and base64 data is done on request too.
-
-**Meta data** is available by:
-
-```php
-$meta = $response->meta();
-```
-
-It returns an associative array whose content totally depends on the provider.
-
-**Usage data** is available by:
-
-```php
-$usage = $response->usage();
-```
-
-It returns an associative array whose content depends on the provider. If the provider returns
-usage information, the **used** array key is available and contains a number. What the number
-represents depdends on the provider too.
 
 ### background
 
@@ -270,9 +289,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->background( $image, 'Golden sunset on a caribbean beach' );
+
+$image = $fileResponse->binary();
 ```
 
 ### describe
@@ -302,9 +323,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$textResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->describe( $image, 'de' );
+
+$text = $textResponse->text();
 ```
 
 ### detext
@@ -331,9 +354,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->detext( `$image` );
+
+$image = $fileResponse->binary();
 ```
 
 ### erase
@@ -366,9 +391,11 @@ use \Aimeos\Prisma\Files\Image;
 $image = Image::fromUrl( 'https://example.com/image.png' );
 $mask = Image::fromBinary( 'PNG...' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->erase( $image, $mask );
+
+$image = $fileResponse->binary();
 ```
 
 ### imagine
@@ -386,8 +413,8 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
-* [Bedrock](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
-* [Black Forest Labs](https://docs.bfl.ai/flux_2/flux2_text_to_image#configuration)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
@@ -404,9 +431,11 @@ public function imagine( string $prompt, array $images = [], array $options = []
 ```php
 use Aimeos\Prisma\Prisma;
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->imagine( 'Futuristic robot looking at a dashboard' );
+
+$image = $fileResponse->binary();
 ```
 
 ### inpaint
@@ -446,9 +475,11 @@ use \Aimeos\Prisma\Files\Image;
 $image = Image::fromUrl( 'https://example.com/image.png' );
 $mask = Image::fromBinary( 'PNG...' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->inpaint( $image, $mask, 'add a pink flamingo' );
+
+$image = $fileResponse->binary();
 ```
 
 ### isolate
@@ -478,9 +509,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->isolate( `$image` );
+
+$image = $fileResponse->binary();
 ```
 
 ### recognize
@@ -507,9 +540,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$textTesponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->recognize( `$image` );
+
+$text = $textResponse->text();
 ```
 
 ### relocate
@@ -538,9 +573,11 @@ use \Aimeos\Prisma\Files\Image;
 $image = Image::fromUrl( 'https://example.com/image.png' );
 $bgimage = Image::fromUrl( 'https://example.com/background.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->relocate( $image, $bgimage );
+
+$image = $fileResponse->binary();
 ```
 
 ### repaint
@@ -569,9 +606,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->repaint( $image, 'Use a van Goch style' );
+
+$image = $fileResponse->binary();
 ```
 
 ### uncrop
@@ -604,9 +643,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->uncrop( $image, 100, 200, 0, 50 );
+
+$image = $fileResponse->binary();
 ```
 
 ### upscale
@@ -637,9 +678,11 @@ use \Aimeos\Prisma\Files\Image;
 
 $image = Image::fromUrl( 'https://example.com/image.png' );
 
-$response = Prisma::image()
+$fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->upscale( $image, 4 );
+
+$image = $fileResponse->binary();
 ```
 
 ### vectorize
@@ -673,8 +716,9 @@ $images = [
     Image::fromUrl( 'https://example.com/image2.png' ),
 ];
 
-$vectors = Prisma::image()
+$vectorResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->vectorize( $images, 512 )
-    ->vectors();
+    ->vectorize( $images, 512 );
+
+$vectors = $vectorResponse->vectors();
 ```
