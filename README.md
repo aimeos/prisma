@@ -35,6 +35,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 ## Supported providers
 
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
+- [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
@@ -48,19 +49,20 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Images
 
-|                   | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
-| :---              | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
-| **Bedrock Titan** | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
-| **Clipdrop**      | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
-| **Cohere**        | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **Gemini**        | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
-| **Ideogram**      | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
-| **Mistral**       | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
-| **OpenAI**        | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
-| **RemoveBG**      | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
-| **StabilityAI**   | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
-| **VertexAI**      | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
-| **VoyageAI**      | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
+|                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
+| :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
+| **Bedrock Titan**     | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
+| **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | beta   | -       | -         |
+| **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
+| **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
+| **Gemini**            | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
+| **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
+| **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
+| **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
+| **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
+| **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
+| **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
+| **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 
 ## Installation
 
@@ -384,7 +386,8 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
-* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Bedrock](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
+* [Black Forest Labs](https://docs.bfl.ai/flux_2/flux2_text_to_image#configuration)
 * Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
@@ -426,6 +429,7 @@ to edit.
 **Supported options:**
 
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
 * [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
@@ -588,6 +592,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 
 **Supported options:**
 
+* [Black Forest Labs](https://docs.bfl.ai/api-reference/models/expand-an-image-by-adding-pixels-on-any-side)
 * Clipdrop
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
 
