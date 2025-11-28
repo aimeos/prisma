@@ -733,7 +733,7 @@ $vectors = $vectorResponse->vectors();
 
 To create a custom Prisma image provider, use this skeleton and implement all
 [Prisma interfaces](https://github.com/aimeos/prisma/tree/master/src/Contracts/Image)
-supported by the API:
+supported by the remote API:
 
 ```php
 <?php
@@ -796,15 +796,15 @@ class Myprovider extends Base implements Imagine
 
         // use fromBinary(), fromBase64() or fromUrl()
         return FileResponse::fromBinary( content, mimetype )
-            ->withDescription(
-                '' // <optional, if available
+            ->withDescription( // optional
+                '' // image description if returned
             )
-            ->withUsage(
-                $total, // used tokens, credits, etc. if available or NULL
-                [] // key/value pairs of the rest of the usage data
+            ->withUsage( // optional
+                100, // used tokens, credits, etc. if available or NULL
+                [] // key/value pairs for the rest of the usage data
             )
-            ->withMeta(
-                [] // if meta data are available as key/value pairs
+            ->withMeta( // optional
+                [] // meta data as key/value pairs
             );
     }
 ```
