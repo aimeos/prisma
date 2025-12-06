@@ -33,13 +33,13 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $response = $this->client()->post( 'v1/responses', ['json' => [
             'model' => $this->modelName( 'gpt-5' ),
             'input' => [[
-                "role" => "user",
-                "content" => [[
-                    "type" => "input_text",
-                    "text" => "Short summary of the image in the language of ISO code \"" . ($lang ?? 'en') . "\"."
+                'role' => 'user',
+                'content' => [[
+                    'type' => 'input_text',
+                    'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ($lang ?? 'en') . '".'
                 ], [
-                    "type" => "input_image",
-                    "image_url" => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
+                    'type' => 'input_image',
+                    'image_url' => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
                 ]]
             ]]
         ]] );
@@ -96,11 +96,11 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     protected function mask( Image $image ) : Image
     {
         if( ( $mask = imagecreatefromstring( (string) $image->binary() ) ) === false ) {
-            throw new PrismaException( "Invalid image/mask data" );
+            throw new PrismaException( 'Invalid image/mask data' );
         }
 
         if( ( $stream = fopen( 'php://memory', 'r+' ) ) === false ) {
-            throw new PrismaException( "Unable to create image stream" );
+            throw new PrismaException( 'Unable to create image stream' );
         }
 
         imagesavealpha( $mask, true );
@@ -110,7 +110,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $height = imagesy( $mask );
 
         if( ( $transparent = imagecolorallocatealpha( $mask, 255, 255, 255, 127 ) ) === false ) {
-            throw new PrismaException( "Unable to allocate transparent color" );
+            throw new PrismaException( 'Unable to allocate transparent color' );
         }
 
         for( $y = 0; $y < $height; $y++ )

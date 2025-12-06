@@ -36,7 +36,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
                         'data' => $image->base64(),
                         'mimeType' => $image->mimeType()
                     ]],
-                    ['text' => 'Short summary of the image in the language of ISO code "' . ( $lang ?? 'en' ) . '".']
+                    ['text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '".']
                 ]
             ]],
             'generationConfig' => [
