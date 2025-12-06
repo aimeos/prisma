@@ -70,7 +70,18 @@ class Prisma
 
 
     /**
-     * Creates a new Prisma factory instance for image generation.
+     * Creates a new Prisma factory instance for audio processing.
+     *
+     * @return self
+     */
+    public static function audio() : self
+    {
+        return new self( 'audio' );
+    }
+
+
+    /**
+     * Creates a new Prisma factory instance for image processing.
      *
      * @return self
      */
