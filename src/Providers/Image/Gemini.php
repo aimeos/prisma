@@ -7,7 +7,7 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -15,17 +15,6 @@ use Psr\Http\Message\ResponseInterface;
 
 class Gemini extends Base implements Describe, Imagine, Repaint
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
-        }
-
-        $this->header( 'x-goog-api-key', (string) $config['api_key'] );
-        $this->baseUrl( 'https://generativelanguage.googleapis.com' );
-    }
-
-
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $model = $this->modelName( 'gemini-3-pro-image-preview' );
@@ -127,26 +116,5 @@ class Gemini extends Base implements Describe, Imagine, Repaint
         return FileResponse::fromBase64( $base64, $mimeType )
             ->withMeta( $data['metadata'] ?? [] )
             ->withDescription( $description );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
-        {
-            case 400:
-            case 404: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-            case 401:
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-        }
     }
 }
