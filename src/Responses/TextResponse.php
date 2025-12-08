@@ -14,6 +14,8 @@ class TextResponse
     use HasMeta, HasUsage;
 
 
+    /** @var array<string|int, mixed> */
+    private array $structured = [];
     private ?string $text = null;
 
 
@@ -31,9 +33,20 @@ class TextResponse
     public static function fromText( ?string $text ) : self
     {
         $instance = new self;
-        $instance->text = $text;
+        $instance->text = !is_null( $text ) ? trim( $text ) : null;
 
         return $instance;
+    }
+
+
+    /**
+     * Get the structured data.
+     *
+     * @return array<string|int, mixed> Structured data
+     */
+    public function structured() : array
+    {
+        return $this->structured;
     }
 
 
@@ -45,5 +58,18 @@ class TextResponse
     public function text() : ?string
     {
         return $this->text;
+    }
+
+
+    /**
+     * Sets the structured data.
+     *
+     * @param array<string|int, mixed> $structured Structured data
+     * @return static TextResponse instance
+     */
+    public function withStructured( array $structured ) : static
+    {
+        $this->structured = $structured;
+        return $this;
     }
 }
