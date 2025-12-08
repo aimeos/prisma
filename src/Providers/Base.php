@@ -295,6 +295,33 @@ abstract class Base implements Provider
 
 
     /**
+     * Throws an exception based on the HTTP status code.
+     *
+     * @param int $status HTTP status code
+     * @param string $message Error message
+     * @throws \Aimeos\Prisma\Exceptions\BadRequestException
+     * @throws \Aimeos\Prisma\Exceptions\UnauthorizedException
+     * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
+     * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
+     * @throws \Aimeos\Prisma\Exceptions\NotFoundException
+     * @throws \Aimeos\Prisma\Exceptions\RateLimitException
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException
+     */
+    protected function throw( int $status, string $message ) : void
+    {
+        switch( $status )
+        {
+            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $message );
+            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $message );
+            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $message );
+            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $message );
+            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
+            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $message );
+            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $message );
+        }
+    }
+
+    /**
      * Validates the HTTP response.
      *
      * @param ResponseInterface $response HTTP response
