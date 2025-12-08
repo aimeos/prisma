@@ -3,6 +3,7 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 
@@ -19,13 +20,25 @@ class MistralTest extends TestCase
     }
 
 
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsString( 'Hello', $response->text() );
+    }
+
+
     public function testRecognize() : void
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
-        $response = Prisma::image()
+        $audio = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
+        $response = Prisma::audio()
             ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
             ->ensure( 'recognize' )
-            ->recognize( $image );
+            ->recognize( $audio );
 
         $this->assertEquals( 'This is text', $response->text() );
     }
