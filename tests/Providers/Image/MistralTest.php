@@ -59,6 +59,6 @@ class MistralTest extends TestCase
             $this->assertEquals( 'https://api.mistral.ai/v1/ocr', (string) $request->getUri() );
         } );
 
-        $this->assertEquals( "A test document\n\n\n![img-0.jpeg](img-0.jpeg)\nFigure 1: Illustration\n", $response->text() );
+        $this->assertEquals( "A test document\n\n\n![img-0.jpeg](img-0.jpeg)\nFigure 1: Illustration", $response->text() );
     }
 }
