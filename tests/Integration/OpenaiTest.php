@@ -20,7 +20,19 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testDescribe() : void
+    public function testDescribeAudio() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
+    public function testDescribeImage() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::image()
