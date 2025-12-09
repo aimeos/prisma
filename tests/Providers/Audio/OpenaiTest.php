@@ -36,6 +36,21 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testSpeak() : void
+    {
+        $response = $this->prisma( 'audio', 'openai', ['api_key' => 'test'] )
+            ->response( 'MP3' )
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.', ['test'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.openai.com/v1/audio/speech', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'MP3', $response->binary() );
+    }
+
+
     public function testTranscribe() : void
     {
         $response = $this->prisma( 'audio', 'openai', ['api_key' => 'test'] )
