@@ -305,6 +305,7 @@ abstract class Base implements Provider
      * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
      * @throws \Aimeos\Prisma\Exceptions\NotFoundException
      * @throws \Aimeos\Prisma\Exceptions\RateLimitException
+     * @throws \Aimeos\Prisma\Exceptions\OverloadedException
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
     protected function throw( int $status, string $message ) : void
@@ -317,6 +318,7 @@ abstract class Base implements Provider
             case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $message );
             case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
             case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $message );
+            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $message );
         }
     }
@@ -331,6 +333,7 @@ abstract class Base implements Provider
      * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
      * @throws \Aimeos\Prisma\Exceptions\NotFoundException
      * @throws \Aimeos\Prisma\Exceptions\RateLimitException
+     * @throws \Aimeos\Prisma\Exceptions\OverloadedException
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
     protected function validate( ResponseInterface $response ) : void

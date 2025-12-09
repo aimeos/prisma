@@ -7,7 +7,7 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Openai as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -15,19 +15,6 @@ use Psr\Http\Message\ResponseInterface;
 
 class Openai extends Base implements Describe, Imagine, Inpaint
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
-        }
-
-        $this->header( 'OpenAI-Organization', $config['organization'] ?? null );
-        $this->header( 'OpenAI-Project', $config['project'] ?? null );
-        $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.openai.com' );
-    }
-
-
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $response = $this->client()->post( 'v1/responses', ['json' => [
@@ -215,24 +202,5 @@ class Openai extends Base implements Describe, Imagine, Inpaint
                 $result['usage'] ?? [],
             )
             ->withMeta( $meta );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
-        {
-            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-        }
     }
 }

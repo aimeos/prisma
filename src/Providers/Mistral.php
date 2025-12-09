@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Providers\Base;
 use Psr\Http\Message\ResponseInterface;
 
 
