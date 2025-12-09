@@ -3,15 +3,15 @@
 namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Describe;
+use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Openai as Base;
+use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
-class Openai extends Base implements Describe, Transcribe
+class Openai extends Base implements Describe, Speak, Transcribe
 {
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
@@ -35,6 +35,25 @@ class Openai extends Base implements Describe, Transcribe
                 $data['usage']['total_tokens'] ?? null,
                 $data['usage'] ?? [],
             );
+    }
+
+
+    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'gpt-4o-mini-tts' );
+        $allowed = $this->allowed( $options, ['instructions', 'response_format', 'speed'] );
+
+        $available = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'];
+        $available = array_intersect( $voice, $available );
+        $selected = current( $available ) ?: 'alloy';
+
+        $request = ['model' => $model, 'input' => $text, 'voice' => $selected] + $allowed;
+        $response = $this->client()->post( '/v1/audio/speech', ['json' => $request] );
+
+        $this->validate( $response );
+
+        $mimetype = $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg';
+        return FileResponse::fromBinary( $response->getBody()->getContents(), $mimetype );
     }
 
 

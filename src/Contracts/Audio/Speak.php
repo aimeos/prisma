@@ -1,0 +1,19 @@
+<?php
+
+namespace Aimeos\Prisma\Contracts\Audio;
+
+use Aimeos\Prisma\Responses\FileResponse;
+
+
+interface Speak
+{
+    /**
+     * Text to speech.
+     *
+     * @param string $text Text to be converted to speech
+     * @param array<int, string> $voice Prioritized list of voice identifiers for speech synthesis
+     * @param array<string, mixed> $options Provider specific options
+     * @return FileResponse Audio file response
+     */
+    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse;
+}
