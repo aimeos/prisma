@@ -1,0 +1,40 @@
+<?php
+
+namespace Tests\Providers\Audio;
+
+use Aimeos\Prisma\Files\Audio;
+use PHPUnit\Framework\TestCase;
+use Tests\MakesPrismaRequests;
+
+
+class ElevenlabsTest extends TestCase
+{
+    use MakesPrismaRequests;
+
+
+    public function testTranscribe() : void
+    {
+        $response = $this->prisma( 'audio', 'elevenlabs', ['api_key' => 'test'] )
+            ->response( '{
+                "language_code": "en",
+                "language_probability": 0.98,
+                "text": "Hello",
+                "words": [{
+                    "text": "Hello",
+                    "start": 0,
+                    "end": 0.5,
+                    "type": "word",
+                    "speaker_id": "speaker_1",
+                    "logprob": -0.124
+                }]
+            }' )
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.elevenlabs.io/v1/speech-to-text', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'Hello', $response->text() );
+    }
+}
