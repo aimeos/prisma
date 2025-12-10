@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -32,7 +32,7 @@ class OpenaiTest extends TestCase
                 }
             }' )
             ->ensure( 'describe' )
-            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
@@ -93,8 +93,8 @@ class OpenaiTest extends TestCase
             ] ) )
             ->ensure( 'inpaint' )
             ->inpaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBase64( $base64, 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBase64( $base64, 'image/png' ),
                 'prompt'
             );
 

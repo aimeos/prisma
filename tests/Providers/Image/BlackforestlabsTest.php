@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -33,7 +33,7 @@ class BlackforestlabsTest extends TestCase
         $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC' );
         $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
             ->ensure( 'imagine' )
-            ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->imagine( 'prompt', [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
@@ -69,8 +69,8 @@ class BlackforestlabsTest extends TestCase
         $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
             ->ensure( 'inpaint' )
             ->inpaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
                 'prompt'
             );
 
@@ -105,7 +105,7 @@ class BlackforestlabsTest extends TestCase
         $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC' );
         $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
             ->ensure( 'uncrop' )
-            ->uncrop( ImageFile::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
+            ->uncrop( Image::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.bfl.ai/v1/flux-pro-1.0-expand', (string) $request->getUri() );

@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -27,7 +27,7 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'background' )
-            ->background( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
+            ->background( Image::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
@@ -59,7 +59,7 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'describe' )
-            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.ideogram.ai/describe', (string) $request->getUri() );
@@ -78,7 +78,7 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'imagine' )
-            ->imagine( 'prompt', [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->imagine( 'prompt', [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/generate', (string) $request->getUri() );
@@ -99,8 +99,8 @@ class IdeogramTest extends TestCase
             }' )
             ->ensure( 'inpaint' )
             ->inpaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
                 'prompt'
             );
 
@@ -123,7 +123,7 @@ class IdeogramTest extends TestCase
             }' )
             ->ensure( 'repaint' )
             ->repaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
                 'prompt'
             );
 
@@ -145,7 +145,7 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 2 );
+            ->upscale( Image::fromBinary( 'PNG', 'image/png' ), 2 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.ideogram.ai/upscale', (string) $request->getUri() );

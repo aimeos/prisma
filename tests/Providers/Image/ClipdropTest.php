@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -17,7 +17,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'background' )
-            ->background( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
+            ->background( Image::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
@@ -36,7 +36,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'detext' )
-            ->detext( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->detext( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/remove-text/v1', (string) $request->getUri() );
@@ -53,7 +53,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'erase' )
-            ->erase( ImageFile::fromBinary( 'PNG', 'image/png' ), ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->erase( Image::fromBinary( 'PNG', 'image/png' ), Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/cleanup/v1', (string) $request->getUri() );
@@ -87,7 +87,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'isolate' )
-            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/remove-background/v1', (string) $request->getUri() );
@@ -104,7 +104,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'uncrop' )
-            ->uncrop( ImageFile::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
+            ->uncrop( Image::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/uncrop/v1', (string) $request->getUri() );
@@ -122,7 +122,7 @@ class ClipdropTest extends TestCase
         $file = $this->prisma( 'image', 'clipdrop', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'x-credits-consumed' => 1, 'x-remaining-credits' => 99] )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBase64( $base64, 'image/png' ), 2 );
+            ->upscale( Image::fromBase64( $base64, 'image/png' ), 2 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://clipdrop-api.co/image-upscaling/v1/upscale', (string) $request->getUri() );

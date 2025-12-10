@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -36,7 +36,7 @@ class CohereTest extends TestCase
                 }
             }' )
             ->ensure( 'vectorize' )
-            ->vectorize( [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->vectorize( [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );

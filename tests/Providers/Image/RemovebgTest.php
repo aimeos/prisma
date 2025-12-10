@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -17,7 +17,7 @@ class RemovebgTest extends TestCase
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png', 'X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'] )
             ->ensure( 'isolate' )
-            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
@@ -37,7 +37,7 @@ class RemovebgTest extends TestCase
         $file = $this->prisma( 'image', 'removebg', ['api_key' => 'test'] )
             ->response( 'PNG', ['Content-Type' => 'image/png'] )
             ->ensure( 'relocate' )
-            ->relocate( ImageFile::fromBinary( 'PNG', 'image/png' ), ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->relocate( Image::fromBinary( 'PNG', 'image/png' ), Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.remove.bg/v1.0/removebg', (string) $request->getUri() );

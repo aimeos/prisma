@@ -8,7 +8,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 interface Speak
 {
     /**
-     * Text to speech.
+     * Converts text to speech.
      *
      * @param string $text Text to be converted to speech
      * @param array<int, string> $voice Prioritized list of voice identifiers for speech synthesis

@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -47,8 +47,8 @@ class BedrockTest extends TestCase
             }' )
             ->ensure( 'inpaint' )
             ->inpaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBase64( $base64, 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBase64( $base64, 'image/png' ),
                 'prompt'
             );
 
@@ -71,7 +71,7 @@ class BedrockTest extends TestCase
                 "error": "only on failure"
             }' )
             ->ensure( 'isolate' )
-            ->isolate( ImageFile::fromBinary( 'PNG', 'image/png' ) );
+            ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-image-generator-v2:0/invoke', (string) $request->getUri() );
@@ -90,7 +90,7 @@ class BedrockTest extends TestCase
                 'metadata' => []
             ] ) )
             ->ensure( 'vectorize' )
-            ->vectorize( [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->vectorize( [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-embed-image-v1/invoke', (string) $request->getUri() );

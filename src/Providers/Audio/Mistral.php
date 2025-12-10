@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Mistral as Base;
 use Aimeos\Prisma\Responses\TextResponse;

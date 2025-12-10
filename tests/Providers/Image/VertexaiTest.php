@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -44,8 +44,8 @@ class VertexaiTest extends TestCase
             ] ) )
             ->ensure( 'inpaint' )
             ->inpaint(
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
-                ImageFile::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
                 'prompt'
             );
 
@@ -68,7 +68,7 @@ class VertexaiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'upscale' )
-            ->upscale( ImageFile::fromBinary( 'PNG', 'image/png' ), 5 );
+            ->upscale( Image::fromBinary( 'PNG', 'image/png' ), 5 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/imagen-4.0-upscale-preview:predict', (string) $request->getUri() );
@@ -88,7 +88,7 @@ class VertexaiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'vectorize' )
-            ->vectorize( [ImageFile::fromBinary( 'PNG', 'image/png' )] );
+            ->vectorize( [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://aiplatform.googleapis.com/v1/projects/123/locations/global/publishers/google/models/multimodalembedding@001:predict', (string) $request->getUri() );

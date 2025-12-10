@@ -312,6 +312,7 @@ abstract class Base implements Provider
     {
         switch( $status )
         {
+            case 422:
             case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $message );
             case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $message );
             case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $message );

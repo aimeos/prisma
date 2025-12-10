@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Audio;
 
-use Aimeos\Prisma\Files\Audio as AudioFile;
+use Aimeos\Prisma\Files\Audio;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -25,7 +25,7 @@ class GeminiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'describe' )
-            ->describe( AudioFile::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
+            ->describe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', (string) $request->getUri() );

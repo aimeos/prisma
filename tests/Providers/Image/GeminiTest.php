@@ -2,7 +2,7 @@
 
 namespace Tests\Providers\Image;
 
-use Aimeos\Prisma\Files\Image as ImageFile;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -25,7 +25,7 @@ class GeminiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'describe' )
-            ->describe( ImageFile::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent', (string) $request->getUri() );
@@ -82,7 +82,7 @@ class GeminiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'repaint' )
-            ->repaint( ImageFile::fromBinary( 'PNG', 'image/png' ), 'prompt' );
+            ->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'prompt' );
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
