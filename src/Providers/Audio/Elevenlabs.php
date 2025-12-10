@@ -2,15 +2,17 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Elevenlabs extends Base implements Transcribe
+class Elevenlabs extends Base implements Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -20,6 +22,28 @@ class Elevenlabs extends Base implements Transcribe
 
         $this->header( 'xi-api-key', $config['api_key'] );
         $this->baseUrl( $config['url'] ?? 'https://api.elevenlabs.io' );
+    }
+
+
+    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'eleven_multilingual_v2' );
+        $voice = array_filter( $voice, fn( $id ) => strlen( $id ) === 20 );
+        $selected = current( $voice ) ?: 'JBFqnCBsd6RMkjVDRZzb';
+
+        $allowed = $this->allowed( $options, [
+            'language_code', 'voice_settings', 'pronunciation_dictionary_locators', 'seed',
+            'previous_text', 'next_text', 'previous_request_ids', 'next_request_ids',
+            'apply_text_normalization', 'apply_language_text_normalization'
+        ] );
+
+        $request = ['model_id' => $model, 'text' => $text] + $allowed;
+        $response = $this->client()->post( '/v1/text-to-speech/' . $selected, ['json' => $request] );
+
+        $this->validate( $response );
+
+        $mimetype = $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg';
+        return FileResponse::fromBinary( $response->getBody()->getContents(), $mimetype );
     }
 
 

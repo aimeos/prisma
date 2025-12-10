@@ -19,6 +19,19 @@ class ElevenlabsTest extends TestCase
     }
 
 
+    public function testSpeak() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'elevenlabs', ['api_key' => $_ENV['ELEVENLABS_API_KEY']])
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.', ['test'] );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/elevenlabs_speak.mp3', $response->binary() );
+    }
+
+
     public function testTranscribe() : void
     {
         $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
