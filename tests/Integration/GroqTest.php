@@ -19,6 +19,18 @@ class GroqTest extends TestCase
     }
 
 
+    public function testDescribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = Prisma::audio()

@@ -12,6 +12,30 @@ class GroqTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testDescribe() : void
+    {
+        $prisma = $this->prisma( 'audio', 'groq', ['api_key' => 'test'] );
+        $prisma->response( json_encode( [
+            'text' => 'an audio description'
+        ] ) );
+        $response = $prisma->response( json_encode( [
+            'choices' => [[
+                'message' => [
+                    'content' => 'an audio description'
+                ]
+            ]]
+        ] ) )
+            ->ensure( 'describe' )
+            ->describe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.groq.com/openai/v1/audio/transcriptions', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'an audio description', $response->text() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = $this->prisma( 'audio', 'groq', ['api_key' => 'test'] )
