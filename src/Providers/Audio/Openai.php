@@ -24,7 +24,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
                 ['role' => 'user', 'content' => $cmd . "\n" . $text]
             ]
         ];
-        $response = $this->client()->post( '/v1/chat/completions', ['json' => $request] );
+        $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
         $data = json_decode($response->getBody(), true) ?: [];
 
         $meta = $data;
@@ -48,7 +48,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
         $selected = current( $available ) ?: 'alloy';
 
         $request = ['model' => $model, 'input' => $text, 'voice' => $selected] + $allowed;
-        $response = $this->client()->post( '/v1/audio/speech', ['json' => $request] );
+        $response = $this->client()->post( 'v1/audio/speech', ['json' => $request] );
 
         $this->validate( $response );
 
@@ -72,7 +72,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
         }
 
         $request = $this->request( ['model' => $model] + $allowed, ['file' => $audio] );
-        $response = $this->client()->post( '/v1/audio/transcriptions', ['multipart' => $request] );
+        $response = $this->client()->post( 'v1/audio/transcriptions', ['multipart' => $request] );
 
         $this->validate( $response );
 
