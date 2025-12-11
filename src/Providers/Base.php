@@ -304,6 +304,7 @@ abstract class Base implements Provider
      * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
      * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
      * @throws \Aimeos\Prisma\Exceptions\NotFoundException
+     * @throws \Aimeos\Prisma\Exceptions\SizeException
      * @throws \Aimeos\Prisma\Exceptions\RateLimitException
      * @throws \Aimeos\Prisma\Exceptions\OverloadedException
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
@@ -318,11 +319,13 @@ abstract class Base implements Provider
             case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $message );
             case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $message );
             case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
+            case 413: throw new \Aimeos\Prisma\Exceptions\SizeException( $message );
             case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $message );
             case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $message );
         }
     }
+
 
     /**
      * Validates the HTTP response.
@@ -333,6 +336,7 @@ abstract class Base implements Provider
      * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
      * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
      * @throws \Aimeos\Prisma\Exceptions\NotFoundException
+     * @throws \Aimeos\Prisma\Exceptions\SizeException
      * @throws \Aimeos\Prisma\Exceptions\RateLimitException
      * @throws \Aimeos\Prisma\Exceptions\OverloadedException
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
