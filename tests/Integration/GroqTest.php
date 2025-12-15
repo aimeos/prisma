@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 
 
@@ -19,7 +20,7 @@ class GroqTest extends TestCase
     }
 
 
-    public function testDescribe() : void
+    public function testDescribeAudio() : void
     {
         $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
         $response = Prisma::audio()
@@ -28,6 +29,19 @@ class GroqTest extends TestCase
             ->describe( $audio );
 
         $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
+    public function testDescribeImage() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $image );
+
+        $this->assertStringContainsString( 'cartoon', $response->text() );
+        $this->assertStringContainsString( 'cat', $response->text() );
     }
 
 
