@@ -12,7 +12,31 @@ class MistralTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testRecognize() : void
+    public function testDescribe() : void
+    {
+        $prisma = $this->prisma( 'audio', 'mistral', ['api_key' => 'test'] );
+        $prisma->response( json_encode( [
+            'text' => 'an audio description'
+        ] ) );
+        $response = $prisma->response( json_encode( [
+            'choices' => [[
+                'message' => [
+                    'content' => 'an audio description'
+                ]
+            ]]
+        ] ) )
+            ->ensure( 'describe' )
+            ->describe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.mistral.ai/v1/audio/transcriptions', (string) $request->getUri() );
+        } );
+
+        $this->assertEquals( 'an audio description', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
     {
         $response = $this->prisma( 'audio', 'mistral', ['api_key' => 'test'] )
             ->response( '{

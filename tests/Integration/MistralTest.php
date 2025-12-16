@@ -20,6 +20,18 @@ class MistralTest extends TestCase
     }
 
 
+    public function testDescribeAudio() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
     public function testTranscribe() : void
     {
         $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
