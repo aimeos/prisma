@@ -5,27 +5,14 @@ namespace Aimeos\Prisma\Providers\Audio;
 use Aimeos\Prisma\Contracts\Audio\Describe;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Groq as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Groq extends Base implements Describe, Speak, Transcribe
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
-        }
-
-        $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.groq.com' );
-    }
-
-
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $text = $this->transcribe( $audio, $lang, $options )->text();
@@ -96,15 +83,5 @@ class Groq extends Base implements Describe, Speak, Transcribe
                 $data['usage']['total_tokens'] ?? null,
                 $data['usage'] ?? [],
             );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
-        }
     }
 }
