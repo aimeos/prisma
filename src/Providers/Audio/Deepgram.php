@@ -3,14 +3,16 @@
 namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Speak;
+use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Deepgram extends Base implements Speak
+class Deepgram extends Base implements Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -39,6 +41,42 @@ class Deepgram extends Base implements Speak
 
         $mimetype = $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg';
         return FileResponse::fromBinary( $response->getBody()->getContents(), $mimetype );
+    }
+
+
+    public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $params = ['model' => $this->modelName( 'nova-3' )];
+
+        if( $lang ) {
+            $params['language'] = $lang;
+        }
+
+        $params += $this->allowed( $options, [
+            'callback', 'callback_method', 'extra', 'sentiment', 'summarize', 'tag',
+            'topics', 'custom_topic', 'custom_topic_mode', 'intents', 'custom_intent', 'custom_intent_mode',
+            'detect_entities', 'detect_language', 'diarize', 'dictation', 'encoding', 'filler_words',
+            'keyterm', 'keywords', 'measurements', 'multichannel', 'numerals', 'paragraphs',
+            'profanity_filter', 'punctuate', 'redact', 'replace', 'search', 'smart_format',
+            'utterances', 'utt_split', 'version', 'mip_opt_out'
+        ] );
+
+        $response = $this->client()->post( '/v1/listen?' . http_build_query( $params ), [
+            'headers' => [
+                'Content-Type' => $audio->mimetype() ?: 'audio/mpeg'
+            ],
+            'body' => $audio->binary()
+        ] );
+
+        $this->validate( $response );
+
+        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $lists = $data['results']['channels'][0]['alternatives'][0]['paragraphs']['paragraphs'] ?? [];
+        $sentences = array_merge( ...array_map( fn( $item ) => $item['sentences'], $lists ) );
+
+        return TextResponse::fromText( $data['results']['channels'][0]['alternatives'][0]['transcript'] ?? '' )
+            ->withStructured( $sentences )
+            ->withMeta( $data['metadata'] ?? [] );
     }
 
 
