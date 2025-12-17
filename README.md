@@ -5,6 +5,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 <nav>
 <div class="method-header"><a href="#supported-providers">Supported providers</a></div>
 <ul class="method-list">
+    <li><a href="#audio">Audio</a></li>
     <li><a href="#images">Images</a></li>
 </ul>
 <div class="method-header"><a href="#api-usage">API usage</a></div>
@@ -15,6 +16,12 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
+</ul>
+<div class="method-header"><a href="#audio-api">Audio API</a></div>
+<ul class="method-list">
+    <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
+    <li><a href="#speak">speak</a><span>: Convert text to speech in an audio file</span></li>
+    <li><a href="#transcribe">transcribe</a><span>: Converts speech of an audio file to text</span></li>
 </ul>
 <div class="method-header"><a href="#image-api">Image API</a></div>
 <ul class="method-list">
@@ -43,7 +50,9 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
+- [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
+- [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Mistral](https://docs.mistral.ai/api)
 - [OpenAI](https://openai.com/api/)
@@ -51,6 +60,15 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
+
+### Audio
+
+|                       | describe | speak | transcribe |
+| **ElevenLabs**        | -        | yes   | yes        |
+| **Gemini**            | yes      | -     | -          |
+| **Groq**              | yes      | yes   | yes        |
+| **Mistral**           | yes      | -     | yes        |
+| **OpenAI**            | yes      | yes   | yes        |
 
 ### Images
 
@@ -61,6 +79,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Gemini**            | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
+| **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
@@ -242,6 +261,66 @@ It returns an associative array whose content depends on the provider. If the pr
 usage information, the `used` array key is available and contains a number. What the number
 represents depdends on the provider too.
 
+## Audio API
+
+### describe
+
+Describe the content of an audio file.
+
+```php
+public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+```
+
+* @param **Audio** `$audio` Input audio object
+* @param **string&#124;null** `$lang` ISO language code the description should be generated in
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text
+
+**Supported options:**
+
+* Gemini
+* Groq
+* [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+
+### speak
+
+Converts text to speech.
+
+```php
+public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse;
+```
+
+* @param **string** `$text` Text to be converted to speech
+* @param **array&#60;int, string&#62;** `$voice` Prioritized list of voice identifiers for speech synthesis
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Audio file response
+
+**Supported options:**
+
+* [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
+* Groq
+* [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
+
+### transcribe
+
+Converts speech to text.
+
+```php
+public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+```
+
+* @param **Audio** `$audio` Input audio object
+* @param **string&#124;null** `$lang` ISO language code of the audio content
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Transcription text response
+
+**Supported options:**
+
+* [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
+* Groq
+* [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
+* [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+
 ## Image API
 
 Most methods require an image object as input which contains a reference to the image that
@@ -316,6 +395,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 **Supported options:**
 
 * Gemini
+* Groq
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/describe#request)
 * OpenAI
 
