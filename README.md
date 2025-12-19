@@ -64,6 +64,8 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 ### Audio
 
 |                       | describe | speak | transcribe |
+| :---                  | :---:    | :---: | :---:      |
+| **Deepgram**          | -        | yes   | yes        |
 | **ElevenLabs**        | -        | yes   | yes        |
 | **Gemini**            | yes      | -     | -          |
 | **Groq**              | yes      | yes   | yes        |
@@ -297,6 +299,7 @@ public function speak( string $text, array $voice = [], array $options = [] ) : 
 
 **Supported options:**
 
+* [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
 * Groq
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
@@ -316,6 +319,7 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 
 **Supported options:**
 
+* [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
 * Groq
 * [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
