@@ -63,14 +63,14 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Audio
 
-|                       | describe | speak | transcribe |
-| :---                  | :---:    | :---: | :---:      |
-| **Deepgram**          | -        | yes   | yes        |
-| **ElevenLabs**        | -        | yes   | yes        |
-| **Gemini**            | yes      | -     | -          |
-| **Groq**              | yes      | yes   | yes        |
-| **Mistral**           | yes      | -     | yes        |
-| **OpenAI**            | yes      | yes   | yes        |
+|                       | describe | revoice | speak | transcribe |
+| :---                  | :---:    | :---:   | :---: | :---:      |
+| **Deepgram**          | -        | -       | yes   | yes        |
+| **ElevenLabs**        | -        | yes     | yes   | yes        |
+| **Gemini**            | yes      | -       | -     | -          |
+| **Groq**              | yes      | -       | yes   | yes        |
+| **Mistral**           | yes      | -       | -     | yes        |
+| **OpenAI**            | yes      | -       | yes   | yes        |
 
 ### Images
 
@@ -283,6 +283,23 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 * Gemini
 * Groq
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+
+### revoice
+
+Exchange the voice in an audio file.
+
+```php
+public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse;
+```
+
+* @param **Audio** `$audio` Input audio object
+* @param **string** `$voice` Voice name or identifier
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Audio file response
+
+**Supported options:**
+
+* [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-speech/convert)
 
 ### speak
 
