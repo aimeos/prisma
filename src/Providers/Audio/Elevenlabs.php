@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Elevenlabs extends Base implements Speak, Transcribe
+class Elevenlabs extends Base implements Revoice, Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -22,6 +23,24 @@ class Elevenlabs extends Base implements Speak, Transcribe
 
         $this->header( 'xi-api-key', $config['api_key'] );
         $this->baseUrl( $config['url'] ?? 'https://api.elevenlabs.io' );
+    }
+
+
+    public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
+    {
+        $model = $this->modelName( 'eleven_english_sts_v2' );
+
+        $allowed = $this->allowed( $options, [
+            'voice_settings', 'seed', 'remove_background_noise', 'file_format'
+        ] );
+
+        $request = $this->request( ['model_id' => $model] + $allowed, ['audio' => $audio] );
+        $response = $this->client()->post( '/v1/speech-to-speech/' . $voice, ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        $mimetype = $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg';
+        return FileResponse::fromBinary( $response->getBody()->getContents(), $mimetype );
     }
 
 
