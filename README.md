@@ -306,11 +306,11 @@ public function revoice( Audio $audio, string $voice, array $options = [] ) : Fi
 Converts text to speech.
 
 ```php
-public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse;
+public function speak( string $text, string $voice = , array $options = [] ) : FileResponse;
 ```
 
 * @param **string** `$text` Text to be converted to speech
-* @param **array&#60;int, string&#62;** `$voice` Prioritized list of voice identifiers for speech synthesis
+* @param **string&#124;null** `$voice` Voice identifier for speech synthesis
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **FileResponse** Audio file response
 

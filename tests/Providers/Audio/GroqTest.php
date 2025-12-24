@@ -41,7 +41,7 @@ class GroqTest extends TestCase
         $response = $this->prisma( 'audio', 'groq', ['api_key' => 'test'] )
             ->response( 'MP3' )
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', ['test'] );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.groq.com/openai/v1/audio/speech', (string) $request->getUri() );

@@ -37,7 +37,7 @@ class ElevenlabsTest extends TestCase
         $response = Prisma::audio()
             ->using( 'elevenlabs', ['api_key' => $_ENV['ELEVENLABS_API_KEY']])
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', ['test'] );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

@@ -24,7 +24,7 @@ class DeepgramTest extends TestCase
         $response = Prisma::audio()
             ->using( 'deepgram', ['api_key' => $_ENV['DEEPGRAM_API_KEY']])
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', ['test'] );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

@@ -32,10 +32,10 @@ class ElevenlabsTest extends TestCase
         $response = $this->prisma( 'audio', 'elevenlabs', ['api_key' => 'test'] )
             ->response( 'MP3' )
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', ['test'] );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb', (string) $request->getUri() );
+            $this->assertEquals( 'https://api.elevenlabs.io/v1/text-to-speech/test', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'MP3', $response->binary() );

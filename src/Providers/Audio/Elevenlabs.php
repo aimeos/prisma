@@ -44,11 +44,10 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     }
 
 
-    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse
+    public function speak( string $text, string $voice = null, array $options = [] ) : FileResponse
     {
+        $selected = $voice ?: 'JBFqnCBsd6RMkjVDRZzb';
         $model = $this->modelName( 'eleven_multilingual_v2' );
-        $voice = array_filter( $voice, fn( $id ) => strlen( $id ) === 20 );
-        $selected = current( $voice ) ?: 'JBFqnCBsd6RMkjVDRZzb';
 
         $allowed = $this->allowed( $options, [
             'language_code', 'voice_settings', 'pronunciation_dictionary_locators', 'seed',

@@ -80,7 +80,7 @@ class OpenaiTest extends TestCase
         $response = Prisma::audio()
             ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']])
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', ['test'] );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

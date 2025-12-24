@@ -50,7 +50,7 @@ class GroqTest extends TestCase
         $response = Prisma::audio()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']])
             ->ensure( 'speak' )
-            ->speak( 'This is a test.' );
+            ->speak( 'This is a test.', 'test' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

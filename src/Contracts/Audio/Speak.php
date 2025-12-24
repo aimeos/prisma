@@ -11,9 +11,9 @@ interface Speak
      * Converts text to speech.
      *
      * @param string $text Text to be converted to speech
-     * @param array<int, string> $voice Prioritized list of voice identifiers for speech synthesis
+     * @param string|null $voice Voice identifier for speech synthesis
      * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Audio file response
      */
-    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse;
+    public function speak( string $text, string $voice = null, array $options = [] ) : FileResponse;
 }

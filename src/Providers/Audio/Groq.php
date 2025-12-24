@@ -38,13 +38,12 @@ class Groq extends Base implements Describe, Speak, Transcribe
     }
 
 
-    public function speak( string $text, array $voice = [], array $options = [] ) : FileResponse
+    public function speak( string $text, string $voice = null, array $options = [] ) : FileResponse
     {
+        $selected = $voice ?: 'austin';
         $model = $this->modelName( 'canopylabs/orpheus-v1-english' );
         $allowed = $this->allowed( $options, ['response_format', 'sample_rate', 'speed'] );
         $allowed += ['response_format' => 'wav'];
-
-        $selected = current( $voice ) ?: 'austin';
 
         $request = ['model' => $model, 'input' => $text, 'voice' => $selected] + $allowed;
         $response = $this->client()->post( 'openai/v1/audio/speech', ['json' => $request] );
