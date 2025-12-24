@@ -38,7 +38,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
     }
 
 
-    public function speak( string $text, string $voice = null, array $options = [] ) : FileResponse
+    public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'alloy';
         $model = $this->modelName( 'gpt-4o-mini-tts' );

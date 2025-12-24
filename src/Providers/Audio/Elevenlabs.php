@@ -44,7 +44,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     }
 
 
-    public function speak( string $text, string $voice = null, array $options = [] ) : FileResponse
+    public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'JBFqnCBsd6RMkjVDRZzb';
         $model = $this->modelName( 'eleven_multilingual_v2' );
