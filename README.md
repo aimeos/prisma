@@ -55,6 +55,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Mistral](https://docs.mistral.ai/api)
+- [Murf](https://murf.ai/api)
 - [OpenAI](https://openai.com/api/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
@@ -70,6 +71,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Gemini**            | yes      | -       | -     | -          |
 | **Groq**              | yes      | -       | yes   | yes        |
 | **Mistral**           | yes      | -       | -     | yes        |
+| **Murf**              | -        | yes     | -     | -          |
 | **OpenAI**            | yes      | -       | yes   | yes        |
 
 ### Images
@@ -282,6 +284,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 * Gemini
 * Groq
+* [Murf](https://murf.ai/api/docs/api-reference/voice-changer/convert)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 
 ### revoice

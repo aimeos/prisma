@@ -25,9 +25,9 @@ class Murf extends Base implements Revoice
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        $allowed = $this->allowed( $options, ['pitch', 'speed'] );
+        $allowed = $this->allowed( $options, ['channel_type', 'format', 'pitch', 'rate', 'sample_rate'] );
 
-        $request = $this->request( ['voice_id' => $voice] + $allowed, ['file' => $audio] );
+        $request = $this->request( ['voice_id' => $voice] + $allowed + ['format' => 'mp3'], ['file' => $audio] );
         $response = $this->client()->post( '/v1/voice-changer/convert', ['multipart' => $request] );
 
         $this->validate( $response );
@@ -35,15 +35,5 @@ class Murf extends Base implements Revoice
         $data = json_decode( $response->getBody()->getContents() );
 
         return FileResponse::fromUrl( $data?->audio_file );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = json_decode( $response->getBody()->getContents() )?->detail?->message ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
-        }
     }
 }
