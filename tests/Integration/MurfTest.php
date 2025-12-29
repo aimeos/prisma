@@ -30,4 +30,17 @@ class MurfTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/murf_revoice.mp3', $response->binary() );
     }
+
+
+    public function testSpeak() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'murf', ['api_key' => $_ENV['MURFAI_API_KEY']])
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.' );
+
+        $this->assertNotNull( $response->url() );
+
+        file_put_contents( __DIR__ . '/results/murf_speak.mp3', $response->binary() );
+    }
 }

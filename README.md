@@ -71,7 +71,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Gemini**            | yes      | -       | -     | -          |
 | **Groq**              | yes      | -       | yes   | yes        |
 | **Mistral**           | yes      | -       | -     | yes        |
-| **Murf**              | -        | yes     | -     | -          |
+| **Murf**              | -        | yes     | yes   | -          |
 | **OpenAI**            | yes      | -       | yes   | yes        |
 
 ### Images
@@ -284,7 +284,6 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 * Gemini
 * Groq
-* [Murf](https://murf.ai/api/docs/api-reference/voice-changer/convert)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 
 ### revoice
@@ -303,6 +302,7 @@ public function revoice( Audio $audio, string $voice, array $options = [] ) : Fi
 **Supported options:**
 
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-speech/convert)
+* [Murf](https://murf.ai/api/docs/api-reference/voice-changer/convert)
 
 ### speak
 
@@ -322,6 +322,7 @@ public function speak( string $text, string $voice = , array $options = [] ) : F
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
 * Groq
+* [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/generate)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 
 ### transcribe

@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Revoice;
+use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
@@ -10,7 +11,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Murf extends Base implements Revoice
+class Murf extends Base implements Revoice, Speak
 {
     public function __construct( array $config )
     {
@@ -35,5 +36,27 @@ class Murf extends Base implements Revoice
         $data = json_decode( $response->getBody()->getContents() );
 
         return FileResponse::fromUrl( $data?->audio_file );
+    }
+
+
+    public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
+    {
+        $selected = $voice ?: 'en-US-natalie';
+        $model = $this->modelName( 'GEN2' );
+
+        $allowed = $this->allowed( $options, [
+            'audioDuration', 'channelType', 'format', 'multiNativeLocale',
+            'pitch', 'pronunciationDictionary', 'rate', 'sampleRate',
+            'style', 'variation', 'wordDurationsAsOriginalText'
+        ] );
+
+        $request = ['voiceId' => $selected, 'text' => $text, 'modelVersion' => $model] + $allowed + ['format' => 'mp3'];
+        $response = $this->client()->post( '/v1/speech/generate', ['json' => $request] );
+
+        $this->validate( $response );
+
+        $data = json_decode( $response->getBody()->getContents() );
+
+        return FileResponse::fromUrl( $data?->audioFile );
     }
 }
