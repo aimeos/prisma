@@ -20,6 +20,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
+    <li><a href="#revoice">revoice</a><span>: Exchange the voice in an audio file</span></li>
     <li><a href="#speak">speak</a><span>: Convert text to speech in an audio file</span></li>
     <li><a href="#transcribe">transcribe</a><span>: Converts speech of an audio file to text</span></li>
 </ul>
