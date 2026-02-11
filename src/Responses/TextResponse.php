@@ -58,7 +58,7 @@ class TextResponse
      */
     public function text() : ?string
     {
-        return $this->text;
+        return $this->text ?? $this->wait();
     }
 
 

@@ -46,7 +46,7 @@ trait Async
 
         $closure = $this->async;
 
-        return (bool) $this->setContent( $closure() );
+        return (bool) $this->setContent( $closure( $this ) );
     }
 
 
@@ -63,7 +63,7 @@ trait Async
             return $content;
         }
 
-        while( ( $content = $this->setContent( $closure() ) ) === null ) {
+        while( ( $content = $this->setContent( $closure( $this ) ) ) === null ) {
             sleep( $this->retry );
         }
 

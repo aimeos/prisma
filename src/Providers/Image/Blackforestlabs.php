@@ -103,7 +103,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
     {
         $client = $this->client();
 
-        return function() use ( $client, $url ) {
+        return function( FileResponse $fr ) use ( $client, $url ) : ?string {
 
             $response = $client->get( $url );
 
