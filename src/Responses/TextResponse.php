@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Responses;
 
+use Aimeos\Prisma\Concerns\Async;
 use Aimeos\Prisma\Concerns\HasMeta;
 use Aimeos\Prisma\Concerns\HasUsage;
 
@@ -11,7 +12,7 @@ use Aimeos\Prisma\Concerns\HasUsage;
  */
 class TextResponse
 {
-    use HasMeta, HasUsage;
+    use Async, HasMeta, HasUsage;
 
 
     /** @var array<string|int, mixed> */
@@ -71,5 +72,16 @@ class TextResponse
     {
         $this->structured = $structured;
         return $this;
+    }
+
+
+    protected function content() : ?string
+    {
+        return $this->text;
+    }
+
+    protected function setContent( ?string $content ) : ?string
+    {
+        return $this->text = $content;
     }
 }
