@@ -67,6 +67,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                       | describe | revoice | speak | transcribe |
 | :---                  | :---:    | :---:   | :---: | :---:      |
+| **AudioPod**          | -        | -       | yes   | -          |
 | **Deepgram**          | -        | -       | yes   | yes        |
 | **ElevenLabs**        | -        | yes     | yes   | yes        |
 | **Gemini**            | yes      | -       | -     | -          |
@@ -320,6 +321,7 @@ public function speak( string $text, string $voice = , array $options = [] ) : F
 
 **Supported options:**
 
+* [AudioPod](https://docs.audiopod.ai/api-reference/text-to-speech#generate-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
 * Groq
