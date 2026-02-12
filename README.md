@@ -19,6 +19,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 </ul>
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
+    <li><a href="#denoise">denoise</a><span>: Remove noise from an audio file</span></li>
     <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
     <li><a href="#revoice">revoice</a><span>: Exchange the voice in an audio file</span></li>
     <li><a href="#speak">speak</a><span>: Convert text to speech in an audio file</span></li>
@@ -67,16 +68,16 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Audio
 
-|                       | describe | revoice | speak | transcribe |
-| :---                  | :---:    | :---:   | :---: | :---:      |
-| **AudioPod**          | -        | -       | yes   | yes        |
-| **Deepgram**          | -        | -       | yes   | yes        |
-| **ElevenLabs**        | -        | yes     | yes   | yes        |
-| **Gemini**            | yes      | -       | -     | -          |
-| **Groq**              | yes      | -       | yes   | yes        |
-| **Mistral**           | yes      | -       | -     | yes        |
-| **Murf**              | -        | yes     | yes   | -          |
-| **OpenAI**            | yes      | -       | yes   | yes        |
+|                       | denoise | describe | revoice | speak | transcribe |
+| :---                  | :---:   | :---:    | :---:   | :---: | :---:      |
+| **AudioPod**          | yes     | -        | -       | yes   | yes        |
+| **Deepgram**          | -       | -        | -       | yes   | yes        |
+| **ElevenLabs**        | -       | -        | yes     | yes   | yes        |
+| **Gemini**            | -       | yes      | -       | -     | -          |
+| **Groq**              | -       | yes      | -       | yes   | yes        |
+| **Mistral**           | -       | yes      | -       | -     | yes        |
+| **Murf**              | -       | -        | yes     | yes   | -          |
+| **OpenAI**            | -       | yes      | -       | yes   | yes        |
 
 ### Images
 
@@ -270,6 +271,22 @@ usage information, the `used` array key is available and contains a number. What
 represents depdends on the provider too.
 
 ## Audio API
+
+### denoise
+
+Remove noise from an audio file.
+
+```php
+public function denoise( Audio $audio, array $options = [] ) : FileResponse
+```
+
+* @param **Audio** `$audio` Input audio object
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Audio file response
+
+**Supported options:**
+
+* [AudioPod](https://docs.audiopod.ai/api-reference/noise-reduction)
 
 ### describe
 

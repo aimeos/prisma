@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Contracts\Audio\Denoise;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Audiopod extends Base implements Speak, Transcribe
+class Audiopod extends Base implements Denoise, Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -22,6 +23,29 @@ class Audiopod extends Base implements Speak, Transcribe
 
         $this->header( 'X-API-Key', $config['api_key'] );
         $this->baseUrl( $config['url'] ?? 'https://api.audiopod.ai' );
+    }
+
+
+    public function denoise( Audio $audio, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['quality_mode'] ) + ['quality_mode' => 'balanced'];
+
+        if( $audio->url() ) {
+            $request = ['json' => $this->request( ['url' => $audio->url()] + $allowed )];
+        } else {
+            $request = ['multipart' => $this->request( $allowed, ['file' => $audio] )];
+        }
+
+        $response = $this->client()->post( "api/v1/denoiser/denoise", $request );
+
+        $this->validate( $response );
+
+        if( ( $data = json_decode( $response->getBody()->getContents() ) ) === null || !isset( $data->id ) ) {
+            throw new PrismaException( 'Invalid response' );
+        }
+
+        $url = "api/v1/denoiser/jobs/{$data->id}";
+        return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
 
@@ -94,25 +118,26 @@ class Audiopod extends Base implements Speak, Transcribe
 
             $body = $response->getBody()->getContents();
 
-            if( !( $data = json_decode( $body ) ) ) {
+            if( !( $data = json_decode( $body, true ) ) ) {
                 throw new PrismaException( 'Invalid response: ' . $body );
             }
 
-            if( @$data->status !== 'COMPLETED' ) {
+            if( @$data['status'] !== 'COMPLETED' ) {
                 return null;
             }
 
-            if( !@$data->{$key} ) {
+            if( !@$data[$key] ) {
                 throw new PrismaException( 'Invalid response: ' . $body );
             }
 
-            $response = $client->get( $data->{$key} );
+            $response = $client->get( $data[$key] );
 
             if( $response->getStatusCode() !== 200 ) {
                 throw new PrismaException( $response->getReasonPhrase() );
             }
 
-            $fr->setMimeType( $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg' );
+            $fr->setMimeType( $response->getHeaderLine( 'Content-Type' ) ?: null )
+                ->withMeta( $data['stats'] ?? [] );
 
             return $response->getBody()->getContents();
         };
