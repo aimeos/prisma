@@ -226,7 +226,7 @@ class File
      * @param string|null $mimeType Mime type
      * @return self File instance
      */
-    protected function setMimeType( ?string $mimeType ) : self
+    public function setMimeType( ?string $mimeType ) : self
     {
         $this->mimeType = $mimeType;
         return $this;

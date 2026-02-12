@@ -21,6 +21,7 @@ trait Async
      * Create a file instance from an asynchronous closure.
      *
      * @param \Closure $closure Closure which returns the file content when invoked or NULL when not yet ready
+     * @param int $retry Number of seconds to wait between retries when checking if the content is ready
      * @return static New instance
      */
     public static function fromAsync( \Closure $closure, int $retry = 5 ) : static

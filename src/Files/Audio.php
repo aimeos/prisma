@@ -33,7 +33,7 @@ class Audio extends File
      * @param string|null $mimeType Mime type
      * @return static Audio instance
      */
-    protected function setMimeType( ?string $mimeType ) : static
+    public function setMimeType( ?string $mimeType ) : static
     {
         if( $mimeType && !str_starts_with( (string) $mimeType, 'audio/' ) ) {
             throw new PrismaException( sprintf( 'Must be an audio mime type, got "%1$s"', $mimeType ) );

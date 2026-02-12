@@ -110,6 +110,8 @@ class Audiopod extends Base implements Speak, Transcribe
                 throw new PrismaException( $response->getReasonPhrase() );
             }
 
+            $fr->setMimeType( $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg' );
+
             return $response->getBody()->getContents();
         };
     }
