@@ -224,9 +224,9 @@ class File
      * Sets the mime type.
      *
      * @param string|null $mimeType Mime type
-     * @return self File instance
+     * @return static File instance
      */
-    public function setMimeType( ?string $mimeType ) : self
+    public function setMimeType( ?string $mimeType ) : static
     {
         $this->mimeType = $mimeType;
         return $this;

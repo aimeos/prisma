@@ -19,6 +19,19 @@ class AudiopodTest extends TestCase
     }
 
 
+    public function testDenoise() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'audiopod', ['api_key' => $_ENV['AUDIOPOD_API_KEY']])
+            ->ensure( 'denoise' )
+            ->denoise( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ), ['quality_mode' => 'aggressive'] );
+
+        file_put_contents( __DIR__ . '/results/audiopod_denoise.wav', $response->binary() );
+
+        $this->assertEquals( 'audio/wav', $response->mimetype() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = Prisma::audio()
@@ -26,9 +39,9 @@ class AudiopodTest extends TestCase
             ->ensure( 'speak' )
             ->speak( 'This is a test.' );
 
-        $this->assertNotEquals( 'audio/mpeg', $response->mimetype() );
-
         file_put_contents( __DIR__ . '/results/audiopod_speak.mp3', $response->binary() );
+
+        $this->assertEquals( 'audio/mpeg', $response->mimetype() );
     }
 
 
