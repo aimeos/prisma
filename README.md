@@ -47,10 +47,12 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ## Supported providers
 
+- [AudioPod AI](https://audiopod.ai/)
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
+- [Deepgram](https://deepgram.com/)
 - [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Groq](https://groq.com/)
@@ -67,7 +69,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                       | describe | revoice | speak | transcribe |
 | :---                  | :---:    | :---:   | :---: | :---:      |
-| **AudioPod**          | -        | -       | yes   | -          |
+| **AudioPod**          | -        | -       | yes   | yes        |
 | **Deepgram**          | -        | -       | yes   | yes        |
 | **ElevenLabs**        | -        | yes     | yes   | yes        |
 | **Gemini**            | yes      | -       | -     | -          |
@@ -343,6 +345,7 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 
 **Supported options:**
 
+* [AudioPod](https://docs.audiopod.ai/api-reference/speech-to-text)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
 * Groq
