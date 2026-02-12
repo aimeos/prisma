@@ -30,4 +30,16 @@ class AudiopodTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/audiopod_speak.mp3', $response->binary() );
     }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'audiopod', ['api_key' => $_ENV['AUDIOPOD_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
+    }
 }
