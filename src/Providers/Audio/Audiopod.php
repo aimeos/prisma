@@ -40,7 +40,7 @@ class Audiopod extends Base implements Speak, Transcribe
         }
 
         $url = "api/v1/voice/tts-jobs/{$data->job_id}/status";
-        return FileResponse::fromAsync( $this->closure( $url ), 5 );
+        return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
 
@@ -76,15 +76,15 @@ class Audiopod extends Base implements Speak, Transcribe
             throw new PrismaException( 'Invalid response' );
         }
 
-        return TextResponse::fromAsync( $this->transcription( $data->job_id ), 5 );
+        return TextResponse::fromAsync( $this->transcription( $data->job_id ), 3 );
     }
 
 
-    protected function closure( string $url ) : \Closure
+    protected function download( string $url, string $key ) : \Closure
     {
         $client = $this->client();
 
-        return function( FileResponse $fr ) use ( $client, $url ) : ?string {
+        return function( FileResponse $fr ) use ( $client, $url, $key ) : ?string {
 
             $response = $client->get( $url );
 
@@ -92,19 +92,21 @@ class Audiopod extends Base implements Speak, Transcribe
                 throw new PrismaException( $response->getReasonPhrase() );
             }
 
-            if( !( $data = json_decode( $response->getBody()->getContents() ) ) ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
+            $body = $response->getBody()->getContents();
+
+            if( !( $data = json_decode( $body ) ) ) {
+                throw new PrismaException( 'Invalid response: ' . $body );
             }
 
             if( @$data->status !== 'COMPLETED' ) {
                 return null;
             }
 
-            if( !@$data->output_url ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
+            if( !@$data->{$key} ) {
+                throw new PrismaException( 'Invalid response: ' . $body );
             }
 
-            $response = $client->get( $data->output_url );
+            $response = $client->get( $data->{$key} );
 
             if( $response->getStatusCode() !== 200 ) {
                 throw new PrismaException( $response->getReasonPhrase() );
