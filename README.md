@@ -19,6 +19,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 </ul>
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
+    <li><a href="#demix">demix</a><span>: Separate an audio file into its individual tracks</span></li>
     <li><a href="#denoise">denoise</a><span>: Remove noise from an audio file</span></li>
     <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
     <li><a href="#revoice">revoice</a><span>: Exchange the voice in an audio file</span></li>
