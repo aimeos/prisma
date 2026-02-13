@@ -135,7 +135,7 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
      * @return array<string|int, mixed> The response data as an associative array
      * @throws PrismaException If the response body is not valid JSON or if the required key is missing
      */
-    protected function toData( ResponseInterface $response, string $key = null ) : array
+    protected function toData( ResponseInterface $response, ?string $key = null ) : array
     {
         $body = $response->getBody()->getContents();
 
