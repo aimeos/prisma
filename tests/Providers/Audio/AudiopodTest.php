@@ -40,6 +40,34 @@ class AudiopodTest extends TestCase
     }
 
 
+    public function testRevoice() : void
+    {
+        $prisma = $this->prisma( 'audio', 'audiopod', ['api_key' => 'test'] );
+        $prisma->response( '{
+            "id": "12345",
+            "status": "PENDING"
+        }' );
+        $prisma->response( '{
+            "id": "12345",
+            "status": "PENDING"
+        }' );
+
+        $file = $prisma->response( '{
+                "id": "12345",
+                "status": "COMPLETED",
+                "output_path": "test.mp3"
+            }' )->ensure( 'revoice' )
+            ->revoice( Audio::fromBinary( 'MP3', 'audio/wav' ), 'test' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.audiopod.ai/api/v1/voice/voice-convert', (string) $request->getUri() );
+        } );
+
+        $this->assertFalse( $file->ready() );
+        $this->assertEquals( "https://media.audiopod.ai/test.mp3", $file->url() );
+    }
+
+
     public function testSpeak() : void
     {
         $prisma = $this->prisma( 'audio', 'audiopod', ['api_key' => 'test'] );
