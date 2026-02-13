@@ -32,6 +32,19 @@ class AudiopodTest extends TestCase
     }
 
 
+    public function testRevoice() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'audiopod', ['api_key' => $_ENV['AUDIOPOD_API_KEY']])
+            ->ensure( 'revoice' )
+            ->revoice( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ), 'b76f1226-8170-4902-9482-36bb4fc98085' );
+
+        file_put_contents( __DIR__ . '/results/audiopod_revoice.mp3', $response->binary() );
+
+        $this->assertEquals( 'audio/x-wav', $response->mimetype() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = Prisma::audio()

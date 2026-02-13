@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Denoise;
+use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -13,7 +14,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Audiopod extends Base implements Denoise, Speak, Transcribe
+class Audiopod extends Base implements Denoise, Revoice, Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -42,6 +43,18 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
 
         $url = "api/v1/denoiser/jobs/" . $this->toData( $response, 'id' )['id'];
         return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
+    }
+
+
+    public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
+    {
+        $request = $this->request( ['voice_uuid' => $voice], ['file' => $audio] );
+        $response = $this->client()->post( 'api/v1/voice/voice-convert', ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        $url = "api/v1/voice/convert/" . $this->toData( $response, 'id' )['id'] . "/status";
+        return FileResponse::fromAsync( $this->revoiced( $url ), 3 );
     }
 
 
@@ -124,6 +137,27 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
         }
 
         return $response;
+    }
+
+
+    protected function revoiced( string $url ) : \Closure
+    {
+        return function( FileResponse $fr ) use ( $url ) : bool {
+
+            $data = $this->toData( $this->getResponse( $url ) );
+
+            if( @$data['status'] !== 'COMPLETED' ) {
+                return false;
+            }
+
+            if( !@$data['output_path'] ) {
+                throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', 'output_path', print_r( $data, true ) ) );
+            }
+
+            $fr->add( Audio::fromUrl( "https://media.audiopod.ai/" . $data['output_path'] ) );
+
+            return true;
+        };
     }
 
 
