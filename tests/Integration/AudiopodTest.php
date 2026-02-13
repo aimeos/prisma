@@ -19,6 +19,21 @@ class AudiopodTest extends TestCase
     }
 
 
+    public function testDemix() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'audiopod', ['api_key' => $_ENV['AUDIOPOD_API_KEY']])
+            ->ensure( 'demix' )
+            ->demix( Audio::fromLocalPath( __DIR__ . '/assets/musicfox.mp3' ), 3 );
+
+        foreach( $response as $name => $file ) {
+            file_put_contents( __DIR__ . '/results/audiopod_demix_' . $name . '.mp3', $file->binary() );
+        }
+
+        $this->assertEquals( 'audio/mpeg', $response->mimetype() );
+    }
+
+
     public function testDenoise() : void
     {
         $response = Prisma::audio()
