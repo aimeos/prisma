@@ -17,7 +17,9 @@ class TextResponse
 
     /** @var array<string|int, mixed> */
     private array $structured = [];
-    private ?string $text = null;
+
+    /** @var array<string|int, string|null> */
+    private array $list = [];
 
 
     final private function __construct()
@@ -28,15 +30,60 @@ class TextResponse
     /**
      * Create a text response instance.
      *
-     * @param string $text|null Text content
+     * @param string|null $text Text content
      * @return self TextResponse instance
      */
     public static function fromText( ?string $text ) : self
     {
         $instance = new self;
-        $instance->text = !is_null( $text ) ? trim( $text ) : null;
+        $instance->list[] = $text;
 
         return $instance;
+    }
+
+
+    /**
+     * Add a text to the list of texts if several are available.
+     *
+     * @param string|null $text Text content to add
+     * @param int|string|null $key Optional key to associate with the text
+     * @return self TextResponse instance for chaining
+     */
+    public function add( ?string $text, int|string|null $key = null ) : self
+    {
+        if( $key !== null ) {
+            $this->list[$key] = $text;
+        } else {
+            $this->list[] = $text;
+        }
+
+        return $this;
+    }
+
+
+    /**
+     * Checks if there are any results.
+     *
+     * @return bool True if there are no results, false otherwise
+     */
+    public function empty() : bool
+    {
+        return empty( $this->list );
+    }
+
+
+    /**
+     * Returns the first file in the list if several are available.
+     *
+     * @return string|null First file object or null if no files are available
+     */
+    public function first() : ?string
+    {
+        if( empty( $this->list ) ) {
+            $this->wait();
+        }
+
+        return reset( $this->list ) ?: null;
     }
 
 
@@ -58,7 +105,11 @@ class TextResponse
      */
     public function text() : ?string
     {
-        return $this->text ?? $this->wait();
+        if( empty( $this->list ) ) {
+            $this->wait();
+        }
+
+        return current( $this->list ) ?: null;
     }
 
 
@@ -72,16 +123,5 @@ class TextResponse
     {
         $this->structured = $structured;
         return $this;
-    }
-
-
-    protected function content() : ?string
-    {
-        return $this->text;
-    }
-
-    protected function setContent( ?string $content ) : ?string
-    {
-        return $this->text = $content;
     }
 }

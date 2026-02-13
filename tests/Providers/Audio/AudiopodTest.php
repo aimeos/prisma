@@ -23,14 +23,12 @@ class AudiopodTest extends TestCase
             "id": "12345",
             "status": "PENDING"
         }' );
-        $prisma->response( '{
-            "id": "12345",
-            "status": "COMPLETED",
-            "output_url": "https://localhost/test.mp3"
-        }' );
 
-        $file = $prisma->response( 'MP3' )
-            ->ensure( 'denoise' )
+        $file = $prisma->response( '{
+                "id": "12345",
+                "status": "COMPLETED",
+                "output_url": "https://localhost/test.mp3"
+            }' )->ensure( 'denoise' )
             ->denoise( Audio::fromBinary( 'MP3', 'audio/wav' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -38,7 +36,7 @@ class AudiopodTest extends TestCase
         } );
 
         $this->assertFalse( $file->ready() );
-        $this->assertEquals( 'MP3', $file->binary() );
+        $this->assertEquals( "https://localhost/test.mp3", $file->url() );
     }
 
 
@@ -53,13 +51,12 @@ class AudiopodTest extends TestCase
             "job_id": "12345",
             "status": "PENDING"
         }' );
-        $prisma->response( '{
-            "job_id": "12345",
-            "status": "COMPLETED",
-            "output_url": "https://localhost/test.mp3"
-        }' );
 
-        $file = $prisma->response( 'MP3' )
+        $file = $prisma->response( '{
+                "job_id": "12345",
+                "status": "COMPLETED",
+                "output_url": "https://localhost/test.mp3"
+            }' )
             ->ensure( 'speak' )
             ->speak( 'This is a test.', 'test' );
 
@@ -68,7 +65,7 @@ class AudiopodTest extends TestCase
         } );
 
         $this->assertFalse( $file->ready() );
-        $this->assertEquals( 'MP3', $file->binary() );
+        $this->assertEquals( "https://localhost/test.mp3", $file->url() );
     }
 
 
