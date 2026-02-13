@@ -28,7 +28,7 @@ class AudiopodTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/audiopod_denoise.wav', $response->binary() );
 
-        $this->assertEquals( 'audio/wav', $response->mimetype() );
+        $this->assertEquals( 'audio/x-wav', $response->mimetype() );
     }
 
 
