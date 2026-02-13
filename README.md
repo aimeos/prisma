@@ -68,16 +68,16 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ### Audio
 
-|                       | denoise | describe | revoice | speak | transcribe |
-| :---                  | :---:   | :---:    | :---:   | :---: | :---:      |
-| **AudioPod**          | yes     | -        | -       | yes   | yes        |
-| **Deepgram**          | -       | -        | -       | yes   | yes        |
-| **ElevenLabs**        | -       | -        | yes     | yes   | yes        |
-| **Gemini**            | -       | yes      | -       | -     | -          |
-| **Groq**              | -       | yes      | -       | yes   | yes        |
-| **Mistral**           | -       | yes      | -       | -     | yes        |
-| **Murf**              | -       | -        | yes     | yes   | -          |
-| **OpenAI**            | -       | yes      | -       | yes   | yes        |
+|                       | demix | denoise | describe | revoice | speak | transcribe |
+| :---                  | :---: | :---:   | :---:    | :---:   | :---: | :---:      |
+| **AudioPod**          | yes   | yes     | -        | yes     | yes   | yes        |
+| **Deepgram**          | -     | -       | -        | -       | yes   | yes        |
+| **ElevenLabs**        | -     | -       | -        | yes     | yes   | yes        |
+| **Gemini**            | -     | -       | yes      | -       | -     | -          |
+| **Groq**              | -     | -       | yes      | -       | yes   | yes        |
+| **Mistral**           | -     | -       | yes      | -       | -     | yes        |
+| **Murf**              | -     | -       | -        | yes     | yes   | -          |
+| **OpenAI**            | -     | -       | yes      | -       | yes   | yes        |
 
 ### Images
 
@@ -272,6 +272,23 @@ represents depdends on the provider too.
 
 ## Audio API
 
+### demix
+
+Separate an audio file into its individual tracks.
+
+```php
+public function demix( Audio $audio, int $stems, array $options = [] ) : FileResponse
+```
+
+* @param **Audio** `$audio` Input audio object
+* @param **int** `$stems` Number of stems to separate into (e.g. 2 for vocals and accompaniment)
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Audio file response
+
+**Supported options:**
+
+* AudioPod
+
 ### denoise
 
 Remove noise from an audio file.
@@ -322,6 +339,7 @@ public function revoice( Audio $audio, string $voice, array $options = [] ) : Fi
 
 **Supported options:**
 
+* AudioPod
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-speech/convert)
 * [Murf](https://murf.ai/api/docs/api-reference/voice-changer/convert)
 

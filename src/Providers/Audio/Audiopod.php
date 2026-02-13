@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Contracts\Audio\Demix;
 use Aimeos\Prisma\Contracts\Audio\Denoise;
 use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
@@ -14,7 +15,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Audiopod extends Base implements Denoise, Revoice, Speak, Transcribe
+class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcribe
 {
     public function __construct( array $config )
     {
@@ -24,6 +25,46 @@ class Audiopod extends Base implements Denoise, Revoice, Speak, Transcribe
 
         $this->header( 'X-API-Key', $config['api_key'] );
         $this->baseUrl( $config['url'] ?? 'https://api.audiopod.ai' );
+    }
+
+
+    public function demix( Audio $audio, int $stems, array $options = [] ) : FileResponse
+    {
+        foreach( [1, 2, 4, 6, 8, 12, 16] as $num ) {
+            if( $stems <= $num ) {
+                $stems = $num;
+                break;
+            }
+        }
+
+        $mode = match( $stems ) {
+            2 => 'two',
+            4 => 'four',
+            6 => 'six',
+            8 => 'producer',
+            12 => 'studio',
+            16 => 'mastering',
+            default => 'single'
+        };
+
+        $params = ['mode' => $mode];
+
+        if( $stems === 1 ) {
+            $params['stem'] = 'vocals';
+        }
+
+        if( $audio->url() ) {
+            $request = $this->request( ['url' => $audio->url()] + $params );
+        } else {
+            $request = $this->request( $params, ['file' => $audio] );
+        }
+
+        $response = $this->client()->post( "api/v1/stem-extraction/api/extract", ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        $url = "api/v1/stem-extraction/status/" . $this->toData( $response, 'id' )['id'];
+        return FileResponse::fromAsync( $this->download( $url, 'download_urls' ), 3 );
     }
 
 
@@ -207,5 +248,17 @@ class Audiopod extends Base implements Denoise, Revoice, Speak, Transcribe
 
             return true;
         };
+    }
+
+
+    protected function validate( ResponseInterface $response ) : void
+    {
+        if( $response->getStatusCode() === 200 ) {
+            return;
+        }
+
+        $body = $response->getBody()->getContents();
+
+        $this->throw( $response->getStatusCode(), $body ?: $response->getReasonPhrase() );
     }
 }
