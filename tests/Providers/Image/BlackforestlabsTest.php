@@ -24,15 +24,12 @@ class BlackforestlabsTest extends TestCase
             "id": "image_1234567890",
             "status": "Processing"
         }' );
-        $prisma->response( '{
-            "id": "image_1234567890",
-            "status": "Ready",
-            "sample": "https://localhost/test.png"
-        }' );
 
-        $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC' );
-        $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
-            ->ensure( 'imagine' )
+        $file = $prisma->response( '{
+                "id": "image_1234567890",
+                "status": "Ready",
+                "sample": "https://localhost/test.png"
+            }' )->ensure( 'imagine' )
             ->imagine( 'prompt', [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -42,8 +39,7 @@ class BlackforestlabsTest extends TestCase
         } );
 
         $this->assertFalse( $file->ready() );
-        $this->assertEquals( $png, $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertEquals( 'https://localhost/test.png', $file->url() );
     }
 
 
@@ -59,15 +55,12 @@ class BlackforestlabsTest extends TestCase
             "id": "image_1234567890",
             "status": "Processing"
         }' );
-        $prisma->response( '{
-            "id": "image_1234567890",
-            "status": "Ready",
-            "sample": "https://localhost/test.png"
-        }' );
 
-        $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC' );
-        $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
-            ->ensure( 'inpaint' )
+        $file = $prisma->response( '{
+                "id": "image_1234567890",
+                "status": "Ready",
+                "sample": "https://localhost/test.png"
+            }' )->ensure( 'inpaint' )
             ->inpaint(
                 Image::fromBinary( 'PNG', 'image/png' ),
                 Image::fromBinary( 'PNG', 'image/png' ),
@@ -79,8 +72,7 @@ class BlackforestlabsTest extends TestCase
         } );
 
         $this->assertFalse( $file->ready() );
-        $this->assertEquals( $png, $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertEquals( 'https://localhost/test.png', $file->url() );
     }
 
 
@@ -96,15 +88,12 @@ class BlackforestlabsTest extends TestCase
             "id": "image_1234567890",
             "status": "Processing"
         }' );
-        $prisma->response( '{
-            "id": "image_1234567890",
-            "status": "Ready",
-            "sample": "https://localhost/test.png"
-        }' );
 
-        $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC' );
-        $file = $prisma->response( $png, ['Content-Type' => 'image/png'] )
-            ->ensure( 'uncrop' )
+        $file = $prisma->response( '{
+                "id": "image_1234567890",
+                "status": "Ready",
+                "sample": "https://localhost/test.png"
+            }' )->ensure( 'uncrop' )
             ->uncrop( Image::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
@@ -112,7 +101,6 @@ class BlackforestlabsTest extends TestCase
         } );
 
         $this->assertFalse( $file->ready() );
-        $this->assertEquals( $png, $file->binary() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertEquals( 'https://localhost/test.png', $file->url() );
     }
 }

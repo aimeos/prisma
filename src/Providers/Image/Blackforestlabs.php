@@ -99,11 +99,11 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
     }
 
 
-    protected function closure( string $url ) : \Closure
+    protected function download( string $url ) : \Closure
     {
         $client = $this->client();
 
-        return function( FileResponse $fr ) use ( $client, $url ) : ?string {
+        return function( FileResponse $fr ) use ( $client, $url ) : bool {
 
             $response = $client->get( $url );
 
@@ -116,20 +116,16 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
             }
 
             if( @$data->status !== 'Ready' ) {
-                return null;
+                return false;
             }
 
             if( !@$data->sample ) {
                 throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
             }
 
-            $response = $client->get( $data->sample );
+            $fr->add( Image::fromUrl( $data->sample ) );
 
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
-            }
-
-            return $response->getBody()->getContents();
+            return true;
         };
     }
 
@@ -142,7 +138,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
             throw new PrismaException( 'Invalid response' );
         }
 
-        return FileResponse::fromAsync( $this->closure( $json->polling_url ), 2 )
+        return FileResponse::fromAsync( $this->download( $json->polling_url ), 2 )
             ->withUsage( $json->cost ?? 0 );
     }
 

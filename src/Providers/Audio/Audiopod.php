@@ -40,11 +40,7 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
 
         $this->validate( $response );
 
-        if( ( $data = json_decode( $response->getBody()->getContents() ) ) === null || !isset( $data->id ) ) {
-            throw new PrismaException( 'Invalid response' );
-        }
-
-        $url = "api/v1/denoiser/jobs/{$data->id}";
+        $url = "api/v1/denoiser/jobs/" . $this->toData( $response, 'id' )['id'];
         return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
@@ -59,11 +55,7 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
 
         $this->validate( $response );
 
-        if( ( $data = json_decode( $response->getBody()->getContents() ) ) === null || !isset( $data->job_id ) ) {
-            throw new PrismaException( 'Invalid response' );
-        }
-
-        $url = "api/v1/voice/tts-jobs/{$data->job_id}/status";
+        $url = "api/v1/voice/tts-jobs/" . $this->toData( $response, 'job_id' )['job_id'] . "/status";
         return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
@@ -96,93 +88,90 @@ class Audiopod extends Base implements Denoise, Speak, Transcribe
 
         $this->validate( $response );
 
-        if( ( $data = json_decode( $response->getBody()->getContents() ) ) === null || !isset( $data->job_id ) ) {
-            throw new PrismaException( 'Invalid response' );
-        }
-
-        return TextResponse::fromAsync( $this->transcription( $data->job_id ), 3 );
+        return TextResponse::fromAsync( $this->transcription( $this->toData( $response, 'job_id' )['job_id'] ), 3 );
     }
 
 
     protected function download( string $url, string $key ) : \Closure
     {
-        $client = $this->client();
+        return function( FileResponse $fr ) use ( $url, $key ) : bool {
 
-        return function( FileResponse $fr ) use ( $client, $url, $key ) : ?string {
-
-            $response = $client->get( $url );
-
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
-            }
-
-            $body = $response->getBody()->getContents();
-
-            if( !( $data = json_decode( $body, true ) ) ) {
-                throw new PrismaException( 'Invalid response: ' . $body );
-            }
+            $data = $this->toData( $this->getResponse( $url ) );
 
             if( @$data['status'] !== 'COMPLETED' ) {
-                return null;
+                return false;
             }
 
             if( !@$data[$key] ) {
-                throw new PrismaException( 'Invalid response: ' . $body );
+                throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', $key, print_r( $data, true ) ) );
             }
 
-            $response = $client->get( $data[$key] );
-
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
+            foreach( (array) $data[$key] as $name => $url ) {
+                $fr->add( Audio::fromUrl( $url ), $name );
             }
 
-            $fr->setMimeType( $response->getHeaderLine( 'Content-Type' ) ?: null )
-                ->withMeta( $data['stats'] ?? [] );
-
-            return $response->getBody()->getContents();
+            return true;
         };
+    }
+
+
+    protected function getResponse( string $url ) : ResponseInterface
+    {
+        $response = $this->client()->get( $url );
+
+        if( $response->getStatusCode() !== 200 ) {
+            throw new PrismaException( $response->getReasonPhrase() );
+        }
+
+        return $response;
+    }
+
+
+    /**
+     * Convert the response body to an associative array and validate the presence of a required key if specified.
+     *
+     * @param ResponseInterface $response The response to convert
+     * @param string|null $key Optional key to validate in the response data
+     * @return array<string|int, mixed> The response data as an associative array
+     * @throws PrismaException If the response body is not valid JSON or if the required key is missing
+     */
+    protected function toData( ResponseInterface $response, ?string $key = null ) : array
+    {
+        $body = $response->getBody()->getContents();
+
+        if( ( $data = json_decode( $body, true ) ) === null ) {
+            throw new PrismaException( 'Invalid response: ' . $body );
+        }
+
+        if( $key && !isset( $data[$key] ) ) {
+            throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', $key, $body ) );
+        }
+
+        return $data;
     }
 
 
     protected function transcription( string $id ) : \Closure
     {
-        $client = $this->client();
+        return function( TextResponse $tr ) use ( $id ) : bool {
 
-        return function( TextResponse $tr ) use ( $client, $id ) : ?string {
+            $data = $this->toData( $this->getResponse( "api/v1/transcription/jobs/{$id}" ) );
 
-
-            $response = $client->get( "api/v1/transcription/jobs/{$id}" );
-
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
+            if( @$data['status'] !== 'COMPLETED' ) {
+                return false;
             }
 
-            if( !( $data = json_decode( $response->getBody()->getContents() ) ) ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
-            }
-
-            if( @$data->status !== 'COMPLETED' ) {
-                return null;
-            }
-
-            $response = $client->get( "api/v1/transcription/transcript/{$id}" );
-
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
-            }
-
-            if( !( $data = json_decode( $response->getBody()->getContents(), true ) ) ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
-            }
+            $data = $this->toData( $this->getResponse( "api/v1/transcription/transcript/{$id}" ) );
 
             $text = join( ' ', array_map( function( $segment ) {
                 return $segment['text'];
             }, $data['segments'] ?? [] ) );
 
-            $tr->withStructured( $data['segments'] ?? [] )
+            $tr->add( $text )
+                ->withStructured( $data['segments'] ?? [] )
                 ->withMeta( $data['statistics'] ?? [] );
 
-            return $text;
+            return true;
         };
     }
 }

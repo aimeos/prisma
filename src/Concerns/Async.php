@@ -12,9 +12,7 @@ trait Async
     private int $retry = 5;
 
 
-    abstract protected function content() : ?string;
-
-    abstract protected function setContent( ?string $content ) : ?string;
+    abstract public function empty() : bool;
 
 
     /**
@@ -47,27 +45,23 @@ trait Async
 
         $closure = $this->async;
 
-        return (bool) $this->setContent( $closure( $this ) );
+        return (bool) $closure( $this );
     }
 
 
     /**
      * Waits until the asynchronous file content is ready and returns it.
      *
-     * @return string|null Binary content
+     * @return void
      */
-    protected function wait() : ?string
+    protected function wait() : void
     {
-        $content = $this->content();
-
-        if( $content || !( $closure = $this->async ) ) {
-            return $content;
+        if( !$this->empty() || !( $closure = $this->async ) ) {
+            return;
         }
 
-        while( ( $content = $this->setContent( $closure( $this ) ) ) === null ) {
+        while( !$closure( $this ) ) {
             sleep( $this->retry );
         }
-
-        return $content;
     }
 }
