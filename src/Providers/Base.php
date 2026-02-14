@@ -332,10 +332,10 @@ abstract class Base implements Provider
      *
      * @param ResponseInterface $response HTTP response
      * @param bool $assoc When TRUE, returned objects will be converted to associative arrays
-     * @return array|object Decoded JSON data
+     * @return array<string, mixed>|object Decoded JSON data
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
-    protected function fromJson( ResponseInterface $response, bool $assoc = false ) : array|object
+    protected function fromJson( ResponseInterface $response, bool $assoc = true ) : array|object
     {
         $body = $response->getBody()->getContents();
         $data = json_decode( $body, $assoc );
