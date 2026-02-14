@@ -153,7 +153,7 @@ class Stabilityai extends Base
             return;
         }
 
-        $errors = join( ', ', json_decode( $response->getBody()->getContents() )?->errors );
+        $errors = join( ', ', $this->fromJson( $response )->errors ?? [] );
 
         switch( $response->getStatusCode() )
         {

@@ -31,7 +31,7 @@ class Groq extends Base implements Describe
 
         $this->validate( $response );
 
-        $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $result = $this->fromJson( $response, true );
         $text = null;
 
         foreach( $result['choices'] ?? [] as $data )

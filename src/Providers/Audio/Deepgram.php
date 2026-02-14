@@ -68,7 +68,7 @@ class Deepgram extends Base implements Speak, Transcribe
 
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response, true );
         $lists = $data['results']['channels'][0]['alternatives'][0]['paragraphs']['paragraphs'] ?? [];
         $sentences = array_merge( ...array_map( fn( $item ) => $item['sentences'], $lists ) );
 
@@ -82,7 +82,7 @@ class Deepgram extends Base implements Speak, Transcribe
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = json_decode( $response->getBody()->getContents() )?->err_msg ?: $response->getReasonPhrase();
+            $error = $this->fromJson( $response )->err_msg ?: $response->getReasonPhrase();
             $this->throw( $response->getStatusCode(), $error );
         }
     }
