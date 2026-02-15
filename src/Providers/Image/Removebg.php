@@ -98,7 +98,7 @@ class Removebg extends Base implements Isolate, Relocate
             return;
         }
 
-        $errors = $this->fromJson( $response )->errors ?? [];
+        $errors = @$this->fromJson( $response )['errors'] ?? [];
         $errors = join( ', ', array_column( $errors, 'title' ) );
 
         switch( $response->getStatusCode() )

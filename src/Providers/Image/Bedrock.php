@@ -121,7 +121,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             $response = $promise->wait();
             $this->validate( $response );
 
-            $vectors[$index] = $this->fromJson( $response )->embedding;
+            $vectors[$index] = @$this->fromJson( $response )['embedding'] ?? [];
         }
 
         return VectorResponse::fromVectors( $vectors );
@@ -156,7 +156,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
     {
         $this->validate( $response );
 
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
 
         if( !isset( $data['images'][0] ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
@@ -172,7 +172,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
             return;
         }
 
-        $error = $this->fromJson( $response )->message ?? $response->getReasonPhrase();
+        $error = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )
         {

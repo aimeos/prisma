@@ -25,7 +25,7 @@ class Groq extends Base implements Describe, Speak, Transcribe
             ]
         ];
         $response = $this->client()->post( 'openai/v1/chat/completions', ['json' => $request] );
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
 
         $meta = $data;
         unset( $meta['choices'], $meta['usage'] );
@@ -75,7 +75,7 @@ class Groq extends Base implements Describe, Speak, Transcribe
             return TextResponse::fromText( $response->getBody()->getContents() );
         }
 
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
 
         return TextResponse::fromText( $data['text'] ?? null )
             ->withStructured( $data['segments'] ?? [] )

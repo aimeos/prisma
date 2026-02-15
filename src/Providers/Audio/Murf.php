@@ -33,9 +33,7 @@ class Murf extends Base implements Revoice, Speak
 
         $this->validate( $response );
 
-        $data = $this->fromJson( $response );
-
-        return FileResponse::fromUrl( $data?->audio_file );
+        return FileResponse::fromUrl( @$this->fromJson( $response )['audio_file'] );
     }
 
 
@@ -55,8 +53,6 @@ class Murf extends Base implements Revoice, Speak
 
         $this->validate( $response );
 
-        $data = $this->fromJson( $response );
-
-        return FileResponse::fromUrl( $data?->audioFile );
+        return FileResponse::fromUrl( @$this->fromJson( $response )['audioFile'] );
     }
 }

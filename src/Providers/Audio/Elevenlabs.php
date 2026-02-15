@@ -92,7 +92,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
 
         $this->validate( $response );
 
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
 
         return TextResponse::fromText( $data['text'] ?? '' )
             ->withUsage( $data['usage']['total_tokens'] ?? 0, $data['usage'] ?? [] )
@@ -104,7 +104,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = $this->fromJson( $response )->detail?->message ?: $response->getReasonPhrase();
+            $error = @$this->fromJson( $response )['detail']['message'] ?: $response->getReasonPhrase();
             $this->throw( $response->getStatusCode(), $error );
         }
     }

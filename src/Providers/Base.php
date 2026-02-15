@@ -331,14 +331,13 @@ abstract class Base implements Provider
      * Decodes the JSON from the response body.
      *
      * @param ResponseInterface $response HTTP response
-     * @param bool $assoc When TRUE, returned objects will be converted to associative arrays
-     * @return array<string, mixed>|object Decoded JSON data
+     * @return array<string, mixed> Decoded JSON data
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
-    protected function fromJson( ResponseInterface $response, bool $assoc = true ) : array|object
+    protected function fromJson( ResponseInterface $response ) : array
     {
         $body = $response->getBody()->getContents();
-        $data = json_decode( $body, $assoc );
+        $data = json_decode( $body, true );
 
         if( !$data ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Invalid JSON response: ' . $body );

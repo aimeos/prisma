@@ -24,7 +24,7 @@ class Groq extends Base
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = $this->fromJson( $response )->error?->message ?: $response->getReasonPhrase();
+            $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
             $this->throw( $response->getStatusCode(), $error );
         }
     }

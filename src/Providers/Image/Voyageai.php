@@ -47,7 +47,7 @@ class Voyageai extends Base implements Vectorize
 
         $this->validate( $response );
 
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
         $vectors = array_map( fn( $item ) => $item['embedding'] ?? null, $data['data'] ?? [] );
 
         return VectorResponse::fromVectors( $vectors )
@@ -61,7 +61,7 @@ class Voyageai extends Base implements Vectorize
             return;
         }
 
-        $error = $this->fromJson( $response )->detail ?? $response->getReasonPhrase();
+        $error = @$this->fromJson( $response )['detail'] ?: $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )
         {

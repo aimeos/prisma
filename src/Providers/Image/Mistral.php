@@ -40,7 +40,7 @@ class Mistral extends Base implements Recognize
     {
         $this->validate( $response );
 
-        $data = $this->fromJson( $response, true );
+        $data = $this->fromJson( $response );
         $texts = array_map( fn( $item ) => $item['markdown'] ?? null, $data['pages'] ?? [] );
 
         return TextResponse::fromText( implode( "\n\n", $texts ) )

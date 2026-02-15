@@ -57,7 +57,7 @@ class Ideogram
 
         $this->validate( $response );
 
-        $result = $this->fromJson( $response, true );
+        $result = $this->fromJson( $response );
         $item = current( $result['descriptions'] ?? [] ) ?: null;
 
         return TextResponse::fromText( $item['text'] ?? null );
@@ -180,7 +180,7 @@ class Ideogram
     {
         $this->validate( $response );
 
-        $result = $this->fromJson( $response, true );
+        $result = $this->fromJson( $response );
         $data = current( $result['data'] ?? [] ) ?: [];
 
         if( !isset( $data['url'] ) ) {
@@ -219,7 +219,7 @@ class Ideogram
     {
         if( $response->getStatusCode() === 422 )
         {
-            $msg = $this->fromJson( $response )->error ?? $response->getReasonPhrase();
+            $msg = @$this->fromJson( $response )['error'] ?: $response->getReasonPhrase();
             throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $msg );
         }
 
