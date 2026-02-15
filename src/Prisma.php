@@ -108,4 +108,15 @@ class Prisma
             return false;
         }
     }
+
+
+    /**
+     * Creates a new Prisma factory instance for video processing.
+     *
+     * @return self
+     */
+    public static function video() : self
+    {
+        return new self( 'video' );
+    }
 }
