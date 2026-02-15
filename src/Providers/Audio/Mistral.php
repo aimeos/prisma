@@ -24,7 +24,7 @@ class Mistral extends Base implements Describe, Transcribe
             ]
         ];
         $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
-        $data = json_decode($response->getBody(), true) ?: [];
+        $data = $this->fromJson( $response );
 
         $meta = $data;
         unset( $meta['choices'], $meta['usage'] );
@@ -64,7 +64,7 @@ class Mistral extends Base implements Describe, Transcribe
     {
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
 
         return TextResponse::fromText( $data['text'] ?? '' )
             ->withUsage( $data['usage']['total_tokens'] ?? 0, $data['usage'] ?? [] )

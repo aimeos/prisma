@@ -111,19 +111,17 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
                 throw new PrismaException( $response->getReasonPhrase() );
             }
 
-            if( !( $data = json_decode( $response->getBody()->getContents() ) ) ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
-            }
+            $data = $this->fromJson( $response );
 
-            if( @$data->status !== 'Ready' ) {
+            if( @$data['status'] !== 'Ready' ) {
                 return false;
             }
 
-            if( !@$data->sample ) {
+            if( !@$data['sample'] ) {
                 throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
             }
 
-            $fr->add( Image::fromUrl( $data->sample ) );
+            $fr->add( Image::fromUrl( $data['sample'] ) );
 
             return true;
         };
@@ -133,13 +131,14 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
     protected function toFileResponse( ResponseInterface $response ) : FileResponse
     {
         $this->validate( $response );
+        $data = $this->fromJson( $response );
 
-        if( ( $json = json_decode( $response->getBody()->getContents() ) ) === null || !isset( $json->polling_url ) ) {
+        if( !isset( $data['polling_url'] ) ) {
             throw new PrismaException( 'Invalid response' );
         }
 
-        return FileResponse::fromAsync( $this->download( $json->polling_url ), 2 )
-            ->withUsage( $json->cost ?? 0 );
+        return FileResponse::fromAsync( $this->download( $data['polling_url'] ), 2 )
+            ->withUsage( $data['cost'] ?? 0 );
     }
 
 
@@ -149,8 +148,8 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
             return;
         }
 
-        $detail = json_decode( $response->getBody()->getContents() )?->detail;
-        $error = is_array( $detail ) ? join( ', ', array_map( fn( $entry ) => $entry->msg,  $detail ) ) : $detail;
+        $detail = @$this->fromJson( $response )['detail'];
+        $error = is_array( $detail ) ? join( ', ', array_map( fn( $entry ) => @$entry['msg'],  $detail ) ) : $detail;
         $msg = $error ?? $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )

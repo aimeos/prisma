@@ -51,7 +51,7 @@ class Cohere extends Base implements Vectorize
 
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
 
         return VectorResponse::fromVectors( $data['embeddings']['float'] )
             ->withUsage( $data['meta']['billed_units']['images'] ?? 0, $data['meta']['billed_units'] ?? [] )
@@ -65,7 +65,7 @@ class Cohere extends Base implements Vectorize
             return;
         }
 
-        $error = json_decode( $response->getBody()->getContents() )?->message ?: $response->getReasonPhrase();
+        $error = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )
         {

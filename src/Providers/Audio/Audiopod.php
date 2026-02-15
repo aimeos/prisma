@@ -212,14 +212,10 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
      */
     protected function toData( ResponseInterface $response, ?string $key = null ) : array
     {
-        $body = $response->getBody()->getContents();
-
-        if( ( $data = json_decode( $body, true ) ) === null ) {
-            throw new PrismaException( 'Invalid response: ' . $body );
-        }
+        $data = $this->fromJson( $response );
 
         if( $key && !isset( $data[$key] ) ) {
-            throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', $key, $body ) );
+            throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', $key, print_r( $data, true ) ) );
         }
 
         return $data;

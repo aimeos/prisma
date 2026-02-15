@@ -25,7 +25,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
             ]
         ];
         $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
-        $data = json_decode($response->getBody(), true) ?: [];
+        $data = $this->fromJson( $response );
 
         $meta = $data;
         unset( $meta['choices'], $meta['usage'] );
@@ -77,7 +77,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
             return TextResponse::fromText( $response->getBody()->getContents() );
         }
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
 
         return TextResponse::fromText( $data['text'] ?? null )
             ->withStructured( $data['segments'] ?? [] )

@@ -36,7 +36,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
         $data = current( $data['candidates'] ?? [] ) ?: [];
         $part = current( $data['content']['parts'] ?? [] ) ?: [];
 
@@ -95,7 +95,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
     {
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
         $data = current( $data['candidates'] ?? [] ) ?: null;
         $base64 = $mimeType = $description = null;
 

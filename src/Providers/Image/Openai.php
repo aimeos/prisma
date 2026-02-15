@@ -33,7 +33,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
         $this->validate( $response );
 
-        $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $result = $this->fromJson( $response );
         $text = null;
 
         foreach( $result['output'] ?? [] as $data )
@@ -187,7 +187,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     {
         $this->validate( $response );
 
-        $result = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $result = $this->fromJson( $response );
 
         if( !isset( $result['data'][0]['b64_json'] ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );

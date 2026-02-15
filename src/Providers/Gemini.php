@@ -23,7 +23,8 @@ class Gemini extends Base
     {
         if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+            $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
+
             $this->throw( match( $status ) {
                 403 => 401, // unauthorized, not forbidden content
                 default   => $status

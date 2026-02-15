@@ -31,7 +31,7 @@ class Gemini extends Base implements Describe
 
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
         $data = current( $data['candidates'] ?? [] ) ?: [];
         $part = current( $data['content']['parts'] ?? [] ) ?: [];
 

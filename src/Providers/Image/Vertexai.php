@@ -159,7 +159,7 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
 
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
         $vectors = array_map( fn( $entry ) => $entry['imageEmbedding'] ?? [], $data['predictions'] ?? [] );
 
         return VectorResponse::fromVectors( $vectors )
@@ -171,7 +171,7 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
     {
         $this->validate( $response );
 
-        $data = json_decode( $response->getBody()->getContents(), true ) ?? [];
+        $data = $this->fromJson( $response );
         $data = current( $data['predictions'] ?? [] ) ?: null;
 
         if( !$data ) {
@@ -189,7 +189,7 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
             return;
         }
 
-        $error = json_decode( $response->getBody()->getContents() )?->error?->message ?: $response->getReasonPhrase();
+        $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
 
         switch( $response->getStatusCode() )
         {
