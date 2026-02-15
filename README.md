@@ -47,7 +47,10 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 </ul>
 <div class="method-header"><a href="#custom-providers">Custom providers</a></div>
 <ul class="method-list">
-    <li><a href="#image-provider">Image provider</a></li>
+    <li><a href="#base-skeleton">Base skeleton</a></li>
+    <li><a href="#requests">Requests</a></li>
+    <li><a href="#responses">Responses</a></li>
+    <li><a href="#examples">Examples</a></li>
 </ul>
 </nav>
 
@@ -239,12 +242,17 @@ contains the returned data with optional meta/usage/description information.
 **FileResponse** objects:
 
 ```php
-$base64 = $response->base64(); // from binary, base64 and URL, waits for async requests
-$file = $response->binary(); // from binary, base64 and URL, waits for async requests
-$url = $response->url(); // only if URL is returned, otherwise NULL
+$base64 = $response->base64(); // first base64 data, from binary, base64 and URL, waits for async requests
+$file = $response->binary(); // first binary data, from binary, base64 and URL, waits for async requests
+$url = $response->url(); // first URL, only if URLs are returned, otherwise NULL
 $mime = $response->mimetype(); // image mime type, waits for async requests
 $text = $response->description(); // image description if returned by provider
 $bool = $response->ready(); // False for async APIs until file is available
+
+// loop over all available files
+foreach( $response as $name => $file ) {
+    $file->binary()
+}
 ```
 
 URLs are automatically converted to binary and base64 data if requested and conversion between
@@ -253,7 +261,12 @@ binary and base64 data is done on request too.
 **TextResponse** objects:
 
 ```php
-$text = $response->text(); // text content (non-streaming)
+$text = $response->text(); // first text content (non-streaming)
+
+// loop over all available texts
+foreach( $response as $text ) {
+    echo $text;
+}
 ```
 
 **VectorResponse** objects:
