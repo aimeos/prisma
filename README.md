@@ -41,6 +41,10 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
     <li><a href="#vectorize">vectorize</a><span>: Creates embedding vectors from images</span></li>
 </ul>
+<div class="method-header"><a href="#video-api">Video API</a></div>
+<ul class="method-list">
+    <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
+</ul>
 <div class="method-header"><a href="#custom-providers">Custom providers</a></div>
 <ul class="method-list">
     <li><a href="#image-provider">Image provider</a></li>
@@ -97,6 +101,12 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
+
+### Video
+
+|                       | describe |
+| :---                  | :---:    |
+| **Gemini**            | yes      |
 
 ## Installation
 
@@ -873,6 +883,25 @@ $vectorResponse = Prisma::image()
 
 $vectors = $vectorResponse->vectors();
 ```
+
+## Video API
+
+### describe
+
+Describe the content of a video file.
+
+```php
+public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
+```
+
+* @param **Video** `$video` Input video object
+* @param **string&#124;null** `$lang` ISO language code the description should be generated in
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text
+
+**Supported options:**
+
+* Gemini
 
 ## Custom providers
 
