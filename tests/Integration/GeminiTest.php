@@ -5,6 +5,7 @@ namespace Tests\Integration;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Video;
 use PHPUnit\Framework\TestCase;
 
 
@@ -42,6 +43,18 @@ class GeminiTest extends TestCase
 
         $this->assertStringContainsString( 'cartoon', $response->text() );
         $this->assertStringContainsString( 'cat', $response->text() );
+    }
+
+
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $response = Prisma::video()
+            ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
     }
 
 
