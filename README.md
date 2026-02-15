@@ -905,26 +905,23 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 
 ## Custom providers
 
-### Image provider
-
-To create a custom Prisma image provider, use this skeleton and implement all
-[Prisma interfaces](https://github.com/aimeos/prisma/tree/master/src/Contracts/Image)
-supported by the remote API:
+### Base skeleton
 
 ```php
 <?php
 
+// for Audio providers
+namespace Aimeos\Prisma\Providers\Audio;
+// for Image providers
 namespace Aimeos\Prisma\Providers\Image;
+// for Video providers
+namespace Aimeos\Prisma\Providers\Video;
 
-use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
-use Aimeos\Prisma\Responses\FileResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
-class Myprovider extends Base implements Imagine
+class Myprovider extends Base implements ...
 {
     public function __construct( array $config )
     {
@@ -937,50 +934,391 @@ class Myprovider extends Base implements Imagine
         // base url for all requests (no paths)
         $this->baseUrl( '<provider URL>' );
     }
+```
+
+Depending on the provider type (Audio, Image or Video), you can implement one or
+more of the available interfaces for that provider type:
+
+- [Audio](https://github.com/aimeos/prisma/tree/master/src/Contracts/Audio)
+- [Image](https://github.com/aimeos/prisma/tree/master/src/Contracts/Image)
+- [Video](https://github.com/aimeos/prisma/tree/master/src/Contracts/Video)
+
+For example:
+
+```php
+namespace Aimeos\Prisma\Providers\Image;
+
+use Aimeos\Prisma\Contracts\Image\Describe;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
-    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+class Myprovider extends Base implements Describe
+{
+    public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        // filter key/value pairs in $options and use the ones allowed by the API
-        $allowed = $this->allow( $options, ['<key1>', '<key2>', /* ... */] );
-        // filter values to pass only allowed option values
-        $allowed = $this->sanitize( $allowed, ['<key1>' => ['<val1>', '<val2>', '<val3>']])
+        // ...
+    }
+}
+```
 
-        // Form data
-        $data = $this->request( allowed );
-        // Multipart data
-        $data = ['multipart' => $this->request( allowed, ['image_key' => $image->binary()] )];
-        // JSON data
-        $data = ['json' => ['image_key' => $image->base64()] + allowed];
+### Requests
 
-        // use Guzzle to send the request and get the response from the server
-        $response = $this->client()->post( 'relative/path', $data );
-        return $this->toFileResponse( $response );
+There are a few support methods available to simplify building requests which
+are sent by the Guzzle client to the server of the AI provider.
+
+First, you should validate and limit the passed options to the ones supported
+by the AI API. The *allow()* and *sanitze()* methods filter out unsupported
+values because different APIs have different parameters but users of the
+Prisma API should be able to pass parameters for several AI providers at once.
+Therefore, get only supported parameters and values using:
+
+```php
+// filter key/value pairs in $options and use the ones allowed by the API
+$allowed = $this->allow( $options, ['<key1>', '<key2>', /* ... */] );
+
+// filter values to pass only allowed option values (optional)
+$allowed = $this->sanitize( $allowed, ['<key1>' => ['<val1>', '<val2>', '<val3>']])
+```
+
+If the user can choose between several LLM models when using the API, the
+*modelName()* method will return the users choice or the passed default value:
+
+```php
+$model = $this->modelName( 'gemini-2.5-flash' );
+```
+
+To build the request in the correct format (form key/value pairs, multipart or
+JSON data), the *request()* method transforms parameters and files for form and
+multipart requests. JSON data is specific to the API and you must create it
+yourself:
+
+```php
+// Form data request
+$data = $this->request( params );
+// Multipart request
+$data = ['multipart' => $this->request( params, ['image_key' = $image->binary()] )];
+// JSON request
+$data = ['json' => ['image_key' = array_map( fn( $image ) => $image->base64()] + params];
+```
+
+Then, you can send the request using the Guzzle client, validate the response
+and get the returned content:
+
+```php
+// use Guzzle to send the request and get the response from the server
+$response = $this->client()->post( 'relative/api/path', $data );
+
+// validates HTTP status codes, overwrite if needed
+$this->validate( $response );
+
+// get binary content or JSON content
+$content = $response->getBody()->getContents();
+```
+
+A full example would be:
+
+```php
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Responses\TextResponse;
+
+public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+{
+    $model = $this->modelName( 'flash' );
+    $allowed = $this->allow( $options, ['version'] );
+
+    $params = ['language' => $lang] + $allowed;
+    $data = ['multipart' => $this->request( params, ['file' = $image->binary()] )];
+    $response = $this->client()->post( 'relative/api/path', $data );
+
+    $this->validate( $response );
+
+    $content = $response->getBody()->getContents();
+    // return a response
+}
+```
+
+### Responses
+
+There are several response types available, which can be returned depending on
+the implemented interfaces:
+
+* FileResponse
+* TextResponse
+* VectorResponse
+
+#### File response
+
+A FileResponse can contain one or more files, either as binary or base64 data,
+or as remote URL. Passing the mime type is optional but prevents guessing the
+file type later:
+
+```php
+use Aimeos\Prisma\Responses\FileResponse;
+
+$response = FileResponse::fromBinary( '...', 'image/png' );
+$response = FileResponse::fromBase64( '...', 'image/png' );
+$response = FileResponse::fromUrl( '...', 'image/png' );
+```
+
+You can also add more than one file by using the *add()* method:
+
+```php
+use Aimeos\Prisma\Files\File;
+
+$response->add( File::fromBinary( '...', 'image/png' ) );
+```
+
+If the API processes requests asynchronously, the *fromAsync()* method accepts
+a closure function and the optional timeout between requests as second parameter:
+
+```php
+$client = $this->client();
+$response = FileResponse::fromAsync( function( FileResponse $fr ) uses ( $client ) {
+    // download or add file(s) to file response object
+    $fr->add( File::fromUrl( '...', 'image/png' ) );
+}, 3 );
+```
+
+#### Text response
+
+The TextResponse can contain one or more texts and is created by using:
+
+```php
+use Aimeos\Prisma\Responses\TextResponse;
+
+$response = TextResponse::fromText( '...' );
+$response->add( '...' ); // add more texts
+```
+
+TextResponse objects also support *fromAsync()* for asynchronous APIs using a
+closure function and the optional timeout between requests as second parameter:
+
+```php
+$client = $this->client();
+$response = TextResponse::fromAsync( function( FileResponse $fr ) uses ( $client ) {
+    // download and add texts to text response object
+    $fr->add( '...' );
+}, 3 );
+```
+
+#### Vector response
+
+The *vectorize()* method returns a *VectorResponse* object which contains the
+vector of float numbers representing the input:
+
+```php
+use Aimeos\Prisma\Responses\VectorResponse;
+
+$response = VectorResponse::fromVectors( [
+    [0.27629, 0.89271, 0.98265, /* ... */],
+    /* ... */
+] );
+```
+
+#### Meta data
+
+All response objects support adding usage information and meta data if they are
+returned by the provider API. Use the *withUsage() and *withMeta()* methods to
+pass that information as part of the response object:
+
+```php
+$response->withUsage( // optional
+    100, // used tokens, credits, etc. if available or NULL
+    [] // arbitrary key/value pairs for the rest of the usage information
+);
+$response->withMeta( // optional
+    [] // arbitrary meta data as key/value pairs, can be nested
+);
+```
+
+TextResponse objects can store structured data e.g. returned when audio files
+are transcribed:
+
+```php
+$response->withStructured( [
+    // for transcriptions
+    ['start' => 0.0, 'end' => 1.0, 'text' => 'This is a test.'],
+    // ...
+] );
+```
+
+Transcriptions must always contain the keys *start* and *end* in seconds as well
+as *text* for the content in each entry (but there can be more key/value pairs
+if available).
+
+The FileResponse object also supports *withDescription()* to attach the file
+description as string to the response object:
+
+```php
+$response->withDescription( '...' );
+```
+
+### Examples
+
+#### Audio provider
+
+```php
+<?php
+
+namespace Aimeos\Prisma\Providers\Audio;
+
+use Aimeos\Prisma\Contracts\Audio\Describe;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\TextResponse;
+
+
+class Myprovider extends Base implements Describe
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( sprintf( 'No API key' ) );
+        }
+
+        $this->header( 'x-api-key', $config['api_key'] );
+        $this->baseUrl( 'https://ai.com' );
     }
 
 
-    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        // from Base class, overwrite as needed
+        $allowed = $this->allow( $options, ['version'] );
+        $model = $this->modelName( 'flash' );
+
+        $params = ['language' => $lang, 'model' => model] + $allowed;
+        $data = ['multipart' => $this->request( params, ['file' = $audio->binary()] )];
+        $response = $this->client()->post( 'relative/api/path', $data );
+
         $this->validate( $response );
 
-        // use binary content or decode JSON content
-        $content = $response->getBody()->getContents();
+        $data = $this->fromJson( $response );
 
-        // if mime type is available in header
-        $mimetype = $response->getHeaderLine( 'Content-Type' );
-
-        // use fromBinary(), fromBase64() or fromUrl()
-        return FileResponse::fromBinary( content, mimetype )
-            ->withDescription( // optional
-                '' // image description if returned
+        return TextResponse::fromText( @$data['text'] )
+            ->withStructured( // optional
+                $data['segments'] ?? []
             )
             ->withUsage( // optional
-                100, // used tokens, credits, etc. if available or NULL
-                [] // key/value pairs for the rest of the usage data
+                @$data['usage']['total'],
+                $data['usage'] ?? []
             )
             ->withMeta( // optional
-                [] // meta data as key/value pairs
+                $data['meta'] ?? []
             );
     }
+}
+```
+
+### Image provider
+
+```php
+<?php
+
+namespace Aimeos\Prisma\Providers\Image;
+
+use Aimeos\Prisma\Contracts\Image\Describe;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\TextResponse;
+
+
+class Myprovider extends Base implements Describe
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( sprintf( 'No API key' ) );
+        }
+
+        $this->header( 'x-api-key', $config['api_key'] );
+        $this->baseUrl( 'https://ai.com' );
+    }
+
+
+    public function describe( Image $audio, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $allowed = $this->allow( $options, ['version'] );
+        $model = $this->modelName( 'flash' );
+
+        $params = ['language' => $lang, 'model' => model] + $allowed;
+        $data = ['multipart' => $this->request( params, ['file' = $audio->binary()] )];
+        $response = $this->client()->post( 'relative/api/path', $data );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+
+        return TextResponse::fromText( @$data['text'] )
+            ->withStructured( // optional
+                $data['segments'] ?? []
+            )
+            ->withUsage( // optional
+                @$data['usage']['total'],
+                $data['usage'] ?? []
+            )
+            ->withMeta( // optional
+                $data['meta'] ?? []
+            );
+    }
+}
+```
+
+### Video provider
+
+```php
+<?php
+
+namespace Aimeos\Prisma\Providers\Video;
+
+use Aimeos\Prisma\Contracts\Video\Describe;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\TextResponse;
+
+
+class Myprovider extends Base implements Describe
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( sprintf( 'No API key' ) );
+        }
+
+        $this->header( 'x-api-key', $config['api_key'] );
+        $this->baseUrl( 'https://ai.com' );
+    }
+
+
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $allowed = $this->allow( $options, ['version'] );
+        $model = $this->modelName( 'flash' );
+
+        $params = ['language' => $lang, 'model' => model] + $allowed;
+        $data = ['multipart' => $this->request( params, ['file' = $video->binary()] )];
+        $response = $this->client()->post( 'relative/api/path', $data );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+
+        return TextResponse::fromText( @$data['text'] )
+            ->withStructured( // optional
+                $data['segments'] ?? []
+            )
+            ->withUsage( // optional
+                @$data['usage']['total'],
+                $data['usage'] ?? []
+            )
+            ->withMeta( // optional
+                $data['meta'] ?? []
+            );
+    }
+}
 ```
