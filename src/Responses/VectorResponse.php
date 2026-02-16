@@ -50,6 +50,17 @@ class VectorResponse
 
 
     /**
+     * Allows iterating over the list of available vectors.
+     *
+     * @return \ArrayIterator<int, array<int, float>|null> Traversable list of vectors
+     */
+    public function getIterator(): \Traversable
+    {
+        return new \ArrayIterator( $this->vectors );
+    }
+
+
+    /**
      * Get the embedding vectors.
      *
      * @return array<int, array<int, float>|null> Embedding vectors

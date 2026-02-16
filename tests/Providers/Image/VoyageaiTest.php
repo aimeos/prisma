@@ -41,5 +41,9 @@ class VoyageaiTest extends TestCase
         } );
 
         $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+
+        foreach( $response as $vector ) {
+            $this->assertEquals( [0.1, 0.2, 0.3], $vector );
+        }
     }
 }

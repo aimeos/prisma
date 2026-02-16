@@ -9,8 +9,10 @@ use Aimeos\Prisma\Concerns\HasUsage;
 
 /**
  * Text based response.
+ *
+ * @implements \IteratorAggregate<int|string, string|null>
  */
-class TextResponse
+class TextResponse implements \IteratorAggregate
 {
     use Async, HasMeta, HasUsage;
 
@@ -73,9 +75,9 @@ class TextResponse
 
 
     /**
-     * Returns the first file in the list if several are available.
+     * Returns the first text in the list if several are available.
      *
-     * @return string|null First file object or null if no files are available
+     * @return string|null First text or null if no texts are available
      */
     public function first() : ?string
     {
@@ -84,6 +86,21 @@ class TextResponse
         }
 
         return reset( $this->list ) ?: null;
+    }
+
+
+    /**
+     * Allows iterating over the list of available texts.
+     *
+     * @return \ArrayIterator<int|string, string|null> Traversable list of texts
+     */
+    public function getIterator(): \Traversable
+    {
+        if( empty( $this->list ) ) {
+            $this->wait();
+        }
+
+        return new \ArrayIterator( $this->list );
     }
 
 
@@ -110,6 +127,21 @@ class TextResponse
         }
 
         return current( $this->list ) ?: null;
+    }
+
+
+    /**
+     * Get all available texts.
+     *
+     * @return array<int|string, string|null> List of texts
+     */
+    public function texts() : array
+    {
+        if( empty( $this->list ) ) {
+            $this->wait();
+        }
+
+        return $this->list;
     }
 
 

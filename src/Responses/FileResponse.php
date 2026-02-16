@@ -172,6 +172,21 @@ class FileResponse implements \IteratorAggregate
 
 
     /**
+     * Get all available files.
+     *
+     * @return array<int|string, File> List of files
+     */
+    public function files() : array
+    {
+        if( empty( $this->list ) ) {
+            $this->wait();
+        }
+
+        return $this->list;
+    }
+
+
+    /**
      * Returns the first file in the list if several are available.
      *
      * @return File|null First file object or null if no files are available

@@ -247,7 +247,9 @@ $file = $response->binary(); // first binary data, from binary, base64 and URL, 
 $url = $response->url(); // first URL, only if URLs are returned, otherwise NULL
 $mime = $response->mimetype(); // image mime type, waits for async requests
 $text = $response->description(); // image description if returned by provider
-$bool = $response->ready(); // False for async APIs until file is available
+$bool = $response->ready(); // FALSE for async APIs until file is available
+$file = $response->first(); // first available file object
+$array = $response->files(); // all available file objects
 
 // loop over all available files
 foreach( $response as $name => $file ) {
@@ -262,6 +264,8 @@ binary and base64 data is done on request too.
 
 ```php
 $text = $response->text(); // first text content (non-streaming)
+$text = $response->first(); // first available text
+$texts = $response->texts(); // all texts (non-streaming)
 
 // loop over all available texts
 foreach( $response as $text ) {
@@ -272,8 +276,13 @@ foreach( $response as $text ) {
 **VectorResponse** objects:
 
 ```php
-$vectors = $response->vectors(); // embedding vectors for the passed files in the same order
 $vector = $response->first(); // first embedding vector if only one file has been passed
+$vectors = $response->vectors(); // embedding vectors for the passed files in the same order
+
+// loop over all available vectors
+foreach( $response as $vector ) {
+    print_r( $vector );
+}
 ```
 
 Included **meta data** (optional):
