@@ -6,7 +6,8 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 <div class="method-header"><a href="#supported-providers">Supported providers</a></div>
 <ul class="method-list">
     <li><a href="#audio">Audio</a></li>
-    <li><a href="#images">Images</a></li>
+    <li><a href="#image">Image</a></li>
+    <li><a href="#video">Video</a></li>
 </ul>
 <div class="method-header"><a href="#api-usage">API usage</a></div>
 <ul class="method-list">
@@ -87,7 +88,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Murf**              | -     | -       | -        | yes     | yes   | -          |
 | **OpenAI**            | -     | -       | yes      | -       | yes   | yes        |
 
-### Images
+### Image
 
 |                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
 | :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
