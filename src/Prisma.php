@@ -111,6 +111,18 @@ class Prisma
 
 
     /**
+     * Creates a new Prisma factory instance for the passed type.
+     *
+     * @param string $type Provider type
+     * @return self
+     */
+    public static function type( string $type ) : self
+    {
+        return new self( $type );
+    }
+
+
+    /**
      * Creates a new Prisma factory instance for video processing.
      *
      * @return self
