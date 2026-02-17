@@ -94,17 +94,17 @@ class File
             throw new NotImplementedException( 'Laravel storage facade is not available' );
         }
 
-        $disk = \Illuminate\Support\Facades\Storage::disk( $disk );
-        $content = $disk->get($path);
+        $fsdisk = \Illuminate\Support\Facades\Storage::disk( $disk );
+        $content = $fsdisk->get($path);
 
-        if( !( $content = $disk->get( $path ) ) ) {
+        if( !( $content = $fsdisk->get( $path ) ) ) {
             throw new NotFoundException( sprintf( 'Laravel storage disk "%1$s" does not contain "%2$s" or the file is empty', $disk, $path ) );
         }
 
         $instance = new static;
         $instance->binary = $content;
         $instance->filename = basename( $path );
-        $instance->setMimeType( $mimeType ?: $disk->mimeType( $path ) ?: null );
+        $instance->setMimeType( $mimeType ?: $fsdisk->mimeType( $path ) ?: null );
 
         return $instance;
     }
