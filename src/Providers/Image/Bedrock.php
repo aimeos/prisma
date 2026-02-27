@@ -35,7 +35,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
         $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale', 'seed'] );
 
         $request = [
@@ -61,7 +61,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
         $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale'] );
 
         $request = [
@@ -84,7 +84,7 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.titan-image-generator-v2:0' );
+        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
 
         $request = [
             'taskType' => 'BACKGROUND_REMOVAL',

@@ -27,7 +27,7 @@ class BedrockTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-image-generator-v2:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
@@ -53,7 +53,7 @@ class BedrockTest extends TestCase
             );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-image-generator-v2:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
@@ -74,7 +74,7 @@ class BedrockTest extends TestCase
             ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-image-generator-v2:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
