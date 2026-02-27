@@ -33,7 +33,7 @@ class FakeTest extends TestCase
 
     public function testCallThrowsExceptionWhenMethodNotExists() : void
     {
-        $provider = $this->createMock(Provider::class);
+        $provider = $this->createStub(Provider::class);
 
         $fake = new Fake(['response']);
         $fake->use($provider);
@@ -97,7 +97,7 @@ class FakeTest extends TestCase
     public function testUseSetsProvider() : void
     {
         $fake = new Fake(['response']);
-        $result = $fake->use($this->createMock(Provider::class));
+        $result = $fake->use($this->createStub(Provider::class));
 
         $this->assertSame($fake, $result);
     }
