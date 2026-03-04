@@ -29,7 +29,7 @@ class Qwen extends Base implements Imagine
         $model = $this->modelName( 'qwen-image-2.0-pro' );
         $allowed = $this->allowed( $options, ['negative_prompt', 'n', 'prompt_extend', 'seed', 'size', 'watermark'] );
 
-        $qimg2 = str_starts_with( $model, 'qwen-image-2.0' );
+        $qimg2 = str_starts_with( (string) $model, 'qwen-image-2.0' );
         $allowed = $this->sanitize( $allowed, [
             'n' => $qimg2 ? [1, 2, 3, 4, 5, 6] : [1],
             'size' => !$qimg2 ? ['1664*928', '1472*1104', '1328*1328', '1104*1472', '928*1664'] : null,

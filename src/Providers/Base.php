@@ -287,7 +287,7 @@ abstract class Base implements Provider
      * Sanitize the options by only allowing the specified values.
      *
      * @param array<string, mixed> $options Associative list of name/value pairs
-     * @param array<string, array<string>> $allowed Associative list of name/allowed values
+     * @param array<string, array<string|int|bool>|null> $allowed Associative list of name/allowed values, NULL for all
      * @return array<string, mixed> Sanitized list of name/value pairs
      */
     protected function sanitize( array $options, array $allowed ) : array
