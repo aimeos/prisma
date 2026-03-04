@@ -70,6 +70,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Mistral](https://docs.mistral.ai/api)
 - [Murf](https://murf.ai/api)
 - [OpenAI](https://openai.com/api/)
+- [Qwen (Alibaba)](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
@@ -101,6 +102,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
+| **Qwen**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |

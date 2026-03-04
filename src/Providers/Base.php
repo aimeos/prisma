@@ -294,7 +294,7 @@ abstract class Base implements Provider
     {
         foreach( $allowed as $name => $values )
         {
-            if( isset( $options[$name] ) && !in_array( $options[$name], $values ) ) {
+            if( !is_null( $values ) && isset( $options[$name] ) && !in_array( $options[$name], $values ) ) {
                 unset( $options[$name] );
             }
         }
