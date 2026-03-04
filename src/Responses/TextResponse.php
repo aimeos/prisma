@@ -45,6 +45,21 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
+     * Create a text response instance.
+     *
+     * @param array<int|string, string> $texts List of texts
+     * @return self TextResponse instance
+     */
+    public static function fromTexts( array $texts ) : self
+    {
+        $instance = new self;
+        $instance->list = $texts;
+
+        return $instance;
+    }
+
+
+    /**
      * Add a text to the list of texts if several are available.
      *
      * @param string|null $text Text content to add

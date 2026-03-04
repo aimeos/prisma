@@ -32,23 +32,23 @@ class Groq extends Base implements Describe
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
-        $text = null;
+        $texts = [];
 
         foreach( $result['choices'] ?? [] as $data )
         {
             if( $text = $data['message']['content'] ?? null ) {
-                break;
+                $texts[] = $text;
             }
         }
 
-        if( !$text ) {
+        if( empty( $texts ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No text found in response' );
         }
 
         $meta = $result;
-        unset( $meta['output'], $meta['usage'] );
+        unset( $meta['choices'], $meta['usage'] );
 
-        return TextResponse::fromText( $text )
+        return TextResponse::fromTexts( $texts )
             ->withUsage(
                 $result['usage']['total_tokens'] ?? null,
                 $result['usage'] ?? [],

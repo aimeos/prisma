@@ -172,14 +172,23 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $data = current( $data['predictions'] ?? [] ) ?: null;
+        $files = [];
 
-        if( !$data ) {
+        foreach( $data['predictions'] ?? [] as $prediction )
+        {
+            if( !empty( $prediction['bytesBase64Encoded'] ) ) {
+                $files[] = Image::fromBase64( $prediction['bytesBase64Encoded'], $prediction['mimeType'] ?? null );
+            }
+        }
+
+        if( empty( $files ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromBase64( $data['bytesBase64Encoded'], $data['mimeType'] )
-            ->withDescription( $data['prompt'] ?? null );
+        $first = current( $data['predictions'] ?? [] ) ?: [];
+
+        return FileResponse::fromFiles( $files )
+            ->withDescription( $first['prompt'] ?? null );
     }
 
 

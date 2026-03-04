@@ -58,9 +58,16 @@ class Ideogram
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
-        $item = current( $result['descriptions'] ?? [] ) ?: null;
+        $texts = [];
 
-        return TextResponse::fromText( $item['text'] ?? null );
+        foreach( $result['descriptions'] ?? [] as $item )
+        {
+            if( $text = $item['text'] ?? null ) {
+                $texts[] = $text;
+            }
+        }
+
+        return TextResponse::fromTexts( $texts );
     }
 
 
@@ -181,15 +188,24 @@ class Ideogram
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
-        $data = current( $result['data'] ?? [] ) ?: [];
+        $files = [];
 
-        if( !isset( $data['url'] ) ) {
+        foreach( $result['data'] ?? [] as $item )
+        {
+            if( !empty( $item['url'] ) ) {
+                $files[] = Image::fromUrl( $item['url'] );
+            }
+        }
+
+        if( empty( $files ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromUrl( $data['url'] )
-            ->withDescription( $data['prompt'] ?? null )
-            ->withMeta( $data + ['created' => $result['created'] ?? null] );
+        $first = current( $result['data'] ?? [] ) ?: [];
+
+        return FileResponse::fromFiles( $files )
+            ->withDescription( $first['prompt'] ?? null )
+            ->withMeta( $first + ['created' => $result['created'] ?? null] );
     }
 
 
