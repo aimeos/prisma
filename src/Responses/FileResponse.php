@@ -55,6 +55,24 @@ class FileResponse implements \IteratorAggregate
 
 
     /**
+     * Create file instances from an array of file objects.
+     *
+     * @param array<int|string, File> $files List of File objects
+     * @return static FileResponse instance
+     */
+    public static function fromFiles( array $files ) : static
+    {
+        $instance = new static();
+
+        foreach( $files as $key => $file ) {
+            $instance->add( $file, $key );
+        }
+
+        return $instance;
+    }
+
+
+    /**
      * Create a file instance from a local file path.
      *
      * @param string $path Local file path

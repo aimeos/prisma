@@ -37,11 +37,22 @@ class Gemini extends Base implements Describe, Imagine, Repaint
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $data = current( $data['candidates'] ?? [] ) ?: [];
-        $part = current( $data['content']['parts'] ?? [] ) ?: [];
+        $texts = [];
 
-        return TextResponse::fromText( $part['text'] ?? null )
-            ->withMeta( $data['metadata'] ?? [] );
+        foreach( $data['candidates'] ?? [] as $candidate )
+        {
+            foreach( $candidate['content']['parts'] ?? [] as $part )
+            {
+                if( $text = $part['text'] ?? null ) {
+                    $texts[] = $text;
+                }
+            }
+        }
+
+        $first = current( $data['candidates'] ?? [] ) ?: [];
+
+        return TextResponse::fromTexts( $texts )
+            ->withMeta( $first['metadata'] ?? [] );
     }
 
 
@@ -96,25 +107,29 @@ class Gemini extends Base implements Describe, Imagine, Repaint
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $data = current( $data['candidates'] ?? [] ) ?: null;
-        $base64 = $mimeType = $description = null;
+        $files = [];
+        $description = null;
 
-        foreach( $data['content']['parts'] ?? [] as $part )
+        foreach( $data['candidates'] ?? [] as $candidate )
         {
-            if( isset( $part['inlineData']['data'] ) ) {
-                $base64 = $part['inlineData']['data'];
-                $mimeType = $part['inlineData']['mimeType'] ?? null;
-            } elseif( isset( $part['text'] ) ) {
-                $description = $part['text'];
+            foreach( $candidate['content']['parts'] ?? [] as $part )
+            {
+                if( isset( $part['inlineData']['data'] ) ) {
+                    $files[] = Image::fromBase64( $part['inlineData']['data'], $part['inlineData']['mimeType'] ?? null );
+                } elseif( isset( $part['text'] ) ) {
+                    $description = $part['text'];
+                }
             }
         }
 
-        if( !$base64 ) {
+        if( empty( $files ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromBase64( $base64, $mimeType )
-            ->withMeta( $data['metadata'] ?? [] )
+        $first = current( $data['candidates'] ?? [] ) ?: [];
+
+        return FileResponse::fromFiles( $files )
+            ->withMeta( $first['metadata'] ?? [] )
             ->withDescription( $description );
     }
 }

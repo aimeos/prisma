@@ -157,12 +157,17 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
+        $files = [];
 
-        if( !isset( $data['images'][0] ) ) {
+        foreach( $data['images'] ?? [] as $image ) {
+            $files[] = Image::fromBase64( $image, 'image/png' );
+        }
+
+        if( empty( $files ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromBase64( $data['images'][0], 'image/png' );
+        return FileResponse::fromFiles( $files );
     }
 
 

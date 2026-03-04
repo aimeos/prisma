@@ -30,7 +30,13 @@ class Groq extends Base implements Describe, Speak, Transcribe
         $meta = $data;
         unset( $meta['choices'], $meta['usage'] );
 
-        return TextResponse::fromText( $data['choices'][0]['message']['content'] ?? '' )
+        $texts = [];
+
+        foreach( $data['choices'] ?? [] as $choice ) {
+            $texts[] = $choice['message']['content'] ?? '';
+        }
+
+        return TextResponse::fromTexts( $texts )
             ->withUsage(
                 $data['usage']['total_tokens'] ?? null,
                 $data['usage'] ?? [],

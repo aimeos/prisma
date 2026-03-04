@@ -34,26 +34,26 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
-        $text = null;
+        $texts = [];
 
         foreach( $result['output'] ?? [] as $data )
         {
             foreach( $data['content'] ?? [] as $content )
             {
                 if( $text = $content['text'] ?? null ) {
-                    break 2;
+                    $texts[] = $text;
                 }
             }
         }
 
-        if( !$text ) {
+        if( empty( $texts ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No text found in response' );
         }
 
         $meta = $result;
         unset( $meta['output'], $meta['usage'] );
 
-        return TextResponse::fromText( $text )
+        return TextResponse::fromTexts( $texts )
             ->withUsage(
                 $result['usage']['total_tokens'] ?? null,
                 $result['usage'] ?? [],
@@ -188,15 +188,23 @@ class Openai extends Base implements Describe, Imagine, Inpaint
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
+        $files = [];
 
-        if( !isset( $result['data'][0]['b64_json'] ) ) {
+        foreach( $result['data'] ?? [] as $item )
+        {
+            if( !empty( $item['b64_json'] ) ) {
+                $files[] = Image::fromBase64( $item['b64_json'] );
+            }
+        }
+
+        if( empty( $files ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
         $meta = $result;
         unset( $meta['data'], $meta['usage'] );
 
-        return FileResponse::fromBase64( $result['data'][0]['b64_json'] )
+        return FileResponse::fromFiles( $files )
             ->withUsage(
                 $result['usage']['total_tokens'] ?? null,
                 $result['usage'] ?? [],
