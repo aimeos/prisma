@@ -93,7 +93,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
 | :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
-| **Alibaba**           | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
+| **Alibaba**           | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Bedrock Titan**     | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
 | **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | beta   | -       | -         |
 | **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
@@ -887,6 +887,7 @@ public function vectorize( array $images, ?int $size = null, array $options = []
 
 **Supported options:**
 
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/multimodal-embedding-api-reference)
 * Bedrock
 * [Cohere](https://docs.cohere.com/reference/embed#request)
 * VertexAI

@@ -3,14 +3,16 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Alibaba extends Base implements Imagine
+class Alibaba extends Base implements Imagine, Vectorize
 {
     public function __construct( array $config )
     {
@@ -67,6 +69,45 @@ class Alibaba extends Base implements Imagine
         $response = $this->client()->post( 'api/v1/services/aigc/multimodal-generation/generation', ['json' => $request] );
 
         return $this->toFileResponse( $response );
+    }
+
+
+    public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $allowed = $this->allowed( $options, ['output_type', 'instruct'] );
+
+        $contents = [];
+
+        foreach( $images as $image ) {
+            $contents[] = ['image' => $image->url() ?: 'data:' . ( $image->mimeType() ?? 'image/png' ) . ';base64,' . $image->base64()];
+        }
+
+        $request = [
+            'model' => $this->modelName( 'tongyi-embedding-vision-plus' ),
+            'input' => [
+                'contents' => $contents
+            ]
+        ];
+
+        if( $size ) {
+            $allowed['dimension'] = $size;
+        }
+
+        if( !empty( $allowed ) ) {
+            $request['parameters'] = $allowed;
+        }
+
+        $response = $this->client()->post( 'api/v1/services/embeddings/multimodal-embedding/multimodal-embedding', ['json' => $request] );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+
+        $vectors = array_map( fn( $item ) => $item['embedding'], $data['output']['embeddings'] ?? [] );
+
+        return VectorResponse::fromVectors( $vectors )
+            ->withUsage( $data['usage']['image_tokens'] ?? 0, $data['usage'] ?? [] )
+            ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
     }
 
 
