@@ -205,6 +205,46 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testVectorize() : void
+    {
+        $result = $this->prisma( 'image', 'alibaba', ['api_key' => 'test'] )
+            ->response( '{
+                "output": {
+                    "embeddings": [
+                        {"index": 0, "embedding": [0.1, 0.2, 0.3], "type": "image"},
+                        {"index": 1, "embedding": [0.4, 0.5, 0.6], "type": "image"}
+                    ]
+                },
+                "usage": {
+                    "input_tokens": 10,
+                    "image_tokens": 896
+                },
+                "request_id": "req-vec-123"
+            }' )
+            ->ensure( 'vectorize' )
+            ->vectorize( [
+                Image::fromUrl( 'https://example.com/photo.jpg' ),
+                Image::fromBase64( 'dGVzdA==', 'image/png' ),
+            ], 1024, ['output_type' => 'dense'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
+            $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding', (string) $request->getUri() );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'tongyi-embedding-vision-plus', $body['model'] );
+            $this->assertEquals( 'https://example.com/photo.jpg', $body['input']['contents'][0]['image'] );
+            $this->assertEquals( 'data:image/png;base64,dGVzdA==', $body['input']['contents'][1]['image'] );
+            $this->assertEquals( 1024, $body['parameters']['dimension'] );
+            $this->assertEquals( 'dense', $body['parameters']['output_type'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], $result->vectors() );
+        $this->assertEquals( ['request_id' => 'req-vec-123'], $result->meta() );
+    }
+
+
     public function testImagineWan() : void
     {
         $file = $this->prisma( 'image', 'alibaba', ['api_key' => 'test'] )

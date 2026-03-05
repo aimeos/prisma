@@ -30,4 +30,18 @@ class AlibabaTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/qwen_imagine.png', $response->binary() );
     }
+
+
+    public function testVectorize() : void
+    {
+        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
+        $image = Image::fromBase64( $base64, 'image/png' );
+        $response = Prisma::image()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( [$image], 1024 );
+
+        $this->assertCount( 1, $response->vectors() );
+        $this->assertCount( 1024, $response->vectors()[0] );
+    }
 }
