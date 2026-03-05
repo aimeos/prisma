@@ -32,6 +32,19 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testSpeak() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.' );
+
+        file_put_contents( __DIR__ . '/results/alibaba_speak.mp3', $response->binary() );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+    }
+
+
     public function testVectorize() : void
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';

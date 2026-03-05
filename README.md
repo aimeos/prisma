@@ -80,6 +80,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                       | demix | denoise | describe | revoice | speak | transcribe |
 | :---                  | :---: | :---:   | :---:    | :---:   | :---: | :---:      |
+| **Alibaba**           | -     | -       | -        | -       | yes   | -          |
 | **AudioPod**          | yes   | yes     | -        | yes     | yes   | yes        |
 | **Deepgram**          | -     | -       | -        | -       | yes   | yes        |
 | **ElevenLabs**        | -     | -       | -        | yes     | yes   | yes        |
@@ -394,6 +395,7 @@ public function speak( string $text, string $voice = , array $options = [] ) : F
 
 **Supported options:**
 
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/qwen-tts-api)
 * [AudioPod](https://docs.audiopod.ai/api-reference/text-to-speech#generate-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
