@@ -10,7 +10,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Qwen extends Base implements Imagine
+class Alibaba extends Base implements Imagine
 {
     public function __construct( array $config )
     {
@@ -27,20 +27,35 @@ class Qwen extends Base implements Imagine
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'qwen-image-2.0-pro' );
-        $allowed = $this->allowed( $options, ['negative_prompt', 'n', 'prompt_extend', 'seed', 'size', 'watermark'] );
 
+        $wan = str_starts_with( (string) $model, 'wan' );
+        $zimg = str_starts_with( (string) $model, 'z-image' );
         $qimg2 = str_starts_with( (string) $model, 'qwen-image-2.0' );
+
+        $names = ['prompt_extend', 'seed', 'size'];
+
+        if( !$zimg ) {
+            $names = array_merge( $names, ['negative_prompt', 'n', 'watermark'] );
+        }
+
+        $allowed = $this->allowed( $options, $names );
         $allowed = $this->sanitize( $allowed, [
-            'n' => $qimg2 ? [1, 2, 3, 4, 5, 6] : [1],
-            'size' => !$qimg2 ? ['1664*928', '1472*1104', '1328*1328', '1104*1472', '928*1664'] : null,
+            'n' => $qimg2 ? [1, 2, 3, 4, 5, 6] : ( $wan ? [1, 2, 3, 4] : [1] ),
+            'size' => $qimg2 || $wan || $zimg ? null : ['1664*928', '1472*1104', '1328*1328', '1104*1472', '928*1664'],
         ] );
+
+        $content = [['text' => $prompt]];
+
+        foreach( $images as $image ) {
+            $content[] = ['image' => $image->url() ?: 'data:' . ( $image->mimeType() ?? 'image/png' ) . ';base64,' . $image->base64()];
+        }
 
         $request = [
             'model' => $model,
             'input' => [
                 'messages' => [[
                     'role' => 'user',
-                    'content' => [['text' => $prompt]]
+                    'content' => $content
                 ]]
             ]
         ];

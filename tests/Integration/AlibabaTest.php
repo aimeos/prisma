@@ -7,7 +7,7 @@ use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 
 
-class QwenTest extends TestCase
+class AlibabaTest extends TestCase
 {
     protected function setUp() : void
     {
@@ -22,7 +22,7 @@ class QwenTest extends TestCase
     public function testImagine() : void
     {
         $response = Prisma::image()
-            ->using( 'qwen', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->ensure( 'imagine' )
             ->imagine( 'a cartoon dog' );
 

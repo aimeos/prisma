@@ -57,6 +57,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 ## Supported providers
 
+- [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 - [AudioPod AI](https://audiopod.ai/)
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
@@ -70,7 +71,6 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Mistral](https://docs.mistral.ai/api)
 - [Murf](https://murf.ai/api)
 - [OpenAI](https://openai.com/api/)
-- [Qwen (Alibaba)](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
@@ -93,6 +93,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 
 |                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
 | :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
+| **Alibaba**           | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Bedrock Titan**     | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
 | **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | beta   | -       | -         |
 | **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
@@ -102,7 +103,6 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
-| **Qwen**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
@@ -599,6 +599,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
+* [Alibaba Qwen/Wan/Z-Image](https://www.alibabacloud.com/help/en/model-studio/qwen-image-api)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
