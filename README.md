@@ -1,12 +1,13 @@
 # PHP Prisma
 
-Light-weight PHP package for integrating multi-media related Large Language Models (LLMs) into your applications using a unified interface.
+Light-weight PHP package for integrating multi-media and text related Large Language Models (LLMs) into your applications using a unified interface.
 
 <nav>
 <div class="method-header"><a href="#supported-providers">Supported providers</a></div>
 <ul class="method-list">
     <li><a href="#audio">Audio</a></li>
     <li><a href="#image">Image</a></li>
+    <li><a href="#text">Text</a></li>
     <li><a href="#video">Video</a></li>
 </ul>
 <div class="method-header"><a href="#api-usage">API usage</a></div>
@@ -42,6 +43,10 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
     <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
     <li><a href="#vectorize">vectorize</a><span>: Creates embedding vectors from images</span></li>
 </ul>
+<div class="method-header"><a href="#text-api">Text API</a></div>
+<ul class="method-list">
+    <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
+</ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
@@ -63,6 +68,7 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
+- [DeepL](https://developers.deepl.com/docs)
 - [Deepgram](https://deepgram.com/)
 - [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
@@ -109,6 +115,12 @@ Light-weight PHP package for integrating multi-media related Large Language Mode
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 
+### Text
+
+|                       | translate |
+| :---                  | :---:     |
+| **DeepL**             | yes       |
+
 ### Video
 
 |                       | describe |
@@ -134,6 +146,12 @@ $image = Prisma::image()
     ->ensure( 'imagine' ) // make sure interface is implemented
     ->imagine( 'a grumpy cat' )
     ->binary();
+
+$texts = Prisma::text()
+    ->using( 'deepl', ['api_key' => 'xxx'])
+    ->ensure( 'translate' )
+    ->translate( ['Hello'], 'de' )
+    ->texts();
 ```
 
 ### ensure
@@ -913,6 +931,40 @@ $vectorResponse = Prisma::image()
 $vectors = $vectorResponse->vectors();
 ```
 
+## Text API
+
+### translate
+
+Translate one or more texts from one language to another.
+
+```php
+public function translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] ) : TextResponse
+```
+
+* @param **array&#60;string&#62;** `$texts` Input texts to be translated
+* @param **string** `$to` ISO language code to translate the text into
+* @param **string&#124;null** `$from` ISO language code of the input text (optional, auto-detected if omitted)
+* @param **string&#124;null** `$context` Context for the translation (optional)
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text
+
+**Supported options:**
+
+* [DeepL](https://developers.deepl.com/docs/api-reference/translate/openapi-spec-for-text-translation)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$textResponse = Prisma::text()
+    ->using( 'deepl', ['api_key' => 'xxx'])
+    ->ensure( 'translate' )
+    ->translate( ['Hello', 'World'], 'de', 'en' );
+
+$texts = $textResponse->texts(); // ['Hallo', 'Welt']
+```
+
 ## Video API
 
 ### describe
@@ -943,6 +995,8 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 namespace Aimeos\Prisma\Providers\Audio;
 // for Image providers
 namespace Aimeos\Prisma\Providers\Image;
+// for Text providers
+namespace Aimeos\Prisma\Providers\Text;
 // for Video providers
 namespace Aimeos\Prisma\Providers\Video;
 
@@ -965,11 +1019,12 @@ class Myprovider extends Base implements ...
     }
 ```
 
-Depending on the provider type (Audio, Image or Video), you can implement one or
+Depending on the provider type (Audio, Image, Text or Video), you can implement one or
 more of the available interfaces for that provider type:
 
 - [Audio](https://github.com/aimeos/prisma/tree/master/src/Contracts/Audio)
 - [Image](https://github.com/aimeos/prisma/tree/master/src/Contracts/Image)
+- [Text](https://github.com/aimeos/prisma/tree/master/src/Contracts/Text)
 - [Video](https://github.com/aimeos/prisma/tree/master/src/Contracts/Video)
 
 For example:
@@ -1288,6 +1343,59 @@ class Myprovider extends Base implements Describe
             )
             ->withUsage( // optional
                 @$data['usage']['total'],
+                $data['usage'] ?? []
+            )
+            ->withMeta( // optional
+                $data['meta'] ?? []
+            );
+    }
+}
+```
+
+### Text provider
+
+```php
+<?php
+
+namespace Aimeos\Prisma\Providers\Text;
+
+use Aimeos\Prisma\Contracts\Text\Translate;
+use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Responses\TextResponse;
+
+
+class Myprovider extends Base implements Translate
+{
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( sprintf( 'No API key' ) );
+        }
+
+        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->baseUrl( 'https://ai.com' );
+    }
+
+
+    public function translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] ) : TextResponse
+    {
+        $payload = [
+            'texts' => $texts,
+            'target_lang' => $to,
+            'source_lang' => $from
+        ] + $ $this->allowed( $options, ['formality'] );
+
+        $response = $this->client()->post( '/v1/translate', ['json' => $payload] );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+        $translated = array_map( fn( $item ) => $item['text'] ?? '', $data ?? [] );
+
+        return TextResponse::fromTexts( $translated )
+            ->withUsage( // optional
+                $data['usage']['total'] ?? 0,
                 $data['usage'] ?? []
             )
             ->withMeta( // optional
