@@ -92,6 +92,17 @@ class Prisma
 
 
     /**
+     * Creates a new Prisma factory instance for text processing.
+     *
+     * @return self
+     */
+    public static function text() : self
+    {
+        return new self( 'text' );
+    }
+
+
+    /**
      * Tests if the specified provider supports the given method.
      *
      * @param string $type Provider type
