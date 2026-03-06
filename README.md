@@ -72,6 +72,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Deepgram](https://deepgram.com/)
 - [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
+- [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Mistral](https://docs.mistral.ai/api)
@@ -120,6 +121,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 |                       | translate |
 | :---                  | :---:     |
 | **DeepL**             | yes       |
+| **Google**            | yes       |
 
 ### Video
 
@@ -951,6 +953,7 @@ public function translate( array $texts, string $to, ?string $from = null, ?stri
 **Supported options:**
 
 * [DeepL](https://developers.deepl.com/docs/api-reference/translate/openapi-spec-for-text-translation)
+* [Google](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate#authorization)
 
 **Example:**
 
