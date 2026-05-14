@@ -31,4 +31,16 @@ class CohereTest extends TestCase
         $this->assertCount( 1, $response->vectors() );
         $this->assertCount( 1536, $response->vectors()[0] );
     }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'cohere', ['api_key' => $_ENV['COHERE_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
 }
