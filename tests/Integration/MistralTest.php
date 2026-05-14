@@ -54,4 +54,16 @@ class MistralTest extends TestCase
 
         $this->assertEquals( 'This is text', $response->text() );
     }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
 }

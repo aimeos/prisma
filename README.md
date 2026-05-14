@@ -124,6 +124,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **DeepL**             | yes       |       |
 | **Gemini**            |           | yes   |
 | **Google**            | yes       |       |
+| **Mistral**           |           | yes   |
 | **OpenAI**            |           | yes   |
 
 ### Video
@@ -987,6 +988,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 **Supported options:**
 
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
+* [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
