@@ -86,4 +86,16 @@ class GeminiTest extends TestCase
 
         file_put_contents( __DIR__ . '/results/gemini_repaint.png', $response->binary() );
     }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
 }
