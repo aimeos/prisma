@@ -46,6 +46,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
+    <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
 </ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
@@ -963,6 +964,32 @@ $textResponse = Prisma::text()
     ->translate( ['Hello', 'World'], 'de', 'en' );
 
 $texts = $textResponse->texts(); // ['Hallo', 'Welt']
+```
+
+### write
+
+Generate text from the given prompt with optional multimodal file inputs (images, audio, documents).
+
+```php
+public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
+```
+
+* @param **string** `$prompt` Input prompt for text generation
+* @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'])
+    ->ensure( 'write' )
+    ->write( 'Summarize the benefits of renewable energy' );
+
+$texts = $textResponse->texts(); // ['Renewable energy offers...']
 ```
 
 ## Video API
