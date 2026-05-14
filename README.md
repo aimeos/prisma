@@ -122,6 +122,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 |                       | translate | write |
 | :---                  | :---:     | :---: |
 | **DeepL**             | yes       |       |
+| **Gemini**            |           | yes   |
 | **Google**            | yes       |       |
 | **OpenAI**            |           | yes   |
 
@@ -985,6 +986,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 
 **Supported options:**
 
+* [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
