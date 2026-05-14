@@ -122,6 +122,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 |                       | translate | write |
 | :---                  | :---:     | :---: |
 | **Alibaba**           |           | yes   |
+| **Bedrock**           |           | yes   |
 | **DeepL**             | yes       |       |
 | **Gemini**            |           | yes   |
 | **Google**            | yes       |       |
@@ -990,6 +991,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 **Supported options:**
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
