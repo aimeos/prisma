@@ -119,10 +119,11 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | translate |
-| :---                  | :---:     |
-| **DeepL**             | yes       |
-| **Google**            | yes       |
+|                       | translate | write |
+| :---                  | :---:     | :---: |
+| **DeepL**             | yes       |       |
+| **Google**            | yes       |       |
+| **OpenAI**            |           | yes   |
 
 ### Video
 
@@ -981,6 +982,10 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **TextResponse** Response text
+
+**Supported options:**
+
+* [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
 
