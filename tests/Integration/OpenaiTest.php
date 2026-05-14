@@ -88,6 +88,18 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
     public function testTranscribe() : void
     {
         $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
