@@ -115,7 +115,6 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
         $png = stream_get_contents( $stream );
 
-        imagedestroy( $mask );
         fclose( $stream );
 
         return Image::fromBinary( $png, 'image/png' );

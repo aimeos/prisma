@@ -145,7 +145,6 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 
         $png = stream_get_contents( $stream );
 
-        imagedestroy( $img );
         fclose( $stream );
 
         return Image::fromBinary( $png, 'image/png' );
