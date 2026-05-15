@@ -72,6 +72,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
 - [DeepL](https://developers.deepl.com/docs)
 - [Deepgram](https://deepgram.com/)
+- [Deepseek](https://api-docs.deepseek.com/)
 - [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
 - [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
@@ -126,6 +127,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Anthropic**         |           | yes   |
 | **Bedrock**           |           | yes   |
 | **Cohere**            |           | yes   |
+| **Deepseek**          |           | yes   |
 | **DeepL**             | yes       |       |
 | **Gemini**            |           | yes   |
 | **Google**            | yes       |       |
@@ -997,6 +999,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Anthropic](https://docs.anthropic.com/en/api/messages)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
+* [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
