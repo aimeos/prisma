@@ -81,6 +81,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Mistral](https://docs.mistral.ai/api)
 - [Murf](https://murf.ai/api)
 - [OpenAI](https://openai.com/api/)
+- [Openrouter](https://openrouter.ai/docs/quickstart)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
@@ -134,6 +135,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Groq**              |           | yes   |
 | **Mistral**           |           | yes   |
 | **OpenAI**            |           | yes   |
+| **Openrouter**        |           | yes   |
 
 ### Video
 
@@ -1004,6 +1006,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
+* [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 
 **Example:**
 
