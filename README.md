@@ -82,6 +82,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Murf](https://murf.ai/api)
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
+- [Perplexity](https://docs.perplexity.ai/)
 - [RemoveBG](https://www.remove.bg/api)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
@@ -136,6 +137,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Mistral**           |           | yes   |
 | **OpenAI**            |           | yes   |
 | **Openrouter**        |           | yes   |
+| **Perplexity**        |           | beta  |
 
 ### Video
 
@@ -1007,6 +1009,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
+* [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 
 **Example:**
 
