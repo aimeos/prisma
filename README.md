@@ -87,6 +87,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
+- [xAI](https://docs.x.ai/)
 
 ### Audio
 
@@ -138,6 +139,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **OpenAI**            |           | yes   |
 | **Openrouter**        |           | yes   |
 | **Perplexity**        |           | beta  |
+| **xAI**               |           | beta  |
 
 ### Video
 
@@ -1010,6 +1012,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 
 **Example:**
 
