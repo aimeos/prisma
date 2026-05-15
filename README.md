@@ -64,6 +64,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 ## Supported providers
 
 - [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
+- [Anthropic](https://docs.anthropic.com/en/api)
 - [AudioPod AI](https://audiopod.ai/)
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
@@ -122,6 +123,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 |                       | translate | write |
 | :---                  | :---:     | :---: |
 | **Alibaba**           |           | yes   |
+| **Anthropic**         |           | yes   |
 | **Bedrock**           |           | yes   |
 | **Cohere**            |           | yes   |
 | **DeepL**             | yes       |       |
@@ -992,6 +994,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 **Supported options:**
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
+* [Anthropic](https://docs.anthropic.com/en/api/messages)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
