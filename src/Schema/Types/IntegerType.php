@@ -10,6 +10,11 @@ class IntegerType extends Type
     protected ?int $multipleOf = null;
 
 
+    /**
+     * Creates an integer type from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $type = new self();
@@ -50,6 +55,11 @@ class IntegerType extends Type
     }
 
 
+    /**
+     * Returns the type as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema type definition
+     */
     public function toArray() : array
     {
         return array_filter( parent::toArray() + [

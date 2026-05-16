@@ -12,10 +12,16 @@ abstract class Type
     protected ?string $title = null;
     protected ?string $description = null;
     protected mixed $default = null;
+    /** @var array<int, string|int>|null */
     protected ?array $enum = null;
     protected ?bool $nullable = null;
 
 
+    /**
+     * Creates a type instance from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $rawType = $def['type'] ?? 'string';
@@ -58,6 +64,11 @@ abstract class Type
     }
 
 
+    /**
+     * Sets the allowed enum values.
+     *
+     * @param array<int, string|int>|string $values Enum values or BackedEnum class
+     */
     public function enum( array|string $values ) : static
     {
         if( is_string( $values ) ) {
@@ -101,6 +112,11 @@ abstract class Type
     }
 
 
+    /**
+     * Returns the type as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema type definition
+     */
     public function toArray() : array
     {
         $type = static::typeName();

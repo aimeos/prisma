@@ -11,6 +11,11 @@ class StringType extends Type
     protected ?string $format = null;
 
 
+    /**
+     * Creates a string type from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $type = new self();
@@ -59,6 +64,11 @@ class StringType extends Type
     }
 
 
+    /**
+     * Returns the type as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema type definition
+     */
     public function toArray() : array
     {
         return array_filter( parent::toArray() + [

@@ -10,6 +10,11 @@ class Schema
     private string $name;
 
 
+    /**
+     * Creates a new schema instance.
+     *
+     * @param array<string, \Aimeos\Prisma\Schema\Types\Type> $properties Schema properties
+     */
     public function __construct( string $name, array $properties = [] )
     {
         $this->name = $name;
@@ -29,12 +34,22 @@ class Schema
     }
 
 
+    /**
+     * Creates a named schema with the given properties.
+     *
+     * @param array<string, \Aimeos\Prisma\Schema\Types\Type> $properties Schema properties
+     */
     public static function for( string $name, array $properties = [] ) : self
     {
         return new self( $name, $properties );
     }
 
 
+    /**
+     * Creates a schema from a JSON Schema array.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     */
     public static function fromArray( string $name, array $schema ) : self
     {
         $instance = new self( $name, [] );
@@ -56,6 +71,11 @@ class Schema
     }
 
 
+    /**
+     * Creates an object type with the given properties.
+     *
+     * @param array<string, \Aimeos\Prisma\Schema\Types\Type> $properties Object properties
+     */
     public static function object( array $properties = [] ) : Types\ObjectType
     {
         return new Types\ObjectType( $properties );
@@ -93,6 +113,11 @@ class Schema
     }
 
 
+    /**
+     * Returns the schema as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema definition
+     */
     public function toArray() : array
     {
         return $this->type->toArray();

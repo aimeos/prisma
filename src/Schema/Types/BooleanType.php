@@ -5,6 +5,11 @@ namespace Aimeos\Prisma\Schema\Types;
 
 class BooleanType extends Type
 {
+    /**
+     * Creates a boolean type from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $type = new self();

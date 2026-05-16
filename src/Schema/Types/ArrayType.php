@@ -11,6 +11,11 @@ class ArrayType extends Type
     protected ?bool $uniqueItems = null;
 
 
+    /**
+     * Creates an array type from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $items = is_array( $def['items'] ?? null ) ? $def['items'] : null;
@@ -26,6 +31,11 @@ class ArrayType extends Type
     }
 
 
+    /**
+     * Sets the default value.
+     *
+     * @param array<int, mixed> $value Default array value
+     */
     public function default( array $value ) : static
     {
         $this->default = $value;
@@ -54,6 +64,11 @@ class ArrayType extends Type
     }
 
 
+    /**
+     * Returns the type as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema type definition
+     */
     public function toArray() : array
     {
         return array_filter( parent::toArray() + [

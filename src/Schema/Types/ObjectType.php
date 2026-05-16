@@ -6,15 +6,26 @@ namespace Aimeos\Prisma\Schema\Types;
 class ObjectType extends Type
 {
     protected ?bool $additionalProperties = null;
+    /** @var array<string, Type> */
     protected array $properties = [];
 
 
+    /**
+     * Creates a new object type with the given properties.
+     *
+     * @param array<string, Type> $properties Object properties
+     */
     public function __construct( array $properties = [] )
     {
         $this->properties = $properties;
     }
 
 
+    /**
+     * Creates an object type from a JSON Schema definition.
+     *
+     * @param array<string, mixed> $def JSON Schema type definition
+     */
     public static function fromArray( array $def ) : self
     {
         $required = is_array( $def['required'] ?? null ) ? $def['required'] : [];
@@ -39,6 +50,11 @@ class ObjectType extends Type
     }
 
 
+    /**
+     * Sets the default value.
+     *
+     * @param array<string, mixed> $value Default object value
+     */
     public function default( array $value ) : static
     {
         $this->default = $value;
@@ -46,6 +62,11 @@ class ObjectType extends Type
     }
 
 
+    /**
+     * Returns the type as a JSON Schema array.
+     *
+     * @return array<string, mixed> JSON Schema type definition
+     */
     public function toArray() : array
     {
         $required = array_keys( array_filter(
