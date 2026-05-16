@@ -74,7 +74,6 @@ jobs:
           key: php85-{{ checksum "composer.json" }}
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
-      - run: ./vendor/bin/phpstan
 
   "phpstan":
     docker:
