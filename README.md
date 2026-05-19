@@ -19,6 +19,12 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
 </ul>
+<div class="method-header"><a href="#schemas">Schemas</a></div>
+<ul class="method-list">
+    <li><a href="#building-schemas">Building schemas</a><span>: Define tool parameters using the fluent Schema builder</span></li>
+    <li><a href="#from-arrays">From arrays</a><span>: Create schemas from JSON Schema arrays</span></li>
+    <li><a href="#type-reference">Type reference</a><span>: Available types and their methods</span></li>
+</ul>
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
     <li><a href="#demix">demix</a><span>: Separate an audio file into its individual tracks</span></li>
@@ -47,6 +53,14 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <ul class="method-list">
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
+</ul>
+<div class="method-header"><a href="#tools">Tools</a></div>
+<ul class="method-list">
+    <li><a href="#creating-tools">Creating tools</a></li>
+    <li><a href="#provider-tools">Provider tools</a></li>
+    <li><a href="#tool-options">Tool options</a></li>
+    <li><a href="#concurrent-tools">Concurrent tools</a></li>
+    <li><a href="#decorating-tools">Decorating tools</a></li>
 </ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
@@ -344,6 +358,333 @@ $usage = $response->usage();
 It returns an associative array whose content depends on the provider. If the provider returns
 usage information, the `used` array key is available and contains a number. What the number
 represents depdends on the provider too.
+
+## Schemas
+
+Schemas define the parameters that tools accept. They are used by `Tools::make()` to tell the LLM what arguments a tool expects.
+
+### Building schemas
+
+Use the fluent `Schema` builder to define tool parameters:
+
+```php
+use Aimeos\Prisma\Schema\Schema;
+
+$schema = Schema::for( 'search', [
+    'query' => Schema::string()->description( 'Search query' )->required(),
+    'limit' => Schema::integer()->description( 'Max results' )->min( 1 )->max( 100 ),
+] );
+```
+
+`Schema::for()` creates a named schema with an object type. The first argument is the schema name, the second is an associative array of property names to types.
+
+**Nested objects:**
+
+```php
+$schema = Schema::for( 'create_event', [
+    'title' => Schema::string()->required(),
+    'location' => Schema::object( [
+        'city' => Schema::string()->required(),
+        'country' => Schema::string(),
+    ] )->required(),
+] );
+```
+
+**Arrays:**
+
+```php
+$schema = Schema::for( 'tag', [
+    'tags' => Schema::array()->items( Schema::string() )->min( 1 )->max( 10 )->required(),
+    'scores' => Schema::array()->items( Schema::number() ),
+] );
+```
+
+**Enums:**
+
+```php
+$schema = Schema::for( 'sort', [
+    'order' => Schema::string()->enum( ['asc', 'desc'] )->required(),
+] );
+
+// Or from a BackedEnum:
+$schema = Schema::for( 'sort', [
+    'order' => Schema::string()->enum( SortOrder::class )->required(),
+] );
+```
+
+**Strict mode** (for providers that support it, e.g. OpenAI):
+
+```php
+$schema = Schema::for( 'search', [
+    'query' => Schema::string()->required(),
+] )->strict();
+```
+
+### From arrays
+
+If you already have a JSON Schema array, use `Schema::fromArray()`:
+
+```php
+$schema = Schema::fromArray( 'search', [
+    'type' => 'object',
+    'properties' => [
+        'query' => ['type' => 'string', 'description' => 'Search query'],
+        'limit' => ['type' => 'integer'],
+    ],
+    'required' => ['query'],
+] );
+```
+
+### Type reference
+
+All types support these common methods: `description()`, `required()`, `nullable()`, `title()`, `enum()`.
+
+| Factory method | Type | Additional methods |
+| :--- | :--- | :--- |
+| `Schema::string()` | String | `min()`, `max()`, `pattern()`, `format()`, `default()` |
+| `Schema::integer()` | Integer | `min()`, `max()`, `multipleOf()`, `default()` |
+| `Schema::number()` | Number (float) | `min()`, `max()`, `multipleOf()`, `default()` |
+| `Schema::boolean()` | Boolean | `default()` |
+| `Schema::array()` | Array | `items()`, `min()`, `max()`, `unique()`, `default()` |
+| `Schema::object()` | Object | `withoutAdditionalProperties()`, `default()` |
+
+## Tools
+
+Tools enable LLMs to call functions during text generation. Prisma supports both custom tools (executed locally) and provider tools (executed server-side by the LLM provider).
+
+### Creating tools
+
+Create tools using the `Tools` facade:
+
+**From scratch:**
+
+```php
+use Aimeos\\Prisma\\Schema\\Schema;
+use Aimeos\\Prisma\\Tools;
+
+$tool = Tools::make( 'search', 'Search the web', Schema::for( 'search', [
+    'query' => Schema::string()->description( 'Search query' )->required(),
+] ), fn( $args ) => file_get_contents( 'https://api.example.com/search?q=' . $args['query'] ) );
+```
+
+**From a Laravel AI / Prism tool:**
+
+```php
+$tool = Tools::laravel( new MyLaravelTool() );
+```
+
+The object must have `name()`, `description()`, and `toArray()` methods. Execution uses `__invoke()` or `handle()`.
+
+**From a Symfony #[AsTool] class:**
+
+```php
+$tool = Tools::symfony( MySymfonyTool::class );
+// or with a specific tool name when the class has multiple #[AsTool] attributes:
+$tool = Tools::symfony( MySymfonyTool::class, 'tool-name' );
+```
+
+**Using tools with a provider:**
+
+```php
+use Aimeos\Prisma\Prisma;
+use Aimeos\\Prisma\\Schema\\Schema;
+use Aimeos\\Prisma\\Tools;
+
+$tool = Tools::make( 'weather', 'Get current weather', Schema::for( 'weather', [
+    'city' => Schema::string()->description( 'City name' )->required(),
+] ), fn( $args ) => json_encode( ['temp' => '22°C', 'city' => $args['city']] ) );
+
+$response = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->withTools( [$tool] )
+    ->withMaxSteps( 5 )
+    ->write( 'What is the weather in Berlin?' );
+```
+
+`withMaxSteps()` controls the maximum number of tool calls performed (default is unlimited).
+
+**Tool choice:**
+
+`withToolChoice()` controls whether the model must use tools. Values: `auto` (default, model decides), `required` (must use a tool), `none` (no tools).
+
+```php
+->withToolChoice( 'required' )
+```
+
+**Limiting tool calls:**
+
+```php
+$tool = Tools::make( ... )->max( 3 ); // This specific tool can only be called 3 times
+```
+
+### Provider tools
+
+Provider tools are built-in tools executed server-side by the LLM provider (e.g., web search, code execution). They don't require local function handlers. Create them using `Tools::provider()`:
+
+```php
+use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Tools;
+
+$response = Prisma::text()
+    ->using( 'anthropic', ['api_key' => 'xxx'] )
+    ->withTools( [
+        Tools::provider( 'web_search' ),
+        Tools::provider( 'code_execution' ),
+    ] )
+    ->write( 'Search for the latest PHP version and write code to check it' );
+```
+
+**Available provider tools:**
+
+| Tool name | Providers |
+| :--- | :--- |
+| `web_search` | Anthropic, OpenAI, Gemini, Mistral, xAI, OpenRouter, Alibaba |
+| `web_search_premium` | Mistral |
+| `code_execution` | Anthropic, OpenAI, Gemini, Mistral, xAI |
+| `web_fetch` | Anthropic |
+| `file_search` | OpenAI |
+| `image_generation` | Mistral |
+| `document_library` | Mistral |
+
+Provider tool names not supported by the chosen provider are silently ignored. Providers without any provider tool support (e.g. Bedrock, Cohere, Deepseek, Perplexity) ignore all provider tools.
+
+Custom and provider tools can be mixed in a single `withTools()` call:
+
+```php
+$response = Prisma::text()
+    ->using( 'anthropic', ['api_key' => 'xxx'] )
+    ->withTools( [
+        $customTool,
+        Tools::provider( 'web_search' ),
+        Tools::provider( 'code_execution' ),
+    ] )
+    ->withMaxSteps( 5 )
+    ->write( 'Search and analyze' );
+```
+
+### Tool options
+
+Pass provider-specific options using `with()`:
+
+```php
+Tools::provider( 'web_search' )->with( [
+    'allowed_domains' => ['example.com', 'docs.example.com'],
+    'blocked_domains' => ['spam.com'],
+] )
+```
+
+Unknown or unsupported options are silently ignored by each provider.
+
+**Normalized options** (translated automatically per provider):
+
+| Option | Description | Supported by |
+| :--- | :--- | :--- |
+| `allowed_domains` | Only include results from these domains | Anthropic, OpenAI, OpenRouter |
+| `blocked_domains` | Exclude results from these domains | Anthropic, xAI, OpenRouter |
+| `search_context_size` | Search depth: `"low"`, `"medium"`, `"high"` | OpenAI, xAI |
+| `user_location` | User location object for localized results | OpenAI, Anthropic |
+
+**Provider-specific options:**
+
+| Option | Provider | Tool | Description |
+| :--- | :--- | :--- | :--- |
+| `max_uses` | Anthropic | web_search, web_fetch | Max server-side uses (also set via `->max()`) |
+| `search_engine` | OpenRouter | web_search | `"auto"`, `"native"`, `"exa"` |
+| `container` | OpenAI | code_execution | Container config (`['type' => 'auto']`) |
+| `vector_store_ids` | OpenAI | file_search | Vector store IDs to search |
+| `max_num_results` | OpenAI | file_search | Max results returned |
+| `library_ids` | Mistral | document_library | Document library IDs |
+
+### Concurrent tools
+
+Tools marked as concurrent run in parallel when the auto-detected concurrency strategy supports it (`Fork` when PHP *pcntl* extension is available, otherwise `Sequential`):
+
+```php
+$schema = Schema::for( 'tool' );
+
+$search = Tools::make( 'search', 'Search the web', $schema, fn( $args ) => '...' )->concurrent();
+$weather = Tools::make( 'weather', 'Get weather', $schema, fn( $args ) => '...' )->concurrent();
+$save = Tools::make( 'save', 'Save to database', $schema, fn( $args ) => '...' ); // sequential (default)
+```
+
+When the LLM calls multiple tools in a single step, concurrent tools run in parallel while sequential tools run one after another. You can also disable concurrency again:
+
+```php
+$tool->concurrent( false );
+```
+
+**Concurrency strategy:**
+
+Prisma auto-detects the best concurrency strategy: `Fork` (parallel via `pcntl_fork`) when available, otherwise `Sequential`. You can set a different strategy:
+
+```php
+use Aimeos\Prisma\Tools\Concurrency\Sequential;
+
+$response = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->withConcurrency( new Sequential() )
+    ->withTools( [$search, $weather] )
+    ->write( 'Search and get weather for Berlin' );
+```
+
+**Custom concurrency strategy:**
+
+Implement the `Concurrency` interface to use your own execution strategy (e.g., async I/O, thread pools, or framework-specific solutions):
+
+```php
+use Aimeos\Prisma\Tools\Concurrency\Concurrency;
+use Aimeos\Prisma\Tools\Step;
+
+class ReactConcurrency implements Concurrency
+{
+    public function run( array $steps ) : array
+    {
+        foreach( $steps as $step )
+        {
+            if( $tool = $step->tool() )
+            {
+                $step->complete( $tool( $step->arguments() ) );
+            }
+        }
+
+        return $steps;
+    }
+}
+```
+
+Each `$steps` entry is a `Step` object with `tool()`, `arguments()`, `id()`, and `name()`. Call `$step->complete()` with the result string.
+
+> **Note:** Read-only tools that don't modify state should be marked as concurrent.
+
+### Decorating tools
+
+Use the `Decorator` abstract class to wrap tools with additional behavior:
+
+```php
+use Aimeos\\Prisma\\Tools\Adapter\Decorator;
+use Aimeos\\Prisma\\Tools\Adapter\Adapter;
+
+class LoggingTool extends Decorator
+{
+    private $logger;
+
+    public function __construct( Adapter $adapter, $logger )
+    {
+        parent::__construct( $adapter );
+        $this->logger = $logger;
+    }
+
+    public function __invoke( array $arguments ) : string
+    {
+        $this->logger->info( 'Tool called: ' . $this->name(), $arguments );
+        return parent::__invoke( $arguments );
+    }
+}
+
+$tool = new LoggingTool( Tools::make( 'search', 'Search', $schema, fn( $args ) => '...' ), $logger );
+```
+
+Decorators delegate all `Adapter` interface methods to the wrapped tool. Override any [provider method](https://github.com/aimeos/prisma/blob/master/src/Tools/Adapter/Adapter.php) to add custom behavior.
 
 ## Audio API
 

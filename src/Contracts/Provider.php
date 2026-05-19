@@ -72,4 +72,40 @@ interface Provider
      * @return self Provider interface
      */
     public function withSystemPrompt( ?string $prompt ) : self;
+
+
+    /**
+     * Add tools for the LLM.
+     *
+     * Accepts Adapter instances for custom tools and Provider instances
+     * for built-in provider tools (e.g. web search, code execution).
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> $tools Tool definitions
+     * @return self Provider interface
+     */
+    public function withTools( array $tools ) : self;
+
+
+    /**
+     * Set the maximum number of tool execution steps.
+     *
+     * Controls how many times the provider will loop when the model requests
+     * tool calls. Default is unlimited.
+     *
+     * @param int $steps Maximum number of steps
+     * @return self Provider interface
+     */
+    public function withMaxSteps( int $steps ) : self;
+
+
+    /**
+     * Set the tool choice strategy.
+     *
+     * Controls whether the model must use tools, can use tools, or cannot use tools.
+     * Values: 'auto' (model decides), 'required' (must use a tool), 'none' (no tools).
+     *
+     * @param string $choice Tool choice strategy
+     * @return self Provider interface
+     */
+    public function withToolChoice( string $choice ) : self;
 }
