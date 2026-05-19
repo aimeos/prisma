@@ -26,9 +26,9 @@ trait HasDescription
      * Sets the content description.
      *
      * @param string|null $description Content description
-     * @return self
+     * @return static
      */
-    public function withDescription( ?string $description ) : self
+    public function withDescription( ?string $description ) : static
     {
         $this->description = $description;
         return $this;

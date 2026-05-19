@@ -21,6 +21,7 @@ class ArrayType extends Type
         $items = is_array( $def['items'] ?? null ) ? $def['items'] : null;
 
         $type = new self();
+        /** @var array<string, mixed> $items */
         $type->items = $items !== null ? Type::fromArray( $items ) : null;
         $type->default = is_array( $def['default'] ?? null ) ? $def['default'] : null;
         $type->minItems = is_int( $def['minItems'] ?? null ) ? $def['minItems'] : null;

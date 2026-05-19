@@ -8,9 +8,6 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Fake;
 
 
-/**
- * Factory class for Prisma providers.
- */
 class Prisma
 {
     private static ?Fake $fake = null;
@@ -18,9 +15,9 @@ class Prisma
 
 
     /**
-     * Creates a new Prisma factory instance for the specified provider type.
+     * Initializes the Prisma instance for the given media type.
      *
-     * @param string $type Provider type
+     * @param string $type Media type (text, image, audio, video)
      */
     public function __construct( string $type )
     {
@@ -29,11 +26,99 @@ class Prisma
 
 
     /**
-     * Create a new provider by name.
+     * Creates a new instance for audio providers.
      *
-     * @param string|null $name Provider name in lower case
-     * @param array<string, mixed> $config Configuration parameter for the provider
+     * @return self New Prisma instance for audio
+     */
+    public static function audio() : self
+    {
+        return new self( 'audio' );
+    }
+
+
+    /**
+     * Sets up a fake provider for testing.
+     *
+     * @param array<int, mixed> $responses Fake responses to return
+     */
+    public static function fake( array $responses = [] ) : void
+    {
+        self::$fake = new Fake( $responses );
+    }
+
+
+    /**
+     * Creates a new instance for image providers.
+     *
+     * @return self New Prisma instance for image
+     */
+    public static function image() : self
+    {
+        return new self( 'image' );
+    }
+
+
+    /**
+     * Checks if a provider supports the given method.
+     *
+     * @param string $type Media type (text, image, audio, video)
+     * @param string $provider Provider name
+     * @param string $method Method name to check
+     * @param array<string, mixed> $config Provider configuration
+     * @return bool True if the provider supports the method
+     */
+    public static function supports( string $type, string $provider, string $method, array $config ) : bool
+    {
+        try {
+            return ( new self( $type ) )->using( $provider, $config )->has( $method );
+        } catch( PrismaException ) {
+            return false;
+        }
+    }
+
+
+    /**
+     * Creates a new instance for text providers.
+     *
+     * @return self New Prisma instance for text
+     */
+    public static function text() : self
+    {
+        return new self( 'text' );
+    }
+
+
+    /**
+     * Creates a new instance for the given media type.
+     *
+     * @param string $type Media type (text, image, audio, video)
+     * @return self New Prisma instance
+     */
+    public static function type( string $type ) : self
+    {
+        return new self( $type );
+    }
+
+
+    /**
+     * Creates a new instance for video providers.
+     *
+     * @return self New Prisma instance for video
+     */
+    public static function video() : self
+    {
+        return new self( 'video' );
+    }
+
+
+    /**
+     * Returns a provider instance for the given name.
+     *
+     * @param string|null $name Provider name
+     * @param array<string, mixed> $config Provider configuration
      * @return Provider Provider instance
+     * @throws PrismaException If no provider name is given
+     * @throws NotImplementedException If the provider class does not exist or is invalid
      */
     public function using( ?string $name, array $config = [] ) : Provider
     {
@@ -54,92 +139,5 @@ class Prisma
         }
 
         return self::$fake ? self::$fake->use( $provider ) : $provider;
-    }
-
-
-    /**
-     * Sets a fake provider for testing purposes.
-     *
-     * @param array<int, \GuzzleHttp\Psr7\Response> $responses Responses to return for the fake provider
-     * @return void
-     */
-    public static function fake( array $responses = [] ) : void
-    {
-        self::$fake = new Fake( $responses );
-    }
-
-
-    /**
-     * Creates a new Prisma factory instance for audio processing.
-     *
-     * @return self
-     */
-    public static function audio() : self
-    {
-        return new self( 'audio' );
-    }
-
-
-    /**
-     * Creates a new Prisma factory instance for image processing.
-     *
-     * @return self
-     */
-    public static function image() : self
-    {
-        return new self( 'image' );
-    }
-
-
-    /**
-     * Creates a new Prisma factory instance for text processing.
-     *
-     * @return self
-     */
-    public static function text() : self
-    {
-        return new self( 'text' );
-    }
-
-
-    /**
-     * Tests if the specified provider supports the given method.
-     *
-     * @param string $type Provider type
-     * @param string $provider Provider name
-     * @param string $method Method name
-     * @param array<string, mixed> $config Configuration parameter for the provider
-     * @return bool TRUE if supported, FALSE if not
-     */
-    public static function supports( string $type, string $provider, string $method, array $config ) : bool
-    {
-        try {
-            return ( new self( $type ) )->using( $provider, $config )->has( $method );
-        } catch( PrismaException ) {
-            return false;
-        }
-    }
-
-
-    /**
-     * Creates a new Prisma factory instance for the passed type.
-     *
-     * @param string $type Provider type
-     * @return self
-     */
-    public static function type( string $type ) : self
-    {
-        return new self( $type );
-    }
-
-
-    /**
-     * Creates a new Prisma factory instance for video processing.
-     *
-     * @return self
-     */
-    public static function video() : self
-    {
-        return new self( 'video' );
     }
 }

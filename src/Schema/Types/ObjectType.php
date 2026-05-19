@@ -38,6 +38,7 @@ class ObjectType extends Type
                 continue;
             }
 
+            /** @var array<string, mixed> $propDef */
             $prop = Type::fromArray( $propDef );
             $prop->required = in_array( $name, $required ) ?: null;
             $properties[$name] = $prop;

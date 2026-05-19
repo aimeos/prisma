@@ -4,7 +4,7 @@ namespace Aimeos\Prisma\Concerns;
 
 
 /**
- * Async trait for handling asynchronous responses.
+ * Asynchronous response polling.
  */
 trait Async
 {
@@ -12,14 +12,19 @@ trait Async
     private int $retry = 5;
 
 
+    /**
+     * Returns whether the response is empty.
+     *
+     * @return bool True if empty
+     */
     abstract public function empty() : bool;
 
 
     /**
-     * Create a file instance from an asynchronous closure.
+     * Creates a new instance with an async polling closure.
      *
-     * @param \Closure $closure Closure which returns the file content when invoked or NULL when not yet ready
-     * @param int $retry Number of seconds to wait between retries when checking if the content is ready
+     * @param \Closure $closure Polling closure that populates the response
+     * @param int $retry Seconds between polling attempts
      * @return static New instance
      */
     public static function fromAsync( \Closure $closure, int $retry = 5 ) : static
@@ -33,9 +38,9 @@ trait Async
 
 
     /**
-     * Checks whether the file content is ready to be retrieved.
+     * Returns whether the async response is ready.
      *
-     * @return bool True if the file content is ready, false otherwise
+     * @return bool True if ready or not async
      */
     public function ready() : bool
     {
@@ -50,9 +55,7 @@ trait Async
 
 
     /**
-     * Waits until the asynchronous file content is ready and returns it.
-     *
-     * @return void
+     * Blocks until the async response is ready.
      */
     protected function wait() : void
     {

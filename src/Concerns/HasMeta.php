@@ -27,9 +27,9 @@ trait HasMeta
      * Sets the meta information.
      *
      * @param array<string, mixed> $meta Meta information
-     * @return self
+     * @return static
      */
-    public function withMeta( array $meta ) : self
+    public function withMeta( array $meta ) : static
     {
         $this->meta = $meta;
         return $this;

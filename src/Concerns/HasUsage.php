@@ -28,9 +28,9 @@ trait HasUsage
      *
      * @param float|null $used Used units
      * @param array<string, mixed> $more Additional usage information
-     * @return self
+     * @return static
      */
-    public function withUsage( ?float $used, array $more = [] ) : self
+    public function withUsage( ?float $used, array $more = [] ) : static
     {
         $this->usage = ['used' => $used] + $more;
         return $this;

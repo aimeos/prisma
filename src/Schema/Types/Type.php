@@ -45,7 +45,9 @@ abstract class Type
         $type->nullable = $nullable ?: null;
         $type->title = is_string( $def['title'] ?? null ) ? $def['title'] : null;
         $type->description = is_string( $def['description'] ?? null ) ? $def['description'] : null;
-        $type->enum = isset( $def['enum'] ) && is_array( $def['enum'] ) ? array_values( $def['enum'] ) : null;
+        $type->enum = isset( $def['enum'] ) && is_array( $def['enum'] )
+            ? array_values( array_filter( $def['enum'], fn( $v ) => is_string( $v ) || is_int( $v ) ) )
+            : null;
 
         return $type;
     }
@@ -87,20 +89,14 @@ abstract class Type
 
     public function nullable( bool $nullable = true ) : static
     {
-        if( $nullable ) {
-            $this->nullable = true;
-        }
-
+        $this->nullable = $nullable ?: null;
         return $this;
     }
 
 
     public function required( bool $required = true ) : static
     {
-        if( $required ) {
-            $this->required = true;
-        }
-
+        $this->required = $required ?: null;
         return $this;
     }
 
