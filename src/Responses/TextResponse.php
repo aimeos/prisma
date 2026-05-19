@@ -4,6 +4,8 @@ namespace Aimeos\Prisma\Responses;
 
 use Aimeos\Prisma\Concerns\Async;
 use Aimeos\Prisma\Concerns\HasMeta;
+use Aimeos\Prisma\Concerns\HasRateLimit;
+use Aimeos\Prisma\Concerns\HasToolSteps;
 use Aimeos\Prisma\Concerns\HasUsage;
 
 
@@ -14,7 +16,7 @@ use Aimeos\Prisma\Concerns\HasUsage;
  */
 class TextResponse implements \IteratorAggregate
 {
-    use Async, HasMeta, HasUsage;
+    use Async, HasMeta, HasRateLimit, HasToolSteps, HasUsage;
 
 
     /** @var array<string|int, mixed> */
@@ -23,18 +25,11 @@ class TextResponse implements \IteratorAggregate
     /** @var array<string|int, string|null> */
     private array $list = [];
 
-
     final private function __construct()
     {
     }
 
 
-    /**
-     * Create a text response instance.
-     *
-     * @param string|null $text Text content
-     * @return self TextResponse instance
-     */
     public static function fromText( ?string $text ) : self
     {
         $instance = new self;
@@ -45,10 +40,9 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
-     * Create a text response instance.
+     * Creates a response from multiple text values.
      *
-     * @param array<int|string, string> $texts List of texts
-     * @return self TextResponse instance
+     * @param array<string|int, string|null> $texts Response texts
      */
     public static function fromTexts( array $texts ) : self
     {
@@ -59,13 +53,6 @@ class TextResponse implements \IteratorAggregate
     }
 
 
-    /**
-     * Add a text to the list of texts if several are available.
-     *
-     * @param string|null $text Text content to add
-     * @param int|string|null $key Optional key to associate with the text
-     * @return self TextResponse instance for chaining
-     */
     public function add( ?string $text, int|string|null $key = null ) : self
     {
         if( $key !== null ) {
@@ -78,22 +65,12 @@ class TextResponse implements \IteratorAggregate
     }
 
 
-    /**
-     * Checks if there are any results.
-     *
-     * @return bool True if there are no results, false otherwise
-     */
     public function empty() : bool
     {
         return empty( $this->list );
     }
 
 
-    /**
-     * Returns the first text in the list if several are available.
-     *
-     * @return string|null First text or null if no texts are available
-     */
     public function first() : ?string
     {
         if( empty( $this->list ) ) {
@@ -104,11 +81,6 @@ class TextResponse implements \IteratorAggregate
     }
 
 
-    /**
-     * Allows iterating over the list of available texts.
-     *
-     * @return \ArrayIterator<int|string, string|null> Traversable list of texts
-     */
     public function getIterator(): \Traversable
     {
         if( empty( $this->list ) ) {
@@ -120,7 +92,7 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
-     * Get the structured data.
+     * Returns the structured output data.
      *
      * @return array<string|int, mixed> Structured data
      */
@@ -130,11 +102,6 @@ class TextResponse implements \IteratorAggregate
     }
 
 
-    /**
-     * Get the text content.
-     *
-     * @return string|null Text content
-     */
     public function text() : ?string
     {
         if( empty( $this->list ) ) {
@@ -146,9 +113,9 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
-     * Get all available texts.
+     * Returns all response texts.
      *
-     * @return array<int|string, string|null> List of texts
+     * @return array<string|int, string|null> Response texts
      */
     public function texts() : array
     {
@@ -161,10 +128,9 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
-     * Sets the structured data.
+     * Sets the structured output data.
      *
      * @param array<string|int, mixed> $structured Structured data
-     * @return static TextResponse instance
      */
     public function withStructured( array $structured ) : static
     {

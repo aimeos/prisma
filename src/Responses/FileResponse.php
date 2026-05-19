@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Responses;
 use Aimeos\Prisma\Concerns\Async;
 use Aimeos\Prisma\Concerns\HasDescription;
 use Aimeos\Prisma\Concerns\HasMeta;
+use Aimeos\Prisma\Concerns\HasRateLimit;
 use Aimeos\Prisma\Concerns\HasUsage;
 use Aimeos\Prisma\Files\File;
 
@@ -16,7 +17,7 @@ use Aimeos\Prisma\Files\File;
  */
 class FileResponse implements \IteratorAggregate
 {
-    use Async, HasDescription, HasMeta, HasUsage;
+    use Async, HasDescription, HasMeta, HasRateLimit, HasUsage;
 
 
     /** @var array<string|int, File> */

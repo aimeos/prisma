@@ -9,6 +9,9 @@ use Aimeos\Prisma\Tools\Adapter\Provider;
 use Aimeos\Prisma\Tools\Adapter\Symfony;
 
 
+/**
+ * Factory for creating tool adapters from different sources.
+ */
 class Tools
 {
     /**
@@ -24,9 +27,12 @@ class Tools
 
 
     /**
-     * Creates a Prisma adapter from a name, description, handler and schema.
+     * Creates a Prisma adapter from a name, description, schema and handler.
      *
+     * @param string $name Tool name
+     * @param string $description Tool description
      * @param Schema\Schema $schema Schema definition
+     * @param callable $handler Tool execution handler
      * @return Adapter Adapter instance
      */
     public static function make( string $name, string $description, Schema\Schema $schema, callable $handler ) : Adapter
@@ -39,6 +45,7 @@ class Tools
     /**
      * Creates a built-in provider tool reference.
      *
+     * @param string $name Provider tool name (e.g. 'web_search', 'code_execution')
      * @return Adapter Adapter instance
      */
     public static function provider( string $name ) : Adapter

@@ -3,6 +3,9 @@
 namespace Aimeos\Prisma\Tools\Adapter;
 
 
+/**
+ * Interface for tool adapters that can be executed by the LLM.
+ */
 interface Adapter
 {
     /**

@@ -22,6 +22,12 @@ trait HasTools
     private array $providerTools = [];
 
 
+    /**
+     * Sets the concurrency strategy for tool execution.
+     *
+     * @param Concurrency $concurrency Concurrency strategy
+     * @return self
+     */
     public function withConcurrency( Concurrency $concurrency ) : self
     {
         $this->concurrency = $concurrency;
@@ -29,6 +35,12 @@ trait HasTools
     }
 
 
+    /**
+     * Sets the maximum number of tool execution steps.
+     *
+     * @param int $steps Maximum number of steps (minimum 1)
+     * @return self
+     */
     public function withMaxSteps( int $steps ) : self
     {
         $this->maxSteps = max( 1, $steps );
@@ -36,6 +48,12 @@ trait HasTools
     }
 
 
+    /**
+     * Sets the tool choice strategy.
+     *
+     * @param string $choice Tool choice: 'auto', 'required', or 'none'
+     * @return self
+     */
     public function withToolChoice( string $choice ) : self
     {
         $this->toolChoice = $choice;
@@ -43,6 +61,16 @@ trait HasTools
     }
 
 
+    /**
+     * Sets the tools available for the LLM.
+     *
+     * Accepts Adapter instances for custom tools and Provider instances
+     * for built-in provider tools (e.g. web search, code execution).
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> $tools Tool definitions
+     * @return self
+     * @throws \InvalidArgumentException If a tool doesn't implement Adapter
+     */
     public function withTools( array $tools ) : self
     {
         $this->tools = [];
@@ -212,6 +240,11 @@ trait HasTools
     }
 
 
+    /**
+     * Returns the maximum number of tool execution steps.
+     *
+     * @return int Maximum steps
+     */
     protected function maxSteps() : int
     {
         return $this->maxSteps;
