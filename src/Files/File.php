@@ -95,16 +95,21 @@ class File
         }
 
         $fsdisk = \Illuminate\Support\Facades\Storage::disk( $disk );
-        $content = $fsdisk->get($path);
 
-        if( !( $content = $fsdisk->get( $path ) ) ) {
+        /** @var string|null $content */
+        $content = $fsdisk->get( $path );
+
+        if( !$content ) {
             throw new NotFoundException( sprintf( 'Laravel storage disk "%1$s" does not contain "%2$s" or the file is empty', $disk, $path ) );
         }
 
         $instance = new static;
         $instance->binary = $content;
         $instance->filename = basename( $path );
-        $instance->setMimeType( $mimeType ?: $fsdisk->mimeType( $path ) ?: null );
+
+        /** @var string|false $detectedMime */
+        $detectedMime = $fsdisk->mimeType( $path );
+        $instance->setMimeType( $mimeType ?: ( is_string( $detectedMime ) ? $detectedMime : null ) );
 
         return $instance;
     }
@@ -205,6 +210,10 @@ class File
             }
         }
 
+        if( ( $prefix = $this->mimePrefix() ) && !str_starts_with( (string) $this->mimeType, $prefix ) ) {
+            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $this->mimeType ) );
+        }
+
         return $this->mimeType;
     }
 
@@ -228,7 +237,22 @@ class File
      */
     public function setMimeType( ?string $mimeType ) : static
     {
+        if( $mimeType && ( $prefix = $this->mimePrefix() ) && !str_starts_with( $mimeType, $prefix ) ) {
+            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $mimeType ) );
+        }
+
         $this->mimeType = $mimeType;
         return $this;
+    }
+
+
+    /**
+     * Returns the expected MIME type prefix for validation, or empty string if any type is allowed.
+     *
+     * @return string MIME prefix (e.g. 'image/', 'audio/', 'video/')
+     */
+    protected function mimePrefix() : string
+    {
+        return '';
     }
 }
