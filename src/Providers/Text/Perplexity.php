@@ -14,7 +14,7 @@ class Perplexity extends Base implements Write
         return $this->completions(
             'chat/completions', 'sonar',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
         );
     }
 }

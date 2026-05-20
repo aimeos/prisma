@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\HasHttpClient;
 use Aimeos\Prisma\Concerns\HasHttpResponse;
 use Aimeos\Prisma\Concerns\HasModel;
 use Aimeos\Prisma\Concerns\HasSystemPrompt;
+use Aimeos\Prisma\Concerns\HasTokens;
 use Aimeos\Prisma\Concerns\HasTools;
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\BadRequestException;
@@ -25,8 +26,9 @@ abstract class Base implements Provider
 {
     use HasHttpClient;
     use HasHttpResponse;
-    use HasSystemPrompt;
     use HasModel;
+    use HasSystemPrompt;
+    use HasTokens;
     use HasTools;
 
 

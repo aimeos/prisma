@@ -17,6 +17,8 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
     <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
+    <li><a href="#withMaxTokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
+    <li><a href="#withThinkingBudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
     <li><a href="#finish-reason">Finish reason</a><span>: Why generation stopped</span></li>
     <li><a href="#tool-steps">Tool steps</a><span>: Inspect tool call history</span></li>
@@ -292,6 +294,53 @@ public function withSystemPrompt( ?string $prompt ) : self
 \Aimeos\Prisma\Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->withSystemPrompt( 'You are a professional illustrator' );
+```
+
+### withMaxTokens
+
+Set the maximum number of output tokens for the response.
+
+```php
+public function withMaxTokens( ?int $tokens ) : self
+```
+
+* @param **int&#124;null** `$tokens` Maximum output tokens
+* @return **self** Provider interface
+
+**Example:**
+
+```php
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'] )
+    ->withMaxTokens( 4096 )
+    ->write( 'Tell me a story' );
+```
+
+### withThinkingBudget
+
+Set the thinking/reasoning budget in tokens for models that support extended
+thinking. The budget is mapped to each provider's native format automatically:
+token counts for Anthropic, OpenAI, Gemini and Bedrock; effort levels for other
+OpenAI-API providers (&#8804; 1024 → low, &#8804; 8192 → medium, > 8192 → high).
+
+```php
+public function withThinkingBudget( ?int $budget ) : self
+```
+
+* @param **int&#124;null** `$budget` Thinking budget in tokens
+* @return **self** Provider interface
+
+**Example:**
+
+```php
+$response = \Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'] )
+    ->withThinkingBudget( 5000 )
+    ->withMaxTokens( 4096 )
+    ->write( 'Solve this step by step' );
+
+// Access the model's reasoning (if returned by the provider)
+$thinking = $response->meta()['thinking'] ?? null;
 ```
 
 ### Response objects

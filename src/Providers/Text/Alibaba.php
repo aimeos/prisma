@@ -16,7 +16,7 @@ class Alibaba extends Base implements Write
         return $this->completions(
             'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'max_tokens', 'top_p', 'top_k'], $extra
+            $options, ['temperature', 'top_p', 'top_k'], $extra
         );
     }
 }

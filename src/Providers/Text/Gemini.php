@@ -52,12 +52,21 @@ class Gemini extends Base implements Write
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
+            $genConfig = [
+                'responseModalities' => ['TEXT']
+            ] + $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+
+            if( $this->maxTokens() ) {
+                $genConfig['maxOutputTokens'] = $this->maxTokens();
+            }
+
+            if( $this->thinkingBudget() ) {
+                $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
+            }
 
             $request = $system + [
                 'contents' => $contents,
-                'generationConfig' => [
-                    'responseModalities' => ['TEXT']
-                ] + $this->allowed( $options, ['temperature', 'maxOutputTokens', 'topP', 'topK'] )
+                'generationConfig' => $genConfig,
             ];
 
             if( $tools = $this->toolsParam() ) {
@@ -95,7 +104,9 @@ class Gemini extends Base implements Write
 
                 foreach( $parts as $part )
                 {
-                    if( $text = $part['text'] ?? null ) {
+                    if( $part['thought'] ?? false ) {
+                        $thinking = $part['text'] ?? null;
+                    } elseif( $text = $part['text'] ?? null ) {
                         $texts[] = $text;
                     }
                 }
@@ -125,6 +136,10 @@ class Gemini extends Base implements Write
 
         /** @var array<string, mixed> $meta */
         $meta = is_array( $first['metadata'] ?? null ) ? $first['metadata'] : [];
+
+        if( $thinking ?? null ) {
+            $meta['thinking'] = $thinking;
+        }
 
         /** @var array<string, mixed> $usage */
         $usage = $data['usageMetadata'] ?? [];

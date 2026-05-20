@@ -38,7 +38,8 @@ class Cohere extends CohereBase implements Write
             $params = [
                 'model' => $this->modelName( 'command-a-vision-07-2025' ),
                 'messages' => $messages,
-            ] + $this->allowed( $options, ['temperature', 'max_tokens', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] );
+            ] + $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] )
+            + ( $this->maxTokens() ? ['max_tokens' => $this->maxTokens()] : [] );
 
             if( $tools = $this->toolsParam() ) {
                 $params['tools'] = $tools;

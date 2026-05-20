@@ -116,7 +116,8 @@ class BedrockTest extends TestCase
                 'usage' => ['inputTokens' => 5, 'outputTokens' => 2]
             ] )
             ->ensure( 'write' )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'maxTokens' => 100, 'unknown' => 'ignored'] );
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );

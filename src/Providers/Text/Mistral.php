@@ -19,7 +19,7 @@ class Mistral extends Base implements Write
 
         return $this->completions(
             'v1/chat/completions', 'mistral-large-latest', $messages, $options,
-            ['temperature', 'max_tokens', 'top_p']
+            ['temperature', 'top_p']
         );
     }
 
@@ -52,7 +52,7 @@ class Mistral extends Base implements Write
         $convParams = [
             'agent_id' => $agentId,
             'inputs' => $messages,
-        ] + $this->allowed( $options, ['max_tokens'] );
+        ] + ( $this->maxTokens() ? ['max_tokens' => $this->maxTokens()] : [] );
 
         $response = $this->client()->post( 'v1/agents/conversations', ['json' => $convParams] );
 

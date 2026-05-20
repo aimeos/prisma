@@ -14,7 +14,7 @@ class Groq extends Base implements Write
         return $this->completions(
             'openai/v1/chat/completions', 'meta-llama/llama-4-scout-17b-16e-instruct',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
         );
     }
 }
