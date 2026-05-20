@@ -45,6 +45,7 @@ class Anthropic extends Base implements Write
     private function generate( array $messages, array $options ) : TextResponse
     {
         $allSteps = [];
+        $citations = [];
         $thinking = null;
         $rateLimit = [];
         $texts = [];
@@ -56,7 +57,7 @@ class Anthropic extends Base implements Write
                 'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
                 'messages' => $messages,
                 'max_tokens' => $this->maxTokens() ?? 4096,
-            ] + $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
+            ] + $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
 
             if( $thinkingBudget = $this->thinkingBudget() ) {
                 $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
@@ -86,6 +87,7 @@ class Anthropic extends Base implements Write
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
+            $citations = [];
             $texts = [];
             $thinking = null;
 
@@ -98,6 +100,16 @@ class Anthropic extends Base implements Write
                     $texts[] = $block['text'];
                 } elseif( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
                     $thinking = $block['thinking'];
+                }
+
+                foreach( $block['citations'] ?? [] as $cit )
+                {
+                    $citations[] = [
+                        'title' => $cit['document_title'] ?? null,
+                        'url' => null,
+                        'text' => null,
+                        'source' => $cit['cited_text'] ?? null,
+                    ];
                 }
             }
 
@@ -126,6 +138,7 @@ class Anthropic extends Base implements Write
         /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
+            ->withCitations( $citations )
             ->withReason( match( $result['stop_reason'] ?? null ) {
                 'end_turn', 'stop_sequence' => TextResponse::STOP,
                 'tool_use' => TextResponse::TOOL,

@@ -141,12 +141,49 @@ class Gemini extends Base implements Write
             $meta['thinking'] = $thinking;
         }
 
+        /** @var array<int, array<string, mixed>> */
+        $citations = [];
+        $grounding = $first['groundingMetadata'] ?? [];
+
+        /** @var array<int, array<string, mixed>> $chunks */
+        $chunks = $grounding['groundingChunks'] ?? [];
+
+        /** @var array<int, array<string, mixed>> $supports */
+        $supports = $grounding['groundingSupports'] ?? [];
+        $fullText = null;
+
+        foreach( $supports as $support )
+        {
+            $fullText ??= implode( '', $texts );
+
+            /** @var array<string, mixed> $segment */
+            $segment = $support['segment'] ?? [];
+            $start = $segment['startIndex'] ?? null;
+            $end = $segment['endIndex'] ?? null;
+            $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
+
+            /** @var array<int, int> $indices */
+            $indices = $support['groundingChunkIndices'] ?? [];
+
+            foreach( $indices as $idx )
+            {
+                $web = $chunks[$idx]['web'] ?? [];
+                $citations[] = [
+                    'title' => $web['title'] ?? null,
+                    'url' => $web['uri'] ?? null,
+                    'text' => $cited ?: null,
+                    'source' => null,
+                ];
+            }
+        }
+
         /** @var array<string, mixed> $usage */
         $usage = $data['usageMetadata'] ?? [];
 
         /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
+            ->withCitations( $citations )
             ->withReason( match( $first['finishReason'] ?? null ) {
                 'STOP' => TextResponse::STOP,
                 'MAX_TOKENS' => TextResponse::LENGTH,

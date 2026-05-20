@@ -20,6 +20,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#withMaxTokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
     <li><a href="#withThinkingBudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
+    <li><a href="#citations">Citations</a><span>: Source references from provider responses</span></li>
     <li><a href="#finish-reason">Finish reason</a><span>: Why generation stopped</span></li>
     <li><a href="#tool-steps">Tool steps</a><span>: Inspect tool call history</span></li>
     <li><a href="#rate-limit">Rate limit</a><span>: Rate limit information from providers</span></li>
@@ -144,22 +145,22 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | translate | write | custom tools | provider tools |
-| :---                  | :---:     | :---: | :---:        | :---:          |
-| **Alibaba**           |           | yes   | yes          | yes            |
-| **Anthropic**         |           | yes   | yes          | yes            |
-| **Bedrock**           |           | yes   | yes          |                |
-| **Cohere**            |           | yes   | yes          |                |
-| **Deepseek**          |           | yes   | yes          |                |
-| **DeepL**             | yes       |       |              |                |
-| **Gemini**            |           | yes   | yes          | yes            |
-| **Google**            | yes       |       |              |                |
-| **Groq**              |           | yes   | yes          |                |
-| **Mistral**           |           | yes   | yes          | yes            |
-| **OpenAI**            |           | yes   | yes          | yes            |
-| **Openrouter**        |           | yes   | yes          | yes            |
-| **Perplexity**        |           | beta  | yes          |                |
-| **xAI**               |           | beta  | yes          | yes            |
+|                       | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
+| :---                  | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
+| **Alibaba**           |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Anthropic**         |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Bedrock**           |           | yes   | -         | yes          |                | yes           | yes             |
+| **Cohere**            |           | yes   | -         | yes          |                | -             | -               |
+| **Deepseek**          |           | yes   | -         | yes          |                | yes           | -               |
+| **DeepL**             | yes       |       |           |              |                |               |                 |
+| **Gemini**            |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google**            | yes       |       |           |              |                |               |                 |
+| **Groq**              |           | yes   | -         | yes          |                | yes           | -               |
+| **Mistral**           |           | yes   | -         | yes          | yes            | yes           | -               |
+| **OpenAI**            |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Openrouter**        |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Perplexity**        |           | beta  | yes       | yes          |                | yes           | -               |
+| **xAI**               |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -411,6 +412,39 @@ $usage = $response->usage();
 It returns an associative array whose content depends on the provider. If the provider returns
 usage information, the `used` array key is available and contains a number. What the number
 represents depdends on the provider too.
+
+### Citations
+
+TextResponse objects include citations when returned by providers that support them
+(Anthropic, Gemini, OpenAI, Perplexity, xAI). Each citation is a normalized array
+with four fields:
+
+```php
+$response = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->write( 'What is the capital of France?' );
+
+$citations = $response->citations(); // array of citation arrays
+
+foreach( $citations as $citation ) {
+    $citation['title'];  // string|null — source title
+    $citation['url'];    // string|null — source URL
+    $citation['text'];   // string|null — output text that references the source
+    $citation['source']; // string|null — verbatim quote from the source document
+}
+```
+
+The `text` field contains the snippet from the model's **output** that cites the source
+(populated by OpenAI, xAI, Gemini). The `source` field contains a verbatim quote from the
+**input/source document** (populated by Anthropic). For Perplexity, only `url` is available.
+
+Anthropic requires opting in via options:
+
+```php
+$response = Prisma::text()
+    ->using( 'anthropic', ['api_key' => 'xxx'] )
+    ->write( 'Summarize this document', $files, ['citations' => true] );
+```
 
 ### Finish reason
 

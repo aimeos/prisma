@@ -114,6 +114,60 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testWriteWithCitations() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [[
+                    'type' => 'text',
+                    'text' => 'The grass is green.',
+                    'citations' => [[
+                        'type' => 'char_location',
+                        'cited_text' => 'The grass is green and lush.',
+                        'document_title' => 'Nature Guide',
+                        'document_index' => 0,
+                        'start_char_index' => 0,
+                        'end_char_index' => 27
+                    ], [
+                        'type' => 'char_location',
+                        'cited_text' => 'Green is the color of nature.',
+                        'document_title' => 'Color Theory',
+                        'document_index' => 1,
+                        'start_char_index' => 0,
+                        'end_char_index' => 29
+                    ]]
+                ]],
+                'usage' => ['input_tokens' => 10, 'output_tokens' => 5]
+            ] )
+            ->write( 'Describe grass', [], ['citations' => true] );
+
+        $citations = $response->citations();
+        $this->assertCount( 2, $citations );
+        $this->assertEquals( 'Nature Guide', $citations[0]['title'] );
+        $this->assertNull( $citations[0]['url'] );
+        $this->assertNull( $citations[0]['text'] );
+        $this->assertEquals( 'The grass is green and lush.', $citations[0]['source'] );
+        $this->assertEquals( 'Color Theory', $citations[1]['title'] );
+        $this->assertEquals( 'Green is the color of nature.', $citations[1]['source'] );
+    }
+
+
+    public function testWriteWithoutCitations() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [[
+                    'type' => 'text',
+                    'text' => 'Hello'
+                ]],
+                'usage' => ['input_tokens' => 3, 'output_tokens' => 1]
+            ] )
+            ->write( 'Say hello' );
+
+        $this->assertEmpty( $response->citations() );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );

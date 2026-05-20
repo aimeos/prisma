@@ -97,12 +97,22 @@ trait OpenaiApi
             $meta['thinking'] = $thinking;
         }
 
+        /** @var array<int, array<string, mixed>> */
+        $citations = [];
+
+        if( is_array( $result['citations'] ?? null ) ) {
+            foreach( $result['citations'] as $url ) {
+                $citations[] = ['title' => null, 'url' => is_string( $url ) ? $url : null, 'text' => null, 'source' => null];
+            }
+        }
+
         /** @var array<int, string|null> $texts */
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
         return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
+            ->withCitations( $citations )
             ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
                 'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
                 'tool_calls' => \Aimeos\Prisma\Responses\TextResponse::TOOL,
@@ -299,8 +309,12 @@ trait OpenaiApi
 
         $thinking = null;
 
+        /** @var array<int, array<string, mixed>> */
+        $citations = [];
+
         /** @var array<int, array<string, mixed>> $outputFinal */
         $outputFinal = $result['output'] ?? [];
+        $fullText = null;
 
         foreach( $outputFinal as $data )
         {
@@ -311,6 +325,27 @@ trait OpenaiApi
                     /** @var string $text */
                     $text = $summary['text'] ?? '';
                     $thinking .= $text;
+                }
+            }
+
+            foreach( $data['content'] ?? [] as $content )
+            {
+                foreach( $content['annotations'] ?? [] as $ann )
+                {
+                    if( ( $ann['type'] ?? '' ) === 'url_citation' )
+                    {
+                        $fullText ??= implode( '', $texts );
+                        $start = $ann['start_index'] ?? null;
+                        $end = $ann['end_index'] ?? null;
+                        $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
+
+                        $citations[] = [
+                            'title' => $ann['title'] ?? null,
+                            'url' => $ann['url'] ?? null,
+                            'text' => $cited ?: null,
+                            'source' => null,
+                        ];
+                    }
                 }
             }
         }
@@ -328,6 +363,7 @@ trait OpenaiApi
 
         return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
+            ->withCitations( $citations )
             ->withReason( match( $result['status'] ?? null ) {
                 'completed' => \Aimeos\Prisma\Responses\TextResponse::STOP,
                 'incomplete' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
