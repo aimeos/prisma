@@ -2,33 +2,38 @@
 
 namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Concerns\HasHttpClient;
+use Aimeos\Prisma\Concerns\HasHttpResponse;
+use Aimeos\Prisma\Concerns\HasModel;
+use Aimeos\Prisma\Concerns\HasSystemPrompt;
+use Aimeos\Prisma\Concerns\HasTools;
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Files\File;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Client;
-use Psr\Http\Message\ResponseInterface;
 
 
+/**
+ * Abstract base class for all AI providers.
+ *
+ * Provides common functionality for HTTP communication, model selection,
+ * system prompts, tool handling, and request/response processing.
+ * Concrete providers extend this class and implement capability-specific
+ * contracts (e.g. Text\Write, Image\Generate, Audio\Speech).
+ */
 abstract class Base implements Provider
 {
-    private Client $client;
-    private ?HandlerStack $clientHandler = null;
-    private ?string $systemPrompt = null;
-    private ?string $model = null;
-
-    /** @var array<string, mixed|array<string, mixed>> */
-    private array $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
+    use HasHttpClient;
+    use HasHttpResponse;
+    use HasSystemPrompt;
+    use HasModel;
+    use HasTools;
 
 
     /**
-     * Handles calls to methods that are not implemented by the provider.
+     * Handles calls to undefined methods.
      *
-     * @param string $method Method name
-     * @param array<string, mixed> $arguments Method arguments
-     * @return mixed
-     * @throws NotImplementedException
+     * @param array<int, mixed> $arguments Method arguments
      */
     public function __call( string $method, array $arguments ) : mixed
     {
@@ -37,16 +42,16 @@ abstract class Base implements Provider
 
 
     /**
-     * Ensures that the provider has implemented the method.
+     * Ensures that the provider implements the given method.
      *
-     * @param string $method Method name
-     * @return static Provider instance
-     * @throws NotImplementedException
+     * @param string $method Method name to check (e.g. 'chat', 'generate')
+     * @return static Same provider instance for fluent calls
+     * @throws \Aimeos\Prisma\Exceptions\NotImplementedException If the method is not implemented
      */
     public function ensure( string $method ) : static
     {
         if( !$this->has( $method ) ) {
-            throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', get_class( $this ), $method ) );
+            throw new NotImplementedException( sprintf( '"%1$s" does not implement "%2$s"', get_class( $this ), $method ) );
         }
 
         return $this;
@@ -54,10 +59,10 @@ abstract class Base implements Provider
 
 
     /**
-     * Tests if the provider has implemented the method.
+     * Tests if the provider implements the given method.
      *
-     * @param string $method Method name
-     * @return bool TRUE if implemented, FALSE if absent
+     * @param string $method Method name to check (e.g. 'chat', 'generate')
+     * @return bool TRUE if the capability is implemented, FALSE otherwise
      */
     public function has( string $method ) : bool
     {
@@ -77,69 +82,11 @@ abstract class Base implements Provider
 
 
     /**
-     * Use the model passed by its name.
+     * Filters options to only include allowed keys.
      *
-     * Used if the provider supports more than one model and allows to select
-     * between the different models. Otherwise, it's ignored.
-     *
-     * @param string|null $model Model name
-     * @return self Provider interface
-     */
-    public function model( ?string $model ) : self
-    {
-        $this->model = $model;
-        return $this;
-    }
-
-
-    /**
-     * Add client handler for the Guzzle HTTP client.
-     *
-     * @param \GuzzleHttp\HandlerStack $stack List of Guzzle middleware
-     * @return self Provider interface
-     */
-    public function withClientHandler( HandlerStack $stack ) : self
-    {
-        $this->clientHandler = $stack;
-        return $this;
-    }
-
-
-    /**
-     * Add options for the Guzzle HTTP client.
-     *
-     * @param array<string, mixed> $options Associative list of name/value pairs
-     * @return self Provider interface
-     */
-    public function withClientOptions( array $options ) : self
-    {
-        $this->clientOptions = array_replace_recursive( $this->clientOptions, $options );
-        return $this;
-    }
-
-
-    /**
-     * Add a system prompt for the LLM.
-     *
-     * It may be used by providers supporting system prompts. Otherwise, it's
-     * ignored.
-     *
-     * @param string|null $prompt System prompt
-     * @return self Provider interface
-     */
-    public function withSystemPrompt( ?string $prompt ) : self
-    {
-        $this->systemPrompt = $prompt;
-        return $this;
-    }
-
-
-    /**
-     * Returns only the allowed options from the given list.
-     *
-     * @param array<string, mixed> $options Associative list of name/value pairs
-     * @param array<string> $allowed List of allowed option names
-     * @return array<string, mixed> Filtered list of name/value pairs
+     * @param array<string, mixed> $options All options
+     * @param array<int, string> $allowed Allowed option keys
+     * @return array<string, mixed> Filtered options
      */
     protected function allowed( array $options, array $allowed ) : array
     {
@@ -148,87 +95,25 @@ abstract class Base implements Provider
 
 
     /**
-     * Set the base URL for the HTTP client.
+     * Extracts a string value from a config array.
      *
-     * @param string|null $url Base URL
-     * @return self Provider interface
+     * @param array<string, mixed> $config Configuration array
+     * @param string $key Configuration key
+     * @param string $default Default value
+     * @return string Configuration value as string
      */
-    protected function baseUrl( ?string $url ) : self
+    protected function cfg( array $config, string $key, string $default = '' ) : string
     {
-        $this->clientOptions['base_uri'] = $url;
-        return $this;
+        return isset( $config[$key] ) && is_string( $config[$key] ) ? $config[$key] : $default;
     }
 
 
     /**
-     * Returns the HTTP client instance.
+     * Builds multipart form data for file upload requests.
      *
-     * @return Client HTTP client instance
-     */
-    protected function client() : Client
-    {
-        if( !isset( $this->client ) ) {
-            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->clientHandler] );
-        }
-
-        return $this->client;
-    }
-
-
-    /**
-     * Decodes the JSON from the response body.
-     *
-     * @param ResponseInterface $response HTTP response
-     * @return array<string, mixed> Decoded JSON data
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException
-     */
-    protected function fromJson( ResponseInterface $response ) : array
-    {
-        $body = $response->getBody()->getContents();
-        $data = json_decode( $body, true );
-
-        if( !$data ) {
-            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Invalid JSON response: ' . $body );
-        }
-
-        return $data;
-    }
-
-
-    /**
-     * Set a header for the HTTP client.
-     *
-     * @param string $name Header name
-     * @param string|null $value Header value
-     * @return self Provider interface
-     */
-    protected function header( string $name, ?string $value ) : self
-    {
-        if( $value !== null ) {
-            $this->clientOptions['headers'][$name] = $value;
-        }
-
-        return $this;
-    }
-
-
-    /**
-     * Returns the model name.
-     *
-     * @return string|null Model name
-     */
-    protected function modelName( ?string $default = null ) : ?string
-    {
-        return $this->model ?: $default;
-    }
-
-
-    /**
-     * Returns the data for the HTTP request.
-     *
-     * @param array<string, mixed> $options Associative list of name/value pairs
-     * @param array<string, File|array<int, File>> $files Associative list of file name/File instances
-     * @return array<int, array<string, mixed>> Request data
+     * @param array<string, mixed> $options Request options
+     * @param array<string, mixed> $files Files to upload
+     * @return array<int, array<string, mixed>> Multipart form data
      */
     protected function request( array $options, array $files = [] ) : array
     {
@@ -284,11 +169,11 @@ abstract class Base implements Provider
 
 
     /**
-     * Sanitize the options by only allowing the specified values.
+     * Removes options with invalid values.
      *
-     * @param array<string, mixed> $options Associative list of name/value pairs
-     * @param array<string, array<string|int|bool>|null> $allowed Associative list of name/allowed values, NULL for all
-     * @return array<string, mixed> Sanitized list of name/value pairs
+     * @param array<string, mixed> $options Options to sanitize
+     * @param array<string, array<int, mixed>|null> $allowed Map of option names to valid values
+     * @return array<string, mixed> Sanitized options
      */
     protected function sanitize( array $options, array $allowed ) : array
     {
@@ -300,73 +185,5 @@ abstract class Base implements Provider
         }
 
         return $options;
-    }
-
-
-    /**
-     * Returns the system prompt.
-     *
-     * @return string|null System prompt
-     */
-    protected function systemPrompt() : ?string
-    {
-        return $this->systemPrompt;
-    }
-
-
-    /**
-     * Throws an exception based on the HTTP status code.
-     *
-     * @param int $status HTTP status code
-     * @param string $message Error message
-     * @throws \Aimeos\Prisma\Exceptions\BadRequestException
-     * @throws \Aimeos\Prisma\Exceptions\UnauthorizedException
-     * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
-     * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
-     * @throws \Aimeos\Prisma\Exceptions\NotFoundException
-     * @throws \Aimeos\Prisma\Exceptions\SizeException
-     * @throws \Aimeos\Prisma\Exceptions\RateLimitException
-     * @throws \Aimeos\Prisma\Exceptions\OverloadedException
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException
-     */
-    protected function throw( int $status, string $message ) : void
-    {
-        switch( $status )
-        {
-            case 422:
-            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $message );
-            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $message );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $message );
-            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $message );
-            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
-            case 413: throw new \Aimeos\Prisma\Exceptions\SizeException( $message );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $message );
-            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $message );
-        }
-    }
-
-
-    /**
-     * Validates the HTTP response.
-     *
-     * @param ResponseInterface $response HTTP response
-     * @throws \Aimeos\Prisma\Exceptions\BadRequestException
-     * @throws \Aimeos\Prisma\Exceptions\UnauthorizedException
-     * @throws \Aimeos\Prisma\Exceptions\PaymentRequiredException
-     * @throws \Aimeos\Prisma\Exceptions\ForbiddenException
-     * @throws \Aimeos\Prisma\Exceptions\NotFoundException
-     * @throws \Aimeos\Prisma\Exceptions\SizeException
-     * @throws \Aimeos\Prisma\Exceptions\RateLimitException
-     * @throws \Aimeos\Prisma\Exceptions\OverloadedException
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException
-     */
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $this->throw( $response->getStatusCode(), $response->getReasonPhrase() );
     }
 }
