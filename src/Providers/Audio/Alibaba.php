@@ -14,12 +14,12 @@ class Alibaba extends Base implements Speak
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $config['url'] ?? 'https://dashscope-intl.aliyuncs.com' );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://dashscope-intl.aliyuncs.com' ) );
     }
 
 
@@ -44,15 +44,27 @@ class Alibaba extends Base implements Speak
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
-        $url = $data['output']['audio']['url'] ?? null;
 
-        if( empty( $url ) ) {
+        /** @var array<string, mixed> */
+        $output = $data['output'] ?? [];
+
+        /** @var array<string, mixed> */
+        $audio = $output['audio'] ?? [];
+        $url = $audio['url'] ?? null;
+
+        if( empty( $url ) || !is_string( $url ) ) {
             throw new PrismaException( 'No audio data found in response' );
         }
 
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+
+        $used = $usage['input_tokens'] ?? $usage['characters'] ?? 0;
+
         return FileResponse::fromUrl( $url, 'audio/mpeg' )
-            ->withUsage( $data['usage']['input_tokens'] ?? $data['usage']['characters'] ?? 0, $data['usage'] ?? [] )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
             ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
     }
 
@@ -65,6 +77,6 @@ class Alibaba extends Base implements Speak
 
         $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
 
-        $this->throw( $response->getStatusCode(), $error );
+        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
     }
 }

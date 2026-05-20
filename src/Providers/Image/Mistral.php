@@ -40,10 +40,17 @@ class Mistral extends Base implements Recognize
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
-        $texts = array_map( fn( $item ) => $item['markdown'] ?? null, $data['pages'] ?? [] );
+
+        /** @var array<int, array<string, mixed>> $pages */
+        $pages = $data['pages'] ?? [];
+        $texts = array_map( fn( $item ) => $item['markdown'] ?? null, $pages );
+
+        /** @var array<string, mixed> $usageInfo */
+        $usageInfo = $data['usage_info'] ?? [];
 
         return TextResponse::fromText( implode( "\n\n", $texts ) )
-            ->withUsage( 0, $data['usage_info'] ?? [] );
+            ->withUsage( 0, $usageInfo );
     }
 }

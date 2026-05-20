@@ -6,7 +6,6 @@ use Aimeos\Prisma\Contracts\Text\Translate;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Google extends Base implements Translate
@@ -17,12 +16,12 @@ class Google extends Base implements Translate
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->apiKey = $config['api_key'];
+        $this->apiKey = $this->cfg( $config, 'api_key' );
         $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $config['url'] ?? 'https://translation.googleapis.com' );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://translation.googleapis.com' ) );
     }
 
 
@@ -45,18 +44,14 @@ class Google extends Base implements Translate
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $translated = array_map( fn( $item ) => $item['translatedText'] ?? '', $data['data']['translations'] ?? [] );
+        /** @var array<string, mixed> $dataObj */
+        $dataObj = $data['data'] ?? [];
+        /** @var array<int, array<string, mixed>> $translations */
+        $translations = $dataObj['translations'] ?? [];
+        $translated = array_map( fn( $item ) => $item['translatedText'] ?? '', $translations );
 
+        /** @var array<int, string|null> $translated */
         return TextResponse::fromTexts( $translated );
     }
 
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
-        }
-    }
 }

@@ -16,11 +16,11 @@ class Murf extends Base implements Revoice, Speak
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'api-key', $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.murf.ai' );
+        $this->header( 'api-key', $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.murf.ai' ) );
     }
 
 
@@ -33,7 +33,8 @@ class Murf extends Base implements Revoice, Speak
 
         $this->validate( $response );
 
-        return FileResponse::fromUrl( @$this->fromJson( $response )['audio_file'] );
+        $url = @$this->fromJson( $response )['audio_file'] ?? '';
+        return FileResponse::fromUrl( is_string( $url ) ? $url : '' );
     }
 
 
@@ -53,6 +54,7 @@ class Murf extends Base implements Revoice, Speak
 
         $this->validate( $response );
 
-        return FileResponse::fromUrl( @$this->fromJson( $response )['audioFile'] );
+        $url = @$this->fromJson( $response )['audioFile'] ?? '';
+        return FileResponse::fromUrl( is_string( $url ) ? $url : '' );
     }
 }

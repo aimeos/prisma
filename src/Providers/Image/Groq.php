@@ -31,12 +31,20 @@ class Groq extends Base implements Describe
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $result */
         $result = $this->fromJson( $response );
+        /** @var array<string|null> $texts */
         $texts = [];
 
-        foreach( $result['choices'] ?? [] as $data )
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+
+        foreach( $choices as $data )
         {
-            if( $text = $data['message']['content'] ?? null ) {
+            /** @var array<string, mixed> $message */
+            $message = $data['message'] ?? [];
+            if( $text = $message['content'] ?? null ) {
+                /** @var string $text */
                 $texts[] = $text;
             }
         }
@@ -48,10 +56,14 @@ class Groq extends Base implements Describe
         $meta = $result;
         unset( $meta['choices'], $meta['usage'] );
 
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+        $used = $usage['total_tokens'] ?? null;
+
         return TextResponse::fromTexts( $texts )
             ->withUsage(
-                $result['usage']['total_tokens'] ?? null,
-                $result['usage'] ?? [],
+                is_numeric( $used ) ? (float) $used : null,
+                $usage,
             )
             ->withMeta( $meta );
     }

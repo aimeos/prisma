@@ -18,11 +18,11 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'xi-api-key', $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.elevenlabs.io' );
+        $this->header( 'xi-api-key', $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.elevenlabs.io' ) );
     }
 
 
@@ -92,11 +92,21 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
 
-        return TextResponse::fromText( $data['text'] ?? '' )
-            ->withUsage( $data['usage']['total_tokens'] ?? 0, $data['usage'] ?? [] )
-            ->withStructured( $data['words'] ?? [] );
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+        $totalTokens = $usage['total_tokens'] ?? 0;
+
+        /** @var array<int, array<string, mixed>> */
+        $words = $data['words'] ?? [];
+
+        $text = $data['text'] ?? '';
+
+        return TextResponse::fromText( is_string( $text ) ? $text : '' )
+            ->withUsage( is_numeric( $totalTokens ) ? (float) $totalTokens : 0, $usage )
+            ->withStructured( $words );
     }
 
 
@@ -104,8 +114,9 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     {
         if( $response->getStatusCode() !== 200 )
         {
-            $error = @$this->fromJson( $response )['detail']['message'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
+            $detail = @$this->fromJson( $response )['detail'] ?? [];
+            $error = is_array( $detail ) ? ( $detail['message'] ?? $response->getReasonPhrase() ) : $response->getReasonPhrase();
+            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
         }
     }
 }

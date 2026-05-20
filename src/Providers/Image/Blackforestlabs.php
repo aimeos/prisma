@@ -17,7 +17,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
         $this->header( 'x-key', $config['api_key'] );
@@ -121,7 +121,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
                 throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
             }
 
-            $fr->add( Image::fromUrl( $data['sample'] ) );
+            $fr->add( Image::fromUrl( is_string( $data['sample'] ) ? $data['sample'] : '' ) );
 
             return true;
         };
@@ -133,32 +133,31 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
         $this->validate( $response );
         $data = $this->fromJson( $response );
 
-        if( !isset( $data['polling_url'] ) ) {
+        if( !isset( $data['polling_url'] ) || !is_string( $data['polling_url'] ) ) {
             throw new PrismaException( 'Invalid response' );
         }
 
+        $cost = $data['cost'] ?? 0;
+
         return FileResponse::fromAsync( $this->download( $data['polling_url'] ), 2 )
-            ->withUsage( $data['cost'] ?? 0 );
+            ->withUsage( is_numeric( $cost ) ? (float) $cost : 0 );
     }
 
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $detail = @$this->fromJson( $response )['detail'];
-        $error = is_array( $detail ) ? join( ', ', array_map( fn( $entry ) => @$entry['msg'],  $detail ) ) : $detail;
-        $msg = $error ?? $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
+        if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            case 400:
-            case 422: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $msg );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $msg );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $msg );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $msg );
+            $detail = @$this->fromJson( $response )['detail'];
+
+            if( is_array( $detail ) ) {
+                /** @var array<int, array<string, mixed>> $detail */
+                $error = join( ', ', array_map( fn( $entry ) => $entry['msg'] ?? '', $detail ) );
+            } else {
+                $error = $detail;
+            }
+
+            $this->throw( $status, is_string( $error ) ? $error : $response->getReasonPhrase() );
         }
     }
 }

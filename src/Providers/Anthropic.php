@@ -11,12 +11,12 @@ class Anthropic extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'x-api-key', $config['api_key'] );
+        $this->header( 'x-api-key', $this->cfg( $config, 'api_key' ) );
         $this->header( 'anthropic-version', '2023-06-01' );
-        $this->baseUrl( $config['url'] ?? 'https://api.anthropic.com' );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.anthropic.com' ) );
     }
 
 

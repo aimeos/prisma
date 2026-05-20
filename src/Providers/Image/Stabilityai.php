@@ -21,11 +21,11 @@ class Stabilityai extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.stability.ai' );
+        $this->header( 'authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.stability.ai' ) );
     }
 
 
@@ -149,19 +149,14 @@ class Stabilityai extends Base
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $errors = join( ', ', @$this->fromJson( $response )['errors'] ?? [] );
-
-        switch( $response->getStatusCode() )
+        if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            case 400:
-            case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
-            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $errors );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
+            /** @var array<int, string> $errorList */
+            $errorList = @$this->fromJson( $response )['errors'] ?? [];
+            $this->throw( match( $status ) {
+                413 => 400,
+                default => $status,
+            }, join( ', ', $errorList ) );
         }
     }
 }
