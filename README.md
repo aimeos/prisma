@@ -18,12 +18,24 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
+    <li><a href="#finish-reason">Finish reason</a><span>: Why generation stopped</span></li>
+    <li><a href="#tool-steps">Tool steps</a><span>: Inspect tool call history</span></li>
+    <li><a href="#rate-limit">Rate limit</a><span>: Rate limit information from providers</span></li>
 </ul>
 <div class="method-header"><a href="#schemas">Schemas</a></div>
 <ul class="method-list">
     <li><a href="#building-schemas">Building schemas</a><span>: Define tool parameters using the fluent Schema builder</span></li>
     <li><a href="#from-arrays">From arrays</a><span>: Create schemas from JSON Schema arrays</span></li>
     <li><a href="#type-reference">Type reference</a><span>: Available types and their methods</span></li>
+</ul>
+<div class="method-header"><a href="#tools">Tools</a></div>
+<ul class="method-list">
+    <li><a href="#creating-tools">Creating tools</a><span>: Create tools using the Tools facade</span></li>
+    <li><a href="#provider-tools">Provider tools</a><span>: Built-in tools executed server-side</span></li>
+    <li><a href="#tool-state">Tool state</a><span>: Check a tool's remaining call budget</span></li>
+    <li><a href="#error-handling">Error handling</a><span>: Customize how tool errors are returned</span></li>
+    <li><a href="#concurrent-tools">Concurrent tools</a><span>: Run tools in parallel</span></li>
+    <li><a href="#decorating-tools">Decorating tools</a><span>: Wrap tools with additional behavior</span></li>
 </ul>
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
@@ -54,24 +66,16 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
 </ul>
-<div class="method-header"><a href="#tools">Tools</a></div>
-<ul class="method-list">
-    <li><a href="#creating-tools">Creating tools</a></li>
-    <li><a href="#provider-tools">Provider tools</a></li>
-    <li><a href="#tool-options">Tool options</a></li>
-    <li><a href="#concurrent-tools">Concurrent tools</a></li>
-    <li><a href="#decorating-tools">Decorating tools</a></li>
-</ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
 </ul>
 <div class="method-header"><a href="#custom-providers">Custom providers</a></div>
 <ul class="method-list">
-    <li><a href="#base-skeleton">Base skeleton</a></li>
-    <li><a href="#requests">Requests</a></li>
-    <li><a href="#responses">Responses</a></li>
-    <li><a href="#examples">Examples</a></li>
+    <li><a href="#base-skeleton">Base skeleton</a><span>: Basic structure for a custom provider</span></li>
+    <li><a href="#requests">Requests</a><span>: Support methods for building HTTP requests</span></li>
+    <li><a href="#responses">Responses</a><span>: Available response types and their usage</span></li>
+    <li><a href="#examples">Examples</a><span>: Full provider implementation examples</span></li>
 </ul>
 </nav>
 
@@ -138,22 +142,22 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | translate | write |
-| :---                  | :---:     | :---: |
-| **Alibaba**           |           | yes   |
-| **Anthropic**         |           | yes   |
-| **Bedrock**           |           | yes   |
-| **Cohere**            |           | yes   |
-| **Deepseek**          |           | yes   |
-| **DeepL**             | yes       |       |
-| **Gemini**            |           | yes   |
-| **Google**            | yes       |       |
-| **Groq**              |           | yes   |
-| **Mistral**           |           | yes   |
-| **OpenAI**            |           | yes   |
-| **Openrouter**        |           | yes   |
-| **Perplexity**        |           | beta  |
-| **xAI**               |           | beta  |
+|                       | translate | write | custom tools | provider tools |
+| :---                  | :---:     | :---: | :---:        | :---:          |
+| **Alibaba**           |           | yes   | yes          | yes            |
+| **Anthropic**         |           | yes   | yes          | yes            |
+| **Bedrock**           |           | yes   | yes          |                |
+| **Cohere**            |           | yes   | yes          |                |
+| **Deepseek**          |           | yes   | yes          |                |
+| **DeepL**             | yes       |       |              |                |
+| **Gemini**            |           | yes   | yes          | yes            |
+| **Google**            | yes       |       |              |                |
+| **Groq**              |           | yes   | yes          |                |
+| **Mistral**           |           | yes   | yes          | yes            |
+| **OpenAI**            |           | yes   | yes          | yes            |
+| **Openrouter**        |           | yes   | yes          | yes            |
+| **Perplexity**        |           | beta  | yes          |                |
+| **xAI**               |           | beta  | yes          | yes            |
 
 ### Video
 
@@ -359,6 +363,59 @@ It returns an associative array whose content depends on the provider. If the pr
 usage information, the `used` array key is available and contains a number. What the number
 represents depdends on the provider too.
 
+### Finish reason
+
+TextResponse objects include a finish reason indicating why the model stopped generating:
+
+```php
+$response = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->withTools( [$tool] )
+    ->withMaxSteps( 5 )
+    ->write( 'What is the weather in Berlin?' );
+
+$reason = $response->reason(); // 'stop', 'tool', 'length', 'content', 'error', or 'unknown'
+```
+
+| Reason | Meaning |
+| :--- | :--- |
+| `stop` | The model finished normally (reached a natural end or stop sequence) |
+| `tool` | The model stopped to request tool calls; returned when `withMaxSteps()` is exhausted mid-loop |
+| `length` | Output was truncated because it hit the max token limit |
+| `content` | Output was blocked or truncated by a safety/content filter |
+| `error` | The provider returned an error during generation |
+| `unknown` | The provider returned an unrecognized finish reason |
+
+### Tool steps
+
+After a tool-using request completes, inspect the full history of tool calls and their results via `steps()`:
+
+```php
+$response = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->withTools( [$tool] )
+    ->withMaxSteps( 5 )
+    ->write( 'What is the weather in Berlin?' );
+
+foreach( $response->steps() as $step ) {
+    $step->id();        // tool call ID from the provider
+    $step->name();      // tool name (e.g. 'weather')
+    $step->arguments(); // arguments the model passed (e.g. ['city' => 'Berlin'])
+    $step->result();    // result string returned to the model
+}
+```
+
+### Rate limit
+
+TextResponse and FileResponse objects can include rate limit information from the provider:
+
+```php
+$rateLimit = $response->rateLimit();
+// e.g. ['limit' => 1000, 'remaining' => 999, 'reset' => 1620000000]
+```
+
+The content of the returned array depends on the provider. It may be empty if the provider does not return rate limit headers.
+
 ## Schemas
 
 Schemas define the parameters that tools accept. They are used by `Tools::make()` to tell the LLM what arguments a tool expects.
@@ -503,6 +560,8 @@ $response = Prisma::text()
 
 `withMaxSteps()` controls the maximum number of tool calls performed (default is unlimited).
 
+> **Note:** Tool handlers can return any value. Strings are passed through as-is; all other return types (arrays, objects, numbers) are automatically JSON-encoded.
+
 **Tool choice:**
 
 `withToolChoice()` controls whether the model must use tools. Values: `auto` (default, model decides), `required` (must use a tool), `none` (no tools).
@@ -562,8 +621,6 @@ $response = Prisma::text()
     ->write( 'Search and analyze' );
 ```
 
-### Tool options
-
 Pass provider-specific options using `with()`:
 
 ```php
@@ -594,6 +651,35 @@ Unknown or unsupported options are silently ignored by each provider.
 | `vector_store_ids` | OpenAI | file_search | Vector store IDs to search |
 | `max_num_results` | OpenAI | file_search | Max results returned |
 | `library_ids` | Mistral | document_library | Document library IDs |
+
+### Tool state
+
+Check a tool's remaining call budget using:
+
+```php
+$tool = Tools::make( ... )->max( 3 );
+
+$tool->counter(); // 3 — remaining calls
+$tool->can();     // true — still callable
+
+// after the model has called the tool 3 times:
+$tool->counter(); // 0
+$tool->can();     // false
+```
+
+### Error handling
+
+By default, when a tool handler throws an exception, the error message is returned to the model as `"Error: {message}"` instead of propagating the exception. You can override this with a custom error handler using `failed()`:
+
+```php
+$tool = Tools::make( 'search', 'Search the web', $schema, fn( $args ) => doSearch( $args ) )
+    ->failed( function( \Throwable $e, array $arguments ) : string {
+        Log::error( 'Tool failed', ['error' => $e->getMessage(), 'args' => $arguments] );
+        return 'Search is currently unavailable, please try a different approach.';
+    } );
+```
+
+The handler receives the thrown exception and the original arguments, and must return a string that is sent back to the model.
 
 ### Concurrent tools
 
@@ -652,7 +738,7 @@ class ReactConcurrency implements Concurrency
 }
 ```
 
-Each `$steps` entry is a `Step` object with `tool()`, `arguments()`, `id()`, and `name()`. Call `$step->complete()` with the result string.
+Each `$steps` entry is a `Step` object with `tool()`, `arguments()`, `id()`, `name()`, and `result()`. Call `$step->complete()` with the result string.
 
 > **Note:** Read-only tools that don't modify state should be marked as concurrent.
 
