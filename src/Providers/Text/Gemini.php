@@ -66,7 +66,7 @@ class Gemini extends Base implements Write
     {
         $model = $this->modelName( 'gemini-2.5-flash' );
         $allSteps = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $texts = [];
         $data = [];
 
@@ -192,12 +192,11 @@ class Gemini extends Base implements Write
             foreach( $indices as $idx )
             {
                 $web = $chunks[$idx]['web'] ?? [];
-                $citations[] = [
-                    'title' => $web['title'] ?? null,
-                    'url' => $web['uri'] ?? null,
-                    'text' => $cited ?: null,
-                    'source' => null,
-                ];
+                $citations[] = new \Aimeos\Prisma\Values\Citation(
+                    title: $web['title'] ?? null,
+                    url: $web['uri'] ?? null,
+                    text: $cited ?: null,
+                );
             }
         }
 

@@ -24,7 +24,7 @@ trait OpenaiApi
         $allSteps = [];
         $texts = [];
         $result = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $toolsParam = $this->toolsParam();
         $toolChoiceParam = $this->toolChoice();
         $allowedParams = $this->allowed( $options, $allowedOptions );
@@ -85,7 +85,47 @@ trait OpenaiApi
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        return $this->completionResult( $result, $allSteps, $texts, $rateLimit );
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+        /** @var array<string, mixed> $lastMsg */
+        $lastMsg = $choices[0]['message'] ?? [];
+        $thinking = $lastMsg['reasoning_content'] ?? null;
+        $meta = $result;
+        unset( $meta['choices'], $meta['usage'] );
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
+        $citations = [];
+
+        if( is_array( $result['citations'] ?? null ) ) {
+            foreach( $result['citations'] as $url ) {
+                $citations[] = new \Aimeos\Prisma\Values\Citation( url: is_string( $url ) ? $url : null );
+            }
+        }
+
+        /** @var array<int, string|null> $texts */
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withCitations( $citations )
+            ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
+                'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
+                'tool_calls' => \Aimeos\Prisma\Responses\TextResponse::TOOL,
+                'length' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
+                'content_filter' => \Aimeos\Prisma\Responses\TextResponse::CONTENT,
+                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
     }
 
 
@@ -189,7 +229,7 @@ trait OpenaiApi
         $allSteps = [];
         $texts = [];
         $result = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $tools = $this->toolsParam();
         $toolChoice = $this->toolChoice();
         $allowedParams = $this->allowed( $options, $allowedOptions );
@@ -387,7 +427,7 @@ trait OpenaiApi
     {
         $thinking = null;
 
-        /** @var array<int, array<string, mixed>> */
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
         $fullText = null;
 
@@ -414,12 +454,11 @@ trait OpenaiApi
                         $end = $ann['end_index'] ?? null;
                         $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
 
-                        $citations[] = [
-                            'title' => $ann['title'] ?? null,
-                            'url' => $ann['url'] ?? null,
-                            'text' => $cited ?: null,
-                            'source' => null,
-                        ];
+                        $citations[] = new \Aimeos\Prisma\Values\Citation(
+                            title: $ann['title'] ?? null,
+                            url: $ann['url'] ?? null,
+                            text: $cited ?: null,
+                        );
                     }
                 }
             }

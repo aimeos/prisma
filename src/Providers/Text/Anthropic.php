@@ -41,7 +41,9 @@ class Anthropic extends Base implements Write
     private function generate( array $messages, array $options ) : TextResponse
     {
         $allSteps = [];
-        $rateLimit = [];
+        $citations = [];
+        $thinking = null;
+        $rateLimit = null;
         $texts = [];
         $result = [];
 
@@ -90,6 +92,16 @@ class Anthropic extends Base implements Write
             {
                 if( ( $block['type'] ?? null ) === 'text' && isset( $block['text'] ) ) {
                     $texts[] = $block['text'];
+                } elseif( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
+                    $thinking = $block['thinking'];
+                }
+
+                foreach( $block['citations'] ?? [] as $cit )
+                {
+                    $citations[] = new \Aimeos\Prisma\Values\Citation(
+                        title: $cit['document_title'] ?? null,
+                        source: $cit['cited_text'] ?? null,
+                    );
                 }
             }
 

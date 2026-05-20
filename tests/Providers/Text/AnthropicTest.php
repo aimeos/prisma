@@ -143,12 +143,12 @@ class AnthropicTest extends TestCase
 
         $citations = $response->citations();
         $this->assertCount( 2, $citations );
-        $this->assertEquals( 'Nature Guide', $citations[0]['title'] );
-        $this->assertNull( $citations[0]['url'] );
-        $this->assertNull( $citations[0]['text'] );
-        $this->assertEquals( 'The grass is green and lush.', $citations[0]['source'] );
-        $this->assertEquals( 'Color Theory', $citations[1]['title'] );
-        $this->assertEquals( 'Green is the color of nature.', $citations[1]['source'] );
+        $this->assertEquals( 'Nature Guide', $citations[0]->title() );
+        $this->assertNull( $citations[0]->url() );
+        $this->assertNull( $citations[0]->text() );
+        $this->assertEquals( 'The grass is green and lush.', $citations[0]->source() );
+        $this->assertEquals( 'Color Theory', $citations[1]->title() );
+        $this->assertEquals( 'Green is the color of nature.', $citations[1]->source() );
     }
 
 

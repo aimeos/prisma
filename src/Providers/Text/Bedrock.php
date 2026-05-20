@@ -42,7 +42,7 @@ class Bedrock extends BedrockBase implements Write
     {
         $model = $this->modelName( 'amazon.nova-pro-v1:0' );
         $allSteps = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $texts = [];
         $result = [];
 

@@ -145,12 +145,12 @@ class OpenaiTest extends TestCase
 
         $citations = $response->citations();
         $this->assertCount( 2, $citations );
-        $this->assertEquals( 'France Facts', $citations[0]['title'] );
-        $this->assertEquals( 'https://example.com/france', $citations[0]['url'] );
-        $this->assertEquals( 'The capital of France is Paris.', $citations[0]['text'] );
-        $this->assertNull( $citations[0]['source'] );
-        $this->assertEquals( 'Paris Guide', $citations[1]['title'] );
-        $this->assertEquals( ' Paris.', $citations[1]['text'] );
+        $this->assertEquals( 'France Facts', $citations[0]->title() );
+        $this->assertEquals( 'https://example.com/france', $citations[0]->url() );
+        $this->assertEquals( 'The capital of France is Paris.', $citations[0]->text() );
+        $this->assertNull( $citations[0]->source() );
+        $this->assertEquals( 'Paris Guide', $citations[1]->title() );
+        $this->assertEquals( ' Paris.', $citations[1]->text() );
     }
 
 
