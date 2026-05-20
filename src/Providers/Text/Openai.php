@@ -27,9 +27,13 @@ class Openai extends Base implements Write
             'content' => $content
         ]];
 
+        if( $budget = $this->thinkingBudget() ) {
+            $options['reasoning'] = ['budget_tokens' => $budget];
+        }
+
         return $this->responses(
             'v1/responses', 'gpt-5', $messages, $options,
-            ['temperature', 'max_output_tokens', 'top_p', 'store']
+            ['temperature', 'top_p', 'store', 'reasoning']
         );
     }
 }

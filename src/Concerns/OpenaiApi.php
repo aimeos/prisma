@@ -36,6 +36,18 @@ trait OpenaiApi
                 'messages' => $messages,
             ] + $allowedParams + $extraParams;
 
+            if( $this->maxTokens() ) {
+                $params['max_tokens'] = $this->maxTokens();
+            }
+
+            if( $thinkingBudget = $this->thinkingBudget() ) {
+                $params['reasoning_effort'] = match( true ) {
+                    $thinkingBudget <= 1024 => 'low',
+                    $thinkingBudget <= 8192 => 'medium',
+                    default => 'high',
+                };
+            }
+
             if( $toolsParam ) {
                 $params['tools'] = $toolsParam;
                 $params['tool_choice'] = $toolChoiceParam;
@@ -218,6 +230,10 @@ trait OpenaiApi
                 'model' => $this->modelName( $defaultModel ),
                 'input' => $messages,
             ] + $allowedParams;
+
+            if( $this->maxTokens() ) {
+                $params['max_output_tokens'] = $this->maxTokens();
+            }
 
             if( $prompt = $this->systemPrompt() ) {
                 $params['instructions'] = $prompt;

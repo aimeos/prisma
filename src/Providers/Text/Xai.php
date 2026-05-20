@@ -23,16 +23,24 @@ class Xai extends Base implements Write
                 ];
             }
 
+            if( $thinkingBudget = $this->thinkingBudget() ) {
+                $options['reasoning'] = ['effort' => match( true ) {
+                    $thinkingBudget <= 1024 => 'low',
+                    $thinkingBudget <= 8192 => 'medium',
+                    default => 'high',
+                }];
+            }
+
             return $this->responses(
                 'v1/responses', 'grok-3', [['role' => 'user', 'content' => $content]], $options,
-                ['temperature', 'max_output_tokens', 'top_p']
+                ['temperature', 'top_p', 'reasoning']
             );
         }
 
         return $this->completions(
             'v1/chat/completions', 'grok-3',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
         );
     }
 }

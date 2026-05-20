@@ -44,9 +44,6 @@ class Anthropic extends Base implements Write
      */
     private function generate( array $messages, array $options ) : TextResponse
     {
-        $thinkingBudget = $options['thinking_budget'] ?? null;
-        unset( $options['thinking_budget'] );
-
         $allSteps = [];
         $thinking = null;
         $rateLimit = [];
@@ -58,10 +55,10 @@ class Anthropic extends Base implements Write
             $params = [
                 'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
                 'messages' => $messages,
-                'max_tokens' => $options['max_tokens'] ?? 4096,
+                'max_tokens' => $this->maxTokens() ?? 4096,
             ] + $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
-            if( $thinkingBudget ) {
+            if( $thinkingBudget = $this->thinkingBudget() ) {
                 $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
             }
 

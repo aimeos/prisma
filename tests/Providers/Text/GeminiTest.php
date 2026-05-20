@@ -106,7 +106,8 @@ class GeminiTest extends TestCase
                 ]]
             ] ) )
             ->ensure( 'write' )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'maxOutputTokens' => 100, 'unknown' => 'ignored'] );
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );

@@ -14,7 +14,7 @@ class Openrouter extends Base implements Write
         return $this->completions(
             'api/v1/chat/completions', 'openai/gpt-4o',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
         );
     }
 }

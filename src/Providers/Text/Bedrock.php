@@ -107,10 +107,18 @@ class Bedrock extends BedrockBase implements Write
                 $request['system'] = [['text' => $system]];
             }
 
-            $config = $this->allowed( $options, ['temperature', 'maxTokens', 'topP'] );
+            $config = $this->allowed( $options, ['temperature', 'topP'] );
+
+            if( $this->maxTokens() ) {
+                $config['maxTokens'] = $this->maxTokens();
+            }
 
             if( !empty( $config ) ) {
                 $request['inferenceConfig'] = $config;
+            }
+
+            if( $this->thinkingBudget() ) {
+                $request['performanceConfig'] = ['reasoningBudgetTokens' => $this->thinkingBudget()];
             }
 
             if( $tools = $this->toolsParam() ) {
@@ -134,7 +142,9 @@ class Bedrock extends BedrockBase implements Write
 
             foreach( $contentBlocks as $block )
             {
-                if( $text = $block['text'] ?? null ) {
+                if( isset( $block['reasoningContent']['reasoningText']['text'] ) ) {
+                    $thinking = $block['reasoningContent']['reasoningText']['text'];
+                } elseif( $text = $block['text'] ?? null ) {
                     $texts[] = $text;
                 }
             }
@@ -153,6 +163,10 @@ class Bedrock extends BedrockBase implements Write
 
         $meta = $result;
         unset( $meta['output'], $meta['usage'] );
+
+        if( $thinking ?? null ) {
+            $meta['thinking'] = $thinking;
+        }
 
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
