@@ -28,7 +28,7 @@ class Fake extends Base
      * Handles calls to methods not implemented by the fake provider.
      *
      * @param string $method Method name
-     * @param array<string, mixed> $arguments Method arguments
+     * @param array<int, mixed> $arguments Method arguments
      * @return mixed
      * @throws NotImplementedException
      */
