@@ -127,10 +127,10 @@ class Anthropic extends Base implements Write
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
-     * @param array<string, mixed> $rateLimit Rate limit information
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
      * @return TextResponse Text response
      */
-    private function result( array $result, array $allSteps, array $texts, array $rateLimit ) : TextResponse
+    private function result( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
     {
         $thinking = null;
         $citations = [];
@@ -146,12 +146,10 @@ class Anthropic extends Base implements Write
 
             foreach( $block['citations'] ?? [] as $cit )
             {
-                $citations[] = [
-                    'title' => $cit['document_title'] ?? null,
-                    'url' => null,
-                    'text' => null,
-                    'source' => $cit['cited_text'] ?? null,
-                ];
+                $citations[] = new \Aimeos\Prisma\Values\Citation(
+                    title: $cit['document_title'] ?? null,
+                    source: $cit['cited_text'] ?? null,
+                );
             }
         }
 

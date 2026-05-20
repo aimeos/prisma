@@ -210,10 +210,10 @@ class Gemini extends Base implements Write
      * @param array<string, mixed> $data API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
-     * @param array<string, mixed> $rateLimit Rate limit information
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
      * @return TextResponse Text response
      */
-    private function result( array $data, array $allSteps, array $texts, array $rateLimit ) : TextResponse
+    private function result( array $data, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
     {
         /** @var array<int, array<string, mixed>> $candidates */
         $candidates = $data['candidates'] ?? [];

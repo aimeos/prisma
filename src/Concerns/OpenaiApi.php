@@ -334,10 +334,10 @@ trait OpenaiApi
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
-     * @param array<string, mixed> $rateLimit Rate limit information
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    private function completionResult( array $result, array $allSteps, array $texts, array $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    private function completionResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
     {
         /** @var array<int, array<string, mixed>> $choices */
         $choices = $result['choices'] ?? [];
@@ -497,10 +497,10 @@ trait OpenaiApi
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
-     * @param array<string, mixed> $rateLimit Rate limit information
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    private function responseResult( array $result, array $allSteps, array $texts, array $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    private function responseResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $parsed = $this->responseOutput( $result['output'] ?? [], $texts );
 
