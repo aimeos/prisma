@@ -115,6 +115,50 @@ class PerplexityTest extends TestCase
     }
 
 
+    public function testWriteWithCitations() : void
+    {
+        $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'The answer is 42'
+                    ]
+                ]],
+                'citations' => [
+                    'https://example.com/source1',
+                    'https://example.com/source2'
+                ],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->write( 'What is the answer?' );
+
+        $citations = $response->citations();
+        $this->assertCount( 2, $citations );
+        $this->assertNull( $citations[0]['title'] );
+        $this->assertEquals( 'https://example.com/source1', $citations[0]['url'] );
+        $this->assertNull( $citations[0]['text'] );
+        $this->assertNull( $citations[0]['source'] );
+        $this->assertEquals( 'https://example.com/source2', $citations[1]['url'] );
+    }
+
+
+    public function testWriteWithoutCitations() : void
+    {
+        $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Hello'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->write( 'Say hello' );
+
+        $this->assertEmpty( $response->citations() );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );

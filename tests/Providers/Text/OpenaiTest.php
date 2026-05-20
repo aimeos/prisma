@@ -116,6 +116,62 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testWriteWithCitations() : void
+    {
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'The capital of France is Paris.',
+                        'annotations' => [[
+                            'type' => 'url_citation',
+                            'url' => 'https://example.com/france',
+                            'title' => 'France Facts',
+                            'start_index' => 0,
+                            'end_index' => 31
+                        ], [
+                            'type' => 'url_citation',
+                            'url' => 'https://example.com/paris',
+                            'title' => 'Paris Guide',
+                            'start_index' => 24,
+                            'end_index' => 31
+                        ]]
+                    ]]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->write( 'What is the capital of France?' );
+
+        $citations = $response->citations();
+        $this->assertCount( 2, $citations );
+        $this->assertEquals( 'France Facts', $citations[0]['title'] );
+        $this->assertEquals( 'https://example.com/france', $citations[0]['url'] );
+        $this->assertEquals( 'The capital of France is Paris.', $citations[0]['text'] );
+        $this->assertNull( $citations[0]['source'] );
+        $this->assertEquals( 'Paris Guide', $citations[1]['title'] );
+        $this->assertEquals( ' Paris.', $citations[1]['text'] );
+    }
+
+
+    public function testWriteWithoutCitations() : void
+    {
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'Hello'
+                    ]]
+                ]],
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->write( 'Say hello' );
+
+        $this->assertEmpty( $response->citations() );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );

@@ -118,6 +118,70 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testWriteWithCitations() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Paris is the capital of France.'
+                        ]]
+                    ],
+                    'groundingMetadata' => [
+                        'groundingChunks' => [[
+                            'web' => [
+                                'uri' => 'https://example.com/france',
+                                'title' => 'France Facts'
+                            ]
+                        ], [
+                            'web' => [
+                                'uri' => 'https://example.com/paris',
+                                'title' => 'Paris Guide'
+                            ]
+                        ]],
+                        'groundingSupports' => [[
+                            'segment' => [
+                                'startIndex' => 0,
+                                'endIndex' => 30
+                            ],
+                            'groundingChunkIndices' => [0, 1]
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->write( 'What is the capital of France?' );
+
+        $citations = $response->citations();
+        $this->assertCount( 2, $citations );
+        $this->assertEquals( 'France Facts', $citations[0]['title'] );
+        $this->assertEquals( 'https://example.com/france', $citations[0]['url'] );
+        $this->assertEquals( 'Paris is the capital of France', $citations[0]['text'] );
+        $this->assertNull( $citations[0]['source'] );
+        $this->assertEquals( 'Paris Guide', $citations[1]['title'] );
+        $this->assertEquals( 'https://example.com/paris', $citations[1]['url'] );
+        $this->assertEquals( 'Paris is the capital of France', $citations[1]['text'] );
+    }
+
+
+    public function testWriteWithoutCitations() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Hello'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->write( 'Say hello' );
+
+        $this->assertEmpty( $response->citations() );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );
