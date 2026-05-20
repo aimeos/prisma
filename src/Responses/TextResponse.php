@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Responses;
 use Aimeos\Prisma\Concerns\Async;
 use Aimeos\Prisma\Concerns\HasMeta;
 use Aimeos\Prisma\Concerns\HasRateLimit;
+use Aimeos\Prisma\Concerns\HasReason;
 use Aimeos\Prisma\Concerns\HasToolSteps;
 use Aimeos\Prisma\Concerns\HasUsage;
 
@@ -16,7 +17,7 @@ use Aimeos\Prisma\Concerns\HasUsage;
  */
 class TextResponse implements \IteratorAggregate
 {
-    use Async, HasMeta, HasRateLimit, HasToolSteps, HasUsage;
+    use Async, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage;
 
 
     /** @var array<string|int, mixed> */
