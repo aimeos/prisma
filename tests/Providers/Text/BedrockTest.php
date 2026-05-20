@@ -138,6 +138,8 @@ class BedrockTest extends TestCase
     }
 
 
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

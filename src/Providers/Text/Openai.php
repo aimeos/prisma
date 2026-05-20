@@ -22,43 +22,14 @@ class Openai extends Base implements Write
             ];
         }
 
-        $params = [
-            'model' => $this->modelName( 'gpt-5' ),
-            'input' => [[
-                'role' => 'user',
-                'content' => $content
-            ]]
-        ] + $this->allowed( $options, ['temperature', 'max_output_tokens', 'top_p', 'store'] );
+        $messages = [[
+            'role' => 'user',
+            'content' => $content
+        ]];
 
-        if( $prompt = $this->systemPrompt() ) {
-            $params['instructions'] = $prompt;
-        }
-
-        $response = $this->client()->post( 'v1/responses', ['json' => $params] );
-
-        $this->validate( $response );
-
-        $result = $this->fromJson( $response );
-        $texts = [];
-
-        foreach( $result['output'] ?? [] as $data )
-        {
-            foreach( $data['content'] ?? [] as $content )
-            {
-                if( $text = $content['text'] ?? null ) {
-                    $texts[] = $text;
-                }
-            }
-        }
-
-        $meta = $result;
-        unset( $meta['output'], $meta['usage'] );
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                $result['usage']['total_tokens'] ?? null,
-                $result['usage'] ?? [],
-            )
-            ->withMeta( $meta );
+        return $this->responses(
+            'v1/responses', 'gpt-5', $messages, $options,
+            ['temperature', 'max_output_tokens', 'top_p', 'store']
+        );
     }
 }

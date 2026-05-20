@@ -2,12 +2,28 @@
 
 namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Concerns\CallsTools;
+use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Openrouter extends Base
 {
+    use CallsTools;
+    use OpenaiApi { toolsParam as openaiToolsParam; }
+
+
+    /** @var array<string, array<string, mixed>> */
+    private static array $providerToolMap = [
+        'web_search' => ['type' => 'openrouter:web_search', 'options' => [
+            'allowed_domains' => 'include_domains',
+            'blocked_domains' => 'exclude_domains',
+            'search_engine',
+        ]],
+    ];
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -19,12 +35,14 @@ class Openrouter extends Base
     }
 
 
-    protected function validate( ResponseInterface $response ) : void
+    /**
+     * Builds the tools parameter in OpenRouter format.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
     {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
-        }
+        return array_merge( $this->openaiToolsParam(), $this->mapProviderTools( self::$providerToolMap ) );
     }
+
 }

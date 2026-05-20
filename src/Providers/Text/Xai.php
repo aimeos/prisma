@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Write;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Xai as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 
@@ -12,55 +11,28 @@ class Xai extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $content = [];
-
-        foreach( $files as $file )
+        if( $this->providerTools() )
         {
-            $content[] = [
-                'type' => 'image_url',
-                'image_url' => [
-                    'url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
-                ]
-            ];
-        }
+            $content = [['type' => 'input_text', 'text' => $prompt]];
 
-        $content[] = ['type' => 'text', 'text' => $prompt];
-
-        $messages = [];
-
-        if( $system = $this->systemPrompt() ) {
-            $messages[] = ['role' => 'system', 'content' => $system];
-        }
-
-        $messages[] = ['role' => 'user', 'content' => $content];
-
-        $params = [
-            'model' => $this->modelName( 'grok-3' ),
-            'messages' => $messages,
-        ] + $this->allowed( $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty'] );
-
-        $response = $this->client()->post( 'v1/chat/completions', ['json' => $params] );
-
-        $this->validate( $response );
-
-        $result = $this->fromJson( $response );
-        $texts = [];
-
-        foreach( $result['choices'] ?? [] as $data )
-        {
-            if( $text = $data['message']['content'] ?? null ) {
-                $texts[] = $text;
+            foreach( $files as $file )
+            {
+                $content[] = [
+                    'type' => 'input_image',
+                    'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+                ];
             }
+
+            return $this->responses(
+                'v1/responses', 'grok-3', [['role' => 'user', 'content' => $content]], $options,
+                ['temperature', 'max_output_tokens', 'top_p']
+            );
         }
 
-        $meta = $result;
-        unset( $meta['choices'], $meta['usage'] );
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                $result['usage']['total_tokens'] ?? null,
-                $result['usage'] ?? [],
-            )
-            ->withMeta( $meta );
+        return $this->completions(
+            'v1/chat/completions', 'grok-3',
+            $this->messages( $this->content( $prompt, $files ) ),
+            $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
+        );
     }
 }

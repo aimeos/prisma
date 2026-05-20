@@ -31,47 +31,189 @@ class Bedrock extends BedrockBase implements Write
 
         $messages = [['role' => 'user', 'content' => $content]];
 
-        $request = [
-            'messages' => $messages,
-        ];
+        return $this->generate( $messages, $options );
+    }
 
-        if( $system = $this->systemPrompt() ) {
-            $request['system'] = [['text' => $system]];
-        }
 
-        $config = $this->allowed( $options, ['temperature', 'maxTokens', 'topP'] );
+    /**
+     * Builds tool result messages in Bedrock/Converse format.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    protected function toolResults( array $results ) : array
+    {
+        $content = [];
 
-        if( !empty( $config ) ) {
-            $request['inferenceConfig'] = $config;
-        }
-
-        $model = $this->modelName( 'amazon.nova-pro-v1:0' );
-        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/converse', ['json' => $request] );
-
-        $this->validate( $response );
-
-        $result = $this->fromJson( $response );
-        $texts = [];
-
-        foreach( $result['output']['message']['content'] ?? [] as $block )
+        foreach( $results as $step )
         {
-            if( $text = $block['text'] ?? null ) {
-                $texts[] = $text;
+            $content[] = [
+                'toolResult' => [
+                    'toolUseId' => $step->id(),
+                    'content' => [['text' => $step->result()]],
+                ],
+            ];
+        }
+
+        return [['role' => 'user', 'content' => $content]];
+    }
+
+
+    /**
+     * Builds the tools parameter in Bedrock/Converse format.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
+    {
+        $tools = [];
+
+        foreach( $this->tools() as $tool )
+        {
+            $tools[] = [
+                'toolSpec' => [
+                    'name' => $tool->name(),
+                    'description' => $tool->description(),
+                    'inputSchema' => [
+                        'json' => $tool->schema()->toArray(),
+                    ],
+                ],
+            ];
+        }
+
+        return $tools;
+    }
+
+
+    /**
+     * @param array<int, array<string, mixed>> $messages
+     * @param array<string, mixed> $options
+     */
+    private function generate( array $messages, array $options ) : TextResponse
+    {
+        $model = $this->modelName( 'amazon.nova-pro-v1:0' );
+        $allSteps = [];
+        $rateLimit = [];
+        $texts = [];
+        $result = [];
+
+        for( $step = 1; $step <= $this->maxSteps(); $step++ )
+        {
+            $request = [
+                'messages' => $messages,
+            ];
+
+            if( $system = $this->systemPrompt() ) {
+                $request['system'] = [['text' => $system]];
             }
+
+            $config = $this->allowed( $options, ['temperature', 'maxTokens', 'topP'] );
+
+            if( !empty( $config ) ) {
+                $request['inferenceConfig'] = $config;
+            }
+
+            if( $tools = $this->toolsParam() ) {
+                $request['toolConfig'] = ['tools' => $tools];
+            }
+
+            $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/converse', ['json' => $request] );
+
+            $this->validate( $response );
+
+            $rateLimit = $this->getRateLimit( $response );
+            $result = $this->fromJson( $response );
+            $texts = [];
+
+            /** @var array<string, mixed> $output */
+            $output = $result['output'] ?? [];
+            /** @var array<string, mixed> $outputMsg */
+            $outputMsg = $output['message'] ?? [];
+            /** @var array<int, array<string, mixed>> $contentBlocks */
+            $contentBlocks = $outputMsg['content'] ?? [];
+
+            foreach( $contentBlocks as $block )
+            {
+                if( $text = $block['text'] ?? null ) {
+                    $texts[] = $text;
+                }
+            }
+
+            $toolCalls = $this->parseToolCalls( $result );
+
+            if( !$toolCalls ) {
+                break;
+            }
+
+            $toolResults = $this->execTools( $toolCalls );
+            array_push( $allSteps, ...$toolResults );
+            $messages[] = $outputMsg ?: ['role' => 'assistant', 'content' => []];
+            $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
         $meta = $result;
         unset( $meta['output'], $meta['usage'] );
 
+        /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
+        /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withReason( match( $result['stopReason'] ?? null ) {
+                'end_turn', 'stop_sequence' => TextResponse::STOP,
+                'tool_use' => TextResponse::TOOL,
+                'max_tokens' => TextResponse::LENGTH,
+                'content_filtered' => TextResponse::CONTENT,
+                default => TextResponse::UNKNOWN,
+            } )
             ->withUsage(
-                ( $usage['inputTokens'] ?? 0 ) + ( $usage['outputTokens'] ?? 0 ),
+                ( isset( $usage['inputTokens'] ) && is_numeric( $usage['inputTokens'] ) ? (float) $usage['inputTokens'] : 0 )
+                + ( isset( $usage['outputTokens'] ) && is_numeric( $usage['outputTokens'] ) ? (float) $usage['outputTokens'] : 0 ),
                 $usage,
             )
+            ->withRateLimit( $rateLimit )
             ->withMeta( $meta );
     }
 
 
+    /**
+     * Parses tool calls from Bedrock/Converse API response.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
+     */
+    protected function parseToolCalls( array $result ) : array
+    {
+        $toolCalls = [];
+
+        /** @var array<string, mixed> $output */
+        $output = $result['output'] ?? [];
+        /** @var array<string, mixed> $outputMsg */
+        $outputMsg = $output['message'] ?? [];
+        /** @var array<int, array<string, mixed>> $contentBlocks */
+        $contentBlocks = $outputMsg['content'] ?? [];
+
+        foreach( $contentBlocks as $block )
+        {
+            if( isset( $block['toolUse'] ) ) {
+                /** @var array<string, mixed> $toolUse */
+                $toolUse = $block['toolUse'];
+                /** @var string|null $id */
+                $id = $toolUse['toolUseId'] ?? null;
+                /** @var string $name */
+                $name = $toolUse['name'] ?? '';
+                /** @var array<string, mixed> $input */
+                $input = $toolUse['input'] ?? [];
+
+                $toolCalls[] = [
+                    'id' => $id,
+                    'name' => $name,
+                    'arguments' => $input,
+                ];
+            }
+        }
+
+        return $toolCalls;
+    }
 }

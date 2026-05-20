@@ -4,6 +4,8 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
+use Aimeos\Prisma\Tools;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -132,6 +134,145 @@ class AlibabaTest extends TestCase
             ->response( ['message' => 'Bad request'], status: 400, reason: 'Bad Request' )
             ->ensure( 'write' )
             ->write( 'prompt' );
+    }
+
+
+    public function testWriteWithProviderTools() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Search result'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] );
+
+        $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->write( 'Search for something' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['enable_search'] );
+        } );
+    }
+
+
+    public function testWriteWithTools() : void
+    {
+        $tool = Tools::make( 'get_weather', 'Get weather for a city', Schema::fromArray( 'get_weather', [
+            'type' => 'object',
+            'properties' => ['city' => ['type' => 'string']],
+            'required' => ['city'],
+        ] ), fn() => 'sunny' );
+
+        $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] );
+        $this->response( [
+            'choices' => [[
+                'finish_reason' => 'stop',
+                'message' => [
+                    'content' => 'The weather is sunny'
+                ]
+            ]],
+            'usage' => ['total_tokens' => 10]
+        ] );
+
+        $this->provider()->withTools( [$tool] )
+            ->write( 'What is the weather?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertCount( 1, $body['tools'] );
+            $this->assertEquals( 'function', $body['tools'][0]['type'] );
+            $this->assertEquals( 'get_weather', $body['tools'][0]['function']['name'] );
+            $this->assertArrayHasKey( 'tool_choice', $body );
+        } );
+    }
+
+
+    public function testWriteWithToolLoop() : void
+    {
+        $tool = Tools::make( 'get_weather', 'Get weather for a city', Schema::fromArray( 'get_weather', [
+            'type' => 'object',
+            'properties' => ['city' => ['type' => 'string']],
+            'required' => ['city'],
+        ] ), fn() => 'sunny and 25°C' );
+
+        $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] );
+
+        $this->response( [
+            'choices' => [[
+                'finish_reason' => 'tool_calls',
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => null,
+                    'tool_calls' => [[
+                        'id' => 'call_123',
+                        'type' => 'function',
+                        'function' => [
+                            'name' => 'get_weather',
+                            'arguments' => '{"city":"Berlin"}'
+                        ]
+                    ]]
+                ]
+            ]],
+            'usage' => ['total_tokens' => 10]
+        ] );
+
+        $this->response( [
+            'choices' => [[
+                'finish_reason' => 'stop',
+                'message' => [
+                    'content' => 'It is sunny and 25°C in Berlin'
+                ]
+            ]],
+            'usage' => ['total_tokens' => 20]
+        ] );
+
+        $response = $this->provider()->withTools( [$tool] )
+            ->write( 'What is the weather in Berlin?' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $secondBody = json_decode( $requests[1]->getBody()->getContents(), true );
+        $messages = $secondBody['messages'];
+        $toolMsg = end( $messages );
+        $this->assertEquals( 'tool', $toolMsg['role'] );
+        $this->assertEquals( 'call_123', $toolMsg['tool_call_id'] );
+        $this->assertStringContainsString( 'sunny and 25°C', $toolMsg['content'] );
+
+        $this->assertEquals( 'It is sunny and 25°C in Berlin', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+        $this->assertEquals( 'get_weather', $response->steps()[0]->name() );
+    }
+
+
+    public function testWriteWithToolChoice() : void
+    {
+        $tool = Tools::make( 'get_weather', 'Get weather', Schema::fromArray( 'get_weather', [
+            'type' => 'object',
+            'properties' => ['city' => ['type' => 'string']],
+        ] ), fn() => '' );
+
+        $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] );
+        $this->response( [
+            'choices' => [[
+                'message' => ['content' => 'result']
+            ]],
+            'usage' => ['total_tokens' => 5]
+        ] );
+
+        $this->provider()->withTools( [$tool] )
+            ->withToolChoice( 'required' )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'required', $body['tool_choice'] );
+        } );
     }
 
 

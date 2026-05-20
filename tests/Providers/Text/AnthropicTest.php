@@ -124,6 +124,84 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testWriteWithProviderTools() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [[
+                    'type' => 'text',
+                    'text' => 'Search result'
+                ]],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] );
+
+        $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->write( 'Search for something' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertArrayHasKey( 'tools', $body );
+
+            $providerTool = end( $body['tools'] );
+            $this->assertEquals( 'web_search_20250305', $providerTool['type'] );
+            $this->assertEquals( 'web_search', $providerTool['name'] );
+        } );
+    }
+
+
+    public function testWriteWithProviderToolOptions() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [[
+                    'type' => 'text',
+                    'text' => 'result'
+                ]],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] );
+
+        $response->withTools( [
+                \Aimeos\Prisma\Tools::provider( 'web_search' )->max( 5 ),
+            ] )
+            ->write( 'Search for something' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $providerTool = end( $body['tools'] );
+            $this->assertEquals( 'web_search_20250305', $providerTool['type'] );
+            $this->assertEquals( 'web_search', $providerTool['name'] );
+            $this->assertEquals( 5, $providerTool['max_uses'] );
+        } );
+    }
+
+
+    public function testWriteWithMultipleProviderTools() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [[
+                    'type' => 'text',
+                    'text' => 'result'
+                ]],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] );
+
+        $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' ), \Aimeos\Prisma\Tools::provider( 'code_execution' ), \Aimeos\Prisma\Tools::provider( 'web_fetch' )] )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $tools = $body['tools'];
+            $this->assertCount( 3, $tools );
+            $this->assertEquals( 'web_search_20250305', $tools[0]['type'] );
+            $this->assertEquals( 'code_execution_20250825', $tools[1]['type'] );
+            $this->assertEquals( 'web_fetch_20250910', $tools[2]['type'] );
+        } );
+    }
+
+
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -125,6 +125,65 @@ class XaiTest extends TestCase
     }
 
 
+    public function testWriteWithProviderTools() : void
+    {
+        $result = $this->prisma( 'text', 'xai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'Search result'
+                    ]]
+                ]],
+                'usage' => ['total_tokens' => 10, 'input_tokens' => 5, 'output_tokens' => 5]
+            ] )
+            ->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->write( 'Search for something' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.x.ai/v1/responses', (string) $request->getUri() );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertArrayHasKey( 'input', $body );
+            $this->assertArrayNotHasKey( 'messages', $body );
+            $this->assertArrayHasKey( 'tools', $body );
+
+            $hasWebSearch = false;
+            foreach( $body['tools'] as $tool ) {
+                if( ( $tool['type'] ?? '' ) === 'web_search' ) {
+                    $hasWebSearch = true;
+                }
+            }
+            $this->assertTrue( $hasWebSearch );
+        } );
+
+        $this->assertEquals( 'Search result', $result->text() );
+    }
+
+
+    public function testWriteWithProviderToolsSystemPrompt() : void
+    {
+        $this->prisma( 'text', 'xai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'result'
+                    ]]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->withSystemPrompt( 'Be helpful' )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'Be helpful', $body['instructions'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );
