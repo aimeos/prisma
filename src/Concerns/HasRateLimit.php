@@ -8,16 +8,15 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait HasRateLimit
 {
-    /** @var array<string, mixed> */
-    private array $rateLimit = [];
+    private ?\Aimeos\Prisma\Values\RateLimit $rateLimit = null;
 
 
     /**
      * Returns the rate limit information.
      *
-     * @return array<string, mixed> Rate limit info (limit, remaining, reset)
+     * @return \Aimeos\Prisma\Values\RateLimit|null Rate limit info
      */
-    public function rateLimit() : array
+    public function rateLimit() : ?\Aimeos\Prisma\Values\RateLimit
     {
         return $this->rateLimit;
     }
@@ -26,10 +25,10 @@ trait HasRateLimit
     /**
      * Sets the rate limit information.
      *
-     * @param array<string, mixed> $rateLimit Rate limit info
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit info
      * @return static Response instance
      */
-    public function withRateLimit( array $rateLimit ) : static
+    public function withRateLimit( ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : static
     {
         $this->rateLimit = $rateLimit;
         return $this;

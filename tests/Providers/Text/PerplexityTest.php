@@ -134,11 +134,11 @@ class PerplexityTest extends TestCase
 
         $citations = $response->citations();
         $this->assertCount( 2, $citations );
-        $this->assertNull( $citations[0]['title'] );
-        $this->assertEquals( 'https://example.com/source1', $citations[0]['url'] );
-        $this->assertNull( $citations[0]['text'] );
-        $this->assertNull( $citations[0]['source'] );
-        $this->assertEquals( 'https://example.com/source2', $citations[1]['url'] );
+        $this->assertNull( $citations[0]->title() );
+        $this->assertEquals( 'https://example.com/source1', $citations[0]->url() );
+        $this->assertNull( $citations[0]->text() );
+        $this->assertNull( $citations[0]->source() );
+        $this->assertEquals( 'https://example.com/source2', $citations[1]->url() );
     }
 
 

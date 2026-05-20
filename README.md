@@ -424,13 +424,13 @@ $response = Prisma::text()
     ->using( 'openai', ['api_key' => 'xxx'] )
     ->write( 'What is the capital of France?' );
 
-$citations = $response->citations(); // array of citation arrays
+$citations = $response->citations(); // array of Citation objects
 
 foreach( $citations as $citation ) {
-    $citation['title'];  // string|null — source title
-    $citation['url'];    // string|null — source URL
-    $citation['text'];   // string|null — output text that references the source
-    $citation['source']; // string|null — verbatim quote from the source document
+    $citation->title();  // string|null — source title
+    $citation->url();    // string|null — source URL
+    $citation->text();   // string|null — output text that references the source
+    $citation->source(); // string|null — verbatim quote from the source document
 }
 ```
 
@@ -493,11 +493,15 @@ foreach( $response->steps() as $step ) {
 TextResponse and FileResponse objects can include rate limit information from the provider:
 
 ```php
-$rateLimit = $response->rateLimit();
-// e.g. ['limit' => 1000, 'remaining' => 999, 'reset' => 1620000000]
+$rateLimit = $response->rateLimit(); // RateLimit object or null
+
+$rateLimit->limit();      // int|null — request limit
+$rateLimit->remaining();  // int|null — remaining requests
+$rateLimit->reset();      // string|null — reset timestamp
+$rateLimit->retryAfter(); // int|null — retry after seconds
 ```
 
-The content of the returned array depends on the provider. It may be empty if the provider does not return rate limit headers.
+Returns `null` if the provider does not return rate limit headers.
 
 ## Schemas
 

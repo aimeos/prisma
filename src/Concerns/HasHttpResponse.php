@@ -14,29 +14,25 @@ trait HasHttpResponse
      * Extracts rate limit information from HTTP response headers.
      *
      * @param ResponseInterface $response HTTP response
-     * @return array<string, mixed> Rate limit info
+     * @return \Aimeos\Prisma\Values\RateLimit|null Rate limit info
      */
-    protected function getRateLimit( ResponseInterface $response ) : array
+    protected function getRateLimit( ResponseInterface $response ) : ?\Aimeos\Prisma\Values\RateLimit
     {
-        $rateLimit = [];
+        $limit = $response->getHeaderLine( 'x-ratelimit-limit' );
+        $remaining = $response->getHeaderLine( 'x-ratelimit-remaining' );
+        $reset = $response->getHeaderLine( 'x-ratelimit-reset' );
+        $retryAfter = $response->getHeaderLine( 'retry-after' );
 
-        if( $value = $response->getHeaderLine( 'x-ratelimit-limit' ) ) {
-            $rateLimit['limit'] = (int) $value;
+        if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === '' ) {
+            return null;
         }
 
-        if( $value = $response->getHeaderLine( 'x-ratelimit-remaining' ) ) {
-            $rateLimit['remaining'] = (int) $value;
-        }
-
-        if( $value = $response->getHeaderLine( 'x-ratelimit-reset' ) ) {
-            $rateLimit['reset'] = $value;
-        }
-
-        if( $value = $response->getHeaderLine( 'retry-after' ) ) {
-            $rateLimit['retryAfter'] = (int) $value;
-        }
-
-        return $rateLimit;
+        return new \Aimeos\Prisma\Values\RateLimit(
+            $limit !== '' ? (int) $limit : null,
+            $remaining !== '' ? (int) $remaining : null,
+            $reset !== '' ? $reset : null,
+            $retryAfter !== '' ? (int) $retryAfter : null,
+        );
     }
 
 

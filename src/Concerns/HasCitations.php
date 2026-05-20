@@ -8,14 +8,14 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait HasCitations
 {
-    /** @var array<int, array<string, mixed>> */
+    /** @var array<int, \Aimeos\Prisma\Values\Citation> */
     private array $citations = [];
 
 
     /**
      * Returns the citations.
      *
-     * @return array<int, array<string, mixed>> Citations
+     * @return array<int, \Aimeos\Prisma\Values\Citation> Citations
      */
     public function citations() : array
     {
@@ -26,7 +26,7 @@ trait HasCitations
     /**
      * Sets the citations.
      *
-     * @param array<int, array<string, mixed>> $citations Citations
+     * @param array<int, \Aimeos\Prisma\Values\Citation> $citations Citations
      * @return static
      */
     public function withCitations( array $citations ) : static

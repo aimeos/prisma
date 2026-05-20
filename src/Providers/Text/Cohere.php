@@ -29,7 +29,7 @@ class Cohere extends CohereBase implements Write
     private function generate( array $messages, array $options ) : TextResponse
     {
         $allSteps = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $texts = [];
         $result = [];
 
