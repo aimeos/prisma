@@ -24,13 +24,13 @@ class Xai extends Base implements Write
             }
 
             return $this->responses(
-                'v1/responses', 'grok-3', [['role' => 'user', 'content' => $content]], $options,
+                'v1/responses', 'grok-4.3', [['role' => 'user', 'content' => $content]], $options,
                 ['temperature', 'max_output_tokens', 'top_p']
             );
         }
 
         return $this->completions(
-            'v1/chat/completions', 'grok-3',
+            'v1/chat/completions', 'grok-4.3',
             $this->messages( $this->content( $prompt, $files ) ),
             $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
         );

@@ -14,7 +14,7 @@ class Groq extends Base implements Describe
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $response = $this->client()->post( 'openai/v1/chat/completions', ['json' => [
-            'model' => $this->modelName( 'meta-llama/llama-4-scout-17b-16e-instruct' ),
+            'model' => $this->modelName( 'openai/gpt-oss-120b' ),
             'messages' => [[
                 'role' => 'user',
                 'content' => [[

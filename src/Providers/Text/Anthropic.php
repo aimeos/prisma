@@ -56,7 +56,7 @@ class Anthropic extends Base implements Write
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
             $params = [
-                'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
+                'model' => $this->modelName( 'claude-opus-4-7' ),
                 'messages' => $messages,
                 'max_tokens' => $options['max_tokens'] ?? 4096,
             ] + $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );

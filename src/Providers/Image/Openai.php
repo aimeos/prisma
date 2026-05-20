@@ -18,7 +18,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $response = $this->client()->post( 'v1/responses', ['json' => [
-            'model' => $this->modelName( 'gpt-5' ),
+            'model' => $this->modelName( 'gpt-5.5' ),
             'input' => [[
                 'role' => 'user',
                 'content' => [[
@@ -85,7 +85,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        $params = $this->params( $prompt, $options, 'dall-e-2' );
+        $params = $this->params( $prompt, $options, 'gpt-image-2' );
         $request = $this->request( $params, ['image' => $image, 'mask' => $this->mask( $mask )] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );
 
@@ -144,44 +144,36 @@ class Openai extends Base implements Describe, Imagine, Inpaint
      */
     protected function params( string $prompt, array $options, ?string $model = null ) : array
     {
-        $model = $this->modelName( $model ?? 'dall-e-3' );
+        $model = $this->modelName( $model ?? 'gpt-image-2' );
         $data = ['model' => $model, 'prompt' => $prompt, 'response_format' => 'b64_json'];
 
         $names = match( $model ) {
-            'gpt-image-1' => ['background', 'moderation', 'output_compression', 'output_format'],
-            'dall-e-3' => ['style'],
+            'gpt-image-1', 'gpt-image-2' => ['background', 'moderation', 'output_compression', 'output_format'],
             default => [],
         };
 
         $allowed = $this->allowed( $options, $names + ['quality', 'size', 'user'] );
         $allowed = $this->sanitize( $allowed, [
             'background' => match( $model ) {
-                'gpt-image-1' => ['transparent', 'opaque', 'auto'],
+                'gpt-image-1', 'gpt-image-2' => ['transparent', 'opaque', 'auto'],
                 default => [],
             },
             'moderation' => match( $model ) {
-                'gpt-image-1' => ['low', 'auto'],
+                'gpt-image-1', 'gpt-image-2' => ['low', 'auto'],
                 default => [],
             },
             'output_format' => match( $model ) {
-                'gpt-image-1' => ['png', 'jpeg', 'webp'],
+                'gpt-image-1', 'gpt-image-2' => ['png', 'jpeg', 'webp'],
                 default => [],
             },
             'quality' => match( $model ) {
-                'gpt-image-1' => ['low', 'medium', 'high', 'auto'],
-                'dall-e-3' => ['standard', 'hd'],
-                'dall-e-2' => ['standard'],
+                'gpt-image-1', 'gpt-image-2' => ['low', 'medium', 'high', 'auto'],
                 default => [],
             },
             'size' => match( $model ) {
                 'gpt-image-1' => ['1536x1024', '1024x1536', '1024x1024', 'auto'],
-                'dall-e-3' => ['1792x1024', '1024x1792', '1024x1024', 'auto'],
-                'dall-e-2' => ['1024x1024', '512x512', '256x256', 'auto'],
+                'gpt-image-2' => ['auto'],
                 default => ['auto'],
-            },
-            'style' => match( $model ) {
-                'dall-e-3' => ['vivid', 'natural'],
-                default => [],
             },
         ] );
 

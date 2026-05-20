@@ -37,7 +37,7 @@ class Gemini extends Base implements Write
      */
     private function generate( array $contents, array $options ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-2.5-flash' );
+        $model = $this->modelName( 'gemini-3-flash-preview' );
         $allSteps = [];
         $rateLimit = [];
         $texts = [];

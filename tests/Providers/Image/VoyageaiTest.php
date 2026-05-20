@@ -24,7 +24,7 @@ class VoyageaiTest extends TestCase
                         "index": 0
                     }
                 ],
-                "model": "voyage-multimodal-3",
+                "model": "voyage-multimodal-3.5",
                 "usage": {
                     "text_tokens": 5,
                     "image_pixels": 2000000,

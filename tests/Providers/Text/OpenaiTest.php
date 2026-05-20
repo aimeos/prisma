@@ -34,7 +34,7 @@ class OpenaiTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'gpt-5', $body['model'] );
+            $this->assertEquals( 'gpt-5.5', $body['model'] );
             $this->assertEquals( 'Say hello', $body['input'][0]['content'][0]['text'] );
             $this->assertArrayNotHasKey( 'instructions', $body );
         } );

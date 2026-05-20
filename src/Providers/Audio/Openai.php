@@ -19,7 +19,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
         $cmd = 'Summarize the text in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '":';
 
         $request = [
-            'model' => $this->modelName( 'gpt-4o-mini' ),
+            'model' => $this->modelName( 'gpt-5.5' ),
             'messages' => [
                 ['role' => 'user', 'content' => $cmd . "\n" . $text]
             ]
@@ -73,7 +73,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'whisper-1' );
+        $model = $this->modelName( 'gpt-4o-transcribe' );
         $format = $model === 'whisper-1' ? 'verbose_json' : 'json';
 
         $allowed = $this->allowed( $options, [

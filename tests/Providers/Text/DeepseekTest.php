@@ -33,7 +33,7 @@ class DeepseekTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'deepseek-chat', $body['model'] );
+            $this->assertEquals( 'deepseek-v4-pro', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );

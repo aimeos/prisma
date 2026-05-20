@@ -14,7 +14,7 @@ class Alibaba extends Base implements Write
         $extra = $this->mapProviderTools( ['web_search' => ['options' => []]] ) ? ['enable_search' => true] : [];
 
         return $this->completions(
-            'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
+            'compatible-mode/v1/chat/completions', 'qwen3-vl-plus',
             $this->messages( $this->content( $prompt, $files ) ),
             $options, ['temperature', 'max_tokens', 'top_p', 'top_k'], $extra
         );

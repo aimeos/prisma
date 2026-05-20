@@ -28,7 +28,7 @@ class Openai extends Base implements Write
         ]];
 
         return $this->responses(
-            'v1/responses', 'gpt-5', $messages, $options,
+            'v1/responses', 'gpt-5.5', $messages, $options,
             ['temperature', 'max_output_tokens', 'top_p', 'store']
         );
     }

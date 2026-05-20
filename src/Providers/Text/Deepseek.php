@@ -12,7 +12,7 @@ class Deepseek extends Base implements Write
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         return $this->completions(
-            'v1/chat/completions', 'deepseek-chat',
+            'v1/chat/completions', 'deepseek-v4-pro',
             $this->messages( $this->content( $prompt, $files ) ),
             $options, ['temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty']
         );

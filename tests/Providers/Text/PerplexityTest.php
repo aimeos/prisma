@@ -33,7 +33,7 @@ class PerplexityTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'sonar', $body['model'] );
+            $this->assertEquals( 'sonar-pro', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );

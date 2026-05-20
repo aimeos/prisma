@@ -33,7 +33,7 @@ class AnthropicTest extends TestCase
             $this->assertEquals( '2023-06-01', $request->getHeaderLine( 'anthropic-version' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'claude-sonnet-4-20250514', $body['model'] );
+            $this->assertEquals( 'claude-opus-4-7', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertEquals( 4096, $body['max_tokens'] );
             $this->assertArrayNotHasKey( 'system', $body );
