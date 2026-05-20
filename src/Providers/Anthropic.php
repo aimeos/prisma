@@ -135,5 +135,4 @@ class Anthropic extends Base
 
         return $tools;
     }
-
 }

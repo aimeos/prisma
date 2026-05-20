@@ -647,10 +647,18 @@ $response = Prisma::text()
 
 **Tool choice:**
 
-`withToolChoice()` controls whether the model must use tools. Values: `auto` (default, model decides), `required` (must use a tool), `none` (no tools).
+`withToolChoice()` controls whether the model must use tools:
+
+| Constant | Description |
+|----------|-------------|
+| `Provider::AUTO` | Model decides (default) |
+| `Provider::REQ` | Must use a tool |
+| `Provider::NONE` | No tools |
 
 ```php
-->withToolChoice( 'required' )
+use Aimeos\Prisma\Providers\Base as Provider;
+
+->withToolChoice( Provider::REQ )
 ```
 
 **Limiting tool calls:**

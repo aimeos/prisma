@@ -158,6 +158,4 @@ class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectoriz
 
         return FileResponse::fromFiles( $files );
     }
-
-
 }

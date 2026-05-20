@@ -11,9 +11,19 @@ use Aimeos\Prisma\Tools\Step;
  */
 trait HasTools
 {
+    /** The model decides whether to use tools. */
+    const AUTO = 'auto';
+
+    /** The model must use a tool. */
+    const REQ = 'required';
+
+    /** The model cannot use tools. */
+    const NONE = 'none';
+
+
     private ?Concurrency $concurrency = null;
     private int $maxSteps = PHP_INT_MAX;
-    private string $toolChoice = 'auto';
+    private string $toolChoice = self::AUTO;
 
     /** @var array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> */
     private array $tools = [];
@@ -51,7 +61,7 @@ trait HasTools
     /**
      * Sets the tool choice strategy.
      *
-     * @param string $choice Tool choice: 'auto', 'required', or 'none'
+     * @param string $choice Tool choice (use AUTO, REQ, NONE constants)
      * @return self
      */
     public function withToolChoice( string $choice ) : self

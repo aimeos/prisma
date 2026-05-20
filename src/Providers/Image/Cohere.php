@@ -10,8 +10,6 @@ use Aimeos\Prisma\Responses\VectorResponse;
 
 class Cohere extends CohereBase implements Vectorize
 {
-
-
     public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
     {
         $allowed = $this->allowed( $options, ['embedding_types', 'max_tokens', 'truncate', 'priority'] );
@@ -60,6 +58,4 @@ class Cohere extends CohereBase implements Vectorize
             ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
             ->withMeta( $meta );
     }
-
-
 }

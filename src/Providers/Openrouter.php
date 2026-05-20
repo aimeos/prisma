@@ -44,5 +44,4 @@ class Openrouter extends Base
     {
         return array_merge( $this->openaiToolsParam(), $this->mapProviderTools( self::$providerToolMap ) );
     }
-
 }
