@@ -1,0 +1,376 @@
+<?php
+
+namespace Aimeos\Prisma\Concerns;
+
+
+/**
+ * OpenAI-compatible API methods for chat completions and responses.
+ */
+trait OpenaiApi
+{
+    /**
+     * Runs the chat completions tool loop for OpenAI-compatible APIs.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Request options
+     * @param array<int, string> $allowedOptions Allowed option keys
+     * @param array<string, mixed> $extraParams Additional params merged into each request
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options, array $allowedOptions, array $extraParams = [] ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $allSteps = [];
+        $texts = [];
+        $result = [];
+        $rateLimit = [];
+        $toolsParam = $this->toolsParam();
+        $toolChoiceParam = $this->toolChoice();
+        $allowedParams = $this->allowed( $options, $allowedOptions );
+
+        for( $step = 1; $step <= $this->maxSteps(); $step++ )
+        {
+            $params = [
+                'model' => $this->modelName( $defaultModel ),
+                'messages' => $messages,
+            ] + $allowedParams + $extraParams;
+
+            if( $toolsParam ) {
+                $params['tools'] = $toolsParam;
+                $params['tool_choice'] = $toolChoiceParam;
+            }
+
+            $response = $this->client()->post( $endpoint, ['json' => $params] );
+
+            $this->validate( $response );
+
+            $rateLimit = $this->getRateLimit( $response );
+            $result = $this->fromJson( $response );
+            $texts = [];
+
+            /** @var array<int, array<string, mixed>> $choices */
+            $choices = $result['choices'] ?? [];
+
+            foreach( $choices as $data )
+            {
+                /** @var array<string, mixed> $msg */
+                $msg = $data['message'] ?? [];
+                if( $text = $msg['content'] ?? null ) {
+                    $texts[] = $text;
+                }
+            }
+
+            $toolCalls = $this->parseToolCalls( $result );
+
+            if( !$toolCalls ) {
+                break;
+            }
+
+            $toolResults = $this->execTools( $toolCalls );
+            array_push( $allSteps, ...$toolResults );
+            $messages[] = $choices[0]['message'] ?? ['role' => 'assistant', 'content' => null];
+            $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
+        }
+
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+        /** @var array<string, mixed> $lastMsg */
+        $lastMsg = $choices[0]['message'] ?? [];
+        $thinking = $lastMsg['reasoning_content'] ?? null;
+        $meta = $result;
+        unset( $meta['choices'], $meta['usage'] );
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        /** @var array<int, string|null> $texts */
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
+                'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
+                'tool_calls' => \Aimeos\Prisma\Responses\TextResponse::TOOL,
+                'length' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
+                'content_filter' => \Aimeos\Prisma\Responses\TextResponse::CONTENT,
+                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
+    }
+
+
+    /**
+     * Builds content blocks with image URLs and a text prompt.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function content( string $prompt, array $files ) : array
+    {
+        $content = [];
+
+        foreach( $files as $file )
+        {
+            $content[] = [
+                'type' => 'image_url',
+                'image_url' => [
+                    'url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+                ]
+            ];
+        }
+
+        $content[] = ['type' => 'text', 'text' => $prompt];
+
+        return $content;
+    }
+
+
+    /**
+     * Builds chat messages array with optional system prompt and user content.
+     *
+     * @param array<int, array<string, mixed>> $content User message content blocks
+     * @return array<int, array<string, mixed>> Messages array
+     */
+    protected function messages( array $content ) : array
+    {
+        $messages = [];
+
+        if( $system = $this->systemPrompt() ) {
+            $messages[] = ['role' => 'system', 'content' => $system];
+        }
+
+        $messages[] = ['role' => 'user', 'content' => $content];
+
+        return $messages;
+    }
+
+
+    /**
+     * Parses tool calls from the API response.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
+     */
+    protected function parseToolCalls( array $result ) : array
+    {
+        $toolCalls = [];
+
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+
+        foreach( $choices as $choice )
+        {
+            /** @var array<int, array<string, mixed>> $calls */
+            $calls = $choice['message']['tool_calls'] ?? [];
+
+            foreach( $calls as $call )
+            {
+                /** @var array{name?: string, arguments?: string} $fn */
+                $fn = $call['function'] ?? [];
+                /** @var string|null $callId */
+                $callId = $call['id'] ?? null;
+                /** @var array<string, mixed> $decoded */
+                $decoded = json_decode( $fn['arguments'] ?? '{}', true ) ?: [];
+                $toolCalls[] = [
+                    'id' => $callId,
+                    'name' => $fn['name'] ?? '',
+                    'arguments' => $decoded,
+                ];
+            }
+        }
+
+        return $toolCalls;
+    }
+
+
+    /**
+     * Runs the Responses API tool loop (used by OpenAI and xAI).
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Request options
+     * @param array<int, string> $allowedOptions Allowed option keys
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options, array $allowedOptions ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $allSteps = [];
+        $texts = [];
+        $result = [];
+        $rateLimit = [];
+        $tools = $this->toolsParam();
+        $toolChoice = $this->toolChoice();
+        $allowedParams = $this->allowed( $options, $allowedOptions );
+
+        for( $step = 1; $step <= $this->maxSteps(); $step++ )
+        {
+            $params = [
+                'model' => $this->modelName( $defaultModel ),
+                'input' => $messages,
+            ] + $allowedParams;
+
+            if( $prompt = $this->systemPrompt() ) {
+                $params['instructions'] = $prompt;
+            }
+
+            if( $tools ) {
+                $params['tools'] = $tools;
+                $params['tool_choice'] = $toolChoice;
+            }
+
+            $response = $this->client()->post( $endpoint, ['json' => $params] );
+
+            $this->validate( $response );
+
+            $rateLimit = $this->getRateLimit( $response );
+            $result = $this->fromJson( $response );
+            $texts = [];
+
+            /** @var array<int, array<string, mixed>> $output */
+            $output = $result['output'] ?? [];
+            $toolCalls = [];
+
+            foreach( $output as $data )
+            {
+                if( ( $data['type'] ?? '' ) === 'function_call' ) {
+                    /** @var string $fnName */
+                    $fnName = $data['name'] ?? '';
+                    /** @var string $fnArgs */
+                    $fnArgs = $data['arguments'] ?? '{}';
+                    $toolCalls[] = [
+                        'id' => $data['call_id'] ?? null,
+                        'name' => $fnName,
+                        'arguments' => json_decode( $fnArgs, true ) ?: [],
+                    ];
+                    continue;
+                }
+
+                foreach( $data['content'] ?? [] as $content )
+                {
+                    if( $text = $content['text'] ?? null ) {
+                        $texts[] = $text;
+                    }
+                }
+            }
+
+            if( !$toolCalls ) {
+                break;
+            }
+
+            $toolResults = $this->execTools( $toolCalls );
+            array_push( $allSteps, ...$toolResults );
+            $messages[] = ['role' => 'assistant', 'content' => $result['output']];
+
+            foreach( $toolResults as $toolStep )
+            {
+                $messages[] = [
+                    'type' => 'function_call_output',
+                    'call_id' => $toolStep->id(),
+                    'output' => $toolStep->result(),
+                ];
+            }
+        }
+
+        $thinking = null;
+
+        /** @var array<int, array<string, mixed>> $outputFinal */
+        $outputFinal = $result['output'] ?? [];
+
+        foreach( $outputFinal as $data )
+        {
+            if( ( $data['type'] ?? '' ) === 'reasoning' ) {
+                /** @var array<int, array<string, mixed>> $summaries */
+                $summaries = $data['summary'] ?? [];
+                foreach( $summaries as $summary ) {
+                    /** @var string $text */
+                    $text = $summary['text'] ?? '';
+                    $thinking .= $text;
+                }
+            }
+        }
+
+        $meta = $result;
+        unset( $meta['output'], $meta['usage'] );
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        /** @var array<int, string|null> $texts */
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withReason( match( $result['status'] ?? null ) {
+                'completed' => \Aimeos\Prisma\Responses\TextResponse::STOP,
+                'incomplete' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
+                'failed' => \Aimeos\Prisma\Responses\TextResponse::ERROR,
+                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
+    }
+
+
+    /**
+     * Builds the tools parameter for the API request.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
+    {
+        $tools = [];
+
+        foreach( $this->tools() as $tool )
+        {
+            $tools[] = [
+                'type' => 'function',
+                'function' => [
+                    'name' => $tool->name(),
+                    'description' => $tool->description(),
+                    'parameters' => $tool->schema()->toArray(),
+                ],
+            ];
+        }
+
+        return $tools;
+    }
+
+
+    /**
+     * Builds tool result messages for the API request.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    protected function toolResults( array $results ) : array
+    {
+        $messages = [];
+
+        foreach( $results as $step )
+        {
+            $messages[] = [
+                'role' => 'tool',
+                'tool_call_id' => $step->id(),
+                'content' => $step->result(),
+            ];
+        }
+
+        return $messages;
+    }
+}
