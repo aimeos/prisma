@@ -125,6 +125,46 @@ class MistralTest extends TestCase
     }
 
 
+    public function testWriteWithProviderTools() : void
+    {
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] );
+
+        $this->response( ['id' => 'agent_123'] );
+        $this->response( [
+            'choices' => [[
+                'message' => [
+                    'content' => 'Search result'
+                ]
+            ]],
+            'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
+        ] );
+
+        $this->provider()->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->write( 'Search for something' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // First request: create agent
+        $agentBody = json_decode( $requests[0]->getBody()->getContents(), true );
+        $this->assertStringContainsString( '/v1/agents', (string) $requests[0]->getUri() );
+        $this->assertArrayHasKey( 'tools', $agentBody );
+
+        $hasWebSearch = false;
+        foreach( $agentBody['tools'] as $tool ) {
+            if( ( $tool['type'] ?? '' ) === 'web_search' ) {
+                $hasWebSearch = true;
+            }
+        }
+        $this->assertTrue( $hasWebSearch );
+
+        // Second request: start conversation
+        $convBody = json_decode( $requests[1]->getBody()->getContents(), true );
+        $this->assertStringContainsString( '/v1/agents/conversations', (string) $requests[1]->getUri() );
+        $this->assertEquals( 'agent_123', $convBody['agent_id'] );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

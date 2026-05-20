@@ -12,15 +12,6 @@ class Gemini extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-2.5-flash' );
-
-        $system = $this->systemPrompt() ? [
-            'systemInstruction' => [
-                'parts' => [[
-                    'text' => $this->systemPrompt()
-                ]]
-            ]] : [];
-
         $parts = array_map( fn( File $file ) => [
             'inlineData' => [
                 'data' => $file->base64(),
@@ -30,35 +21,128 @@ class Gemini extends Base implements Write
 
         $parts[] = ['text' => $prompt];
 
-        $request = $system + [
-            'contents' => [[
-                'parts' => $parts
-            ]],
-            'generationConfig' => [
-                'responseModalities' => ['TEXT']
-            ] + $this->allowed( $options, ['temperature', 'maxOutputTokens', 'topP', 'topK'] )
-        ];
+        $contents = [[
+            'parts' => $parts
+        ]];
 
-        $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+        return $this->generate( $contents, $options );
+    }
 
-        $this->validate( $response );
 
-        $data = $this->fromJson( $response );
+    /**
+     * Generates a text response from the API.
+     *
+     * @param array<int, array<string, mixed>> $contents Chat contents
+     * @param array<string, mixed> $options Request options
+     */
+    private function generate( array $contents, array $options ) : TextResponse
+    {
+        $model = $this->modelName( 'gemini-2.5-flash' );
+        $allSteps = [];
+        $rateLimit = [];
         $texts = [];
+        $data = [];
 
-        foreach( $data['candidates'] ?? [] as $candidate )
+        $system = ( $prompt = $this->systemPrompt() ) ? [
+            'systemInstruction' => [
+                'parts' => [[
+                    'text' => $prompt
+                ]]
+            ]] : [];
+
+        for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            foreach( $candidate['content']['parts'] ?? [] as $part )
-            {
-                if( $text = $part['text'] ?? null ) {
-                    $texts[] = $text;
+
+            $request = $system + [
+                'contents' => $contents,
+                'generationConfig' => [
+                    'responseModalities' => ['TEXT']
+                ] + $this->allowed( $options, ['temperature', 'maxOutputTokens', 'topP', 'topK'] )
+            ];
+
+            if( $tools = $this->toolsParam() ) {
+                $request['tools'] = $tools;
+
+                $mode = match( $this->toolChoice() ) {
+                    'auto' => 'AUTO',
+                    'required' => 'ANY',
+                    'none' => 'NONE',
+                    default => null,
+                };
+
+                if( $mode ) {
+                    $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
                 }
             }
+
+            $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+
+            $this->validate( $response );
+
+            $rateLimit = $this->getRateLimit( $response );
+            $data = $this->fromJson( $response );
+            $texts = [];
+
+            /** @var array<int, array<string, mixed>> $candidates */
+            $candidates = $data['candidates'] ?? [];
+
+            foreach( $candidates as $candidate )
+            {
+                /** @var array<string, mixed> $candidateContent */
+                $candidateContent = $candidate['content'] ?? [];
+                /** @var array<int, array<string, mixed>> $parts */
+                $parts = $candidateContent['parts'] ?? [];
+
+                foreach( $parts as $part )
+                {
+                    if( $text = $part['text'] ?? null ) {
+                        $texts[] = $text;
+                    }
+                }
+            }
+
+            $toolCalls = $this->parseToolCalls( $data );
+
+            if( !$toolCalls ) {
+                break;
+            }
+
+            $toolResults = $this->execTools( $toolCalls );
+            array_push( $allSteps, ...$toolResults );
+
+            $first = current( $candidates );
+            if( $first ) {
+                $contents[] = $first['content'];
+            }
+
+            $resultMessages = $this->toolResults( $toolResults );
+            $contents = array_merge( $contents, $resultMessages );
         }
 
-        $first = current( $data['candidates'] ?? [] ) ?: [];
+        /** @var array<int, array<string, mixed>> $finalCandidates */
+        $finalCandidates = $data['candidates'] ?? [];
+        $first = current( $finalCandidates ) ?: [];
 
+        /** @var array<string, mixed> $meta */
+        $meta = is_array( $first['metadata'] ?? null ) ? $first['metadata'] : [];
+
+        /** @var array<string, mixed> $usage */
+        $usage = $data['usageMetadata'] ?? [];
+
+        /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
-            ->withMeta( $first['metadata'] ?? [] );
+            ->withSteps( $allSteps )
+            ->withReason( match( $first['finishReason'] ?? null ) {
+                'STOP' => TextResponse::STOP,
+                'MAX_TOKENS' => TextResponse::LENGTH,
+                'SAFETY', 'RECITATION' => TextResponse::CONTENT,
+                default => TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['totalTokenCount'] ) && is_numeric( $usage['totalTokenCount'] ) ? (float) $usage['totalTokenCount'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
     }
 }

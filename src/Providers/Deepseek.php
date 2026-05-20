@@ -2,12 +2,17 @@
 
 namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Concerns\CallsTools;
+use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Deepseek extends Base
 {
+    use CallsTools;
+    use OpenaiApi;
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {

@@ -135,6 +135,28 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testWriteWithProviderTools() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Search result'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] );
+
+        $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->write( 'Search for something' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['enable_search'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -2,12 +2,24 @@
 
 namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Anthropic extends Base
 {
+    use CallsTools { mapProviderTools as baseMapProviderTools; }
+
+
+    /** @var array<string, array<string, mixed>> */
+    private static array $providerToolMap = [
+        'web_search' => ['type' => 'web_search_20250305', 'name' => 'web_search', 'options' => ['allowed_domains', 'blocked_domains', 'user_location']],
+        'code_execution' => ['type' => 'code_execution_20250825', 'name' => 'code_execution', 'options' => []],
+        'web_fetch' => ['type' => 'web_fetch_20250910', 'name' => 'web_fetch', 'options' => []],
+    ];
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -20,12 +32,108 @@ class Anthropic extends Base
     }
 
 
-    protected function validate( ResponseInterface $response ) : void
+    /**
+     * Builds tool result messages in Anthropic format.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    protected function toolResults( array $results ) : array
     {
-        if( $response->getStatusCode() !== 200 )
+        $content = [];
+
+        foreach( $results as $step )
         {
-            $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
+            $content[] = [
+                'type' => 'tool_result',
+                'tool_use_id' => $step->id(),
+                'content' => $step->result(),
+            ];
         }
+
+        return [['role' => 'user', 'content' => $content]];
     }
+
+
+    /**
+     * Builds the tools parameter in Anthropic format.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
+    {
+        $tools = [];
+
+        foreach( $this->tools() as $tool )
+        {
+            $tools[] = [
+                'name' => $tool->name(),
+                'description' => $tool->description(),
+                'input_schema' => $tool->schema()->toArray(),
+            ];
+        }
+
+        return array_merge( $tools, $this->mapProviderTools( self::$providerToolMap ) );
+    }
+
+
+    /**
+     * Parses tool calls from Anthropic API response.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
+     */
+    protected function parseToolCalls( array $result ) : array
+    {
+        $toolCalls = [];
+
+        /** @var array<int, array<string, mixed>> $content */
+        $content = $result['content'] ?? [];
+
+        foreach( $content as $block )
+        {
+            if( ( $block['type'] ?? '' ) === 'tool_use' ) {
+                /** @var string|null $id */
+                $id = $block['id'] ?? null;
+                /** @var string $name */
+                $name = $block['name'] ?? '';
+                /** @var array<string, mixed> $input */
+                $input = $block['input'] ?? [];
+
+                $toolCalls[] = [
+                    'id' => $id,
+                    'name' => $name,
+                    'arguments' => $input,
+                ];
+            }
+        }
+
+        return $toolCalls;
+    }
+
+
+    /**
+     * @param array<string, array<string, mixed>> $map
+     * @return array<int, array<string, mixed>>
+     */
+    protected function mapProviderTools( array $map ) : array
+    {
+        $tools = $this->baseMapProviderTools( $map );
+
+        foreach( $this->providerTools() as $tool )
+        {
+            if( $tool->counter() < PHP_INT_MAX )
+            {
+                foreach( $tools as &$entry )
+                {
+                    if( isset( $map[$tool->name()] ) && ( $entry['type'] ?? '' ) === ( $map[$tool->name()]['type'] ?? '' ) ) {
+                        $entry['max_uses'] = $tool->counter();
+                    }
+                }
+            }
+        }
+
+        return $tools;
+    }
+
 }

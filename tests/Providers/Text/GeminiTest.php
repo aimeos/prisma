@@ -128,6 +128,8 @@ class GeminiTest extends TestCase
     }
 
 
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

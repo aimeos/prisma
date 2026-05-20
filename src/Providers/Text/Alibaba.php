@@ -2,15 +2,18 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Concerns\CallsTools;
+use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
 class Alibaba extends Base implements Write
 {
+    use CallsTools;
+    use OpenaiApi;
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -39,42 +42,13 @@ class Alibaba extends Base implements Write
 
         $content[] = ['type' => 'text', 'text' => $prompt];
 
-        $messages = [];
+        $extra = $this->mapProviderTools( ['web_search' => ['options' => []]] ) ? ['enable_search' => true] : [];
 
-        if( $system = $this->systemPrompt() ) {
-            $messages[] = ['role' => 'system', 'content' => $system];
-        }
-
-        $messages[] = ['role' => 'user', 'content' => $content];
-
-        $request = [
-            'model' => $this->modelName( 'qwen-vl-plus' ),
-            'messages' => $messages,
-        ] + $this->allowed( $options, ['temperature', 'max_tokens', 'top_p', 'top_k'] );
-
-        $response = $this->client()->post( 'compatible-mode/v1/chat/completions', ['json' => $request] );
-
-        $this->validate( $response );
-
-        $data = $this->fromJson( $response );
-        $texts = [];
-
-        foreach( $data['choices'] ?? [] as $choice )
-        {
-            if( $text = $choice['message']['content'] ?? null ) {
-                $texts[] = $text;
-            }
-        }
-
-        $meta = $data;
-        unset( $meta['choices'], $meta['usage'] );
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                $data['usage']['total_tokens'] ?? null,
-                $data['usage'] ?? [],
-            )
-            ->withMeta( $meta );
+        return $this->completions(
+            'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
+            $this->messages( $content ), $options,
+            ['temperature', 'max_tokens', 'top_p', 'top_k'], $extra
+        );
     }
 
 }

@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Write;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Mistral as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 
@@ -12,43 +11,64 @@ class Mistral extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $content = [];
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        foreach( $files as $file )
-        {
-            $content[] = [
-                'type' => 'image_url',
-                'image_url' => [
-                    'url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
-                ]
-            ];
+        if( $this->providerTools() ) {
+            return $this->createAgent( $messages, $options );
         }
 
-        $content[] = ['type' => 'text', 'text' => $prompt];
+        return $this->completions(
+            'v1/chat/completions', 'mistral-large-latest', $messages, $options,
+            ['temperature', 'max_tokens', 'top_p']
+        );
+    }
 
-        $messages = [];
+
+    /**
+     * Generates a text response using the Mistral Agents API (required for provider tools).
+     *
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Request options
+     */
+    private function createAgent( array $messages, array $options ) : TextResponse
+    {
+        $agentParams = [
+            'model' => $this->modelName( 'mistral-large-latest' ),
+        ] + $this->allowed( $options, ['temperature', 'top_p'] );
+
+        if( $tools = $this->toolsParam() ) {
+            $agentParams['tools'] = $tools;
+        }
 
         if( $system = $this->systemPrompt() ) {
-            $messages[] = ['role' => 'system', 'content' => $system];
+            $agentParams['instructions'] = $system;
+            $messages = array_values( array_filter( $messages, fn( $m ) => ( $m['role'] ?? '' ) !== 'system' ) );
         }
 
-        $messages[] = ['role' => 'user', 'content' => $content];
+        $agentResponse = $this->client()->post( 'v1/agents', ['json' => $agentParams] );
+        $this->validate( $agentResponse );
+        $agentId = $this->fromJson( $agentResponse )['id'];
 
-        $params = [
-            'model' => $this->modelName( 'mistral-large-latest' ),
-            'messages' => $messages,
-        ] + $this->allowed( $options, ['temperature', 'max_tokens', 'top_p'] );
+        $convParams = [
+            'agent_id' => $agentId,
+            'inputs' => $messages,
+        ] + $this->allowed( $options, ['max_tokens'] );
 
-        $response = $this->client()->post( 'v1/chat/completions', ['json' => $params] );
+        $response = $this->client()->post( 'v1/agents/conversations', ['json' => $convParams] );
 
         $this->validate( $response );
 
         $result = $this->fromJson( $response );
         $texts = [];
 
-        foreach( $result['choices'] ?? [] as $data )
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+
+        foreach( $choices as $data )
         {
-            if( $text = $data['message']['content'] ?? null ) {
+            /** @var array<string, mixed> $msg */
+            $msg = $data['message'] ?? [];
+            if( $text = $msg['content'] ?? null ) {
                 $texts[] = $text;
             }
         }
@@ -56,10 +76,22 @@ class Mistral extends Base implements Write
         $meta = $result;
         unset( $meta['choices'], $meta['usage'] );
 
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
+            ->withSteps( [] )
+            ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
+                'stop' => TextResponse::STOP,
+                'tool_calls' => TextResponse::TOOL,
+                'length' => TextResponse::LENGTH,
+                'content_filter' => TextResponse::CONTENT,
+                default => TextResponse::UNKNOWN,
+            } )
             ->withUsage(
-                $result['usage']['total_tokens'] ?? null,
-                $result['usage'] ?? [],
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
             )
             ->withMeta( $meta );
     }
