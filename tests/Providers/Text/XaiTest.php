@@ -139,10 +139,10 @@ class XaiTest extends TestCase
 
         $citations = $response->citations();
         $this->assertCount( 1, $citations );
-        $this->assertEquals( 'The Answer', $citations[0]['title'] );
-        $this->assertEquals( 'https://example.com/answer', $citations[0]['url'] );
-        $this->assertEquals( 'The answer is 42.', $citations[0]['text'] );
-        $this->assertNull( $citations[0]['source'] );
+        $this->assertEquals( 'The Answer', $citations[0]->title() );
+        $this->assertEquals( 'https://example.com/answer', $citations[0]->url() );
+        $this->assertEquals( 'The answer is 42.', $citations[0]->text() );
+        $this->assertNull( $citations[0]->source() );
     }
 
 
@@ -164,7 +164,7 @@ class XaiTest extends TestCase
 
         $citations = $response->citations();
         $this->assertCount( 1, $citations );
-        $this->assertEquals( 'https://example.com/source', $citations[0]['url'] );
+        $this->assertEquals( 'https://example.com/source', $citations[0]->url() );
     }
 
 

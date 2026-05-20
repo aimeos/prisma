@@ -24,7 +24,7 @@ trait OpenaiApi
         $allSteps = [];
         $texts = [];
         $result = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $toolsParam = $this->toolsParam();
         $toolChoiceParam = $this->toolChoice();
         $allowedParams = $this->allowed( $options, $allowedOptions );
@@ -97,12 +97,12 @@ trait OpenaiApi
             $meta['thinking'] = $thinking;
         }
 
-        /** @var array<int, array<string, mixed>> */
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
 
         if( is_array( $result['citations'] ?? null ) ) {
             foreach( $result['citations'] as $url ) {
-                $citations[] = ['title' => null, 'url' => is_string( $url ) ? $url : null, 'text' => null, 'source' => null];
+                $citations[] = new \Aimeos\Prisma\Values\Citation( url: is_string( $url ) ? $url : null );
             }
         }
 
@@ -229,7 +229,7 @@ trait OpenaiApi
         $allSteps = [];
         $texts = [];
         $result = [];
-        $rateLimit = [];
+        $rateLimit = null;
         $tools = $this->toolsParam();
         $toolChoice = $this->toolChoice();
         $allowedParams = $this->allowed( $options, $allowedOptions );
@@ -309,7 +309,7 @@ trait OpenaiApi
 
         $thinking = null;
 
-        /** @var array<int, array<string, mixed>> */
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
 
         /** @var array<int, array<string, mixed>> $outputFinal */
@@ -339,12 +339,11 @@ trait OpenaiApi
                         $end = $ann['end_index'] ?? null;
                         $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
 
-                        $citations[] = [
-                            'title' => $ann['title'] ?? null,
-                            'url' => $ann['url'] ?? null,
-                            'text' => $cited ?: null,
-                            'source' => null,
-                        ];
+                        $citations[] = new \Aimeos\Prisma\Values\Citation(
+                            title: $ann['title'] ?? null,
+                            url: $ann['url'] ?? null,
+                            text: $cited ?: null,
+                        );
                     }
                 }
             }

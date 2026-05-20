@@ -85,11 +85,11 @@ class StepTest extends TestCase
     public function testRateLimit() : void
     {
         $response = TextResponse::fromText( 'hello' )
-            ->withRateLimit( ['limit' => 100, 'remaining' => 95, 'reset' => '1234567890'] );
+            ->withRateLimit( new \Aimeos\Prisma\Values\RateLimit( limit: 100, remaining: 95, reset: '1234567890' ) );
 
-        $this->assertEquals( 100, $response->rateLimit()['limit'] );
-        $this->assertEquals( 95, $response->rateLimit()['remaining'] );
-        $this->assertEquals( '1234567890', $response->rateLimit()['reset'] );
+        $this->assertEquals( 100, $response->rateLimit()->limit() );
+        $this->assertEquals( 95, $response->rateLimit()->remaining() );
+        $this->assertEquals( '1234567890', $response->rateLimit()->reset() );
     }
 
 
@@ -97,7 +97,7 @@ class StepTest extends TestCase
     {
         $response = TextResponse::fromText( 'hello' );
 
-        $this->assertEquals( [], $response->rateLimit() );
+        $this->assertNull( $response->rateLimit() );
     }
 
 

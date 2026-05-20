@@ -47,7 +47,7 @@ class Anthropic extends Base implements Write
         $allSteps = [];
         $citations = [];
         $thinking = null;
-        $rateLimit = [];
+        $rateLimit = null;
         $texts = [];
         $result = [];
 
@@ -104,12 +104,10 @@ class Anthropic extends Base implements Write
 
                 foreach( $block['citations'] ?? [] as $cit )
                 {
-                    $citations[] = [
-                        'title' => $cit['document_title'] ?? null,
-                        'url' => null,
-                        'text' => null,
-                        'source' => $cit['cited_text'] ?? null,
-                    ];
+                    $citations[] = new \Aimeos\Prisma\Values\Citation(
+                        title: $cit['document_title'] ?? null,
+                        source: $cit['cited_text'] ?? null,
+                    );
                 }
             }
 
