@@ -3,25 +3,13 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Vectorize;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Cohere as CohereBase;
 use Aimeos\Prisma\Responses\VectorResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
-class Cohere extends Base implements Vectorize
+class Cohere extends CohereBase implements Vectorize
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
-        }
-
-        $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseurl( $config['url'] ?? 'https://api.cohere.ai' );
-    }
 
 
     public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
@@ -37,7 +25,9 @@ class Cohere extends Base implements Vectorize
 
         foreach( $images as $image )
         {
-            $request['inputs'][] = [
+            /** @var array<int, array<string, mixed>> $inputs */
+            $inputs = $request['inputs'];
+            $inputs[] = [
                 'content' => [[
                     'type' => 'image_url',
                     'image_url' => [
@@ -45,43 +35,31 @@ class Cohere extends Base implements Vectorize
                     ]
                 ]]
             ];
+            $request['inputs'] = $inputs;
         }
 
         $response = $this->client()->post( 'v2/embed', ['json' => $request] );
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
 
-        return VectorResponse::fromVectors( $data['embeddings']['float'] )
-            ->withUsage( $data['meta']['billed_units']['images'] ?? 0, $data['meta']['billed_units'] ?? [] )
-            ->withMeta( $data['meta'] ?? [] );
+        /** @var array<string, mixed> $embeddings */
+        $embeddings = $data['embeddings'] ?? [];
+        /** @var array<int, array<int, float>|null> $floatVectors */
+        $floatVectors = $embeddings['float'] ?? [];
+
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'] ?? [];
+        /** @var array<string, mixed> $billedUnits */
+        $billedUnits = $meta['billed_units'] ?? [];
+        $used = $billedUnits['images'] ?? 0;
+
+        return VectorResponse::fromVectors( $floatVectors )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
+            ->withMeta( $meta );
     }
 
 
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
-        {
-            case 400:
-            case 409:
-            case 413:
-            case 422: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $error );
-            case 403:
-            case 498: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
-            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 503:
-            case 504: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-        }
-    }
 }

@@ -22,10 +22,10 @@ class Clipdrop extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'x-api-key', (string) $config['api_key'] );
+        $this->header( 'x-api-key', $this->cfg( $config, 'api_key' ) );
         $this->baseUrl( 'https://clipdrop-api.co' );
     }
 

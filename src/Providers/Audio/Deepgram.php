@@ -17,12 +17,12 @@ class Deepgram extends Base implements Speak, Transcribe
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Token ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.deepgram.com' );
+        $this->header( 'Authorization', 'Token ' . $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.deepgram.com' ) );
     }
 
 
@@ -68,13 +68,44 @@ class Deepgram extends Base implements Speak, Transcribe
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
-        $lists = $data['results']['channels'][0]['alternatives'][0]['paragraphs']['paragraphs'] ?? [];
-        $sentences = array_merge( ...array_map( fn( $item ) => $item['sentences'], $lists ) );
 
-        return TextResponse::fromText( $data['results']['channels'][0]['alternatives'][0]['transcript'] ?? '' )
+        /** @var array<string, mixed> */
+        $results = $data['results'] ?? [];
+
+        /** @var array<int, array<string, mixed>> */
+        $channels = $results['channels'] ?? [];
+
+        /** @var array<string, mixed> */
+        $channel = $channels[0] ?? [];
+
+        /** @var array<int, array<string, mixed>> */
+        $alternatives = $channel['alternatives'] ?? [];
+
+        /** @var array<string, mixed> */
+        $alternative = $alternatives[0] ?? [];
+
+        /** @var array<string, mixed> */
+        $paragraphsData = $alternative['paragraphs'] ?? [];
+
+        /** @var array<int, array<string, mixed>> */
+        $lists = $paragraphsData['paragraphs'] ?? [];
+
+        $sentences = array_merge( ...array_map( function( array $item ) : array {
+            /** @var array<int, array<string, mixed>> */
+            $s = $item['sentences'] ?? [];
+            return $s;
+        }, $lists ) );
+
+        $transcript = $alternative['transcript'] ?? '';
+
+        /** @var array<string, mixed> */
+        $metadata = $data['metadata'] ?? [];
+
+        return TextResponse::fromText( is_string( $transcript ) ? $transcript : '' )
             ->withStructured( $sentences )
-            ->withMeta( $data['metadata'] ?? [] );
+            ->withMeta( $metadata );
     }
 
 
@@ -83,7 +114,7 @@ class Deepgram extends Base implements Speak, Transcribe
         if( $response->getStatusCode() !== 200 )
         {
             $error = @$this->fromJson( $response )['err_msg'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
+            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
         }
     }
 }

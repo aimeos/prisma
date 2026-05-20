@@ -11,11 +11,11 @@ class Openrouter extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://openrouter.ai' );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://openrouter.ai' ) );
     }
 
 

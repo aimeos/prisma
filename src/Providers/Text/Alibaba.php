@@ -7,7 +7,6 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Alibaba extends Base implements Write
@@ -15,12 +14,12 @@ class Alibaba extends Base implements Write
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $config['url'] ?? 'https://dashscope-intl.aliyuncs.com' );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://dashscope-intl.aliyuncs.com' ) );
     }
 
 
@@ -78,15 +77,4 @@ class Alibaba extends Base implements Write
             ->withMeta( $meta );
     }
 
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
-
-        $this->throw( $response->getStatusCode(), $error );
-    }
 }

@@ -23,10 +23,10 @@ class Ideogram
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Api-Key', (string) $config['api_key'] );
+        $this->header( 'Api-Key', $this->cfg( $config, 'api_key' ) );
         $this->baseUrl( 'https://api.ideogram.ai' );
     }
 
@@ -57,12 +57,18 @@ class Ideogram
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $result */
         $result = $this->fromJson( $response );
+        /** @var array<string|null> $texts */
         $texts = [];
 
-        foreach( $result['descriptions'] ?? [] as $item )
+        /** @var array<int, array<string, mixed>> $descriptions */
+        $descriptions = $result['descriptions'] ?? [];
+
+        foreach( $descriptions as $item )
         {
             if( $text = $item['text'] ?? null ) {
+                /** @var string $text */
                 $texts[] = $text;
             }
         }
@@ -137,7 +143,7 @@ class Ideogram
     /**
      * Returns the list of available options and their possible values.
      *
-     * @return array<string, array<string>> List of option names and their possible values
+     * @return array<string, array<int, mixed>|null> List of option names and their possible values
      */
     protected function options() : array
     {
@@ -187,13 +193,19 @@ class Ideogram
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $result */
         $result = $this->fromJson( $response );
         $files = [];
 
-        foreach( $result['data'] ?? [] as $item )
+        /** @var array<int, array<string, mixed>> $dataItems */
+        $dataItems = $result['data'] ?? [];
+
+        foreach( $dataItems as $item )
         {
             if( !empty( $item['url'] ) ) {
-                $files[] = Image::fromUrl( $item['url'] );
+                /** @var string $url */
+                $url = $item['url'];
+                $files[] = Image::fromUrl( $url );
             }
         }
 
@@ -201,10 +213,16 @@ class Ideogram
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        $first = current( $result['data'] ?? [] ) ?: [];
+        /** @var array<int, array<string, mixed>> $dataArr */
+        $dataArr = $result['data'] ?? [];
+        /** @var array<string, mixed> $first */
+        $first = current( $dataArr ) ?: [];
+
+        /** @var string|null $prompt */
+        $prompt = $first['prompt'] ?? null;
 
         return FileResponse::fromFiles( $files )
-            ->withDescription( $first['prompt'] ?? null )
+            ->withDescription( $prompt )
             ->withMeta( $first + ['created' => $result['created'] ?? null] );
     }
 
@@ -223,7 +241,9 @@ class Ideogram
         foreach( $names as $name )
         {
             foreach( (array) ( $options[$name] ?? [] ) as $file ) {
-                $files[$name][] = $file;
+                if( $file instanceof Image ) {
+                    $files[$name][] = $file;
+                }
             }
         }
 
@@ -235,8 +255,8 @@ class Ideogram
     {
         if( $response->getStatusCode() === 422 )
         {
-            $msg = @$this->fromJson( $response )['error'] ?: $response->getReasonPhrase();
-            throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $msg );
+            $error = @$this->fromJson( $response )['error'] ?: $response->getReasonPhrase();
+            throw new \Aimeos\Prisma\Exceptions\ForbiddenException( is_string( $error ) ? $error : '' );
         }
 
         parent::validate( $response );

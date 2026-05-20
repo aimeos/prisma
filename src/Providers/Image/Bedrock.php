@@ -8,31 +8,14 @@ use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Bedrock as BedrockBase;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
+class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectorize
 {
-    private string $baseUrl;
-
-
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
-        }
-
-        $this->baseUrl = 'https://bedrock-runtime.us-east-1.amazonaws.com';
-
-        $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? $this->baseUrl );
-    }
-
-
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
@@ -118,12 +101,16 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
 
         foreach( $promises as $index => $promise )
         {
+            /** @var \Psr\Http\Message\ResponseInterface $response */
             $response = $promise->wait();
             $this->validate( $response );
 
-            $vectors[$index] = @$this->fromJson( $response )['embedding'] ?? [];
+            /** @var array<int, float> $embedding */
+            $embedding = @$this->fromJson( $response )['embedding'] ?? [];
+            $vectors[$index] = $embedding;
         }
 
+        /** @var array<int, array<int, float>|null> $vectors */
         return VectorResponse::fromVectors( $vectors );
     }
 
@@ -158,7 +145,10 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
         $data = $this->fromJson( $response );
         $files = [];
 
-        foreach( $data['images'] ?? [] as $image ) {
+        /** @var array<int, string> $images */
+        $images = $data['images'] ?? [];
+
+        foreach( $images as $image ) {
             $files[] = Image::fromBase64( $image, 'image/png' );
         }
 
@@ -170,28 +160,4 @@ class Bedrock extends Base implements Imagine, Inpaint, Isolate, Vectorize
     }
 
 
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
-        {
-            case 400:
-            case 409:
-            case 413: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $error );
-            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
-            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 502:
-            case 503:
-            case 504: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
-        }
-    }
 }

@@ -6,7 +6,6 @@ use Aimeos\Prisma\Contracts\Text\Translate;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Deepl extends Base implements Translate
@@ -14,12 +13,12 @@ class Deepl extends Base implements Translate
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'DeepL-Auth-Key ' . $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api-free.deepl.com' );
+        $this->header( 'Authorization', 'DeepL-Auth-Key ' . $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api-free.deepl.com' ) );
     }
 
 
@@ -47,18 +46,12 @@ class Deepl extends Base implements Translate
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $translated = array_map( fn( $item ) => $item['text'] ?? '', $data['translations'] ?? [] );
+        /** @var array<int, array<string, mixed>> $translations */
+        $translations = $data['translations'] ?? [];
+        $translated = array_map( fn( $item ) => $item['text'] ?? '', $translations );
 
+        /** @var array<int, string|null> $translated */
         return TextResponse::fromTexts( $translated );
     }
 
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $error = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), $error );
-        }
-    }
 }

@@ -16,10 +16,10 @@ class Removebg extends Base implements Isolate, Relocate
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'X-API-Key', $config['api_key'] );
+        $this->header( 'X-API-Key', $this->cfg( $config, 'api_key' ) );
         $this->baseUrl( 'https://api.remove.bg' );
     }
 
@@ -57,7 +57,7 @@ class Removebg extends Base implements Isolate, Relocate
     /**
      * Returns the allowed options and their possible values.
      *
-     * @return array<string, array<string>> List of allowed options and their possible values
+     * @return array<string, array<int, mixed>|null> List of allowed options and their possible values
      */
     protected function options() : array
     {
@@ -77,6 +77,7 @@ class Removebg extends Base implements Isolate, Relocate
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $meta */
         $meta = [];
         $mimeType = $response->getHeaderLine( 'Content-Type' );
 
@@ -84,8 +85,11 @@ class Removebg extends Base implements Isolate, Relocate
             $meta[$name] = str_starts_with( $name, 'X-' ) ? current( $value ) : null;
         }
 
+        /** @var array<string, mixed> $filtered */
+        $filtered = array_filter( $meta );
+
         return FileResponse::fromBinary( $response->getBody(), $mimeType )
-            ->withMeta( array_filter( $meta ) )
+            ->withMeta( $filtered )
             ->withUsage(
                 (float) $response->getHeaderLine( 'X-Credits-Charged' )
             );
@@ -94,20 +98,14 @@ class Removebg extends Base implements Isolate, Relocate
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $errors = @$this->fromJson( $response )['errors'] ?? [];
-        $errors = join( ', ', array_column( $errors, 'title' ) );
-
-        switch( $response->getStatusCode() )
+        if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $errors );
-            case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $errors );
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $errors );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $errors );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $errors );
+            /** @var array<int, array<string, mixed>> $errorList */
+            $errorList = @$this->fromJson( $response )['errors'] ?? [];
+            $this->throw( match( $status ) {
+                403 => 401,
+                default => $status,
+            }, join( ', ', array_column( $errorList, 'title' ) ) );
         }
     }
 }

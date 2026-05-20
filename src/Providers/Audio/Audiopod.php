@@ -20,11 +20,11 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'X-API-Key', $config['api_key'] );
-        $this->baseUrl( $config['url'] ?? 'https://api.audiopod.ai' );
+        $this->header( 'X-API-Key', $this->cfg( $config, 'api_key' ) );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.audiopod.ai' ) );
     }
 
 
@@ -63,7 +63,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $this->validate( $response );
 
-        $url = "api/v1/stem-extraction/status/" . $this->toData( $response, 'id' )['id'];
+        /** @var string */
+        $id = $this->toData( $response, 'id' )['id'];
+        $url = "api/v1/stem-extraction/status/" . $id;
         return FileResponse::fromAsync( $this->download( $url, 'download_urls' ), 3 );
     }
 
@@ -82,7 +84,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $this->validate( $response );
 
-        $url = "api/v1/denoiser/jobs/" . $this->toData( $response, 'id' )['id'];
+        /** @var string */
+        $id = $this->toData( $response, 'id' )['id'];
+        $url = "api/v1/denoiser/jobs/" . $id;
         return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
@@ -94,7 +98,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $this->validate( $response );
 
-        $url = "api/v1/voice/convert/" . $this->toData( $response, 'id' )['id'] . "/status";
+        /** @var string */
+        $id = $this->toData( $response, 'id' )['id'];
+        $url = "api/v1/voice/convert/" . $id . "/status";
         return FileResponse::fromAsync( $this->revoiced( $url ), 3 );
     }
 
@@ -109,7 +115,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $this->validate( $response );
 
-        $url = "api/v1/voice/tts-jobs/" . $this->toData( $response, 'job_id' )['job_id'] . "/status";
+        /** @var string */
+        $jobId = $this->toData( $response, 'job_id' )['job_id'];
+        $url = "api/v1/voice/tts-jobs/" . $jobId . "/status";
         return FileResponse::fromAsync( $this->download( $url, 'output_url' ), 3 );
     }
 
@@ -142,7 +150,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $this->validate( $response );
 
-        return TextResponse::fromAsync( $this->transcription( $this->toData( $response, 'job_id' )['job_id'] ), 3 );
+        /** @var string */
+        $jobId = $this->toData( $response, 'job_id' )['job_id'];
+        return TextResponse::fromAsync( $this->transcription( $jobId ), 3 );
     }
 
 
@@ -161,6 +171,7 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
             }
 
             foreach( (array) $data[$key] as $name => $url ) {
+                /** @var string $url */
                 $fr->add( Audio::fromUrl( $url ), $name );
             }
 
@@ -195,7 +206,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
                 throw new PrismaException( sprintf( 'Required key "%1$s" missing: %2$s', 'output_path', print_r( $data, true ) ) );
             }
 
-            $fr->add( Audio::fromUrl( "https://media.audiopod.ai/" . $data['output_path'] ) );
+            /** @var string */
+            $outputPath = $data['output_path'];
+            $fr->add( Audio::fromUrl( "https://media.audiopod.ai/" . $outputPath ) );
 
             return true;
         };
@@ -234,13 +247,19 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
             $data = $this->toData( $this->getResponse( "api/v1/transcription/transcript/{$id}" ) );
 
+            /** @var array<int, array<string, mixed>> */
+            $segments = $data['segments'] ?? [];
+
             $text = join( ' ', array_map( function( $segment ) {
                 return $segment['text'];
-            }, $data['segments'] ?? [] ) );
+            }, $segments ) );
+
+            /** @var array<string, mixed> */
+            $statistics = $data['statistics'] ?? [];
 
             $tr->add( $text )
-                ->withStructured( $data['segments'] ?? [] )
-                ->withMeta( $data['statistics'] ?? [] );
+                ->withStructured( $segments )
+                ->withMeta( $statistics );
 
             return true;
         };

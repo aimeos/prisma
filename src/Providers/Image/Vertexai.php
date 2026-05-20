@@ -31,11 +31,12 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
             throw new PrismaException( sprintf( 'No Google project ID' ) );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $config['access_token'] );
-        $this->baseUrl( 'https://' . ( isset( $config['region'] ) ? $config['region'] . '-' : '' ) . 'aiplatform.googleapis.com' );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'access_token' ) );
+        $region = $this->cfg( $config, 'region' );
+        $this->baseUrl( 'https://' . ( $region !== '' ? $region . '-' : '' ) . 'aiplatform.googleapis.com' );
 
-        $this->region = $config['region'] ?? 'global';
-        $this->projectid = $config['project_id'];
+        $this->region = $region !== '' ? $region : 'global';
+        $this->projectid = $this->cfg( $config, 'project_id' );
     }
 
 
@@ -159,8 +160,13 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
-        $vectors = array_map( fn( $entry ) => $entry['imageEmbedding'] ?? [], $data['predictions'] ?? [] );
+
+        /** @var array<int, array<string, mixed>> $predictions */
+        $predictions = $data['predictions'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $entry ) => $entry['imageEmbedding'] ?? [], $predictions );
 
         return VectorResponse::fromVectors( $vectors )
             ->withMeta( ['deployedModelId' => $data['deployedModelId'] ?? null] );
@@ -171,13 +177,21 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $files = [];
 
-        foreach( $data['predictions'] ?? [] as $prediction )
+        /** @var array<int, array<string, mixed>> $predictions */
+        $predictions = $data['predictions'] ?? [];
+
+        foreach( $predictions as $prediction )
         {
             if( !empty( $prediction['bytesBase64Encoded'] ) ) {
-                $files[] = Image::fromBase64( $prediction['bytesBase64Encoded'], $prediction['mimeType'] ?? null );
+                /** @var string $b64 */
+                $b64 = $prediction['bytesBase64Encoded'];
+                /** @var string|null $mimeType */
+                $mimeType = $prediction['mimeType'] ?? null;
+                $files[] = Image::fromBase64( $b64, $mimeType );
             }
         }
 
@@ -185,30 +199,31 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        $first = current( $data['predictions'] ?? [] ) ?: [];
+        /** @var array<int, array<string, mixed>> $predsArr */
+        $predsArr = $data['predictions'] ?? [];
+        /** @var array<string, mixed> $first */
+        $first = current( $predsArr ) ?: [];
+
+        /** @var string|null $prompt */
+        $prompt = $first['prompt'] ?? null;
 
         return FileResponse::fromFiles( $files )
-            ->withDescription( $first['prompt'] ?? null );
+            ->withDescription( $prompt );
     }
 
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = @$this->fromJson( $response )['error']['message'] ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
+        if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            case 400:
-            case 404: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-            case 401:
-            case 403: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
+            /** @var array<string, mixed> $errorObj */
+            $errorObj = @$this->fromJson( $response )['error'] ?? [];
+            $error = $errorObj['message'] ?? $response->getReasonPhrase();
+            $this->throw( match( $status ) {
+                403 => 401,
+                404 => 400,
+                default => $status,
+            }, is_string( $error ) ? $error : '' );
         }
     }
 }

@@ -17,12 +17,12 @@ class Alibaba extends Base implements Imagine, Vectorize
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $config['url'] ?? 'https://dashscope-intl.aliyuncs.com' );
+        $this->baseUrl( $this->cfg( $config, 'url', 'https://dashscope-intl.aliyuncs.com' ) );
     }
 
 
@@ -101,12 +101,22 @@ class Alibaba extends Base implements Imagine, Vectorize
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
 
-        $vectors = array_map( fn( $item ) => $item['embedding'], $data['output']['embeddings'] ?? [] );
+        /** @var array<string, mixed> $output */
+        $output = $data['output'] ?? [];
+        /** @var array<int, array<string, mixed>> $embeddings */
+        $embeddings = $output['embeddings'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $item ) => $item['embedding'], $embeddings );
+
+        /** @var array<string, mixed> $usage */
+        $usage = $data['usage'] ?? [];
+        $used = $usage['image_tokens'] ?? 0;
 
         return VectorResponse::fromVectors( $vectors )
-            ->withUsage( $data['usage']['image_tokens'] ?? 0, $data['usage'] ?? [] )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
             ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
     }
 
@@ -115,15 +125,28 @@ class Alibaba extends Base implements Imagine, Vectorize
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $files = [];
 
-        foreach( $data['output']['choices'] ?? [] as $choice )
+        /** @var array<string, mixed> $output */
+        $output = $data['output'] ?? [];
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $output['choices'] ?? [];
+
+        foreach( $choices as $choice )
         {
+            /** @var array<string, mixed> $message */
+            $message = $choice['message'] ?? [];
+            /** @var array<int, array<string, mixed>> $content */
+            $content = $message['content'] ?? [];
+
             $files = array_merge( $files, array_filter(
                 array_map( function( $part ) {
-                    return !empty( $part['image']) ? Image::fromUrl( $part['image'] ) : null;
-                }, $choice['message']['content'] ?? [] )
+                    /** @var string $image */
+                    $image = $part['image'] ?? '';
+                    return !empty( $image ) ? Image::fromUrl( $image ) : null;
+                }, $content )
             ) );
         }
 
@@ -145,6 +168,6 @@ class Alibaba extends Base implements Imagine, Vectorize
 
         $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
 
-        $this->throw( $response->getStatusCode(), $error );
+        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
     }
 }

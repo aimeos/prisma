@@ -15,11 +15,11 @@ class Voyageai extends Base implements Vectorize
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );
+        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->baseurl( 'https://api.voyageai.com' );
     }
 
@@ -35,45 +35,44 @@ class Voyageai extends Base implements Vectorize
 
         foreach( $images as $image )
         {
-            $request['inputs'][] = [
+            /** @var array<int, array<string, mixed>> $inputs */
+            $inputs = $request['inputs'];
+            $inputs[] = [
                 'content' => [[
                     'type' => 'image_base64',
                     'image_base64' => sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
                 ]]
             ];
+            $request['inputs'] = $inputs;
         }
 
         $response = $this->client()->post( 'v1/multimodalembeddings', ['json' => $request] );
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
-        $vectors = array_map( fn( $item ) => $item['embedding'] ?? null, $data['data'] ?? [] );
+
+        /** @var array<int, array<string, mixed>> $dataItems */
+        $dataItems = $data['data'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $item ) => $item['embedding'] ?? null, $dataItems );
+
+        /** @var array<string, mixed> $usage */
+        $usage = $data['usage'] ?? [];
+        $used = $usage['total_tokens'] ?? 0;
 
         return VectorResponse::fromVectors( $vectors )
-            ->withUsage( $data['usage']['total_tokens'] ?? 0, $data['usage'] ?? [] );
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage );
     }
 
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = @$this->fromJson( $response )['detail'] ?: $response->getReasonPhrase();
-
-        switch( $response->getStatusCode() )
+        if( ( $status = $response->getStatusCode() ) !== 200 )
         {
-            case 400: throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
-            case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $error );
-            case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $error );
-            case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $error );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $error );
-            case 502:
-            case 503:
-            case 504: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $error );
-            default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $error );
+            $error = @$this->fromJson( $response )['detail'] ?: $response->getReasonPhrase();
+            $this->throw( $status, is_string( $error ) ? $error : '' );
         }
     }
 }

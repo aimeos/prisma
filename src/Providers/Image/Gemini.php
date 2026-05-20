@@ -36,23 +36,39 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
+        /** @var array<string|null> $texts */
         $texts = [];
 
-        foreach( $data['candidates'] ?? [] as $candidate )
+        /** @var array<int, array<string, mixed>> $candidates */
+        $candidates = $data['candidates'] ?? [];
+
+        foreach( $candidates as $candidate )
         {
-            foreach( $candidate['content']['parts'] ?? [] as $part )
+            /** @var array<string, mixed> $content */
+            $content = $candidate['content'] ?? [];
+            /** @var array<int, array<string, mixed>> $parts */
+            $parts = $content['parts'] ?? [];
+
+            foreach( $parts as $part )
             {
                 if( $text = $part['text'] ?? null ) {
+                    /** @var string $text */
                     $texts[] = $text;
                 }
             }
         }
 
-        $first = current( $data['candidates'] ?? [] ) ?: [];
+        /** @var array<int, array<string, mixed>> $candidatesArr */
+        $candidatesArr = $data['candidates'] ?? [];
+        $first = current( $candidatesArr ) ?: [];
+
+        /** @var array<string, mixed> $metadata */
+        $metadata = $first['metadata'] ?? [];
 
         return TextResponse::fromTexts( $texts )
-            ->withMeta( $first['metadata'] ?? [] );
+            ->withMeta( $metadata );
     }
 
 
@@ -106,17 +122,35 @@ class Gemini extends Base implements Describe, Imagine, Repaint
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $files = [];
+        /** @var string|null $description */
         $description = null;
 
-        foreach( $data['candidates'] ?? [] as $candidate )
+        /** @var array<int, array<string, mixed>> $candidates */
+        $candidates = $data['candidates'] ?? [];
+
+        foreach( $candidates as $candidate )
         {
-            foreach( $candidate['content']['parts'] ?? [] as $part )
+            /** @var array<string, mixed> $content */
+            $content = $candidate['content'] ?? [];
+            /** @var array<int, array<string, mixed>> $parts */
+            $parts = $content['parts'] ?? [];
+
+            foreach( $parts as $part )
             {
-                if( isset( $part['inlineData']['data'] ) ) {
-                    $files[] = Image::fromBase64( $part['inlineData']['data'], $part['inlineData']['mimeType'] ?? null );
+                /** @var array<string, mixed>|null $inlineData */
+                $inlineData = $part['inlineData'] ?? null;
+
+                if( $inlineData && isset( $inlineData['data'] ) ) {
+                    /** @var string $b64data */
+                    $b64data = $inlineData['data'];
+                    /** @var string|null $mimeType */
+                    $mimeType = $inlineData['mimeType'] ?? null;
+                    $files[] = Image::fromBase64( $b64data, $mimeType );
                 } elseif( isset( $part['text'] ) ) {
+                    /** @var string $description */
                     $description = $part['text'];
                 }
             }
@@ -126,10 +160,15 @@ class Gemini extends Base implements Describe, Imagine, Repaint
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
         }
 
-        $first = current( $data['candidates'] ?? [] ) ?: [];
+        /** @var array<int, array<string, mixed>> $candidatesArr */
+        $candidatesArr = $data['candidates'] ?? [];
+        $first = current( $candidatesArr ) ?: [];
+
+        /** @var array<string, mixed> $metadata */
+        $metadata = $first['metadata'] ?? [];
 
         return FileResponse::fromFiles( $files )
-            ->withMeta( $first['metadata'] ?? [] )
+            ->withMeta( $metadata )
             ->withDescription( $description );
     }
 }

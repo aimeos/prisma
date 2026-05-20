@@ -11,7 +11,7 @@ class Mistral extends Base
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( sprintf( 'No API key' ) );
+            throw new PrismaException( 'No API key' );
         }
 
         $this->header( 'Authorization', 'Bearer ' . $config['api_key'] );

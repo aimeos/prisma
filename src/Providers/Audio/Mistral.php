@@ -24,21 +24,32 @@ class Mistral extends Base implements Describe, Transcribe
             ]
         ];
         $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
+
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
 
-        $meta = $data;
-        unset( $meta['choices'], $meta['usage'] );
+        /** @var array<int, array<string, mixed>> */
+        $choices = $data['choices'] ?? [];
 
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+
+        /** @var list<string|null> */
         $texts = [];
 
-        foreach( $data['choices'] ?? [] as $choice ) {
-            $texts[] = $choice['message']['content'] ?? '';
+        foreach( $choices as $choice ) {
+            /** @var array<string, mixed> */
+            $message = $choice['message'] ?? [];
+            $content = $message['content'] ?? '';
+            $texts[] = is_string( $content ) ? $content : '';
         }
+
+        $totalTokens = $usage['total_tokens'] ?? null;
 
         return TextResponse::fromTexts( $texts )
             ->withUsage(
-                $data['usage']['total_tokens'] ?? null,
-                $data['usage'] ?? [],
+                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
+                $usage,
             );
     }
 
@@ -70,10 +81,20 @@ class Mistral extends Base implements Describe, Transcribe
     {
         $this->validate( $response );
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
 
-        return TextResponse::fromText( $data['text'] ?? '' )
-            ->withUsage( $data['usage']['total_tokens'] ?? 0, $data['usage'] ?? [] )
-            ->withStructured( $data['segments'] ?? [] );
+        $text = $data['text'] ?? '';
+
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+        $totalTokens = $usage['total_tokens'] ?? 0;
+
+        /** @var array<int, array<string, mixed>> */
+        $segments = $data['segments'] ?? [];
+
+        return TextResponse::fromText( is_string( $text ) ? $text : '' )
+            ->withUsage( is_numeric( $totalTokens ) ? (float) $totalTokens : 0, $usage )
+            ->withStructured( $segments );
     }
 }

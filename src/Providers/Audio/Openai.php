@@ -25,21 +25,32 @@ class Openai extends Base implements Describe, Speak, Transcribe
             ]
         ];
         $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
+
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
 
-        $meta = $data;
-        unset( $meta['choices'], $meta['usage'] );
+        /** @var array<int, array<string, mixed>> */
+        $choices = $data['choices'] ?? [];
 
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+
+        /** @var list<string|null> */
         $texts = [];
 
-        foreach( $data['choices'] ?? [] as $choice ) {
-            $texts[] = $choice['message']['content'] ?? '';
+        foreach( $choices as $choice ) {
+            /** @var array<string, mixed> */
+            $message = $choice['message'] ?? [];
+            $content = $message['content'] ?? '';
+            $texts[] = is_string( $content ) ? $content : '';
         }
+
+        $totalTokens = $usage['total_tokens'] ?? null;
 
         return TextResponse::fromTexts( $texts )
             ->withUsage(
-                $data['usage']['total_tokens'] ?? null,
-                $data['usage'] ?? [],
+                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
+                $usage,
             );
     }
 
@@ -79,17 +90,30 @@ class Openai extends Base implements Describe, Speak, Transcribe
 
         $this->validate( $response );
 
-        if( !str_contains( $allowed['response_format'] ?? 'json', 'json' ) ) {
+        /** @var string */
+        $format = $allowed['response_format'] ?? 'json';
+
+        if( !str_contains( $format, 'json' ) ) {
             return TextResponse::fromText( $response->getBody()->getContents() );
         }
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
 
-        return TextResponse::fromText( $data['text'] ?? null )
-            ->withStructured( $data['segments'] ?? [] )
+        $text = $data['text'] ?? null;
+
+        /** @var array<int, array<string, mixed>> */
+        $segments = $data['segments'] ?? [];
+
+        /** @var array<string, mixed> */
+        $usage = $data['usage'] ?? [];
+        $totalTokens = $usage['total_tokens'] ?? null;
+
+        return TextResponse::fromText( is_string( $text ) ? $text : null )
+            ->withStructured( $segments )
             ->withUsage(
-                $data['usage']['total_tokens'] ?? null,
-                $data['usage'] ?? [],
+                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
+                $usage,
             );
     }
 }

@@ -31,11 +31,30 @@ class Gemini extends Base implements Describe
 
         $this->validate( $response );
 
+        /** @var array<string, mixed> */
         $data = $this->fromJson( $response );
-        $data = current( $data['candidates'] ?? [] ) ?: [];
-        $part = current( $data['content']['parts'] ?? [] ) ?: [];
 
-        return TextResponse::fromText( $part['text'] ?? null )
-            ->withMeta( $data['metadata'] ?? [] );
+        /** @var array<int, array<string, mixed>> */
+        $candidates = $data['candidates'] ?? [];
+
+        /** @var array<string, mixed> */
+        $candidate = current( $candidates ) ?: [];
+
+        /** @var array<string, mixed> */
+        $content = $candidate['content'] ?? [];
+
+        /** @var array<int, array<string, mixed>> */
+        $parts = $content['parts'] ?? [];
+
+        /** @var array<string, mixed> */
+        $part = current( $parts ) ?: [];
+
+        $text = $part['text'] ?? null;
+
+        /** @var array<string, mixed> */
+        $metadata = $candidate['metadata'] ?? [];
+
+        return TextResponse::fromText( is_string( $text ) ? $text : null )
+            ->withMeta( $metadata );
     }
 }
