@@ -145,6 +145,7 @@ class OpenaiTest extends TestCase
             $this->assertEquals( 'json_schema', $body['text']['format']['type'] );
             $this->assertEquals( 'person', $body['text']['format']['name'] );
             $this->assertArrayHasKey( 'schema', $body['text']['format'] );
+            $this->assertArrayHasKey( 'strict', $body['text']['format'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
@@ -275,102 +276,6 @@ class OpenaiTest extends TestCase
             ->response( ['error' => ['message' => 'Bad request']], status: 400, reason: 'Bad Request' )
             ->ensure( 'write' )
             ->write( 'prompt' );
-    }
-
-
-    public function testStructured() : void
-    {
-        $schema = Schema::for( 'person', [
-            'name' => Schema::string(),
-            'age' => Schema::integer(),
-        ] );
-
-        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( [
-                'output' => [[
-                    'content' => [[
-                        'type' => 'output_text',
-                        'text' => '{"name":"John","age":30}'
-                    ]]
-                ]],
-                'status' => 'completed',
-                'usage' => ['total_tokens' => 15, 'input_tokens' => 10, 'output_tokens' => 5]
-            ] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract person info', $schema );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
-            $this->assertEquals( 'gpt-5', $body['model'] );
-            $this->assertEquals( 'json_schema', $body['text']['format']['type'] );
-            $this->assertEquals( 'person', $body['text']['format']['name'] );
-            $this->assertArrayHasKey( 'schema', $body['text']['format'] );
-            $this->assertArrayHasKey( 'strict', $body['text']['format'] );
-        } );
-
-        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
-        $this->assertEquals( '{"name":"John","age":30}', $response->text() );
-        $this->assertEquals( 15, $response->usage()['used'] );
-    }
-
-
-    public function testStructuredWithOptions() : void
-    {
-        $schema = Schema::for( 'person', [
-            'name' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( [
-                'output' => [[
-                    'content' => [[
-                        'type' => 'output_text',
-                        'text' => '{"name":"Jane"}'
-                    ]]
-                ]],
-                'status' => 'completed',
-                'usage' => ['total_tokens' => 10]
-            ] )
-            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.2, $body['temperature'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
-
-        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
-    }
-
-
-    public function testStructuredWithFiles() : void
-    {
-        $schema = Schema::for( 'description', [
-            'text' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( [
-                'output' => [[
-                    'content' => [[
-                        'type' => 'output_text',
-                        'text' => '{"text":"a cat"}'
-                    ]]
-                ]],
-                'status' => 'completed',
-                'usage' => ['total_tokens' => 10]
-            ] )
-            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['input'][0]['content'] );
-            $this->assertEquals( 'input_text', $body['input'][0]['content'][0]['type'] );
-            $this->assertEquals( 'input_image', $body['input'][0]['content'][1]['type'] );
-        } );
-
-        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
