@@ -2,13 +2,34 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Structured;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Anthropic as Base;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Schema\Schema;
 
 
-class Anthropic extends Base implements Write
+class Anthropic extends Base implements Structured, Write
 {
+    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
+        $options['output_config'] = [
+            'format' => [
+                'type' => 'json_schema',
+                'schema' => $schema->toArray(),
+            ],
+        ];
+
+        $messages = [['role' => 'user', 'content' => $this->content( $prompt, $files )]];
+
+        $response = $this->generate( $messages, $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
