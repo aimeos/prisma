@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -125,6 +126,127 @@ class BedrockTest extends TestCase
             $this->assertEquals( 100, $body['inferenceConfig']['maxTokens'] );
             $this->assertArrayNotHasKey( 'unknown', $body['inferenceConfig'] );
         } );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'age' => Schema::integer(),
+        ] );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => [[
+                            'text' => '{"name":"John","age":30}'
+                        ]]
+                    ]
+                ],
+                'stopReason' => 'end_turn',
+                'usage' => ['inputTokens' => 10, 'outputTokens' => 5]
+            ] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertStringContainsString( '/model/amazon.nova-pro-v1:0/converse', (string) $request->getUri() );
+            $prompt = $body['messages'][0]['content'][0]['text'];
+            $this->assertStringContainsString( 'Extract person info', $prompt );
+            $this->assertStringContainsString( 'JSON', $prompt );
+        } );
+
+        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
+        $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => [[
+                            'text' => '{"name":"Jane"}'
+                        ]]
+                    ]
+                ],
+                'usage' => ['inputTokens' => 5, 'outputTokens' => 3]
+            ] )
+            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['inferenceConfig']['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body['inferenceConfig'] );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => [[
+                            'text' => '{"text":"a cat"}'
+                        ]]
+                    ]
+                ],
+                'usage' => ['inputTokens' => 10, 'outputTokens' => 5]
+            ] )
+            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertArrayHasKey( 'image', $content[0] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
+    }
+
+
+    public function testStructuredStripsCodeBlocks() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => [[
+                            'text' => "```json\n{\"name\":\"John\"}\n```"
+                        ]]
+                    ]
+                ],
+                'usage' => ['inputTokens' => 5, 'outputTokens' => 3]
+            ] )
+            ->structured( 'Extract', $schema );
+
+        $this->assertEquals( ['name' => 'John'], $response->structured() );
     }
 
 

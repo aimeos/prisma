@@ -2,13 +2,33 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Structured;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Bedrock as BedrockBase;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Schema\Schema;
 
 
-class Bedrock extends BedrockBase implements Write
+class Bedrock extends BedrockBase implements Structured, Write
 {
+    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'topP'] );
+        $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this schema:\n" . $schema->toString();
+
+        $response = $this->generate(
+            [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]],
+            $options
+        );
+
+        $text = trim( $response->text() ?? '' );
+        $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
+        $structured = json_decode( $text, true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP'] );
