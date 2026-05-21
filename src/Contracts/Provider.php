@@ -63,6 +63,17 @@ interface Provider
 
 
     /**
+     * Configure automatic retry for failed HTTP requests.
+     *
+     * @param int $maxAttempts Total number of attempts including the initial request
+     * @param \Closure|int $delayMs Fixed delay in ms or closure for custom delay
+     * @param \Closure|null $when Retry condition callback
+     * @return self Provider interface
+     */
+    public function withClientRetry( int $maxAttempts = 3, \Closure|int $delayMs = 100, ?\Closure $when = null ) : self;
+
+
+    /**
      * Add a system prompt for the LLM.
      *
      * It may be used by providers supporting system prompts. Otherwise, it's
