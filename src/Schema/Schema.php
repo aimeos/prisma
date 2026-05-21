@@ -114,6 +114,18 @@ class Schema
 
 
     /**
+     * Returns a filtered schema array keeping only the allowed keys.
+     *
+     * @param array<int, string> $keys Allowed JSON Schema keys
+     * @return array<string, mixed> Filtered JSON Schema definition
+     */
+    public function filter( array $keys ) : array
+    {
+        return $this->filterKeys( $this->toArray(), $keys );
+    }
+
+
+    /**
      * Returns the schema as a JSON Schema array.
      *
      * @return array<string, mixed> JSON Schema definition
@@ -133,5 +145,32 @@ class Schema
     public function type() : Types\ObjectType
     {
         return $this->type;
+    }
+
+
+    /**
+     * Recursively filters schema keys to only include allowed ones.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @param array<int, string> $keys Allowed keys
+     * @return array<string, mixed> Filtered schema
+     */
+    private function filterKeys( array $schema, array $keys ) : array
+    {
+        $filtered = array_intersect_key( $schema, array_flip( $keys ) );
+
+        if( isset( $filtered['properties'] ) && is_array( $filtered['properties'] ) )
+        {
+            $filtered['properties'] = array_map(
+                fn( array $prop ) => $this->filterKeys( $prop, $keys ),
+                $filtered['properties']
+            );
+        }
+
+        if( isset( $filtered['items'] ) && is_array( $filtered['items'] ) ) {
+            $filtered['items'] = $this->filterKeys( $filtered['items'], $keys );
+        }
+
+        return $filtered;
     }
 }
