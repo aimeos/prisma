@@ -260,121 +260,23 @@ trait OpenaiApi
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $texts = [];
 
             /** @var array<int, array<string, mixed>> $output */
             $output = $result['output'] ?? [];
-            $toolCalls = [];
+            $parsed = $this->responseData( $output );
+            $texts = $parsed['texts'];
 
-            foreach( $output as $data )
-            {
-                if( ( $data['type'] ?? '' ) === 'function_call' ) {
-                    /** @var string $fnName */
-                    $fnName = $data['name'] ?? '';
-                    /** @var string $fnArgs */
-                    $fnArgs = $data['arguments'] ?? '{}';
-                    $toolCalls[] = [
-                        'id' => $data['call_id'] ?? null,
-                        'name' => $fnName,
-                        'arguments' => json_decode( $fnArgs, true ) ?: [],
-                    ];
-                    continue;
-                }
-
-                foreach( $data['content'] ?? [] as $content )
-                {
-                    if( $text = $content['text'] ?? null ) {
-                        $texts[] = $text;
-                    }
-                }
-            }
-
-            if( !$toolCalls ) {
+            if( !$parsed['toolCalls'] ) {
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $parsed['toolCalls'] );
             array_push( $allSteps, ...$toolResults );
-            $messages[] = ['role' => 'assistant', 'content' => $result['output']];
-
-            foreach( $toolResults as $toolStep )
-            {
-                $messages[] = [
-                    'type' => 'function_call_output',
-                    'call_id' => $toolStep->id(),
-                    'output' => $toolStep->result(),
-                ];
-            }
+            $messages[] = ['role' => 'assistant', 'content' => $output];
+            $messages = array_merge( $messages, $this->responseSteps( $toolResults ) );
         }
 
-        $thinking = null;
-
-        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
-        $citations = [];
-
-        /** @var array<int, array<string, mixed>> $outputFinal */
-        $outputFinal = $result['output'] ?? [];
-        $fullText = null;
-
-        foreach( $outputFinal as $data )
-        {
-            if( ( $data['type'] ?? '' ) === 'reasoning' ) {
-                /** @var array<int, array<string, mixed>> $summaries */
-                $summaries = $data['summary'] ?? [];
-                foreach( $summaries as $summary ) {
-                    /** @var string $text */
-                    $text = $summary['text'] ?? '';
-                    $thinking .= $text;
-                }
-            }
-
-            foreach( $data['content'] ?? [] as $content )
-            {
-                foreach( $content['annotations'] ?? [] as $ann )
-                {
-                    if( ( $ann['type'] ?? '' ) === 'url_citation' )
-                    {
-                        $fullText ??= implode( '', $texts );
-                        $start = $ann['start_index'] ?? null;
-                        $end = $ann['end_index'] ?? null;
-                        $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
-
-                        $citations[] = new \Aimeos\Prisma\Values\Citation(
-                            title: $ann['title'] ?? null,
-                            url: $ann['url'] ?? null,
-                            text: $cited ?: null,
-                        );
-                    }
-                }
-            }
-        }
-
-        $meta = $result;
-        unset( $meta['output'], $meta['usage'] );
-
-        if( $thinking ) {
-            $meta['thinking'] = $thinking;
-        }
-
-        /** @var array<int, string|null> $texts */
-        /** @var array<string, mixed> $usage */
-        $usage = $result['usage'] ?? [];
-
-        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
-            ->withCitations( $citations )
-            ->withReason( match( $result['status'] ?? null ) {
-                'completed' => \Aimeos\Prisma\Responses\TextResponse::STOP,
-                'incomplete' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
-                'failed' => \Aimeos\Prisma\Responses\TextResponse::ERROR,
-                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
-            } )
-            ->withUsage(
-                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
-                $usage,
-            )
-            ->withRateLimit( $rateLimit )
-            ->withMeta( $meta );
+        return $this->responseResult( $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -423,5 +325,211 @@ trait OpenaiApi
         }
 
         return $messages;
+    }
+
+
+    /**
+     * Builds the TextResponse from a chat completions API result.
+     *
+     * @param array<string, mixed> $result API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    private function completionResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+        /** @var array<string, mixed> $lastMsg */
+        $lastMsg = $choices[0]['message'] ?? [];
+        $thinking = $lastMsg['reasoning_content'] ?? null;
+        $meta = $result;
+        unset( $meta['choices'], $meta['usage'] );
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
+        $citations = [];
+
+        if( is_array( $result['citations'] ?? null ) ) {
+            foreach( $result['citations'] as $url ) {
+                $citations[] = new \Aimeos\Prisma\Values\Citation(
+                    url: is_string( $url ) ? $url : null,
+                );
+            }
+        }
+
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withCitations( $citations )
+            ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
+                'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
+                'tool_calls' => \Aimeos\Prisma\Responses\TextResponse::TOOL,
+                'length' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
+                'content_filter' => \Aimeos\Prisma\Responses\TextResponse::CONTENT,
+                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
+    }
+
+
+    /**
+     * Parses texts and tool calls from the Responses API output.
+     *
+     * @param array<int, array<string, mixed>> $output Response output blocks
+     * @return array{texts: array<int, string>, toolCalls: array<int, array<string, mixed>>} Parsed data
+     */
+    private function responseData( array $output ) : array
+    {
+        $texts = [];
+        $toolCalls = [];
+
+        foreach( $output as $data )
+        {
+            if( ( $data['type'] ?? '' ) === 'function_call' ) {
+                $toolCalls[] = [
+                    'id' => $data['call_id'] ?? null,
+                    'name' => $data['name'] ?? '',
+                    'arguments' => json_decode( $data['arguments'] ?? '{}', true ) ?: [],
+                ];
+                continue;
+            }
+
+            foreach( $data['content'] ?? [] as $content )
+            {
+                if( $text = $content['text'] ?? null ) {
+                    $texts[] = $text;
+                }
+            }
+        }
+
+        return ['texts' => $texts, 'toolCalls' => $toolCalls];
+    }
+
+
+    /**
+     * Parses thinking and citations from the Responses API output.
+     *
+     * @param array<int, array<string, mixed>> $output Response output blocks
+     * @param array<int, string|null> $texts Extracted text content
+     * @return array{thinking: string|null, citations: array<int, \Aimeos\Prisma\Values\Citation>} Parsed output
+     */
+    private function responseOutput( array $output, array $texts ) : array
+    {
+        $thinking = null;
+
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
+        $citations = [];
+        $fullText = null;
+
+        foreach( $output as $data )
+        {
+            if( ( $data['type'] ?? '' ) === 'reasoning' ) {
+                /** @var array<int, array<string, mixed>> $summaries */
+                $summaries = $data['summary'] ?? [];
+                foreach( $summaries as $summary ) {
+                    /** @var string $text */
+                    $text = $summary['text'] ?? '';
+                    $thinking .= $text;
+                }
+            }
+
+            foreach( $data['content'] ?? [] as $content )
+            {
+                foreach( $content['annotations'] ?? [] as $ann )
+                {
+                    if( ( $ann['type'] ?? '' ) === 'url_citation' )
+                    {
+                        $fullText ??= implode( '', $texts );
+                        $start = $ann['start_index'] ?? null;
+                        $end = $ann['end_index'] ?? null;
+                        $cited = is_int( $start ) && is_int( $end ) ? mb_substr( $fullText, $start, $end - $start ) : null;
+
+                        $citations[] = new \Aimeos\Prisma\Values\Citation(
+                            title: $ann['title'] ?? null,
+                            url: $ann['url'] ?? null,
+                            text: $cited ?: null,
+                        );
+                    }
+                }
+            }
+        }
+
+        return ['thinking' => $thinking, 'citations' => $citations];
+    }
+
+
+    /**
+     * Builds tool result messages for the Responses API.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    private function responseSteps( array $results ) : array
+    {
+        $messages = [];
+
+        foreach( $results as $step )
+        {
+            $messages[] = [
+                'type' => 'function_call_output',
+                'call_id' => $step->id(),
+                'output' => $step->result(),
+            ];
+        }
+
+        return $messages;
+    }
+
+
+    /**
+     * Builds the TextResponse from a Responses API result.
+     *
+     * @param array<string, mixed> $result API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    private function responseResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $parsed = $this->responseOutput( $result['output'] ?? [], $texts );
+
+        $meta = $result;
+        unset( $meta['output'], $meta['usage'] );
+
+        if( $parsed['thinking'] ) {
+            $meta['thinking'] = $parsed['thinking'];
+        }
+
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withCitations( $parsed['citations'] )
+            ->withReason( match( $result['status'] ?? null ) {
+                'completed' => \Aimeos\Prisma\Responses\TextResponse::STOP,
+                'incomplete' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
+                'failed' => \Aimeos\Prisma\Responses\TextResponse::ERROR,
+                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
     }
 }

@@ -21,5 +21,4 @@ class Groq extends Base
         $this->header( 'authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->baseUrl( $this->cfg( $config, 'url', 'https://api.groq.com' ) );
     }
-
 }

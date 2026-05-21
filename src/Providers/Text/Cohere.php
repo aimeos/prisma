@@ -9,8 +9,6 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Cohere extends CohereBase implements Write
 {
-
-
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         return $this->generate(
@@ -21,7 +19,7 @@ class Cohere extends CohereBase implements Write
 
 
     /**
-     * Generates a text response from the API.
+     * Runs the tool loop for the Cohere Chat API.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Request options
@@ -78,30 +76,7 @@ class Cohere extends CohereBase implements Write
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        $meta = $result;
-        unset( $meta['message'], $meta['usage'] );
-
-        /** @var array<string, mixed> $usageObj */
-        $usageObj = $result['usage'] ?? [];
-        /** @var array<string, mixed> $usage */
-        $usage = $usageObj['tokens'] ?? [];
-
-        /** @var array<int, string|null> $texts */
-        return TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
-            ->withReason( match( $result['finish_reason'] ?? null ) {
-                'COMPLETE' => TextResponse::STOP,
-                'MAX_TOKENS' => TextResponse::LENGTH,
-                'ERROR', 'ERROR_TOXIC', 'ERROR_LIMIT' => TextResponse::ERROR,
-                default => TextResponse::UNKNOWN,
-            } )
-            ->withUsage(
-                ( isset( $usage['input_tokens'] ) && is_numeric( $usage['input_tokens'] ) ? (float) $usage['input_tokens'] : 0 )
-                + ( isset( $usage['output_tokens'] ) && is_numeric( $usage['output_tokens'] ) ? (float) $usage['output_tokens'] : 0 ),
-                $usage,
-            )
-            ->withRateLimit( $rateLimit )
-            ->withMeta( $meta );
+        return $this->result( $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -137,5 +112,42 @@ class Cohere extends CohereBase implements Write
         }
 
         return $toolCalls;
+    }
+
+
+    /**
+     * Builds the TextResponse from a Cohere API result.
+     *
+     * @param array<string, mixed> $result API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return TextResponse Text response
+     */
+    private function result( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    {
+        $meta = $result;
+        unset( $meta['message'], $meta['usage'] );
+
+        /** @var array<string, mixed> $usageObj */
+        $usageObj = $result['usage'] ?? [];
+        /** @var array<string, mixed> $usage */
+        $usage = $usageObj['tokens'] ?? [];
+
+        return TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withReason( match( $result['finish_reason'] ?? null ) {
+                'COMPLETE' => TextResponse::STOP,
+                'MAX_TOKENS' => TextResponse::LENGTH,
+                'ERROR', 'ERROR_TOXIC', 'ERROR_LIMIT' => TextResponse::ERROR,
+                default => TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                ( isset( $usage['input_tokens'] ) && is_numeric( $usage['input_tokens'] ) ? (float) $usage['input_tokens'] : 0 )
+                + ( isset( $usage['output_tokens'] ) && is_numeric( $usage['output_tokens'] ) ? (float) $usage['output_tokens'] : 0 ),
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
     }
 }

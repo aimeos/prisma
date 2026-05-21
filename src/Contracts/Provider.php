@@ -113,9 +113,8 @@ interface Provider
      * Set the tool choice strategy.
      *
      * Controls whether the model must use tools, can use tools, or cannot use tools.
-     * Values: 'auto' (model decides), 'required' (must use a tool), 'none' (no tools).
      *
-     * @param string $choice Tool choice strategy
+     * @param string $choice Tool choice (use AUTO, REQ, NONE constants)
      * @return self Provider interface
      */
     public function withToolChoice( string $choice ) : self;

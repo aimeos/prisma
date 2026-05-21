@@ -9,8 +9,6 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Bedrock extends BedrockBase implements Write
 {
-
-
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $content = [];
@@ -28,7 +26,6 @@ class Bedrock extends BedrockBase implements Write
         }
 
         $content[] = ['text' => $prompt];
-
         $messages = [['role' => 'user', 'content' => $content]];
 
         return $this->generate( $messages, $options );
@@ -36,58 +33,10 @@ class Bedrock extends BedrockBase implements Write
 
 
     /**
-     * Builds tool result messages in Bedrock/Converse format.
+     * Runs the tool loop for the Bedrock Converse API.
      *
-     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
-     * @return array<int, array<string, mixed>> Formatted tool result messages
-     */
-    protected function toolResults( array $results ) : array
-    {
-        $content = [];
-
-        foreach( $results as $step )
-        {
-            $content[] = [
-                'toolResult' => [
-                    'toolUseId' => $step->id(),
-                    'content' => [['text' => $step->result()]],
-                ],
-            ];
-        }
-
-        return [['role' => 'user', 'content' => $content]];
-    }
-
-
-    /**
-     * Builds the tools parameter in Bedrock/Converse format.
-     *
-     * @return array<int, array<string, mixed>> Formatted tools definition
-     */
-    protected function toolsParam() : array
-    {
-        $tools = [];
-
-        foreach( $this->tools() as $tool )
-        {
-            $tools[] = [
-                'toolSpec' => [
-                    'name' => $tool->name(),
-                    'description' => $tool->description(),
-                    'inputSchema' => [
-                        'json' => $tool->schema()->toArray(),
-                    ],
-                ],
-            ];
-        }
-
-        return $tools;
-    }
-
-
-    /**
-     * @param array<int, array<string, mixed>> $messages
-     * @param array<string, mixed> $options
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Request options
      */
     private function generate( array $messages, array $options ) : TextResponse
     {
@@ -142,9 +91,7 @@ class Bedrock extends BedrockBase implements Write
 
             foreach( $contentBlocks as $block )
             {
-                if( isset( $block['reasoningContent']['reasoningText']['text'] ) ) {
-                    $thinking = $block['reasoningContent']['reasoningText']['text'];
-                } elseif( $text = $block['text'] ?? null ) {
+                if( $text = $block['text'] ?? null ) {
                     $texts[] = $text;
                 }
             }
@@ -161,33 +108,7 @@ class Bedrock extends BedrockBase implements Write
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        $meta = $result;
-        unset( $meta['output'], $meta['usage'] );
-
-        if( $thinking ?? null ) {
-            $meta['thinking'] = $thinking;
-        }
-
-        /** @var array<string, mixed> $usage */
-        $usage = $result['usage'] ?? [];
-
-        /** @var array<int, string|null> $texts */
-        return TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
-            ->withReason( match( $result['stopReason'] ?? null ) {
-                'end_turn', 'stop_sequence' => TextResponse::STOP,
-                'tool_use' => TextResponse::TOOL,
-                'max_tokens' => TextResponse::LENGTH,
-                'content_filtered' => TextResponse::CONTENT,
-                default => TextResponse::UNKNOWN,
-            } )
-            ->withUsage(
-                ( isset( $usage['inputTokens'] ) && is_numeric( $usage['inputTokens'] ) ? (float) $usage['inputTokens'] : 0 )
-                + ( isset( $usage['outputTokens'] ) && is_numeric( $usage['outputTokens'] ) ? (float) $usage['outputTokens'] : 0 ),
-                $usage,
-            )
-            ->withRateLimit( $rateLimit )
-            ->withMeta( $meta );
+        return $this->result( $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -229,5 +150,111 @@ class Bedrock extends BedrockBase implements Write
         }
 
         return $toolCalls;
+    }
+
+
+    /**
+     * Builds the tools parameter in Bedrock/Converse format.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
+    {
+        $tools = [];
+
+        foreach( $this->tools() as $tool )
+        {
+            $tools[] = [
+                'toolSpec' => [
+                    'name' => $tool->name(),
+                    'description' => $tool->description(),
+                    'inputSchema' => [
+                        'json' => $tool->schema()->toArray(),
+                    ],
+                ],
+            ];
+        }
+
+        return $tools;
+    }
+
+
+    /**
+     * Builds tool result messages in Bedrock/Converse format.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    protected function toolResults( array $results ) : array
+    {
+        $content = [];
+
+        foreach( $results as $step )
+        {
+            $content[] = [
+                'toolResult' => [
+                    'toolUseId' => $step->id(),
+                    'content' => [['text' => $step->result()]],
+                ],
+            ];
+        }
+
+        return [['role' => 'user', 'content' => $content]];
+    }
+
+
+    /**
+     * Builds the TextResponse from a Bedrock Converse API result.
+     *
+     * @param array<string, mixed> $result API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return TextResponse Text response
+     */
+    private function result( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    {
+        /** @var array<string, mixed> $output */
+        $output = $result['output'] ?? [];
+        /** @var array<string, mixed> $outputMsg */
+        $outputMsg = $output['message'] ?? [];
+        $thinking = null;
+
+        /** @var array<int, array<string, mixed>> $contentBlocks */
+        $contentBlocks = $outputMsg['content'] ?? [];
+
+        foreach( $contentBlocks as $block )
+        {
+            if( isset( $block['reasoningContent']['reasoningText']['text'] ) ) {
+                $thinking = $block['reasoningContent']['reasoningText']['text'];
+            }
+        }
+
+        $meta = $result;
+        unset( $meta['output'], $meta['usage'] );
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        /** @var array<string, mixed> $usage */
+        $usage = $result['usage'] ?? [];
+
+        return TextResponse::fromTexts( $texts )
+            ->withSteps( $allSteps )
+            ->withReason( match( $result['stopReason'] ?? null ) {
+                'end_turn', 'stop_sequence' => TextResponse::STOP,
+                'tool_use' => TextResponse::TOOL,
+                'max_tokens' => TextResponse::LENGTH,
+                'content_filtered' => TextResponse::CONTENT,
+                default => TextResponse::UNKNOWN,
+            } )
+            ->withUsage(
+                ( isset( $usage['inputTokens'] ) && is_numeric( $usage['inputTokens'] ) ? (float) $usage['inputTokens'] : 0 )
+                + ( isset( $usage['outputTokens'] ) && is_numeric( $usage['outputTokens'] ) ? (float) $usage['outputTokens'] : 0 ),
+                $usage,
+            )
+            ->withRateLimit( $rateLimit )
+            ->withMeta( $meta );
     }
 }
