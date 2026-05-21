@@ -67,6 +67,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
+    <li><a href="#structured">structured</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
 </ul>
@@ -146,22 +147,22 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
-| :---                  | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
-| **Alibaba**           |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Anthropic**         |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Bedrock**           |           | yes   | -         | yes          |                | yes           | yes             |
-| **Cohere**            |           | yes   | -         | yes          |                | -             | -               |
-| **Deepseek**          |           | yes   | -         | yes          |                | yes           | -               |
-| **DeepL**             | yes       |       |           |              |                |               |                 |
-| **Gemini**            |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Google**            | yes       |       |           |              |                |               |                 |
-| **Groq**              |           | yes   | -         | yes          |                | yes           | -               |
-| **Mistral**           |           | yes   | -         | yes          | yes            | yes           | -               |
-| **OpenAI**            |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Openrouter**        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Perplexity**        |           | beta  | yes       | yes          |                | yes           | -               |
-| **xAI**               |           | beta  | yes       | yes          | yes            | yes           | yes             |
+|                       | structured | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
+| :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
+| **Alibaba**           |            |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Anthropic**         |            |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Bedrock**           |            |           | yes   | -         | yes          |                | yes           | yes             |
+| **Cohere**            |            |           | yes   | -         | yes          |                | -             | -               |
+| **Deepseek**          |            |           | yes   | -         | yes          |                | yes           | -               |
+| **DeepL**             |            | yes       |       |           |              |                |               |                 |
+| **Gemini**            |            |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google**            |            | yes       |       |           |              |                |               |                 |
+| **Groq**              |            |           | yes   | -         | yes          |                | yes           | -               |
+| **Mistral**           |            |           | yes   | -         | yes          | yes            | yes           | -               |
+| **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Openrouter**        |            |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Perplexity**        |            |           | beta  | yes       | yes          |                | yes           | -               |
+| **xAI**               |            |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -1510,6 +1511,44 @@ $vectors = $vectorResponse->vectors();
 
 ## Text API
 
+### structured
+
+Generate structured output from the given prompt and schema. The response JSON is parsed and available via the `structured()` method on the response object.
+
+```php
+public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+```
+
+* @param **string** `$prompt` Input prompt for structured text generation
+* @param **Schema** `$schema` Schema definition for the structured output
+* @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **TextResponse** Response text with structured data
+
+**Supported options:**
+
+* [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Schema\Schema;
+
+$schema = Schema::for( 'person', [
+    'name' => Schema::string(),
+    'age' => Schema::integer(),
+] );
+
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->ensure( 'structured' )
+    ->structured( 'Extract the person from: John is 30 years old', $schema );
+
+$data = $textResponse->structured(); // ['name' => 'John', 'age' => 30]
+$json = $textResponse->text(); // '{"name":"John","age":30}'
+```
+
 ### translate
 
 Translate one or more texts from one language to another.
@@ -1837,8 +1876,8 @@ $response->withMeta( // optional
 );
 ```
 
-TextResponse objects can store structured data e.g. returned when audio files
-are transcribed:
+TextResponse objects can store structured data returned by the `structured()`
+method of text providers or when audio files are transcribed:
 
 ```php
 $response->withStructured( [

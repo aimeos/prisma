@@ -489,6 +489,62 @@ trait OpenaiApi
 
 
     /**
+     * Runs the chat completions tool loop with structured JSON output.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param \Aimeos\Prisma\Schema\Schema $schema Schema for the structured output
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response with structured data
+     */
+    protected function structuredCompletions( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $options['response_format'] = [
+            'type' => 'json_schema',
+            'json_schema' => [
+                'name' => $schema->name(),
+                'schema' => $schema->toArray(),
+                'strict' => $schema->isStrict(),
+            ],
+        ];
+
+        $response = $this->completions( $endpoint, $defaultModel, $messages, $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
+    /**
+     * Runs the Responses API tool loop with structured JSON output.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param \Aimeos\Prisma\Schema\Schema $schema Schema for the structured output
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response with structured data
+     */
+    protected function structuredResponses( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $options['text'] = [
+            'format' => [
+                'type' => 'json_schema',
+                'name' => $schema->name(),
+                'schema' => $schema->toArray(),
+                'strict' => $schema->isStrict(),
+            ],
+        ];
+
+        $response = $this->responses( $endpoint, $defaultModel, $messages, $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
+    /**
      * Builds tool result messages for the Responses API.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
