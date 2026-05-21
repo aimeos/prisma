@@ -56,73 +56,22 @@ trait OpenaiApi
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $texts = [];
-
-            /** @var array<int, array<string, mixed>> $choices */
-            $choices = $result['choices'] ?? [];
-
-            foreach( $choices as $data )
-            {
-                /** @var array<string, mixed> $msg */
-                $msg = $data['message'] ?? [];
-                if( $text = $msg['content'] ?? null ) {
-                    $texts[] = $text;
-                }
-            }
-
+            $texts = $this->completionTexts( $result );
             $toolCalls = $this->parseToolCalls( $result );
 
             if( !$toolCalls ) {
                 break;
             }
 
+            /** @var array<int, array<string, mixed>> $choices */
+            $choices = $result['choices'] ?? [];
             $toolResults = $this->execTools( $toolCalls );
             array_push( $allSteps, ...$toolResults );
             $messages[] = $choices[0]['message'] ?? ['role' => 'assistant', 'content' => null];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        /** @var array<int, array<string, mixed>> $choices */
-        $choices = $result['choices'] ?? [];
-        /** @var array<string, mixed> $lastMsg */
-        $lastMsg = $choices[0]['message'] ?? [];
-        $thinking = $lastMsg['reasoning_content'] ?? null;
-        $meta = $result;
-        unset( $meta['choices'], $meta['usage'] );
-
-        if( $thinking ) {
-            $meta['thinking'] = $thinking;
-        }
-
-        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
-        $citations = [];
-
-        if( is_array( $result['citations'] ?? null ) ) {
-            foreach( $result['citations'] as $url ) {
-                $citations[] = new \Aimeos\Prisma\Values\Citation( url: is_string( $url ) ? $url : null );
-            }
-        }
-
-        /** @var array<int, string|null> $texts */
-        /** @var array<string, mixed> $usage */
-        $usage = $result['usage'] ?? [];
-
-        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
-            ->withCitations( $citations )
-            ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
-                'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
-                'tool_calls' => \Aimeos\Prisma\Responses\TextResponse::TOOL,
-                'length' => \Aimeos\Prisma\Responses\TextResponse::LENGTH,
-                'content_filter' => \Aimeos\Prisma\Responses\TextResponse::CONTENT,
-                default => \Aimeos\Prisma\Responses\TextResponse::UNKNOWN,
-            } )
-            ->withUsage(
-                isset( $usage['total_tokens'] ) && is_numeric( $usage['total_tokens'] ) ? (float) $usage['total_tokens'] : null,
-                $usage,
-            )
-            ->withRateLimit( $rateLimit )
-            ->withMeta( $meta );
+        return $this->completionResult( $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -148,29 +97,6 @@ trait OpenaiApi
         }
 
         $content[] = ['type' => 'text', 'text' => $prompt];
-
-        return $content;
-    }
-
-
-    /**
-     * Builds content blocks for the Responses API with input images and text.
-     *
-     * @param string $prompt Text prompt
-     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
-     * @return array<int, array<string, mixed>> Content blocks
-     */
-    protected function responsesContent( string $prompt, array $files ) : array
-    {
-        $content = [['type' => 'input_text', 'text' => $prompt]];
-
-        foreach( $files as $file )
-        {
-            $content[] = [
-                'type' => 'input_image',
-                'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
-            ];
-        }
 
         return $content;
     }
@@ -299,6 +225,85 @@ trait OpenaiApi
 
 
     /**
+     * Builds content blocks for the Responses API with input images and text.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function responsesContent( string $prompt, array $files ) : array
+    {
+        $content = [['type' => 'input_text', 'text' => $prompt]];
+
+        foreach( $files as $file )
+        {
+            $content[] = [
+                'type' => 'input_image',
+                'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+            ];
+        }
+
+        return $content;
+    }
+
+
+    /**
+     * Runs a structured output request using the chat completions API.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    protected function structuredCompletions( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $options['response_format'] = [
+            'type' => 'json_schema',
+            'json_schema' => [
+                'name' => $schema->name(),
+                'strict' => $schema->isStrict(),
+                'schema' => $schema->toArray(),
+            ],
+        ];
+
+        $response = $this->completions( $endpoint, $defaultModel, $messages, $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
+    /**
+     * Runs a structured output request using the Responses API.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Text response
+     */
+    protected function structuredResponses( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $options['text'] = [
+            'format' => [
+                'type' => 'json_schema',
+                'name' => $schema->name(),
+                'strict' => $schema->isStrict(),
+                'schema' => $schema->toArray(),
+            ],
+        ];
+
+        $response = $this->responses( $endpoint, $defaultModel, $messages, $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
+    /**
      * Builds the tools parameter for the API request.
      *
      * @return array<int, array<string, mixed>> Formatted tools definition
@@ -403,6 +408,32 @@ trait OpenaiApi
 
 
     /**
+     * Extracts text content from chat completions choices.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, string> Extracted texts
+     */
+    private function completionTexts( array $result ) : array
+    {
+        $texts = [];
+
+        /** @var array<int, array<string, mixed>> $choices */
+        $choices = $result['choices'] ?? [];
+
+        foreach( $choices as $data )
+        {
+            /** @var array<string, mixed> $msg */
+            $msg = $data['message'] ?? [];
+            if( $text = $msg['content'] ?? null ) {
+                $texts[] = $text;
+            }
+        }
+
+        return $texts;
+    }
+
+
+    /**
      * Parses texts and tool calls from the Responses API output.
      *
      * @param array<int, array<string, mixed>> $output Response output blocks
@@ -489,29 +520,6 @@ trait OpenaiApi
 
 
     /**
-     * Builds tool result messages for the Responses API.
-     *
-     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
-     * @return array<int, array<string, mixed>> Formatted tool result messages
-     */
-    private function responseSteps( array $results ) : array
-    {
-        $messages = [];
-
-        foreach( $results as $step )
-        {
-            $messages[] = [
-                'type' => 'function_call_output',
-                'call_id' => $step->id(),
-                'output' => $step->result(),
-            ];
-        }
-
-        return $messages;
-    }
-
-
-    /**
      * Builds the TextResponse from a Responses API result.
      *
      * @param array<string, mixed> $result API response data
@@ -549,5 +557,28 @@ trait OpenaiApi
             )
             ->withRateLimit( $rateLimit )
             ->withMeta( $meta );
+    }
+
+
+    /**
+     * Builds tool result messages for the Responses API.
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
+     * @return array<int, array<string, mixed>> Formatted tool result messages
+     */
+    private function responseSteps( array $results ) : array
+    {
+        $messages = [];
+
+        foreach( $results as $step )
+        {
+            $messages[] = [
+                'type' => 'function_call_output',
+                'call_id' => $step->id(),
+                'output' => $step->result(),
+            ];
+        }
+
+        return $messages;
     }
 }
