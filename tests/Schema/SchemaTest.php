@@ -109,6 +109,59 @@ class SchemaTest extends TestCase
     }
 
 
+    public function testFilter() : void
+    {
+        $schema = Schema::for( 'test', [
+            'name' => Schema::string()->required()->title( 'Name' )->min( 1 )->max( 100 )->pattern( '^[a-z]+$' ),
+            'age' => Schema::integer()->description( 'User age' )->min( 0 )->max( 150 ),
+            'tags' => Schema::array()->items( Schema::string()->format( 'uri' ) ),
+            'address' => Schema::object( [
+                'city' => Schema::string()->title( 'City' )->required(),
+                'zip' => Schema::string()->pattern( '^\d{5}$' ),
+            ] ),
+        ] );
+
+        $filtered = $schema->filter( ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable'] );
+
+        $this->assertEquals( 'object', $filtered['type'] );
+        $this->assertArrayHasKey( 'properties', $filtered );
+        $this->assertContains( 'name', $filtered['required'] );
+
+        // title, minLength, maxLength, pattern should be stripped
+        $this->assertArrayNotHasKey( 'title', $filtered['properties']['name'] );
+        $this->assertArrayNotHasKey( 'minLength', $filtered['properties']['name'] );
+        $this->assertArrayNotHasKey( 'maxLength', $filtered['properties']['name'] );
+        $this->assertArrayNotHasKey( 'pattern', $filtered['properties']['name'] );
+
+        // description is allowed
+        $this->assertEquals( 'User age', $filtered['properties']['age']['description'] );
+        // minimum, maximum should be stripped
+        $this->assertArrayNotHasKey( 'minimum', $filtered['properties']['age'] );
+        $this->assertArrayNotHasKey( 'maximum', $filtered['properties']['age'] );
+
+        // nested array items filtered
+        $this->assertArrayNotHasKey( 'format', $filtered['properties']['tags']['items'] );
+
+        // nested object filtered
+        $this->assertArrayNotHasKey( 'title', $filtered['properties']['address']['properties']['city'] );
+        $this->assertArrayNotHasKey( 'pattern', $filtered['properties']['address']['properties']['zip'] );
+        $this->assertContains( 'city', $filtered['properties']['address']['required'] );
+    }
+
+
+    public function testFilterKeepsAllWhenAllAllowed() : void
+    {
+        $schema = Schema::for( 'test', [
+            'name' => Schema::string()->title( 'Name' )->description( 'A name' ),
+        ] );
+
+        $full = $schema->toArray();
+        $filtered = $schema->filter( ['type', 'title', 'description', 'properties', 'required'] );
+
+        $this->assertEquals( $full, $filtered );
+    }
+
+
     public function testStaticTypeFactories() : void
     {
         $this->assertInstanceOf( StringType::class, Schema::string() );
