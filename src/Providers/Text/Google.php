@@ -53,5 +53,4 @@ class Google extends Base implements Translate
         /** @var array<int, string|null> $translated */
         return TextResponse::fromTexts( $translated );
     }
-
 }

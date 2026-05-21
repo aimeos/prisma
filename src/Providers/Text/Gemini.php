@@ -18,7 +18,34 @@ class Gemini extends Base implements Write
 
 
     /**
-     * Generates a text response from the API.
+     * Extracts text content from Gemini candidate parts.
+     *
+     * @param array<int, array<string, mixed>> $candidates Candidate response blocks
+     * @return array<int, string> Extracted texts
+     */
+    private function candidateTexts( array $candidates ) : array
+    {
+        $texts = [];
+
+        foreach( $candidates as $candidate )
+        {
+            /** @var array<int, array<string, mixed>> $parts */
+            $parts = $candidate['content']['parts'] ?? [];
+
+            foreach( $parts as $part )
+            {
+                if( !( $part['thought'] ?? false ) && ( $text = $part['text'] ?? null ) ) {
+                    $texts[] = $text;
+                }
+            }
+        }
+
+        return $texts;
+    }
+
+
+    /**
+     * Runs the tool loop for the Gemini API.
      *
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Pre-filtered request options
@@ -33,72 +60,22 @@ class Gemini extends Base implements Write
 
         $system = ( $prompt = $this->systemPrompt() ) ? [
             'systemInstruction' => [
-                'parts' => [[
-                    'text' => $prompt
-                ]]
+                'parts' => [['text' => $prompt]]
             ]] : [];
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $genConfig = [
-                'responseModalities' => ['TEXT']
-            ] + $options;
-
-            if( $this->maxTokens() ) {
-                $genConfig['maxOutputTokens'] = $this->maxTokens();
-            }
-
-            if( $this->thinkingBudget() ) {
-                $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
-            }
-
-            $request = $system + [
-                'contents' => $contents,
-                'generationConfig' => $genConfig,
-            ];
-
-            if( $tools = $this->toolsParam() ) {
-                $request['tools'] = $tools;
-
-                $mode = match( $this->toolChoice() ) {
-                    'auto' => 'AUTO',
-                    'required' => 'ANY',
-                    'none' => 'NONE',
-                    default => null,
-                };
-
-                if( $mode ) {
-                    $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
-                }
-            }
-
+            $request = $this->generateRequest( $system, $contents, $options );
             $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
             $this->validate( $response );
 
             $rateLimit = $this->getRateLimit( $response );
             $data = $this->fromJson( $response );
-            $texts = [];
 
             /** @var array<int, array<string, mixed>> $candidates */
             $candidates = $data['candidates'] ?? [];
-
-            foreach( $candidates as $candidate )
-            {
-                /** @var array<string, mixed> $candidateContent */
-                $candidateContent = $candidate['content'] ?? [];
-                /** @var array<int, array<string, mixed>> $parts */
-                $parts = $candidateContent['parts'] ?? [];
-
-                foreach( $parts as $part )
-                {
-                    if( $part['thought'] ?? false ) {
-                        $thinking = $part['text'] ?? null;
-                    } elseif( $text = $part['text'] ?? null ) {
-                        $texts[] = $text;
-                    }
-                }
-            }
+            $texts = $this->candidateTexts( $candidates );
 
             $toolCalls = $this->parseToolCalls( $data );
 
@@ -114,24 +91,71 @@ class Gemini extends Base implements Write
                 $contents[] = $first['content'];
             }
 
-            $resultMessages = $this->toolResults( $toolResults );
-            $contents = array_merge( $contents, $resultMessages );
+            $contents = array_merge( $contents, $this->toolResults( $toolResults ) );
         }
 
-        /** @var array<int, array<string, mixed>> $finalCandidates */
-        $finalCandidates = $data['candidates'] ?? [];
-        $first = current( $finalCandidates ) ?: [];
+        return $this->result( $data, $allSteps, $texts, $rateLimit );
+    }
 
-        /** @var array<string, mixed> $meta */
-        $meta = is_array( $first['metadata'] ?? null ) ? $first['metadata'] : [];
 
-        if( $thinking ?? null ) {
-            $meta['thinking'] = $thinking;
+    /**
+     * Builds the request payload for the Gemini generateContent API.
+     *
+     * @param array<string, mixed> $system System instruction block
+     * @param array<int, array<string, mixed>> $contents Chat contents
+     * @param array<string, mixed> $options Request options
+     * @return array<string, mixed> Request payload
+     */
+    private function generateRequest( array $system, array $contents, array $options ) : array
+    {
+        $genConfig = [
+            'responseModalities' => ['TEXT']
+        ] + $options;
+
+        if( $this->maxTokens() ) {
+            $genConfig['maxOutputTokens'] = $this->maxTokens();
         }
 
+        if( $this->thinkingBudget() ) {
+            $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
+        }
+
+        $request = $system + [
+            'contents' => $contents,
+            'generationConfig' => $genConfig,
+        ];
+
+        if( $tools = $this->toolsParam() ) {
+            $request['tools'] = $tools;
+
+            $mode = match( $this->toolChoice() ) {
+                self::AUTO => 'AUTO',
+                self::REQ => 'ANY',
+                self::NONE => 'NONE',
+                default => null,
+            };
+
+            if( $mode ) {
+                $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
+            }
+        }
+
+        return $request;
+    }
+
+
+    /**
+     * Parses grounding citations from a Gemini candidate response.
+     *
+     * @param array<string, mixed> $candidate Candidate response data
+     * @param array<int, string|null> $texts Extracted text content
+     * @return array<int, \Aimeos\Prisma\Values\Citation> Parsed citations
+     */
+    private function parseCitations( array $candidate, array $texts ) : array
+    {
         /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
-        $grounding = $first['groundingMetadata'] ?? [];
+        $grounding = $candidate['groundingMetadata'] ?? [];
 
         /** @var array<int, array<string, mixed>> $chunks */
         $chunks = $grounding['groundingChunks'] ?? [];
@@ -164,10 +188,49 @@ class Gemini extends Base implements Write
             }
         }
 
+        return $citations;
+    }
+
+
+    /**
+     * Builds the TextResponse from a Gemini API result.
+     *
+     * @param array<string, mixed> $data API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return TextResponse Text response
+     */
+    private function result( array $data, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    {
+        /** @var array<int, array<string, mixed>> $candidates */
+        $candidates = $data['candidates'] ?? [];
+        $first = current( $candidates ) ?: [];
+
+        /** @var array<string, mixed> $meta */
+        $meta = is_array( $first['metadata'] ?? null ) ? $first['metadata'] : [];
+
+        $thinking = null;
+
+        /** @var array<int, array<string, mixed>> $parts */
+        $parts = $first['content']['parts'] ?? [];
+
+        foreach( $parts as $part )
+        {
+            if( $part['thought'] ?? false ) {
+                $thinking = $part['text'] ?? null;
+            }
+        }
+
+        if( $thinking ) {
+            $meta['thinking'] = $thinking;
+        }
+
+        $citations = $this->parseCitations( $first, $texts );
+
         /** @var array<string, mixed> $usage */
         $usage = $data['usageMetadata'] ?? [];
 
-        /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
             ->withCitations( $citations )

@@ -21,7 +21,7 @@ class Anthropic extends Base implements Write
 
 
     /**
-     * Generates a text response from the API.
+     * Runs the tool loop for the Anthropic Messages API.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
@@ -55,8 +55,8 @@ class Anthropic extends Base implements Write
                 $params['tools'] = $tools;
 
                 $toolChoice = match( $this->toolChoice() ) {
-                    'required' => ['type' => 'any'],
-                    'auto' => ['type' => 'auto'],
+                    self::REQ => ['type' => 'any'],
+                    self::AUTO => ['type' => 'auto'],
                     default => null,
                 };
 
@@ -71,9 +71,7 @@ class Anthropic extends Base implements Write
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $citations = [];
             $texts = [];
-            $thinking = null;
 
             /** @var array<int, array<string, mixed>> $contentBlocks */
             $contentBlocks = $result['content'] ?? [];
@@ -107,6 +105,42 @@ class Anthropic extends Base implements Write
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
+        return $this->result( $result, $allSteps, $texts, $rateLimit );
+    }
+
+
+    /**
+     * Builds the TextResponse from an Anthropic API result.
+     *
+     * @param array<string, mixed> $result API response data
+     * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
+     * @param array<int, string|null> $texts Extracted text content
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return TextResponse Text response
+     */
+    private function result( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    {
+        $thinking = null;
+        $citations = [];
+
+        /** @var array<int, array<string, mixed>> $contentBlocks */
+        $contentBlocks = $result['content'] ?? [];
+
+        foreach( $contentBlocks as $block )
+        {
+            if( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
+                $thinking = $block['thinking'];
+            }
+
+            foreach( $block['citations'] ?? [] as $cit )
+            {
+                $citations[] = new \Aimeos\Prisma\Values\Citation(
+                    title: $cit['document_title'] ?? null,
+                    source: $cit['cited_text'] ?? null,
+                );
+            }
+        }
+
         $meta = $result;
         unset( $meta['content'], $meta['usage'] );
 
@@ -117,7 +151,6 @@ class Anthropic extends Base implements Write
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
-        /** @var array<int, string|null> $texts */
         return TextResponse::fromTexts( $texts )
             ->withSteps( $allSteps )
             ->withCitations( $citations )

@@ -22,5 +22,4 @@ class Deepseek extends Base
         $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
         $this->baseUrl( $this->cfg( $config, 'url', 'https://api.deepseek.com' ) );
     }
-
 }
