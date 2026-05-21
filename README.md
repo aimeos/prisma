@@ -149,7 +149,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 |                       | structured | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
 | :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
-| **Alibaba**           |            |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Alibaba**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Anthropic**         |            |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Bedrock**           |            |           | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            |            |           | yes   | -         | yes          |                | -             | -               |
@@ -1527,6 +1527,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 
 **Supported options:**
 
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/developer-reference/api-details)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
