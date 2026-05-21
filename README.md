@@ -150,7 +150,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 |                       | structured | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
 | :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
 | **Alibaba**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Anthropic**         |            |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Anthropic**         | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Bedrock**           |            |           | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            |            |           | yes   | -         | yes          |                | -             | -               |
 | **Deepseek**          |            |           | yes   | -         | yes          |                | yes           | -               |
@@ -592,12 +592,12 @@ $schema = Schema::for( 'sort', [
 ] );
 ```
 
-**Strict mode** (for providers that support it, e.g. OpenAI):
+**Strict mode and no additional properties** (for providers that support it, e.g. OpenAI):
 
 ```php
 $schema = Schema::for( 'search', [
     'query' => Schema::string()->required(),
-] )->strict();
+] )->strict()->withoutAdditionalProperties();
 ```
 
 ### From arrays
@@ -1528,6 +1528,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 **Supported options:**
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/developer-reference/api-details)
+* [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/structured-output)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
