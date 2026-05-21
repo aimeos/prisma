@@ -11,24 +11,12 @@ class Anthropic extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $content = [];
+        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
 
-        foreach( $files as $file )
-        {
-            $content[] = [
-                'type' => 'image',
-                'source' => [
-                    'type' => 'base64',
-                    'media_type' => $file->mimeType(),
-                    'data' => $file->base64()
-                ]
-            ];
-        }
-
-        $content[] = ['type' => 'text', 'text' => $prompt];
-        $messages = [['role' => 'user', 'content' => $content]];
-
-        return $this->generate( $messages, $options );
+        return $this->generate(
+            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            $options
+        );
     }
 
 
@@ -36,7 +24,7 @@ class Anthropic extends Base implements Write
      * Runs the tool loop for the Anthropic Messages API.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
-     * @param array<string, mixed> $options Request options
+     * @param array<string, mixed> $options Pre-filtered request options
      */
     private function generate( array $messages, array $options ) : TextResponse
     {
@@ -53,7 +41,7 @@ class Anthropic extends Base implements Write
                 'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
                 'messages' => $messages,
                 'max_tokens' => $this->maxTokens() ?? 4096,
-            ] + $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
+            ] + $options;
 
             if( $thinkingBudget = $this->thinkingBudget() ) {
                 $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];

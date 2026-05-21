@@ -11,10 +11,12 @@ class Openrouter extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+
         return $this->completions(
             'api/v1/chat/completions', 'openai/gpt-4o',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options
         );
     }
 }

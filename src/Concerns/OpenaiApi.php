@@ -14,12 +14,10 @@ trait OpenaiApi
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
-     * @param array<string, mixed> $options Request options
-     * @param array<int, string> $allowedOptions Allowed option keys
-     * @param array<string, mixed> $extraParams Additional params merged into each request
+     * @param array<string, mixed> $options Pre-filtered request options
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options, array $allowedOptions, array $extraParams = [] ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
         $texts = [];
@@ -27,14 +25,13 @@ trait OpenaiApi
         $rateLimit = null;
         $toolsParam = $this->toolsParam();
         $toolChoiceParam = $this->toolChoice();
-        $allowedParams = $this->allowed( $options, $allowedOptions );
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
             $params = [
                 'model' => $this->modelName( $defaultModel ),
                 'messages' => $messages,
-            ] + $allowedParams + $extraParams;
+            ] + $options;
 
             if( $this->maxTokens() ) {
                 $params['max_tokens'] = $this->maxTokens();
@@ -157,6 +154,29 @@ trait OpenaiApi
 
 
     /**
+     * Builds content blocks for the Responses API with input images and text.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function responsesContent( string $prompt, array $files ) : array
+    {
+        $content = [['type' => 'input_text', 'text' => $prompt]];
+
+        foreach( $files as $file )
+        {
+            $content[] = [
+                'type' => 'input_image',
+                'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+            ];
+        }
+
+        return $content;
+    }
+
+
+    /**
      * Builds chat messages array with optional system prompt and user content.
      *
      * @param array<int, array<string, mixed>> $content User message content blocks
@@ -220,11 +240,10 @@ trait OpenaiApi
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
-     * @param array<string, mixed> $options Request options
-     * @param array<int, string> $allowedOptions Allowed option keys
+     * @param array<string, mixed> $options Pre-filtered request options
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options, array $allowedOptions ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
         $texts = [];
@@ -232,14 +251,13 @@ trait OpenaiApi
         $rateLimit = null;
         $tools = $this->toolsParam();
         $toolChoice = $this->toolChoice();
-        $allowedParams = $this->allowed( $options, $allowedOptions );
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
             $params = [
                 'model' => $this->modelName( $defaultModel ),
                 'input' => $messages,
-            ] + $allowedParams;
+            ] + $options;
 
             if( $this->maxTokens() ) {
                 $params['max_output_tokens'] = $this->maxTokens();

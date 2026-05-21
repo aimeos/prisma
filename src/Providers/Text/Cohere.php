@@ -11,6 +11,8 @@ class Cohere extends CohereBase implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] );
+
         return $this->generate(
             $this->messages( $this->content( $prompt, $files ) ),
             $options
@@ -22,7 +24,7 @@ class Cohere extends CohereBase implements Write
      * Runs the tool loop for the Cohere Chat API.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
-     * @param array<string, mixed> $options Request options
+     * @param array<string, mixed> $options Pre-filtered request options
      */
     private function generate( array $messages, array $options ) : TextResponse
     {
@@ -36,7 +38,7 @@ class Cohere extends CohereBase implements Write
             $params = [
                 'model' => $this->modelName( 'command-a-vision-07-2025' ),
                 'messages' => $messages,
-            ] + $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] )
+            ] + $options
             + ( $this->maxTokens() ? ['max_tokens' => $this->maxTokens()] : [] );
 
             if( $tools = $this->toolsParam() ) {

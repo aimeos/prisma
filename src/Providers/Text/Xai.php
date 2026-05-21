@@ -13,34 +13,39 @@ class Xai extends Base implements Write
     {
         if( $this->providerTools() )
         {
-            $content = [['type' => 'input_text', 'text' => $prompt]];
-
-            foreach( $files as $file )
-            {
-                $content[] = [
-                    'type' => 'input_image',
-                    'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
-                ];
-            }
-
-            if( $thinkingBudget = $this->thinkingBudget() ) {
-                $options['reasoning'] = ['effort' => match( true ) {
-                    $thinkingBudget <= 1024 => 'low',
-                    $thinkingBudget <= 8192 => 'medium',
-                    default => 'high',
-                }];
-            }
+            $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->responses(
-                'v1/responses', 'grok-3', [['role' => 'user', 'content' => $content]], $options,
-                ['temperature', 'top_p', 'reasoning']
+                'v1/responses', 'grok-3',
+                [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+                $options
             );
         }
+
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
             'v1/chat/completions', 'grok-3',
             $this->messages( $this->content( $prompt, $files ) ),
-            $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
+            $options
         );
+    }
+
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function reasoning( array $options ) : array
+    {
+        if( $thinkingBudget = $this->thinkingBudget() ) {
+            $options['reasoning'] = ['effort' => match( true ) {
+                $thinkingBudget <= 1024 => 'low',
+                $thinkingBudget <= 8192 => 'medium',
+                default => 'high',
+            }];
+        }
+
+        return $options;
     }
 }
