@@ -24,6 +24,28 @@ class Gemini extends Base
 
 
     /**
+     * Builds content parts with images and text in Gemini format.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content parts
+     */
+    protected function content( string $prompt, array $files ) : array
+    {
+        $parts = array_map( fn( \Aimeos\Prisma\Files\File $file ) => [
+            'inlineData' => [
+                'data' => $file->base64(),
+                'mimeType' => $file->mimeType()
+            ],
+        ], $files );
+
+        $parts[] = ['text' => $prompt];
+
+        return $parts;
+    }
+
+
+    /**
      * Builds tool result messages in Gemini format.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results

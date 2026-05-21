@@ -9,9 +9,25 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Bedrock extends BedrockBase implements Write
 {
-
-
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'topP'] );
+
+        return $this->generate(
+            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            $options
+        );
+    }
+
+
+    /**
+     * Builds content blocks with images and text in Bedrock/Converse format.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    private function content( string $prompt, array $files ) : array
     {
         $content = [];
 
@@ -29,9 +45,7 @@ class Bedrock extends BedrockBase implements Write
 
         $content[] = ['text' => $prompt];
 
-        $messages = [['role' => 'user', 'content' => $content]];
-
-        return $this->generate( $messages, $options );
+        return $content;
     }
 
 
@@ -107,7 +121,7 @@ class Bedrock extends BedrockBase implements Write
                 $request['system'] = [['text' => $system]];
             }
 
-            $config = $this->allowed( $options, ['temperature', 'topP'] );
+            $config = $options;
 
             if( $this->maxTokens() ) {
                 $config['maxTokens'] = $this->maxTokens();

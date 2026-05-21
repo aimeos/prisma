@@ -3,7 +3,6 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Write;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 
@@ -12,20 +11,9 @@ class Gemini extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $parts = array_map( fn( File $file ) => [
-            'inlineData' => [
-                'data' => $file->base64(),
-                'mimeType' => $file->mimeType()
-            ],
-        ], $files );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
 
-        $parts[] = ['text' => $prompt];
-
-        $contents = [[
-            'parts' => $parts
-        ]];
-
-        return $this->generate( $contents, $options );
+        return $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
     }
 
 
@@ -33,7 +21,7 @@ class Gemini extends Base implements Write
      * Generates a text response from the API.
      *
      * @param array<int, array<string, mixed>> $contents Chat contents
-     * @param array<string, mixed> $options Request options
+     * @param array<string, mixed> $options Pre-filtered request options
      */
     private function generate( array $contents, array $options ) : TextResponse
     {
@@ -54,7 +42,7 @@ class Gemini extends Base implements Write
         {
             $genConfig = [
                 'responseModalities' => ['TEXT']
-            ] + $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+            ] + $options;
 
             if( $this->maxTokens() ) {
                 $genConfig['maxOutputTokens'] = $this->maxTokens();

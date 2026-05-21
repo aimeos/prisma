@@ -11,6 +11,7 @@ class Mistral extends Base implements Write
 {
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
+        $options = $this->allowed( $options, ['temperature', 'top_p'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         if( $this->providerTools() ) {
@@ -18,8 +19,7 @@ class Mistral extends Base implements Write
         }
 
         return $this->completions(
-            'v1/chat/completions', 'mistral-large-latest', $messages, $options,
-            ['temperature', 'top_p']
+            'v1/chat/completions', 'mistral-large-latest', $messages, $options
         );
     }
 
@@ -34,7 +34,7 @@ class Mistral extends Base implements Write
     {
         $agentParams = [
             'model' => $this->modelName( 'mistral-large-latest' ),
-        ] + $this->allowed( $options, ['temperature', 'top_p'] );
+        ] + $options;
 
         if( $tools = $this->toolsParam() ) {
             $agentParams['tools'] = $tools;

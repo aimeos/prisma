@@ -33,6 +33,35 @@ class Anthropic extends Base
 
 
     /**
+     * Builds content blocks with images and text in Anthropic format.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function content( string $prompt, array $files ) : array
+    {
+        $content = [];
+
+        foreach( $files as $file )
+        {
+            $content[] = [
+                'type' => 'image',
+                'source' => [
+                    'type' => 'base64',
+                    'media_type' => $file->mimeType(),
+                    'data' => $file->base64()
+                ]
+            ];
+        }
+
+        $content[] = ['type' => 'text', 'text' => $prompt];
+
+        return $content;
+    }
+
+
+    /**
      * Builds tool result messages in Anthropic format.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
