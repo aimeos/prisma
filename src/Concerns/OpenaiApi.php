@@ -351,12 +351,14 @@ trait OpenaiApi
             $meta['thinking'] = $thinking;
         }
 
-        /** @var array<int, array<string, mixed>> */
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
 
         if( is_array( $result['citations'] ?? null ) ) {
             foreach( $result['citations'] as $url ) {
-                $citations[] = ['title' => null, 'url' => is_string( $url ) ? $url : null, 'text' => null, 'source' => null];
+                $citations[] = new \Aimeos\Prisma\Values\Citation(
+                    url: is_string( $url ) ? $url : null,
+                );
             }
         }
 
@@ -421,7 +423,7 @@ trait OpenaiApi
      *
      * @param array<int, array<string, mixed>> $output Response output blocks
      * @param array<int, string|null> $texts Extracted text content
-     * @return array{thinking: string|null, citations: array<int, array<string, mixed>>} Parsed output
+     * @return array{thinking: string|null, citations: array<int, \Aimeos\Prisma\Values\Citation>} Parsed output
      */
     private function responseOutput( array $output, array $texts ) : array
     {

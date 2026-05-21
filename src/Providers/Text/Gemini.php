@@ -161,11 +161,11 @@ class Gemini extends Base implements Write
      *
      * @param array<string, mixed> $candidate Candidate response data
      * @param array<int, string|null> $texts Extracted text content
-     * @return array<int, array<string, mixed>> Parsed citations
+     * @return array<int, \Aimeos\Prisma\Values\Citation> Parsed citations
      */
     private function parseCitations( array $candidate, array $texts ) : array
     {
-        /** @var array<int, array<string, mixed>> */
+        /** @var array<int, \Aimeos\Prisma\Values\Citation> */
         $citations = [];
         $grounding = $candidate['groundingMetadata'] ?? [];
 
