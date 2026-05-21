@@ -153,4 +153,28 @@ class BaseTest extends TestCase
         $result = $provider->withClientHandler( $stack );
         $this->assertSame( $provider, $result );
     }
+
+
+    public function testWithClientRetry() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, 200 );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientRetryClosure() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, fn( $attempt, $response ) => $attempt * 100 );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientRetryWhen() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, 100, fn( $response, $attempt ) => true );
+        $this->assertSame( $provider, $result );
+    }
 }

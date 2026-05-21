@@ -16,6 +16,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#has">has</a><span>: Tests if the provider has implemented the method</span></li>
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
     <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
+    <li><a href="#withClientRetry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
     <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#withMaxTokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
     <li><a href="#withThinkingBudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
@@ -273,6 +274,40 @@ public function withClientOptions( array `$options` ) : self
 \Aimeos\Prisma\Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->withClientOptions( ['timeout' => 120] );
+```
+
+### withClientRetry
+
+Configure automatic retry for failed HTTP requests.
+
+```php
+public function withClientRetry( int `$maxAttempts` = 3, \Closure|int `$delayMs` = 100, ?\Closure `$when` = null ) : self
+```
+
+* @param **int** `$maxAttempts` Total number of attempts including the initial request
+* @param **\Closure|int** `$delayMs` Fixed delay in ms or closure: fn(int $attempt, ?ResponseInterface $response): int
+* @param **\Closure|null** `$when` Retry condition: fn(ResponseInterface $response, int $attempt): bool
+* @return **self** Provider interface
+
+By default, retries on status codes 429, 500, 502, 503, 504 and connection exceptions.
+
+**Examples:**
+
+```php
+// Fixed delay of 200ms between retries
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->withClientRetry( 3, 200 );
+
+// Exponential backoff
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->withClientRetry( 3, fn( $attempt, $response ) => 100 * pow( 2, $attempt ) );
+
+// Custom retry condition
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->withClientRetry( 3, 100, fn( $response, $attempt ) => $response->getStatusCode() === 429 );
 ```
 
 ### withSystemPrompt
