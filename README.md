@@ -151,7 +151,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
 | **Alibaba**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Anthropic**         | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Bedrock**           |            |           | yes   | -         | yes          |                | yes           | yes             |
+| **Bedrock**           | yes        |           | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            |            |           | yes   | -         | yes          |                | -             | -               |
 | **Deepseek**          |            |           | yes   | -         | yes          |                | yes           | -               |
 | **DeepL**             |            | yes       |       |           |              |                |               |                 |
@@ -1529,6 +1529,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/developer-reference/api-details)
 * [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/structured-output)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**
