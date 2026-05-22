@@ -160,7 +160,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Groq**              | yes        |           | yes   | -         | yes          |                | yes           | -               |
 | **Mistral**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Openrouter**        |            |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Openrouter**        | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Perplexity**        |            |           | beta  | yes       | yes          |                | yes           | -               |
 | **xAI**               |            |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
@@ -1536,6 +1536,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
+* [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 
 **Example:**
 
