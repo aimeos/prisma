@@ -103,6 +103,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Ideogram](https://ideogram.ai/api)
 - [Mistral](https://docs.mistral.ai/api)
 - [Murf](https://murf.ai/api)
+- [Ollama](https://ollama.com/)
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
 - [Perplexity](https://docs.perplexity.ai/)
@@ -159,6 +160,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Google**            |            | yes       |       |           |              |                |               |                 |
 | **Groq**              | yes        |           | yes   | -         | yes          |                | yes           | -               |
 | **Mistral**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Ollama**            | beta       |           | beta  | -         | yes          |                | yes           | -               |
 | **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Perplexity**        | beta       |           | beta  | yes       | yes          |                | yes           | -               |
@@ -1535,6 +1537,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 * [Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
+* [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
@@ -1616,6 +1619,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
+* [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
