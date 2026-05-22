@@ -3,6 +3,7 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 
 
@@ -15,6 +16,23 @@ class DeepseekTest extends TestCase
         if( empty( $_ENV['DEEPSEEK_API_KEY'] ) ) {
             $this->markTestSkipped( 'DEEPSEEK_API_KEY is not defined in the environment' );
         }
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer()->required(),
+        ] );
+
+        $response = Prisma::text()
+            ->using( 'deepseek', ['api_key' => $_ENV['DEEPSEEK_API_KEY']] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract the person: John is 30 years old.', $schema );
+
+        $this->assertEquals( 'John', $response->structured()['name'] );
+        $this->assertEquals( 30, $response->structured()['age'] );
     }
 
 
