@@ -2,13 +2,34 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Structured;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Cohere as CohereBase;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Schema\Schema;
 
 
-class Cohere extends CohereBase implements Write
+class Cohere extends CohereBase implements Structured, Write
 {
+    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] );
+        $options['response_format'] = [
+            'type' => 'json_object',
+            'json_schema' => $schema->toArray(),
+        ];
+
+        $response = $this->generate(
+            $this->messages( $this->content( $prompt, $files ) ),
+            $options
+        );
+
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] );
