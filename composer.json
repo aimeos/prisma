@@ -2,7 +2,7 @@
   "name": "aimeos/prisma",
   "description": "A powerful PHP package for integrating media related Large Language Models (LLMs) into your applications",
   "type": "library",
-  "license": "LGPL-2.1+",
+  "license": "MIT",
   "require": {
     "php": "^8.2",
     "ext-gd": "*",
