@@ -162,7 +162,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Perplexity**        | beta       |           | beta  | yes       | yes          |                | yes           | -               |
-| **xAI**               |            |           | beta  | yes       | yes          | yes            | yes           | yes             |
+| **xAI**               | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -1538,6 +1538,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 
 **Example:**
 
