@@ -6,6 +6,7 @@ use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 
 
@@ -85,6 +86,23 @@ class GeminiTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/gemini_repaint.png', $response->binary() );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer()->required(),
+        ] );
+
+        $response = Prisma::text()
+            ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract the person: John is 30 years old.', $schema );
+
+        $this->assertEquals( 'John', $response->structured()['name'] );
+        $this->assertEquals( 30, $response->structured()['age'] );
     }
 
 
