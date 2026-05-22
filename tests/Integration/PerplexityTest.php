@@ -3,6 +3,7 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 
 
@@ -15,6 +16,24 @@ class PerplexityTest extends TestCase
         if( empty( $_ENV['PERPLEXITY_API_KEY'] ) ) {
             $this->markTestSkipped( 'PERPLEXITY_API_KEY is not defined in the environment' );
         }
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer()->required(),
+        ] );
+        $schema->type()->withoutAdditionalProperties();
+
+        $response = Prisma::text()
+            ->using( 'perplexity', ['api_key' => $_ENV['PERPLEXITY_API_KEY']] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract the person: John is 30 years old.', $schema );
+
+        $this->assertEquals( 'John', $response->structured()['name'] );
+        $this->assertEquals( 30, $response->structured()['age'] );
     }
 
 
