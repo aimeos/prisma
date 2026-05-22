@@ -161,7 +161,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Mistral**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Perplexity**        | yes        |           | beta  | yes       | yes          |                | yes           | -               |
+| **Perplexity**        | beta       |           | beta  | yes       | yes          |                | yes           | -               |
 | **xAI**               |            |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
