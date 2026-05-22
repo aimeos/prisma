@@ -153,7 +153,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Anthropic**         | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Bedrock**           | yes        |           | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            | yes        |           | yes   | -         | yes          |                | -             | -               |
-| **Deepseek**          |            |           | yes   | -         | yes          |                | yes           | -               |
+| **Deepseek**          | yes        |           | yes   | -         | yes          |                | yes           | -               |
 | **DeepL**             |            | yes       |       |           |              |                |               |                 |
 | **Gemini**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |            | yes       |       |           |              |                |               |                 |
@@ -1531,6 +1531,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 * [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/structured-output)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
+* [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
