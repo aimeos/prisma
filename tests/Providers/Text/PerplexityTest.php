@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -139,6 +140,94 @@ class PerplexityTest extends TestCase
         $this->assertNull( $citations[0]->text() );
         $this->assertNull( $citations[0]->source() );
         $this->assertEquals( 'https://example.com/source2', $citations[1]->url() );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'age' => Schema::integer(),
+        ] );
+
+        $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => [
+                        'content' => '{"name":"John","age":30}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 15, 'prompt_tokens' => 10, 'completion_tokens' => 5]
+            ] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'https://api.perplexity.ai/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'sonar', $body['model'] );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+            $this->assertEquals( 'person', $body['response_format']['json_schema']['name'] );
+        } );
+
+        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
+        $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"name":"Jane"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"text":"a cat"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
