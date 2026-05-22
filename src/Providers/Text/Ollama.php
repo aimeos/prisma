@@ -2,16 +2,16 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
-use Aimeos\Prisma\Contracts\Text\Structured;
+use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Ollama as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Ollama extends Base implements Structured, Write
+class Ollama extends Base implements Structure, Write
 {
-    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+    public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
         $options['response_format'] = ['type' => 'json_object'];

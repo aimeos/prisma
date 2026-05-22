@@ -149,8 +149,8 @@ class BedrockTest extends TestCase
                 'stopReason' => 'end_turn',
                 'usage' => ['inputTokens' => 10, 'outputTokens' => 5]
             ] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract person info', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract person info', $schema );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -183,7 +183,7 @@ class BedrockTest extends TestCase
                 ],
                 'usage' => ['inputTokens' => 5, 'outputTokens' => 3]
             ] )
-            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -213,7 +213,7 @@ class BedrockTest extends TestCase
                 ],
                 'usage' => ['inputTokens' => 10, 'outputTokens' => 5]
             ] )
-            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -244,7 +244,7 @@ class BedrockTest extends TestCase
                 ],
                 'usage' => ['inputTokens' => 5, 'outputTokens' => 3]
             ] )
-            ->structured( 'Extract', $schema );
+            ->structure( 'Extract', $schema );
 
         $this->assertEquals( ['name' => 'John'], $response->structured() );
     }

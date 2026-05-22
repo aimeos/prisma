@@ -28,8 +28,8 @@ class OllamaTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract the person: John is 30 years old.', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract the person: John is 30 years old.', $schema );
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );
