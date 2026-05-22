@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 
 
@@ -30,6 +31,24 @@ class CohereTest extends TestCase
 
         $this->assertCount( 1, $response->vectors() );
         $this->assertCount( 1536, $response->vectors()[0] );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer()->required(),
+        ] );
+        $schema->type()->withoutAdditionalProperties();
+
+        $response = Prisma::text()
+            ->using( 'cohere', ['api_key' => $_ENV['COHERE_API_KEY']] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract the person: John is 30 years old.', $schema );
+
+        $this->assertEquals( 'John', $response->structured()['name'] );
+        $this->assertEquals( 30, $response->structured()['age'] );
     }
 
 

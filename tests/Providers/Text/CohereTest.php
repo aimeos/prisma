@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -123,6 +124,100 @@ class CohereTest extends TestCase
             $this->assertEquals( 100, $body['max_tokens'] );
             $this->assertArrayNotHasKey( 'unknown', $body );
         } );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'age' => Schema::integer(),
+        ] );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => '{"name":"John","age":30}'
+                    ]]
+                ],
+                'finish_reason' => 'COMPLETE',
+                'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
+            ] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'https://api.cohere.ai/v2/chat', (string) $request->getUri() );
+            $this->assertEquals( 'json_object', $body['response_format']['type'] );
+            $this->assertArrayHasKey( 'json_schema', $body['response_format'] );
+        } );
+
+        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
+        $this->assertEquals( '{"name":"John","age":30}', $response->text() );
+        $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => '{"name":"Jane"}'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
+            ] )
+            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => '{"text":"a cat"}'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
+            ] )
+            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
