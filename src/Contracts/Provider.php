@@ -2,6 +2,8 @@
 
 namespace Aimeos\Prisma\Contracts;
 
+use Aimeos\Prisma\Tools\Concurrency\Concurrency;
+
 
 interface Provider
 {
@@ -74,27 +76,12 @@ interface Provider
 
 
     /**
-     * Add a system prompt for the LLM.
+     * Sets the concurrency strategy for tool execution.
      *
-     * It may be used by providers supporting system prompts. Otherwise, it's
-     * ignored.
-     *
-     * @param string|null $prompt System prompt
+     * @param Concurrency $concurrency Concurrency strategy
      * @return self Provider interface
      */
-    public function withSystemPrompt( ?string $prompt ) : self;
-
-
-    /**
-     * Add tools for the LLM.
-     *
-     * Accepts Adapter instances for custom tools and Provider instances
-     * for built-in provider tools (e.g. web search, code execution).
-     *
-     * @param array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> $tools Tool definitions
-     * @return self Provider interface
-     */
-    public function withTools( array $tools ) : self;
+    public function withConcurrency( Concurrency $concurrency ) : self;
 
 
     /**
@@ -110,6 +97,36 @@ interface Provider
 
 
     /**
+     * Sets the maximum number of output tokens.
+     *
+     * @param int|null $tokens Maximum output tokens
+     * @return self Provider interface
+     */
+    public function withMaxTokens( ?int $tokens ) : self;
+
+
+    /**
+     * Add a system prompt for the LLM.
+     *
+     * It may be used by providers supporting system prompts. Otherwise, it's
+     * ignored.
+     *
+     * @param string|null $prompt System prompt
+     * @return self Provider interface
+     */
+    public function withSystemPrompt( ?string $prompt ) : self;
+
+
+    /**
+     * Sets the thinking budget in tokens.
+     *
+     * @param int|null $budget Thinking budget tokens
+     * @return self Provider interface
+     */
+    public function withThinkingBudget( ?int $budget ) : self;
+
+
+    /**
      * Set the tool choice strategy.
      *
      * Controls whether the model must use tools, can use tools, or cannot use tools.
@@ -118,4 +135,16 @@ interface Provider
      * @return self Provider interface
      */
     public function withToolChoice( string $choice ) : self;
+
+
+    /**
+     * Add tools for the LLM.
+     *
+     * Accepts Adapter instances for custom tools and Provider instances
+     * for built-in provider tools (e.g. web search, code execution).
+     *
+     * @param array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> $tools Tool definitions
+     * @return self Provider interface
+     */
+    public function withTools( array $tools ) : self;
 }

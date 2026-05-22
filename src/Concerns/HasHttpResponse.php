@@ -11,6 +11,25 @@ use Psr\Http\Message\ResponseInterface;
 trait HasHttpResponse
 {
     /**
+     * Decodes a JSON response body into an array.
+     *
+     * @return array<string, mixed> Decoded response data
+     */
+    protected function fromJson( ResponseInterface $response ) : array
+    {
+        $body = $response->getBody()->getContents();
+        $data = json_decode( $body, true );
+
+        if( !is_array( $data ) ) {
+            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Invalid JSON response: ' . $body );
+        }
+
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+
+    /**
      * Extracts rate limit information from HTTP response headers.
      *
      * @param ResponseInterface $response HTTP response
@@ -33,25 +52,6 @@ trait HasHttpResponse
             $reset !== '' ? $reset : null,
             $retryAfter !== '' ? (int) $retryAfter : null,
         );
-    }
-
-
-    /**
-     * Decodes a JSON response body into an array.
-     *
-     * @return array<string, mixed> Decoded response data
-     */
-    protected function fromJson( ResponseInterface $response ) : array
-    {
-        $body = $response->getBody()->getContents();
-        $data = json_decode( $body, true );
-
-        if( !is_array( $data ) ) {
-            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Invalid JSON response: ' . $body );
-        }
-
-        /** @var array<string, mixed> $data */
-        return $data;
     }
 
 
