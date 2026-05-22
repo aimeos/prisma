@@ -133,8 +133,8 @@ class MistralTest extends TestCase
                 ]],
                 'usage' => ['total_tokens' => 15, 'prompt_tokens' => 10, 'completion_tokens' => 5]
             ] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract person info', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract person info', $schema );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -167,7 +167,7 @@ class MistralTest extends TestCase
                 ]],
                 'usage' => ['total_tokens' => 10]
             ] )
-            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -194,7 +194,7 @@ class MistralTest extends TestCase
                 ]],
                 'usage' => ['total_tokens' => 10]
             ] )
-            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );

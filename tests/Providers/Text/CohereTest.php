@@ -146,8 +146,8 @@ class CohereTest extends TestCase
                 'finish_reason' => 'COMPLETE',
                 'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
             ] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract person info', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract person info', $schema );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -179,7 +179,7 @@ class CohereTest extends TestCase
                 ],
                 'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
             ] )
-            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
@@ -208,7 +208,7 @@ class CohereTest extends TestCase
                 ],
                 'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
             ] )
-            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );

@@ -67,8 +67,8 @@ class MistralTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']] )
-            ->ensure( 'structured' )
-            ->structured( 'Extract the person: John is 30 years old.', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract the person: John is 30 years old.', $schema );
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );

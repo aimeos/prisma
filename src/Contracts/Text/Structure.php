@@ -6,7 +6,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-interface Structured
+interface Structure
 {
     /**
      * Generate structured output from the given prompt and schema.
@@ -17,5 +17,5 @@ interface Structured
      * @param array<string, mixed> $options Provider specific options
      * @return TextResponse Response text with structured data
      */
-    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse;
+    public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse;
 }

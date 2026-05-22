@@ -31,8 +31,8 @@ class AnthropicTest extends TestCase
         $response = Prisma::text()
             ->using( 'anthropic', ['api_key' => $_ENV['ANTHROPIC_API_KEY']] )
             ->model( 'claude-sonnet-4-5-20250929' )
-            ->ensure( 'structured' )
-            ->structured( 'Extract the person: John is 30 years old.', $schema );
+            ->ensure( 'structure' )
+            ->structure( 'Extract the person: John is 30 years old.', $schema );
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );

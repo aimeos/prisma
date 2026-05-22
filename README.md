@@ -67,7 +67,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
-    <li><a href="#structured">structured</a><span>: Generate structured output from a prompt and schema</span></li>
+    <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
 </ul>
@@ -148,7 +148,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | structured | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
+|                       | structure | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
 | :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
 | **Alibaba**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
 | **Anthropic**         | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
@@ -1513,12 +1513,12 @@ $vectors = $vectorResponse->vectors();
 
 ## Text API
 
-### structured
+### structure
 
 Generate structured output from the given prompt and schema. The response JSON is parsed and available via the `structured()` method on the response object.
 
 ```php
-public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
 ```
 
 * @param **string** `$prompt` Input prompt for structured text generation
@@ -1556,8 +1556,8 @@ $schema = Schema::for( 'person', [
 
 $textResponse = Prisma::text()
     ->using( 'openai', ['api_key' => 'xxx'] )
-    ->ensure( 'structured' )
-    ->structured( 'Extract the person from: John is 30 years old', $schema );
+    ->ensure( 'structure' )
+    ->structure( 'Extract the person from: John is 30 years old', $schema );
 
 $data = $textResponse->structured(); // ['name' => 'John', 'age' => 30]
 $json = $textResponse->text(); // '{"name":"John","age":30}'
@@ -1891,7 +1891,7 @@ $response->withMeta( // optional
 );
 ```
 
-TextResponse objects can store structured data returned by the `structured()`
+TextResponse objects can store structured data returned by the `structure()`
 method of text providers or when audio files are transcribed:
 
 ```php
