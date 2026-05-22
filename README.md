@@ -157,7 +157,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **DeepL**             |            | yes       |       |           |              |                |               |                 |
 | **Gemini**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |            | yes       |       |           |              |                |               |                 |
-| **Groq**              |            |           | yes   | -         | yes          |                | yes           | -               |
+| **Groq**              | yes        |           | yes   | -         | yes          |                | yes           | -               |
 | **Mistral**           |            |           | yes   | -         | yes          | yes            | yes           | -               |
 | **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        |            |           | yes   | -         | yes          | yes            | yes           | -               |
@@ -1533,6 +1533,7 @@ public function structured( string $prompt, Schema $schema, array $files = [], a
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
+* [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 
 **Example:**

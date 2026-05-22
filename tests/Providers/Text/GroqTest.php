@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -112,6 +113,94 @@ class GroqTest extends TestCase
             $this->assertEquals( 100, $body['max_tokens'] );
             $this->assertArrayNotHasKey( 'unknown', $body );
         } );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'age' => Schema::integer(),
+        ] );
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => [
+                        'content' => '{"name":"John","age":30}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 15, 'prompt_tokens' => 10, 'completion_tokens' => 5]
+            ] )
+            ->ensure( 'structured' )
+            ->structured( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'https://api.groq.com/openai/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'meta-llama/llama-4-scout-17b-16e-instruct', $body['model'] );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+            $this->assertEquals( 'person', $body['response_format']['json_schema']['name'] );
+        } );
+
+        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
+        $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"name":"Jane"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"text":"a cat"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
