@@ -2,13 +2,28 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Structured;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Schema\Schema;
 
 
-class Gemini extends Base implements Write
+class Gemini extends Base implements Structured, Write
 {
+    public function structured( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+        $options['responseMimeType'] = 'application/json';
+        $options['responseSchema'] = $schema->filter( ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable'] );
+
+        $response = $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
+        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        return $response->withStructured( $structured );
+    }
+
+
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );

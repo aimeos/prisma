@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -179,6 +180,97 @@ class GeminiTest extends TestCase
             ->write( 'Say hello' );
 
         $this->assertEmpty( $response->citations() );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'age' => Schema::integer(),
+        ] );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => '{"name":"John","age":30}'
+                        ]]
+                    ],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 15]
+            ] ) )
+            ->ensure( 'structured' )
+            ->structured( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertStringContainsString( 'gemini-2.5-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'application/json', $body['generationConfig']['responseMimeType'] );
+            $this->assertArrayHasKey( 'responseSchema', $body['generationConfig'] );
+        } );
+
+        $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
+        $this->assertEquals( '{"name":"John","age":30}', $response->text() );
+        $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => '{"name":"Jane"}'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->structured( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['generationConfig']['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body['generationConfig'] );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => '{"text":"a cat"}'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->structured( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['contents'][0]['parts'] );
+            $this->assertArrayHasKey( 'inlineData', $body['contents'][0]['parts'][0] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
