@@ -1,5 +1,67 @@
 ## Custom providers
 
+<nav>
+<div class="method-header"><a href="#provider-discovery">Provider discovery</a></div>
+<div class="method-header"><a href="#available-contracts">Available contracts</a></div>
+<ul class="method-list">
+    <li><a href="#audio">Audio</a></li>
+    <li><a href="#image">Image</a></li>
+    <li><a href="#text">Text</a></li>
+    <li><a href="#video">Video</a></li>
+</ul>
+<div class="method-header"><a href="#new-provider-types">New provider types</a></div>
+<div class="method-header"><a href="#base-skeleton">Base skeleton</a></div>
+<div class="method-header"><a href="#configuration">Configuration</a></div>
+<div class="method-header"><a href="#system-prompt">System prompt</a></div>
+<div class="method-header"><a href="#token-limits">Token limits</a></div>
+<div class="method-header"><a href="#file-types">File types</a></div>
+<ul class="method-list">
+    <li><a href="#factory-methods">Factory methods</a></li>
+    <li><a href="#accessors">Accessors</a></li>
+</ul>
+<div class="method-header"><a href="#requests">Requests</a></div>
+<div class="method-header"><a href="#error-handling">Error handling</a></div>
+<ul class="method-list">
+    <li><a href="#custom-error-handling">Custom error handling</a></li>
+</ul>
+<div class="method-header"><a href="#responses">Responses</a></div>
+<ul class="method-list">
+    <li><a href="#file-response">File response</a></li>
+    <li><a href="#text-response">Text response</a></li>
+    <li><a href="#vector-response">Vector response</a></li>
+    <li><a href="#meta-data">Meta data</a></li>
+    <li><a href="#finish-reason">Finish reason</a></li>
+    <li><a href="#citations">Citations</a></li>
+    <li><a href="#tool-steps">Tool steps</a></li>
+</ul>
+<div class="method-header"><a href="#rate-limits">Rate limits</a></div>
+<div class="method-header"><a href="#structured-output">Structured output</a></div>
+<ul class="method-list">
+    <li><a href="#schema">Schema</a></li>
+    <li><a href="#implementing-structure">Implementing structure()</a></li>
+</ul>
+<div class="method-header"><a href="#tool-support">Tool support</a></div>
+<ul class="method-list">
+    <li><a href="#available-methods">Available methods</a></li>
+    <li><a href="#methods-to-implement">Methods to implement</a></li>
+    <li><a href="#tool-loop-pattern">Tool loop pattern</a></li>
+    <li><a href="#provider-tools">Provider tools</a></li>
+</ul>
+<div class="method-header"><a href="#async-operations">Async operations</a></div>
+<div class="method-header"><a href="#openai-compatible-apis">OpenAI-compatible APIs</a></div>
+<div class="method-header"><a href="#two-level-provider-pattern">Two-level provider pattern</a></div>
+<div class="method-header"><a href="#examples">Examples</a></div>
+<ul class="method-list">
+    <li><a href="#audio--image--video-provider">Audio / Image / Video provider</a></li>
+    <li><a href="#text-provider">Text provider</a></li>
+</ul>
+<div class="method-header"><a href="#testing">Testing</a></div>
+<ul class="method-list">
+    <li><a href="#makesprismarequests-trait">MakesPrismaRequests trait</a></li>
+    <li><a href="#fake-provider">Fake provider</a></li>
+</ul>
+</nav>
+
 ### Provider discovery
 
 Prisma resolves providers by convention: the class name must live in the
