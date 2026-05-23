@@ -75,7 +75,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
 </ul>
-<div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a><span>: How to implement your own provider</span></div>
+<div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a></div>
 </nav>
 
 ## Supported providers

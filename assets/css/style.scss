@@ -114,8 +114,27 @@ header svg {
 	line-height: 1.75;
 }
 
+.main-content nav {
+	background-color: #f3f6fa;
+	padding: 1.25rem 1.5rem;
+	margin-bottom: 2rem;
+}
+
+.method-header {
+	margin-top: 0.5rem;
+	font-weight: 600;
+}
+
+.method-header:first-child {
+	margin-top: 0;
+}
+
 .method-list {
 	margin: 0;
+}
+
+.method-list li {
+	padding-left: 0.25rem;
 }
 
 @media screen and (min-width: 64em) {
