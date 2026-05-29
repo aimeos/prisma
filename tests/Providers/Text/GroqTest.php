@@ -142,6 +142,7 @@ class GroqTest extends TestCase
             $this->assertEquals( 'meta-llama/llama-4-scout-17b-16e-instruct', $body['model'] );
             $this->assertEquals( 'json_schema', $body['response_format']['type'] );
             $this->assertEquals( 'person', $body['response_format']['json_schema']['name'] );
+            $this->assertFalse( $body['response_format']['json_schema']['schema']['additionalProperties'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );

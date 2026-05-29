@@ -154,6 +154,9 @@ class CohereTest extends TestCase
             $this->assertEquals( 'https://api.cohere.ai/v2/chat', (string) $request->getUri() );
             $this->assertEquals( 'json_object', $body['response_format']['type'] );
             $this->assertArrayHasKey( 'json_schema', $body['response_format'] );
+            $this->assertFalse( $body['response_format']['json_schema']['additionalProperties'] );
+            // Cohere requires every object to declare at least one required field
+            $this->assertEquals( ['name', 'age'], $body['response_format']['json_schema']['required'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );

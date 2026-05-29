@@ -17,7 +17,7 @@ class Anthropic extends Base implements Structure, Write
         $options['output_config'] = [
             'format' => [
                 'type' => 'json_schema',
-                'schema' => $schema->toArray(),
+                'schema' => $this->jsonSchema( $schema->toArray() ),
             ],
         ];
 
@@ -38,6 +38,35 @@ class Anthropic extends Base implements Structure, Write
             [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
             $options
         );
+    }
+
+
+    /**
+     * Returns the JSON Schema with "additionalProperties" disabled on every object.
+     *
+     * Anthropic's structured outputs require "additionalProperties": false on each
+     * object and reject any other value.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> JSON Schema definition with closed objects
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        $type = $schema['type'] ?? null;
+
+        if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+            $schema['additionalProperties'] = false;
+        }
+
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->jsonSchema( $schema['items'] );
+        }
+
+        return $schema;
     }
 
 

@@ -256,6 +256,7 @@ class AnthropicTest extends TestCase
             $this->assertEquals( 'claude-sonnet-4-20250514', $body['model'] );
             $this->assertEquals( 'json_schema', $body['output_config']['format']['type'] );
             $this->assertArrayHasKey( 'schema', $body['output_config']['format'] );
+            $this->assertFalse( $body['output_config']['format']['schema']['additionalProperties'] );
             $this->assertArrayNotHasKey( 'citations', $body );
         } );
 

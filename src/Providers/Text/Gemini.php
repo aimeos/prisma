@@ -15,7 +15,7 @@ class Gemini extends Base implements Structure, Write
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
         $options['responseMimeType'] = 'application/json';
-        $options['responseSchema'] = $schema->filter( ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable'] );
+        $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
 
         $response = $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
         $structured = json_decode( $response->text() ?? '', true ) ?: [];
@@ -29,6 +29,42 @@ class Gemini extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
 
         return $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
+    }
+
+
+    /**
+     * Returns the JSON Schema reduced to the OpenAPI subset accepted by Gemini.
+     *
+     * Gemini's "responseSchema" is an OpenAPI 3.0 subset that has no
+     * "additionalProperties" field and rejects unknown keys, so unsupported
+     * keys are dropped recursively.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> JSON Schema definition limited to supported keys
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        $keys = ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable'];
+        $schema = array_intersect_key( $schema, array_flip( $keys ) );
+
+        if( is_array( $schema['type'] ?? null ) )
+        {
+            if( in_array( 'null', $schema['type'], true ) ) {
+                $schema['nullable'] = true;
+            }
+
+            $schema['type'] = current( array_filter( $schema['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';
+        }
+
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->jsonSchema( $schema['items'] );
+        }
+
+        return $schema;
     }
 
 
