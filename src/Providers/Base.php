@@ -111,6 +111,21 @@ abstract class Base implements Provider
 
 
     /**
+     * Adapts the JSON Schema array to the provider's structured output requirements.
+     *
+     * Providers override this method to adapt the schema to their own structured
+     * output requirements (e.g. closing objects or dropping unsupported keys).
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> Adapted JSON Schema definition
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        return $schema;
+    }
+
+
+    /**
      * Builds multipart form data for file upload requests.
      *
      * @param array<string, mixed> $options Request options

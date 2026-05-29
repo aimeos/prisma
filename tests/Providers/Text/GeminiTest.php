@@ -188,6 +188,7 @@ class GeminiTest extends TestCase
         $schema = Schema::for( 'person', [
             'name' => Schema::string(),
             'age' => Schema::integer(),
+            'note' => Schema::string()->nullable(),
         ] );
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
@@ -210,6 +211,11 @@ class GeminiTest extends TestCase
             $this->assertStringContainsString( 'gemini-2.5-flash:generateContent', (string) $request->getUri() );
             $this->assertEquals( 'application/json', $body['generationConfig']['responseMimeType'] );
             $this->assertArrayHasKey( 'responseSchema', $body['generationConfig'] );
+            $this->assertArrayNotHasKey( 'additionalProperties', $body['generationConfig']['responseSchema'] );
+            // nullable expressed the OpenAPI 3.0 way: scalar type + "nullable": true (not a type array)
+            $note = $body['generationConfig']['responseSchema']['properties']['note'];
+            $this->assertEquals( 'string', $note['type'] );
+            $this->assertTrue( $note['nullable'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );

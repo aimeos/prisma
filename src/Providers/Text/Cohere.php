@@ -16,7 +16,7 @@ class Cohere extends CohereBase implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'] );
         $options['response_format'] = [
             'type' => 'json_object',
-            'json_schema' => $schema->toArray(),
+            'json_schema' => $this->jsonSchema( $schema->toArray() ),
         ];
 
         $response = $this->generate(
@@ -38,6 +38,40 @@ class Cohere extends CohereBase implements Structure, Write
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );
+    }
+
+
+    /**
+     * Returns the JSON Schema adapted to Cohere's structured output requirements.
+     *
+     * Cohere closes objects and requires every object to declare at least one
+     * required field, so objects without one fall back to requiring all properties.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> Adapted JSON Schema definition
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        $type = $schema['type'] ?? null;
+
+        if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+            $schema['additionalProperties'] = false;
+        }
+
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
+        {
+            if( empty( $schema['required'] ) ) {
+                $schema['required'] = array_keys( $schema['properties'] );
+            }
+
+            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->jsonSchema( $schema['items'] );
+        }
+
+        return $schema;
     }
 
 

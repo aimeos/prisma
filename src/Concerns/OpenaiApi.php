@@ -259,12 +259,18 @@ trait OpenaiApi
      */
     protected function structuredCompletions( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
+        $json = $this->jsonSchema( $schema->toArray() );
+
+        if( $schema->isStrict() ) {
+            $json = $this->requireAll( $json );
+        }
+
         $options['response_format'] = [
             'type' => 'json_schema',
             'json_schema' => [
                 'name' => $schema->name(),
                 'strict' => $schema->isStrict(),
-                'schema' => $schema->toArray(),
+                'schema' => $json,
             ],
         ];
 
@@ -287,12 +293,18 @@ trait OpenaiApi
      */
     protected function structuredResponses( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
+        $json = $this->jsonSchema( $schema->toArray() );
+
+        if( $schema->isStrict() ) {
+            $json = $this->requireAll( $json );
+        }
+
         $options['text'] = [
             'format' => [
                 'type' => 'json_schema',
                 'name' => $schema->name(),
                 'strict' => $schema->isStrict(),
-                'schema' => $schema->toArray(),
+                'schema' => $json,
             ],
         ];
 
@@ -300,6 +312,60 @@ trait OpenaiApi
         $structured = json_decode( $response->text() ?? '', true ) ?: [];
 
         return $response->withStructured( $structured );
+    }
+
+
+    /**
+     * Returns the JSON Schema with "additionalProperties" disabled on every object.
+     *
+     * The OpenAI-compatible chat completions and responses endpoints require
+     * "additionalProperties": false on each object for strict schema adherence.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> JSON Schema definition with closed objects
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        $type = $schema['type'] ?? null;
+
+        if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+            $schema['additionalProperties'] = false;
+        }
+
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
+            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->jsonSchema( $schema['items'] );
+        }
+
+        return $schema;
+    }
+
+
+    /**
+     * Recursively lists every property of an object in its "required" array.
+     *
+     * OpenAI strict mode requires all properties to be listed as required;
+     * optional fields are expressed as nullable types instead.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> Schema with all properties required
+     */
+    private function requireAll( array $schema ) : array
+    {
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
+        {
+            $schema['required'] = array_keys( $schema['properties'] );
+            $schema['properties'] = array_map( fn( array $prop ) => $this->requireAll( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->requireAll( $schema['items'] );
+        }
+
+        return $schema;
     }
 
 

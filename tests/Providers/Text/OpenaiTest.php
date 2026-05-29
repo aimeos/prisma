@@ -122,6 +122,10 @@ class OpenaiTest extends TestCase
         $schema = Schema::for( 'person', [
             'name' => Schema::string(),
             'age' => Schema::integer(),
+            'address' => Schema::object( [
+                'city' => Schema::string(),
+            ] ),
+            'meta' => Schema::object( [] ),
         ] );
 
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
@@ -146,11 +150,51 @@ class OpenaiTest extends TestCase
             $this->assertEquals( 'person', $body['text']['format']['name'] );
             $this->assertArrayHasKey( 'schema', $body['text']['format'] );
             $this->assertArrayHasKey( 'strict', $body['text']['format'] );
+            $this->assertFalse( $body['text']['format']['schema']['additionalProperties'] );
+            $this->assertFalse( $body['text']['format']['schema']['properties']['address']['additionalProperties'] );
+            $this->assertFalse( $body['text']['format']['schema']['properties']['meta']['additionalProperties'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
         $this->assertEquals( '{"name":"John","age":30}', $response->text() );
         $this->assertEquals( 15, $response->usage()['used'] );
+    }
+
+
+    public function testStructuredStrictRequiresAllProperties() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer(),
+            'address' => Schema::object( [
+                'city' => Schema::string(),
+            ] ),
+        ] )->strict();
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => '{"name":"John","age":30,"address":{"city":"NYC"}}'
+                    ]]
+                ]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 15]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract person info', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['text']['format']['strict'] );
+            $schema = $body['text']['format']['schema'];
+            // strict mode requires every property listed as required, recursively
+            $this->assertEquals( ['name', 'age', 'address'], $schema['required'] );
+            $this->assertEquals( ['city'], $schema['properties']['address']['required'] );
+            $this->assertFalse( $schema['additionalProperties'] );
+            $this->assertFalse( $schema['properties']['address']['additionalProperties'] );
+        } );
     }
 
 
