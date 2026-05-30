@@ -63,7 +63,9 @@ trait OpenaiApi
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $texts = $this->completionTexts( $result );
+            // Keep the last step that produced text so a tool-only final step (e.g.
+            // when maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $this->completionTexts( $result ) ?: $texts;
             $toolCalls = $this->parseToolCalls( $result );
 
             if( !$toolCalls ) {
@@ -222,7 +224,9 @@ trait OpenaiApi
             /** @var array<int, array<string, mixed>> $output */
             $output = $result['output'] ?? [];
             $parsed = $this->responseData( $output );
-            $texts = $parsed['texts'];
+            // Keep the last step that produced text so a tool-only final step (e.g.
+            // when maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $parsed['texts'] ?: $texts;
 
             if( !$parsed['toolCalls'] ) {
                 break;
