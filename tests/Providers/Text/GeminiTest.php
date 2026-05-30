@@ -293,6 +293,121 @@ class GeminiTest extends TestCase
 
 
 
+    public function testWriteToolLoopEmptyArgsIsObject() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
+
+        // First response: model calls the tool without arguments ("args": {})
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => [
+                    'role' => 'model',
+                    'parts' => [[
+                        'functionCall' => ['name' => 'ping', 'args' => (object) []]
+                    ]]
+                ]
+            ]]
+        ] ) );
+
+        // Second response: model finishes after receiving the tool result
+        $response = $this->response( json_encode( [
+            'candidates' => [[
+                'content' => [
+                    'role' => 'model',
+                    'parts' => [['text' => 'Done']]
+                ]
+            ]]
+        ] ) );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // The resent model turn must carry an object args, not a JSON array
+        $body = $requests[1]->getBody()->getContents();
+        $this->assertStringContainsString( '"args":{}', $body );
+
+        $decoded = json_decode( $body, true );
+        $this->assertSame( [], $decoded['contents'][1]['parts'][0]['functionCall']['args'] );
+    }
+
+
+    public function testToolWithoutParametersOmitsParametersField() : void
+    {
+        $noArgs = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+        $withArgs = \Aimeos\Prisma\Tools::make( 'greet', 'Greets', Schema::for( 'greet', ['name' => Schema::string()] ), fn() => 'hi' );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
+                ]]
+            ] ) );
+
+        $response->withTools( [$noArgs, $withArgs] )
+            ->ensure( 'write' )
+            ->write( 'hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $decls = $body['tools'][0]['functionDeclarations'];
+
+            // Zero-argument tool: parameters omitted entirely (Gemini rejects empty object schemas)
+            $this->assertEquals( 'ping', $decls[0]['name'] );
+            $this->assertArrayNotHasKey( 'parameters', $decls[0] );
+
+            // Tool with arguments: parameters included
+            $this->assertEquals( 'greet', $decls[1]['name'] );
+            $this->assertEquals( 'object', $decls[1]['parameters']['type'] );
+            $this->assertArrayHasKey( 'name', $decls[1]['parameters']['properties'] );
+        } );
+    }
+
+
+    public function testToolCallIdUsesNameWithNumberForRepeats() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
+
+        // Model calls the same tool twice in one response
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => ['role' => 'model', 'parts' => [
+                    ['functionCall' => ['name' => 'ping', 'args' => (object) []]],
+                    ['functionCall' => ['name' => 'ping', 'args' => (object) []]]
+                ]]
+            ]]
+        ] ) );
+
+        $response = $this->response( json_encode( [
+            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]]]
+        ] ) );
+
+        $result = $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping twice' );
+
+        // Gemini has no call id: the first call uses the name, repeats get a numbered suffix
+        $steps = $result->steps();
+        $this->assertCount( 2, $steps );
+        $this->assertEquals( 'ping-1', $steps[0]->id() );
+        $this->assertEquals( 'ping-2', $steps[1]->id() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

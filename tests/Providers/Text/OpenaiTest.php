@@ -323,6 +323,73 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testWriteToolLoopResendsFunctionCallItems() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] );
+
+        // First response: model emits a function_call output item
+        $this->response( [
+            'output' => [[
+                'type' => 'function_call',
+                'call_id' => 'call_1',
+                'name' => 'ping',
+                'arguments' => '{}'
+            ]],
+            'status' => 'completed',
+            'usage' => ['total_tokens' => 8]
+        ] );
+
+        // Second response: model finishes with text
+        $response = $this->response( [
+            'output' => [[
+                'content' => [[
+                    'type' => 'output_text',
+                    'text' => 'Done'
+                ]]
+            ]],
+            'status' => 'completed',
+            'usage' => ['total_tokens' => 7]
+        ] );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $input = $body['input'];
+
+        // The function_call item must be resent as a top-level input item (not wrapped
+        // in an assistant message's content), and the function_call_output must follow it.
+        $this->assertEquals( 'Ping the tool', $input[0]['content'][0]['text'] );
+        $this->assertEquals( 'function_call', $input[1]['type'] );
+        $this->assertEquals( 'call_1', $input[1]['call_id'] );
+        $this->assertEquals( 'function_call_output', $input[2]['type'] );
+        $this->assertEquals( 'call_1', $input[2]['call_id'] );
+        $this->assertEquals( 'pong', $input[2]['output'] );
+
+        // No assistant message may carry a function_call inside its content
+        foreach( $input as $item )
+        {
+            if( ( $item['role'] ?? '' ) === 'assistant' ) {
+                foreach( $item['content'] ?? [] as $block ) {
+                    $this->assertNotEquals( 'function_call', $block['type'] ?? '' );
+                }
+            }
+        }
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

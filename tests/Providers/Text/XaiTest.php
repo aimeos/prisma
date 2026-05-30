@@ -359,6 +359,30 @@ class XaiTest extends TestCase
     }
 
 
+    public function testWriteToolChoiceNoneOmitted() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'xai', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['message' => ['content' => 'Done']]],
+                'usage' => ['total_tokens' => 7]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::NONE )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // xAI does not support "none", so it is omitted instead of erroring
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertArrayNotHasKey( 'tool_choice', $body );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );
