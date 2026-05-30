@@ -59,10 +59,13 @@ class Gemini extends Base
         {
             $result = $step->result();
 
+            // Gemini's functionResponse.response must be a Struct (JSON object), so the
+            // result is always wrapped under a "result" key. This keeps a uniform envelope
+            // and avoids a "Proto field is not repeating" error when a tool returns a list.
             $parts[] = [
                 'functionResponse' => [
                     'name' => $step->name(),
-                    'response' => json_decode( $result, true ) ?? ['result' => $result],
+                    'response' => ['result' => json_decode( $result, true ) ?? $result],
                 ],
             ];
         }
