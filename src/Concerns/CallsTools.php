@@ -28,15 +28,18 @@ trait CallsTools
             $toolMap[$tool->name()] = $tool;
         }
 
-        $results = [];
         $consumed = [];
 
+        // Keyed by the original call position so results can be returned in the
+        // model's call order, which order-correlated providers (e.g. Gemini) rely on.
+        /** @var array<int, Step> $steps */
+        $steps = [];
         /** @var array<int, Step> $concurrent */
         $concurrent = [];
         /** @var array<int, Step> $sequential */
         $sequential = [];
 
-        foreach( $toolCalls as $call )
+        foreach( $toolCalls as $idx => $call )
         {
             /** @var array{id?: string|null, name: string, arguments: array<string, mixed>} $call */
             $name = $call['name'];
@@ -51,12 +54,13 @@ trait CallsTools
             if( $tool->counter() - $used <= 0 ) {
                 $step = new Step( $call['id'] ?? null, $name, $call['arguments'] );
                 $step->complete( sprintf( 'Error: Tool "%s" has exhausted its maximum number of calls', $name ) );
-                $results[] = $step;
+                $steps[$idx] = $step;
                 continue;
             }
 
             $consumed[$name] = $used + 1;
             $step = new Step( $call['id'] ?? null, $name, $call['arguments'], $tool );
+            $steps[$idx] = $step;
 
             if( $tool->isConcurrent() ) {
                 $concurrent[] = $step;
@@ -84,7 +88,9 @@ trait CallsTools
             $tool->max( max( 0, $remaining ) );
         }
 
-        return array_merge( $results, $concurrent, $sequential );
+        ksort( $steps );
+
+        return array_values( $steps );
     }
 
 
