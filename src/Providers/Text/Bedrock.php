@@ -41,6 +41,29 @@ class Bedrock extends BedrockBase implements Structure, Write
 
 
     /**
+     * Forces an empty toolUse "input" ([]) back to an object ({}) so the resent message is accepted.
+     *
+     * @param array<string, mixed> $message Assistant message with content blocks
+     * @return array<string, mixed> Normalized message
+     */
+    private function assistantContent( array $message ) : array
+    {
+        if( !isset( $message['content'] ) || !is_array( $message['content'] ) ) {
+            return $message;
+        }
+
+        foreach( $message['content'] as &$block )
+        {
+            if( isset( $block['toolUse'] ) && empty( $block['toolUse']['input'] ) ) {
+                $block['toolUse']['input'] = (object) [];
+            }
+        }
+
+        return $message;
+    }
+
+
+    /**
      * Builds content blocks with images and text in Bedrock/Converse format.
      *
      * @param string $prompt Text prompt
@@ -109,6 +132,13 @@ class Bedrock extends BedrockBase implements Structure, Write
 
             if( $tools = $this->toolsParam() ) {
                 $request['toolConfig'] = ['tools' => $tools];
+
+                // Converse only supports forcing tool use via "any"; auto/none are left to
+                // the default. Force it only on the first step so the model can produce a
+                // final text answer after calling the tools.
+                if( $step === 1 && $this->toolChoice() === self::REQ ) {
+                    $request['toolConfig']['toolChoice'] = ['any' => (object) []];
+                }
             }
 
             $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/converse', ['json' => $request] );
@@ -141,7 +171,7 @@ class Bedrock extends BedrockBase implements Structure, Write
 
             $toolResults = $this->execTools( $toolCalls );
             array_push( $allSteps, ...$toolResults );
-            $messages[] = $outputMsg ?: ['role' => 'assistant', 'content' => []];
+            $messages[] = $outputMsg ? $this->assistantContent( $outputMsg ) : ['role' => 'assistant', 'content' => []];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 

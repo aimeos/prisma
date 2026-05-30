@@ -69,6 +69,29 @@ class Gemini extends Base implements Structure, Write
 
 
     /**
+     * Forces an empty functionCall "args" ([]) back to an object ({}) so the resent content is accepted.
+     *
+     * @param array<string, mixed> $content Model content with parts
+     * @return array<string, mixed> Normalized content
+     */
+    private function assistantContent( array $content ) : array
+    {
+        if( !isset( $content['parts'] ) || !is_array( $content['parts'] ) ) {
+            return $content;
+        }
+
+        foreach( $content['parts'] as &$part )
+        {
+            if( isset( $part['functionCall'] ) && empty( $part['functionCall']['args'] ) ) {
+                $part['functionCall']['args'] = (object) [];
+            }
+        }
+
+        return $content;
+    }
+
+
+    /**
      * Extracts text content from Gemini candidate parts.
      *
      * @param array<int, array<string, mixed>> $candidates Candidate response blocks
@@ -116,7 +139,7 @@ class Gemini extends Base implements Structure, Write
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $request = $this->generateRequest( $system, $contents, $options );
+            $request = $this->generateRequest( $system, $contents, $options, $step );
             $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
             $this->validate( $response );
@@ -139,7 +162,7 @@ class Gemini extends Base implements Structure, Write
 
             $first = current( $candidates );
             if( $first ) {
-                $contents[] = $first['content'];
+                $contents[] = $this->assistantContent( $first['content'] ?? [] );
             }
 
             $contents = array_merge( $contents, $this->toolResults( $toolResults ) );
@@ -155,9 +178,10 @@ class Gemini extends Base implements Structure, Write
      * @param array<string, mixed> $system System instruction block
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Request options
+     * @param int $step Current step in the tool loop (1-based)
      * @return array<string, mixed> Request payload
      */
-    private function generateRequest( array $system, array $contents, array $options ) : array
+    private function generateRequest( array $system, array $contents, array $options, int $step ) : array
     {
         $genConfig = [
             'responseModalities' => ['TEXT']
@@ -179,12 +203,14 @@ class Gemini extends Base implements Structure, Write
         if( $tools = $this->toolsParam() ) {
             $request['tools'] = $tools;
 
-            $mode = match( $this->toolChoice() ) {
+            // Apply the configured tool choice only on the first step so the
+            // model can produce a final text answer after calling the tools.
+            $mode = $step === 1 ? match( $this->toolChoice() ) {
                 self::AUTO => 'AUTO',
                 self::REQ => 'ANY',
                 self::NONE => 'NONE',
                 default => null,
-            };
+            } : 'AUTO';
 
             if( $mode ) {
                 $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];

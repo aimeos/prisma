@@ -215,6 +215,30 @@ class OpenrouterTest extends TestCase
     }
 
 
+    public function testWriteToolChoiceRequiredOmitted() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['message' => ['content' => 'Done']]],
+                'usage' => ['total_tokens' => 7]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // OpenRouter only supports "auto", so forcing is omitted instead of erroring
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertArrayNotHasKey( 'tool_choice', $body );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

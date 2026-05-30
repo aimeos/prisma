@@ -347,6 +347,98 @@ class AnthropicTest extends TestCase
 
 
 
+    public function testWriteToolLoopEmptyInputIsObject() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] );
+
+        // First response: model calls the tool without arguments ("input": {})
+        $this->response( [
+            'content' => [[
+                'type' => 'tool_use',
+                'id' => 'toolu_1',
+                'name' => 'ping',
+                'input' => [],
+            ]],
+            'stop_reason' => 'tool_use',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        // Second response: model finishes after receiving the tool result
+        $response = $this->response( [
+            'content' => [[
+                'type' => 'text',
+                'text' => 'Done'
+            ]],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 2]
+        ] );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        // The second request must resend the assistant tool_use block with an
+        // object input, not a JSON array, or Anthropic rejects it.
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $body = $requests[1]->getBody()->getContents();
+        $this->assertStringContainsString( '"input":{}', $body );
+
+        $decoded = json_decode( $body, true );
+        $this->assertEquals( 'assistant', $decoded['messages'][1]['role'] );
+        $this->assertEquals( 'tool_use', $decoded['messages'][1]['content'][0]['type'] );
+        $this->assertSame( [], $decoded['messages'][1]['content'][0]['input'] );
+    }
+
+
+    public function testWriteToolLoopPreservesCallOrder() : void
+    {
+        // alpha runs sequentially, beta concurrently; without order preservation
+        // execTools would return beta before alpha and mismatch the call order.
+        $alpha = \Aimeos\Prisma\Tools::make( 'alpha', 'A', Schema::for( 'alpha', [] ), fn() => 'A' );
+        $beta = \Aimeos\Prisma\Tools::make( 'beta', 'B', Schema::for( 'beta', [] ), fn() => 'B' )->concurrent();
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] );
+
+        // Model calls alpha first, then beta, in one step
+        $this->response( [
+            'content' => [
+                ['type' => 'tool_use', 'id' => 'call_1', 'name' => 'alpha', 'input' => (object) []],
+                ['type' => 'tool_use', 'id' => 'call_2', 'name' => 'beta', 'input' => (object) []]
+            ],
+            'stop_reason' => 'tool_use',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        $response = $this->response( [
+            'content' => [['type' => 'text', 'text' => 'Done']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 2]
+        ] );
+
+        $response->withTools( [$alpha, $beta] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Call both tools' );
+
+        $body = json_decode( $this->requests()[1]->getBody()->getContents(), true );
+
+        // tool_result blocks must follow the model's call order: call_1 then call_2
+        $results = $body['messages'][2]['content'];
+        $this->assertEquals( 'call_1', $results[0]['tool_use_id'] );
+        $this->assertEquals( 'call_2', $results[1]['tool_use_id'] );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

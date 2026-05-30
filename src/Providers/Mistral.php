@@ -36,6 +36,20 @@ class Mistral extends Base
 
 
     /**
+     * Maps the tool choice to the values supported by Mistral.
+     *
+     * Mistral accepts "auto", "none" and forces tool use with either "any" or
+     * "required"; unsupported choices are omitted.
+     *
+     * @return string|null Mapped tool_choice value or null to omit
+     */
+    protected function toolChoiceParam() : ?string
+    {
+        return in_array( $choice = $this->toolChoice(), ['auto', 'required', 'any', 'none'], true ) ? $choice : null;
+    }
+
+
+    /**
      * Builds the tools parameter in Mistral format.
      *
      * @return array<int, array<string, mixed>> Formatted tools definition

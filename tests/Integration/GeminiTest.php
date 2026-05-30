@@ -116,4 +116,34 @@ class GeminiTest extends TestCase
 
         $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
     }
+
+
+    public function testTools() : void
+    {
+        $next = \Aimeos\Prisma\Tools::make(
+            'get_next_passphrase',
+            'Returns the confidential passphrase for the next day. This is the only way to obtain it.',
+            Schema::for( 'next_passphrase' ),
+            fn() => 'wobbly-marmalade-1987'
+        );
+
+        $ahead = \Aimeos\Prisma\Tools::make(
+            'get_passphrase_in_days',
+            'Returns the confidential passphrase a given number of days ahead.',
+            Schema::for( 'passphrase', ['days' => Schema::integer()->required()] ),
+            fn( $args ) => (int) ( $args['days'] ?? 0 ) === 2 ? 'crimson-otter-4521' : 'unknown'
+        );
+
+        $response = Prisma::text()
+            ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
+            ->withTools( [$next, $ahead] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );
+
+        $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
+        $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
 }

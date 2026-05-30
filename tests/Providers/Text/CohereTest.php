@@ -235,6 +235,52 @@ class CohereTest extends TestCase
     }
 
 
+    public function testWriteToolChoiceRequiredMapped() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => ['role' => 'assistant', 'content' => [['type' => 'text', 'text' => 'Done']]],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Cohere requires uppercase "REQUIRED", not the internal "required"
+            $this->assertEquals( 'REQUIRED', $body['tool_choice'] );
+        } );
+    }
+
+
+    public function testWriteToolChoiceAutoOmitted() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => ['role' => 'assistant', 'content' => [['type' => 'text', 'text' => 'Done']]],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // auto is the default and is not a valid Cohere value, so the field is omitted
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertArrayNotHasKey( 'tool_choice', $body );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

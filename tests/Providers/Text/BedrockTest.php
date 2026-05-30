@@ -263,6 +263,105 @@ class BedrockTest extends TestCase
 
 
 
+    public function testWriteToolLoopEmptyInputIsObject() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] );
+
+        // First response: model calls the tool without arguments ("input": {})
+        $this->response( [
+            'output' => [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'toolUse' => ['toolUseId' => 'tool_1', 'name' => 'ping', 'input' => (object) []]
+                    ]]
+                ]
+            ],
+            'usage' => ['inputTokens' => 5, 'outputTokens' => 3]
+        ] );
+
+        // Second response: model finishes after receiving the tool result
+        $response = $this->response( [
+            'output' => [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [['text' => 'Done']]
+                ]
+            ],
+            'usage' => ['inputTokens' => 5, 'outputTokens' => 2]
+        ] );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // The resent assistant turn must carry an object input, not a JSON array
+        $body = $requests[1]->getBody()->getContents();
+        $this->assertStringContainsString( '"input":{}', $body );
+
+        $decoded = json_decode( $body, true );
+        $this->assertSame( [], $decoded['messages'][1]['content'][0]['toolUse']['input'] );
+    }
+
+
+    public function testWriteToolChoiceRequiredMapped() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => ['message' => ['role' => 'assistant', 'content' => [['text' => 'Done']]]],
+                'usage' => ['inputTokens' => 5, 'outputTokens' => 2]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $raw = $request->getBody()->getContents();
+            // forced tool use maps to Converse "any" as an object, not an array
+            $this->assertStringContainsString( '"any":{}', $raw );
+            $this->assertSame( [], json_decode( $raw, true )['toolConfig']['toolChoice']['any'] );
+        } );
+    }
+
+
+    public function testWriteToolChoiceAutoOmitted() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'output' => ['message' => ['role' => 'assistant', 'content' => [['text' => 'Done']]]],
+                'usage' => ['inputTokens' => 5, 'outputTokens' => 2]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // auto is the default, so no toolChoice is sent
+            $this->assertArrayHasKey( 'tools', $body['toolConfig'] );
+            $this->assertArrayNotHasKey( 'toolChoice', $body['toolConfig'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

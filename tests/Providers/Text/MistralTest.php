@@ -258,6 +258,52 @@ class MistralTest extends TestCase
     }
 
 
+    public function testWriteToolChoiceRequiredMapped() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['message' => ['content' => 'Done']]],
+                'usage' => ['total_tokens' => 7]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Mistral supports "required" for forcing tool use
+            $this->assertEquals( 'required', $body['tool_choice'] );
+        } );
+    }
+
+
+    public function testWriteToolChoiceAnyMapped() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['message' => ['content' => 'Done']]],
+                'usage' => ['total_tokens' => 7]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( 'any' )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Mistral also accepts "any" for forcing tool use
+            $this->assertEquals( 'any', $body['tool_choice'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

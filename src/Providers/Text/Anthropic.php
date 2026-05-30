@@ -104,11 +104,13 @@ class Anthropic extends Base implements Structure, Write
             if( $tools = $this->toolsParam() ) {
                 $params['tools'] = $tools;
 
-                $toolChoice = match( $this->toolChoice() ) {
+                // Apply the configured tool choice only on the first step so the
+                // model can produce a final text answer after calling the tools.
+                $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
                     self::REQ => ['type' => 'any'],
                     self::AUTO => ['type' => 'auto'],
                     default => null,
-                };
+                } : ['type' => 'auto'];
 
                 if( $toolChoice ) {
                     $params['tool_choice'] = $toolChoice;
@@ -151,11 +153,30 @@ class Anthropic extends Base implements Structure, Write
 
             $toolResults = $this->execTools( $toolCalls );
             array_push( $allSteps, ...$toolResults );
-            $messages[] = ['role' => 'assistant', 'content' => $result['content']];
+            $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
         return $this->result( $result, $allSteps, $texts, $rateLimit );
+    }
+
+
+    /**
+     * Forces an empty tool_use "input" ([]) back to an object ({}) so the resent message is accepted.
+     *
+     * @param array<int, array<string, mixed>> $content Assistant content blocks
+     * @return array<int, array<string, mixed>> Normalized content blocks
+     */
+    private function assistantContent( array $content ) : array
+    {
+        foreach( $content as &$block )
+        {
+            if( ( $block['type'] ?? '' ) === 'tool_use' && empty( $block['input'] ) ) {
+                $block['input'] = (object) [];
+            }
+        }
+
+        return $content;
     }
 
 
