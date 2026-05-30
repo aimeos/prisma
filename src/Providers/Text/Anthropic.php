@@ -90,7 +90,9 @@ class Anthropic extends Base implements Structure, Write
             $params = [
                 'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
                 'messages' => $messages,
-                'max_tokens' => $this->maxTokens() ?? 4096,
+                // The Messages API requires "max_tokens", so it can't be omitted when no
+                // limit is set; fall back to the maximum supported by current 4.x models.
+                'max_tokens' => $this->maxTokens() ?? 32000,
             ] + $options;
 
             if( $thinkingBudget = $this->thinkingBudget() ) {
@@ -123,7 +125,7 @@ class Anthropic extends Base implements Structure, Write
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $texts = [];
+            $stepTexts = [];
 
             /** @var array<int, array<string, mixed>> $contentBlocks */
             $contentBlocks = $result['content'] ?? [];
@@ -131,7 +133,7 @@ class Anthropic extends Base implements Structure, Write
             foreach( $contentBlocks as $block )
             {
                 if( ( $block['type'] ?? null ) === 'text' && isset( $block['text'] ) ) {
-                    $texts[] = $block['text'];
+                    $stepTexts[] = $block['text'];
                 } elseif( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
                     $thinking = $block['thinking'];
                 }
@@ -145,9 +147,22 @@ class Anthropic extends Base implements Structure, Write
                 }
             }
 
+            // Keep the last step that produced text so a tool-only final step (e.g.
+            // when maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $stepTexts ?: $texts;
+
             $toolCalls = $this->parseToolCalls( $result );
 
-            if( !$toolCalls ) {
+            if( !$toolCalls )
+            {
+                // Server-side tools (web_search, web_fetch) pause long turns with a
+                // "pause_turn" stop reason. Resend the assistant content unchanged so
+                // Claude resumes and finishes its turn instead of stopping silently.
+                if( ( $result['stop_reason'] ?? null ) === 'pause_turn' ) {
+                    $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
+                    continue;
+                }
+
                 break;
             }
 
@@ -227,7 +242,7 @@ class Anthropic extends Base implements Structure, Write
             ->withCitations( $citations )
             ->withReason( match( $result['stop_reason'] ?? null ) {
                 'end_turn', 'stop_sequence' => TextResponse::STOP,
-                'tool_use' => TextResponse::TOOL,
+                'tool_use', 'pause_turn' => TextResponse::TOOL,
                 'max_tokens' => TextResponse::LENGTH,
                 default => TextResponse::UNKNOWN,
             } )

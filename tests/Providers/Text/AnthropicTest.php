@@ -36,7 +36,7 @@ class AnthropicTest extends TestCase
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'claude-sonnet-4-20250514', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
-            $this->assertEquals( 4096, $body['max_tokens'] );
+            $this->assertEquals( 32000, $body['max_tokens'] );
             $this->assertArrayNotHasKey( 'system', $body );
         } );
 
@@ -436,6 +436,91 @@ class AnthropicTest extends TestCase
         $results = $body['messages'][2]['content'];
         $this->assertEquals( 'call_1', $results[0]['tool_use_id'] );
         $this->assertEquals( 'call_2', $results[1]['tool_use_id'] );
+    }
+
+
+    public function testWriteToolLoopResumesOnPauseTurn() : void
+    {
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] );
+
+        // First response: server-side tool pauses the turn with "pause_turn" and no
+        // client tool_use block, so the loop must resend the content and continue.
+        $this->response( [
+            'content' => [[
+                'type' => 'server_tool_use',
+                'id' => 'srvtoolu_1',
+                'name' => 'web_search',
+                'input' => ['query' => 'prisma php'],
+            ]],
+            'stop_reason' => 'pause_turn',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        // Second response: model finishes its turn after resuming
+        $response = $this->response( [
+            'content' => [['type' => 'text', 'text' => 'Done']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 2]
+        ] );
+
+        $result = $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Search the web' );
+
+        // The loop must make a second request that resends the paused assistant turn
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $decoded = json_decode( $requests[1]->getBody()->getContents(), true );
+        $this->assertEquals( 'assistant', $decoded['messages'][1]['role'] );
+        $this->assertEquals( 'server_tool_use', $decoded['messages'][1]['content'][0]['type'] );
+
+        $this->assertEquals( 'Done', $result->text() );
+        $this->assertEquals( \Aimeos\Prisma\Responses\TextResponse::STOP, $result->reason() );
+    }
+
+
+    public function testWriteToolLoopKeepsPartialTextAtMaxSteps() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] );
+
+        // First step: model emits a partial text answer alongside the tool call
+        $this->response( [
+            'content' => [
+                ['type' => 'text', 'text' => 'Partial answer'],
+                ['type' => 'tool_use', 'id' => 'toolu_1', 'name' => 'ping', 'input' => (object) []],
+            ],
+            'stop_reason' => 'tool_use',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        // Second step: model only calls the tool again, with no text, and the loop
+        // is cut off here by maxSteps before a final answer is produced.
+        $response = $this->response( [
+            'content' => [
+                ['type' => 'tool_use', 'id' => 'toolu_2', 'name' => 'ping', 'input' => (object) []],
+            ],
+            'stop_reason' => 'tool_use',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        $result = $response->withTools( [$tool] )
+            ->withMaxSteps( 2 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        // The text-less final step must not discard the earlier partial answer, and
+        // the reason must signal the turn was still tool-driven when it was cut off.
+        $this->assertEquals( 'Partial answer', $result->text() );
+        $this->assertEquals( \Aimeos\Prisma\Responses\TextResponse::TOOL, $result->reason() );
     }
 
 
