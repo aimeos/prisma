@@ -36,6 +36,19 @@ class Openrouter extends Base
 
 
     /**
+     * Maps the tool choice to the values supported by OpenRouter.
+     *
+     * OpenRouter only supports "auto"; forcing or disabling tools is omitted.
+     *
+     * @return string|null Mapped tool_choice value or null to omit
+     */
+    protected function toolChoiceParam() : ?string
+    {
+        return $this->toolChoice() === self::AUTO ? 'auto' : null;
+    }
+
+
+    /**
      * Builds the tools parameter in OpenRouter format.
      *
      * @return array<int, array<string, mixed>> Formatted tools definition

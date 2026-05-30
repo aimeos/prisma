@@ -109,6 +109,13 @@ class Bedrock extends BedrockBase implements Structure, Write
 
             if( $tools = $this->toolsParam() ) {
                 $request['toolConfig'] = ['tools' => $tools];
+
+                // Converse only supports forcing tool use via "any"; auto/none are left to
+                // the default. Force it only on the first step so the model can produce a
+                // final text answer after calling the tools.
+                if( $step === 1 && $this->toolChoice() === self::REQ ) {
+                    $request['toolConfig']['toolChoice'] = ['any' => (object) []];
+                }
             }
 
             $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/converse', ['json' => $request] );

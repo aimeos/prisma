@@ -24,7 +24,7 @@ trait OpenaiApi
         $result = [];
         $rateLimit = null;
         $toolsParam = $this->toolsParam();
-        $toolChoiceParam = $this->toolChoice();
+        $toolChoiceParam = $this->toolChoiceParam();
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
@@ -47,7 +47,14 @@ trait OpenaiApi
 
             if( $toolsParam ) {
                 $params['tools'] = $toolsParam;
-                $params['tool_choice'] = $toolChoiceParam;
+
+                // Apply the configured tool choice only on the first step so the
+                // model can produce a final text answer after calling the tools.
+                $choice = $step === 1 ? $toolChoiceParam : 'auto';
+
+                if( $choice !== null ) {
+                    $params['tool_choice'] = $choice;
+                }
             }
 
             $response = $this->client()->post( $endpoint, ['json' => $params] );
@@ -176,7 +183,7 @@ trait OpenaiApi
         $result = [];
         $rateLimit = null;
         $tools = $this->toolsParam();
-        $toolChoice = $this->toolChoice();
+        $toolChoice = $this->toolChoiceParam();
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
@@ -195,7 +202,14 @@ trait OpenaiApi
 
             if( $tools ) {
                 $params['tools'] = $tools;
-                $params['tool_choice'] = $toolChoice;
+
+                // Apply the configured tool choice only on the first step so the
+                // model can produce a final text answer after calling the tools.
+                $choice = $step === 1 ? $toolChoice : 'auto';
+
+                if( $choice !== null ) {
+                    $params['tool_choice'] = $choice;
+                }
             }
 
             $response = $this->client()->post( $endpoint, ['json' => $params] );
@@ -366,6 +380,21 @@ trait OpenaiApi
         }
 
         return $schema;
+    }
+
+
+    /**
+     * Returns the provider-specific tool_choice value, or null to omit it.
+     *
+     * The default mapping matches the OpenAI API ("auto"/"required"/"none").
+     * Providers supporting only a subset override this and return null for
+     * unsupported choices so the field is omitted instead of causing an error.
+     *
+     * @return string|null Mapped tool_choice value or null to omit
+     */
+    protected function toolChoiceParam() : ?string
+    {
+        return $this->toolChoice();
     }
 
 

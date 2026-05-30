@@ -104,11 +104,13 @@ class Anthropic extends Base implements Structure, Write
             if( $tools = $this->toolsParam() ) {
                 $params['tools'] = $tools;
 
-                $toolChoice = match( $this->toolChoice() ) {
+                // Apply the configured tool choice only on the first step so the
+                // model can produce a final text answer after calling the tools.
+                $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
                     self::REQ => ['type' => 'any'],
                     self::AUTO => ['type' => 'auto'],
                     default => null,
-                };
+                } : ['type' => 'auto'];
 
                 if( $toolChoice ) {
                     $params['tool_choice'] = $toolChoice;

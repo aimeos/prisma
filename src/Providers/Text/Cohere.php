@@ -98,7 +98,19 @@ class Cohere extends CohereBase implements Structure, Write
 
             if( $tools = $this->toolsParam() ) {
                 $params['tools'] = $tools;
-                $params['tool_choice'] = $this->toolChoice();
+
+                // Cohere only accepts "REQUIRED"/"NONE"; auto is the default and must be omitted.
+                // The configured choice applies only on the first step so the model can
+                // produce a final text answer after calling the tools.
+                $choice = $step === 1 ? match( $this->toolChoice() ) {
+                    self::REQ => 'REQUIRED',
+                    self::NONE => 'NONE',
+                    default => null,
+                } : null;
+
+                if( $choice ) {
+                    $params['tool_choice'] = $choice;
+                }
             }
 
             $response = $this->client()->post( 'v2/chat', ['json' => $params] );

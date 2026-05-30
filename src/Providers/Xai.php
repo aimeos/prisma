@@ -33,6 +33,23 @@ class Xai extends Base
 
 
     /**
+     * Maps the tool choice to the values supported by xAI.
+     *
+     * xAI supports "auto" and "required" but not "none", which is omitted.
+     *
+     * @return string|null Mapped tool_choice value or null to omit
+     */
+    protected function toolChoiceParam() : ?string
+    {
+        return match( $this->toolChoice() ) {
+            self::AUTO => 'auto',
+            self::REQ => 'required',
+            default => null,
+        };
+    }
+
+
+    /**
      * Builds the tools parameter in xAI format.
      *
      * @return array<int, array<string, mixed>> Formatted tools definition
