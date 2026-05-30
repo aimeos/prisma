@@ -511,6 +511,82 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testWriteWithProviderToolOmitsToolConfig() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
+                ]]
+            ] ) );
+
+        $response->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // Built-in tool is sent as-is, but functionCallingConfig must be omitted or
+            // Gemini rejects it with "Function calling config is set without function_declarations".
+            $this->assertArrayHasKey( 'google_search', $body['tools'][0] );
+            $this->assertArrayNotHasKey( 'toolConfig', $body );
+        } );
+    }
+
+
+    public function testWriteWithWebFetchProviderTool() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
+                ]]
+            ] ) );
+
+        $response->withTools( [
+            \Aimeos\Prisma\Tools::provider( 'web_search' ),
+            \Aimeos\Prisma\Tools::provider( 'web_fetch' ),
+        ] )->ensure( 'write' )->write( 'hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // web_search maps to google_search and web_fetch maps to url_context
+            $this->assertArrayHasKey( 'google_search', $body['tools'][0] );
+            $this->assertArrayHasKey( 'url_context', $body['tools'][1] );
+            $this->assertArrayNotHasKey( 'toolConfig', $body );
+        } );
+    }
+
+
+    public function testWriteWithCustomToolSetsToolConfig() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
+                ]]
+            ] ) );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // Custom function declarations do use functionCallingConfig (REQ -> ANY)
+            $this->assertArrayHasKey( 'functionDeclarations', $body['tools'][0] );
+            $this->assertEquals( 'ANY', $body['toolConfig']['functionCallingConfig']['mode'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -107,6 +107,7 @@ class Gemini extends Base
 
         $providerToolMap = [
             'web_search' => ['google_search' => (object) [], 'options' => []],
+            'web_fetch' => ['url_context' => (object) [], 'options' => []],
             'code_execution' => ['code_execution' => (object) [], 'options' => []],
         ];
 

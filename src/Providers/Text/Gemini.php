@@ -149,7 +149,10 @@ class Gemini extends Base implements Structure, Write
 
             /** @var array<int, array<string, mixed>> $candidates */
             $candidates = $data['candidates'] ?? [];
-            $texts = $this->candidateTexts( $candidates );
+
+            // Keep the last step that produced text so a tool-only final step (e.g.
+            // when maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $this->candidateTexts( $candidates ) ?: $texts;
 
             $toolCalls = $this->parseToolCalls( $data );
 
@@ -203,17 +206,23 @@ class Gemini extends Base implements Structure, Write
         if( $tools = $this->toolsParam() ) {
             $request['tools'] = $tools;
 
-            // Apply the configured tool choice only on the first step so the
-            // model can produce a final text answer after calling the tools.
-            $mode = $step === 1 ? match( $this->toolChoice() ) {
-                self::AUTO => 'AUTO',
-                self::REQ => 'ANY',
-                self::NONE => 'NONE',
-                default => null,
-            } : 'AUTO';
+            // functionCallingConfig only applies to custom function declarations, not built-in
+            // tools (google_search, code_execution); setting it without declarations makes
+            // Gemini reject the request, so it is added only when custom tools are present.
+            if( isset( $tools[0]['functionDeclarations'] ) )
+            {
+                // Apply the configured tool choice only on the first step so the
+                // model can produce a final text answer after calling the tools.
+                $mode = $step === 1 ? match( $this->toolChoice() ) {
+                    self::AUTO => 'AUTO',
+                    self::REQ => 'ANY',
+                    self::NONE => 'NONE',
+                    default => null,
+                } : 'AUTO';
 
-            if( $mode ) {
-                $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
+                if( $mode ) {
+                    $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
+                }
             }
         }
 

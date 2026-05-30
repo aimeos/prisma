@@ -727,7 +727,7 @@ $response = Prisma::text()
 | `web_search` | Anthropic, OpenAI, Gemini, Mistral, xAI, OpenRouter, Alibaba |
 | `web_search_premium` | Mistral |
 | `code_execution` | Anthropic, OpenAI, Gemini, Mistral, xAI |
-| `web_fetch` | Anthropic |
+| `web_fetch` | Anthropic, Gemini |
 | `file_search` | OpenAI |
 | `image_generation` | Mistral |
 | `document_library` | Mistral |
