@@ -66,7 +66,7 @@ class XaiTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
-            ->withTools( [$next, $ahead] )
+            ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )

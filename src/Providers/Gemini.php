@@ -96,10 +96,10 @@ class Gemini extends Base
             $declarations[] = $declaration;
         }
 
-        $tools = [];
-
+        // Gemini doesn't support provider tools and custom tools in parallel, so
+        // custom tools take precedence and provider tools are only sent without them.
         if( $declarations ) {
-            $tools[] = ['functionDeclarations' => $declarations];
+            return [['functionDeclarations' => $declarations]];
         }
 
         $providerToolMap = [
@@ -107,9 +107,7 @@ class Gemini extends Base
             'code_execution' => ['code_execution' => (object) [], 'options' => []],
         ];
 
-        $tools = array_merge( $tools, $this->mapProviderTools( $providerToolMap ) );
-
-        return $tools;
+        return $this->mapProviderTools( $providerToolMap );
     }
 
 
