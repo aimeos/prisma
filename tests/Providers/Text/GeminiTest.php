@@ -408,6 +408,109 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testToolResultListWrappedAsObject() : void
+    {
+        // Tool returns a JSON list, which Gemini's functionResponse.response (a Struct) rejects
+        $tool = \Aimeos\Prisma\Tools::make(
+            'list', 'Returns a list', Schema::for( 'list', [] ),
+            fn() => json_encode( ['a', 'b'] )
+        );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
+
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => ['role' => 'model', 'parts' => [
+                    ['functionCall' => ['name' => 'list', 'args' => (object) []]]
+                ]]
+            ]]
+        ] ) );
+
+        $response = $this->response( json_encode( [
+            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]]]
+        ] ) );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'List things' );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // The resent tool result must be an object ({"result":[...]}), never a bare JSON array
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $sent = $body['contents'][2]['parts'][0]['functionResponse']['response'];
+        $this->assertSame( ['result' => ['a', 'b']], $sent );
+    }
+
+
+    public function testToolResultObjectWrappedAsObject() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'lookup', 'Returns an object', Schema::for( 'lookup', [] ),
+            fn() => json_encode( ['city' => 'Paris'] )
+        );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
+
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => ['role' => 'model', 'parts' => [
+                    ['functionCall' => ['name' => 'lookup', 'args' => (object) []]]
+                ]]
+            ]]
+        ] ) );
+
+        $response = $this->response( json_encode( [
+            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]]]
+        ] ) );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Look up' );
+
+        $requests = $this->requests();
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $sent = $body['contents'][2]['parts'][0]['functionResponse']['response'];
+        $this->assertSame( ['result' => ['city' => 'Paris']], $sent );
+    }
+
+
+    public function testToolResultPlainStringWrappedAsObject() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping', 'Returns pong', Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
+
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => ['role' => 'model', 'parts' => [
+                    ['functionCall' => ['name' => 'ping', 'args' => (object) []]]
+                ]]
+            ]]
+        ] ) );
+
+        $response = $this->response( json_encode( [
+            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]]]
+        ] ) );
+
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping' );
+
+        $requests = $this->requests();
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $sent = $body['contents'][2]['parts'][0]['functionResponse']['response'];
+        $this->assertSame( ['result' => 'pong'], $sent );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );
