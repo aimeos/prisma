@@ -69,7 +69,7 @@ class AnthropicTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'anthropic', ['api_key' => $_ENV['ANTHROPIC_API_KEY']] )
-            ->withTools( [$next, $ahead] )
+            ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )

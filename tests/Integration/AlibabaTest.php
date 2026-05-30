@@ -109,7 +109,7 @@ class AlibabaTest extends TestCase
         $response = Prisma::text()
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->model( 'qwen-plus' )
-            ->withTools( [$next, $ahead] )
+            ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )

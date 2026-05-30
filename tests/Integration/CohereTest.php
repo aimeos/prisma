@@ -83,7 +83,7 @@ class CohereTest extends TestCase
         $response = Prisma::text()
             ->using( 'cohere', ['api_key' => $_ENV['COHERE_API_KEY']] )
             ->model( 'command-a-03-2025' )
-            ->withTools( [$next, $ahead] )
+            ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )

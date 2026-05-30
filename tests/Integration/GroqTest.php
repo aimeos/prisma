@@ -120,7 +120,7 @@ class GroqTest extends TestCase
         $response = Prisma::text()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
             ->model( 'llama-3.3-70b-versatile' )
-            ->withTools( [$next, $ahead] )
+            ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
