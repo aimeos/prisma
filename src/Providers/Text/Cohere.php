@@ -119,7 +119,7 @@ class Cohere extends CohereBase implements Structure, Write
 
             $rateLimit = $this->getRateLimit( $response );
             $result = $this->fromJson( $response );
-            $texts = [];
+            $stepTexts = [];
 
             /** @var array<string, mixed> $message */
             $message = $result['message'] ?? [];
@@ -129,9 +129,13 @@ class Cohere extends CohereBase implements Structure, Write
             foreach( $contentBlocks as $block )
             {
                 if( $text = $block['text'] ?? null ) {
-                    $texts[] = $text;
+                    $stepTexts[] = $text;
                 }
             }
+
+            // Keep the last step that produced text so a tool-only final step (e.g.
+            // when maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $stepTexts ?: $texts;
 
             $toolCalls = $this->parseToolCalls( $result );
 
