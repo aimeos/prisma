@@ -122,6 +122,7 @@ class Gemini extends Base
     protected function parseToolCalls( array $result ) : array
     {
         $toolCalls = [];
+        $counts = [];
 
         /** @var array<int, array<string, mixed>> $candidates */
         $candidates = $result['candidates'] ?? [];
@@ -143,8 +144,12 @@ class Gemini extends Base
                     /** @var array<string, mixed> $args */
                     $args = $fnCall['args'] ?? [];
 
+                    // Gemini has no tool call id, so the name is used and a number is
+                    // appended when the same tool is called more than once in a response.
+                    $count = $counts[$name] = ( $counts[$name] ?? 0 ) + 1;
+
                     $toolCalls[] = [
-                        'id' => null,
+                        'id' => $name . '-' . $count,
                         'name' => $name,
                         'arguments' => $args,
                     ];
