@@ -230,8 +230,9 @@ trait OpenaiApi
 
             $toolResults = $this->execTools( $parsed['toolCalls'] );
             array_push( $allSteps, ...$toolResults );
-            $messages[] = ['role' => 'assistant', 'content' => $output];
-            $messages = array_merge( $messages, $this->responseSteps( $toolResults ) );
+            // Responses API expects the output items (function_call, message, reasoning)
+            // appended verbatim as top-level input items, not wrapped in an assistant message.
+            $messages = array_merge( $messages, $output, $this->responseSteps( $toolResults ) );
         }
 
         return $this->responseResult( $result, $allSteps, $texts, $rateLimit );

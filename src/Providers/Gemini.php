@@ -82,11 +82,18 @@ class Gemini extends Base
 
         foreach( $this->tools() as $tool )
         {
-            $declarations[] = [
+            $declaration = [
                 'name' => $tool->name(),
                 'description' => $tool->description(),
-                'parameters' => $tool->schema()->toArray(),
             ];
+
+            // Gemini rejects a parameters object of type "object" without properties,
+            // so the field is omitted entirely for tools that take no arguments.
+            if( !empty( ( $schema = $tool->schema()->toArray() )['properties'] ) ) {
+                $declaration['parameters'] = $schema;
+            }
+
+            $declarations[] = $declaration;
         }
 
         $tools = [];

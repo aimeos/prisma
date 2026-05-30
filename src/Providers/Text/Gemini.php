@@ -69,6 +69,29 @@ class Gemini extends Base implements Structure, Write
 
 
     /**
+     * Forces an empty functionCall "args" ([]) back to an object ({}) so the resent content is accepted.
+     *
+     * @param array<string, mixed> $content Model content with parts
+     * @return array<string, mixed> Normalized content
+     */
+    private function assistantContent( array $content ) : array
+    {
+        if( !isset( $content['parts'] ) || !is_array( $content['parts'] ) ) {
+            return $content;
+        }
+
+        foreach( $content['parts'] as &$part )
+        {
+            if( isset( $part['functionCall'] ) && empty( $part['functionCall']['args'] ) ) {
+                $part['functionCall']['args'] = (object) [];
+            }
+        }
+
+        return $content;
+    }
+
+
+    /**
      * Extracts text content from Gemini candidate parts.
      *
      * @param array<int, array<string, mixed>> $candidates Candidate response blocks
@@ -139,7 +162,7 @@ class Gemini extends Base implements Structure, Write
 
             $first = current( $candidates );
             if( $first ) {
-                $contents[] = $first['content'];
+                $contents[] = $this->assistantContent( $first['content'] ?? [] );
             }
 
             $contents = array_merge( $contents, $this->toolResults( $toolResults ) );

@@ -41,6 +41,29 @@ class Bedrock extends BedrockBase implements Structure, Write
 
 
     /**
+     * Forces an empty toolUse "input" ([]) back to an object ({}) so the resent message is accepted.
+     *
+     * @param array<string, mixed> $message Assistant message with content blocks
+     * @return array<string, mixed> Normalized message
+     */
+    private function assistantContent( array $message ) : array
+    {
+        if( !isset( $message['content'] ) || !is_array( $message['content'] ) ) {
+            return $message;
+        }
+
+        foreach( $message['content'] as &$block )
+        {
+            if( isset( $block['toolUse'] ) && empty( $block['toolUse']['input'] ) ) {
+                $block['toolUse']['input'] = (object) [];
+            }
+        }
+
+        return $message;
+    }
+
+
+    /**
      * Builds content blocks with images and text in Bedrock/Converse format.
      *
      * @param string $prompt Text prompt
@@ -148,7 +171,7 @@ class Bedrock extends BedrockBase implements Structure, Write
 
             $toolResults = $this->execTools( $toolCalls );
             array_push( $allSteps, ...$toolResults );
-            $messages[] = $outputMsg ?: ['role' => 'assistant', 'content' => []];
+            $messages[] = $outputMsg ? $this->assistantContent( $outputMsg ) : ['role' => 'assistant', 'content' => []];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
