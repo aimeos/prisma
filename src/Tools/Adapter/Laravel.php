@@ -14,16 +14,16 @@ class Laravel extends Base
     /**
      * Initializes the adapter with a Laravel AI/MCP tool.
      *
-     * @param object $tool Laravel AI/MCP tool instance
-     * @throws \InvalidArgumentException If the object is not a valid Laravel AI/MCP tool
+     * @param object|string $tool Laravel AI/MCP tool instance or its fully qualified class name
+     * @throws \InvalidArgumentException If the tool is not a valid Laravel AI/MCP tool
      */
-    public function __construct( object $tool )
+    public function __construct( object|string $tool )
     {
-        if( !method_exists( $tool, 'name' ) || !method_exists( $tool, 'description' ) || !method_exists( $tool, 'toArray' ) ) {
-            throw new \InvalidArgumentException( sprintf( 'Object of class "%s" is not a valid Laravel AI/MCP tool', get_class( $tool ) ) );
+        if( !is_a( $tool, '\Laravel\Mcp\Server\Tool', true ) && !is_a( $tool, '\Laravel\Ai\Contracts\Tool', true ) ) {
+            throw new \InvalidArgumentException( sprintf( '"%s" is not a valid Laravel AI/MCP tool', is_object( $tool ) ? get_class( $tool ) : $tool ) );
         }
 
-        $this->tool = $tool;
+        $this->tool = is_string( $tool ) ? app( $tool ) : $tool; // @phpstan-ignore function.notFound
     }
 
 
@@ -32,7 +32,7 @@ class Laravel extends Base
         $class = '\Laravel\Mcp\Server\Tool';
 
         if( class_exists( $class ) && $this->tool instanceof $class ) {
-            return unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound, function.notFound, function.notFound
+            return $this->unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound, function.notFound
         } elseif( method_exists( $this->tool, '__invoke' ) ) {
             return ( $this->tool )( $arguments );
         } elseif( method_exists( $this->tool, 'handle' ) ) {
@@ -80,5 +80,42 @@ class Laravel extends Base
         $schema = $arr['inputSchema'] ?? $arr['parameters'] ?? $arr;
 
         return \Aimeos\Prisma\Schema\Schema::fromArray( $this->name(), $schema );
+    }
+
+
+    /**
+     * Extracts the payload from a Laravel MCP tool response.
+     *
+     * Laravel MCP tools return a ResponseFactory from handle(). Structured tools
+     * expose their data via getStructuredContent(), while text tools provide one or
+     * more Text responses; both are reduced to a value the model can consume.
+     *
+     * @param mixed $response Result returned by the tool's handle() method
+     * @return mixed Structured content array, concatenated text, or the raw value
+     */
+    protected function unwrap( mixed $response ) : mixed
+    {
+        $class = '\Laravel\Mcp\ResponseFactory';
+
+        if( $response instanceof $class )
+        {
+            if( ( $structured = $response->getStructuredContent() ) !== null ) { // @phpstan-ignore class.notFound
+                return $structured;
+            }
+
+            $texts = [];
+            $textClass = '\Laravel\Mcp\Server\Content\Text';
+
+            foreach( $response->responses() as $resp ) // @phpstan-ignore class.notFound
+            {
+                if( !$resp->isNotification() && ( $content = $resp->content() ) instanceof $textClass ) {
+                    $texts[] = (string) $content;
+                }
+            }
+
+            return implode( "\n", $texts );
+        }
+
+        return $response;
     }
 }
