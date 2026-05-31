@@ -63,29 +63,6 @@ class Tools
      */
     public static function symfony( object|string $tool, ?string $name = null ) : Adapter
     {
-        // @phpstan-ignore argument.type
-        $ref = new \ReflectionClass( $tool );
-        $attrs = array_filter( $ref->getAttributes(), fn( $a ) => str_ends_with( $a->getName(), 'AsTool' ) );
-
-        if( empty( $attrs ) ) {
-            throw new \InvalidArgumentException( sprintf( 'Class "%s" has no #[AsTool] attribute', is_object( $tool ) ? get_class( $tool ) : $tool ) );
-        }
-
-        foreach( $attrs as $attr )
-        {
-            /** @var array<string, string> $args */
-            $args = $attr->getArguments();
-            $toolName = $args['name'] ?? $args[0] ?? '';
-
-            if( $name === null || $toolName === $name ) {
-                $instance = is_object( $tool ) ? $tool : $ref->newInstance();
-                $description = $args['description'] ?? $args[1] ?? '';
-                $method = $args['method'] ?? $args[2] ?? '__invoke';
-
-                return new Symfony( $instance, $toolName, $description, $method );
-            }
-        }
-
-        throw new \InvalidArgumentException( sprintf( 'Class "%s" has no #[AsTool] attribute with name "%s"', is_object( $tool ) ? get_class( $tool ) : $tool, $name ) );
+        return new Symfony( $tool, $name );
     }
 }
