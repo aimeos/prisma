@@ -139,19 +139,41 @@ class Gemini extends Base implements Structure, Write
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $request = $this->generateRequest( $system, $contents, $options, $step );
-            $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+            $force = false;
 
-            $this->validate( $response );
+            do
+            {
+                $request = $this->generateRequest( $system, $contents, $options, $step );
 
-            $rateLimit = $this->getRateLimit( $response );
-            $data = $this->fromJson( $response );
+                // Gemini 2.5 can return MALFORMED_FUNCTION_CALL with empty parts when it tries
+                // to emit a large or complex tool call in AUTO mode. Forcing a function call
+                // (mode ANY) on a single retry makes it produce a well-formed call instead of
+                // silently ending the tool loop with no result.
+                if( $force ) {
+                    $request['toolConfig'] = ['functionCallingConfig' => ['mode' => 'ANY']];
+                }
 
-            /** @var array<int, array<string, mixed>> $candidates */
-            $candidates = $data['candidates'] ?? [];
-            $texts = $this->candidateTexts( $candidates );
+                $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
-            $toolCalls = $this->parseToolCalls( $data );
+                $this->validate( $response );
+
+                $rateLimit = $this->getRateLimit( $response );
+                $data = $this->fromJson( $response );
+
+                /** @var array<int, array<string, mixed>> $candidates */
+                $candidates = $data['candidates'] ?? [];
+
+                // Keep the last step that produced text so a tool-only final step (e.g.
+                // when maxSteps is reached) doesn't discard the model's partial answer.
+                $texts = $this->candidateTexts( $candidates ) ?: $texts;
+
+                $toolCalls = $this->parseToolCalls( $data );
+
+                $retry = !$force && !$toolCalls && $this->tools()
+                    && ( $candidates[0]['finishReason'] ?? null ) === 'MALFORMED_FUNCTION_CALL';
+                $force = true;
+            }
+            while( $retry );
 
             if( !$toolCalls ) {
                 break;
