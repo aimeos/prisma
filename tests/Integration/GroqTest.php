@@ -51,7 +51,7 @@ class GroqTest extends TestCase
         $response = Prisma::audio()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']])
             ->ensure( 'speak' )
-            ->speak( 'This is a test.', 'test' );
+            ->speak( 'This is a test.', 'austin' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
@@ -94,6 +94,7 @@ class GroqTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::text()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
+            ->model( 'meta-llama/llama-4-scout-17b-16e-instruct' )
             ->ensure( 'write' )
             ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
 

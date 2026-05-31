@@ -130,7 +130,7 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
         $files = [];
         $request = [
-            'model_type' => $this->modelName( 'whisperx' ),
+            'model_type' => $this->modelName( 'faster-whisper' ),
         ] + $allowed + ['enable_word_timestamps' => 0];
 
         if( $lang ) {

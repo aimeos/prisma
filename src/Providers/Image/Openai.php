@@ -18,7 +18,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $response = $this->client()->post( 'v1/responses', ['json' => [
-            'model' => $this->modelName( 'gpt-5' ),
+            'model' => $this->modelName( 'gpt-5.5' ),
             'input' => [[
                 'role' => 'user',
                 'content' => [[
@@ -85,7 +85,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        $params = $this->params( $prompt, $options, 'dall-e-2' );
+        $params = $this->params( $prompt, $options, 'gpt-image-1' );
         $request = $this->request( $params, ['image' => $image, 'mask' => $this->mask( $mask )] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );
 
@@ -144,8 +144,8 @@ class Openai extends Base implements Describe, Imagine, Inpaint
      */
     protected function params( string $prompt, array $options, ?string $model = null ) : array
     {
-        $model = $this->modelName( $model ?? 'dall-e-3' );
-        $data = ['model' => $model, 'prompt' => $prompt, 'response_format' => 'b64_json'];
+        $model = $this->modelName( $model ?? 'gpt-image-1' );
+        $data = ['model' => $model, 'prompt' => $prompt];
 
         $names = match( $model ) {
             'gpt-image-1' => ['background', 'moderation', 'output_compression', 'output_format'],
@@ -212,6 +212,10 @@ class Openai extends Base implements Describe, Imagine, Inpaint
                 /** @var string $b64 */
                 $b64 = $item['b64_json'];
                 $files[] = Image::fromBase64( $b64 );
+            } elseif( !empty( $item['url'] ) ) {
+                /** @var string $url */
+                $url = $item['url'];
+                $files[] = Image::fromUrl( $url );
             }
         }
 

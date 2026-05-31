@@ -32,7 +32,7 @@ class BedrockTest extends TestCase
             ->write( 'Say hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-pro-v1:0/converse', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/global.amazon.nova-2-lite-v1:0/converse', (string) $request->getUri() );
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
@@ -154,7 +154,7 @@ class BedrockTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertStringContainsString( '/model/amazon.nova-pro-v1:0/converse', (string) $request->getUri() );
+            $this->assertStringContainsString( '/model/global.amazon.nova-2-lite-v1:0/converse', (string) $request->getUri() );
             $prompt = $body['messages'][0]['content'][0]['text'];
             $this->assertStringContainsString( 'Extract person info', $prompt );
             $this->assertStringContainsString( 'JSON', $prompt );

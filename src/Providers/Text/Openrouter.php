@@ -16,7 +16,7 @@ class Openrouter extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->structuredCompletions(
-            'api/v1/chat/completions', 'openai/gpt-4o',
+            'api/v1/chat/completions', 'openai/gpt-5.5',
             $this->messages( $this->content( $prompt, $files ) ),
             $schema, $options
         );
@@ -28,7 +28,7 @@ class Openrouter extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
-            'api/v1/chat/completions', 'openai/gpt-4o',
+            'api/v1/chat/completions', 'openai/gpt-5.5',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

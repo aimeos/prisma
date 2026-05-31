@@ -74,7 +74,7 @@ class Groq extends Base implements Describe, Speak, Transcribe
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'whisper-large-v3' );
+        $model = $this->modelName( 'whisper-large-v3-turbo' );
         $allowed = $this->allowed( $options, [
             'prompt', 'response_format', 'temperature', 'timestamp_granularities'
         ] ) + ['response_format' => 'verbose_json'];

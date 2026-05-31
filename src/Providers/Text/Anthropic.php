@@ -88,7 +88,7 @@ class Anthropic extends Base implements Structure, Write
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
             $params = [
-                'model' => $this->modelName( 'claude-sonnet-4-20250514' ),
+                'model' => $this->modelName( 'claude-opus-4-8' ),
                 'messages' => $messages,
                 // The Messages API requires "max_tokens", so it can't be omitted when no
                 // limit is set; fall back to the maximum supported by current 4.x models.

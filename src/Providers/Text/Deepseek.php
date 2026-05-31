@@ -19,7 +19,7 @@ class Deepseek extends Base implements Structure, Write
         $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON matching this schema:\n" . $schema->toString();
 
         $response = $this->completions(
-            'v1/chat/completions', 'deepseek-chat',
+            'v1/chat/completions', 'deepseek-v4-flash',
             $this->messages( $this->content( $schemaPrompt, $files ) ),
             $options
         );
@@ -37,7 +37,7 @@ class Deepseek extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
-            'v1/chat/completions', 'deepseek-chat',
+            'v1/chat/completions', 'deepseek-v4-flash',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

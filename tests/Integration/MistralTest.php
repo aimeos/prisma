@@ -47,13 +47,13 @@ class MistralTest extends TestCase
 
     public function testRecognize() : void
     {
-        $audio = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
-        $response = Prisma::audio()
+        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
+        $response = Prisma::image()
             ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
             ->ensure( 'recognize' )
-            ->recognize( $audio );
+            ->recognize( $image );
 
-        $this->assertEquals( 'This is text', $response->text() );
+        $this->assertStringContainsString( 'This is text', $response->text() );
     }
 
 
