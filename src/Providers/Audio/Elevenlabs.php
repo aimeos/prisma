@@ -47,7 +47,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'JBFqnCBsd6RMkjVDRZzb';
-        $model = $this->modelName( 'eleven_multilingual_v2' );
+        $model = $this->modelName( 'eleven_v3' );
 
         $allowed = $this->allowed( $options, [
             'language_code', 'voice_settings', 'pronunciation_dictionary_locators', 'seed',
@@ -74,7 +74,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
 
         $files = [];
         $request = [
-            'model_id' => $this->modelName( 'scribe_v1' ),
+            'model_id' => $this->modelName( 'scribe_v2' ),
         ] + $allowed;
 
         if( $lang ) {

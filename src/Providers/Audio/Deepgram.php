@@ -28,7 +28,7 @@ class Deepgram extends Base implements Speak, Transcribe
 
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
-        $selected = $voice ?: 'aura-asteria-en';
+        $selected = $voice ?: $this->modelName( 'aura-2-thalia-en' );
         $params = ['model' => $selected] + $this->allowed( $options, [
             'callback', 'callback_method', 'mip_opt_out', 'tag', 'bit_rate', 'container', 'encoding', 'sample_rate'
         ] );

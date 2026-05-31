@@ -34,7 +34,7 @@ class DeepseekTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'deepseek-chat', $body['model'] );
+            $this->assertEquals( 'deepseek-v4-flash', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );
@@ -139,7 +139,7 @@ class DeepseekTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'https://api.deepseek.com/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'deepseek-chat', $body['model'] );
+            $this->assertEquals( 'deepseek-v4-flash', $body['model'] );
             $this->assertEquals( 'json_object', $body['response_format']['type'] );
             $this->assertStringContainsString( 'Extract person info', $body['messages'][0]['content'][0]['text'] );
             $this->assertStringContainsString( '"type"', $body['messages'][0]['content'][0]['text'] );

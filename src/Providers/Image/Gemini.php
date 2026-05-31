@@ -17,7 +17,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-3-pro-image-preview' );
+        $model = $this->modelName( 'gemini-3-pro-image' );
         $request = [
             'contents' => [[
                 'parts' => [[
@@ -74,7 +74,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'gemini-3-pro-image-preview' );
+        $model = $this->modelName( 'gemini-3-pro-image' );
         $allowed = $this->allowed( $options, ['aspectRatio'] );
 
         $system = $this->systemPrompt() ? [

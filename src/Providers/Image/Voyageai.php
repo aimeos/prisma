@@ -28,7 +28,7 @@ class Voyageai extends Base implements Vectorize
     {
         $allowed = $this->allowed( $options, ['output_encoding', 'truncation'] );
         $request = [
-            'model' => $this->modelName( 'voyage-multimodal-3' ),
+            'model' => $this->modelName( 'voyage-multimodal-3.5' ),
             'inputs' => [],
             ...$allowed
         ];

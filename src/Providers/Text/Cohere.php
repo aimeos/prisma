@@ -92,7 +92,7 @@ class Cohere extends CohereBase implements Structure, Write
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
             $params = [
-                'model' => $this->modelName( 'command-a-vision-07-2025' ),
+                'model' => $this->modelName( 'command-a-plus-05-2026' ),
                 'messages' => $messages,
             ] + $options
             + ( $this->maxTokens() ? ['max_tokens' => $this->maxTokens()] : [] );

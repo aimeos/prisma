@@ -16,7 +16,7 @@ class Groq extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->structuredCompletions(
-            'openai/v1/chat/completions', 'meta-llama/llama-4-scout-17b-16e-instruct',
+            'openai/v1/chat/completions', 'openai/gpt-oss-120b',
             $this->messages( $this->content( $prompt, $files ) ),
             $schema, $options
         );
@@ -28,7 +28,7 @@ class Groq extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
-            'openai/v1/chat/completions', 'meta-llama/llama-4-scout-17b-16e-instruct',
+            'openai/v1/chat/completions', 'openai/gpt-oss-120b',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

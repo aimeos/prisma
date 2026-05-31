@@ -35,7 +35,7 @@ class OpenaiTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'gpt-5', $body['model'] );
+            $this->assertEquals( 'gpt-5.5', $body['model'] );
             $this->assertEquals( 'Say hello', $body['input'][0]['content'][0]['text'] );
             $this->assertArrayNotHasKey( 'instructions', $body );
         } );
@@ -145,7 +145,7 @@ class OpenaiTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
-            $this->assertEquals( 'gpt-5', $body['model'] );
+            $this->assertEquals( 'gpt-5.5', $body['model'] );
             $this->assertEquals( 'json_schema', $body['text']['format']['type'] );
             $this->assertEquals( 'person', $body['text']['format']['name'] );
             $this->assertArrayHasKey( 'schema', $body['text']['format'] );

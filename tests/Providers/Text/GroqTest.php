@@ -34,7 +34,7 @@ class GroqTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'meta-llama/llama-4-scout-17b-16e-instruct', $body['model'] );
+            $this->assertEquals( 'openai/gpt-oss-120b', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );
@@ -139,7 +139,7 @@ class GroqTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'https://api.groq.com/openai/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'meta-llama/llama-4-scout-17b-16e-instruct', $body['model'] );
+            $this->assertEquals( 'openai/gpt-oss-120b', $body['model'] );
             $this->assertEquals( 'json_schema', $body['response_format']['type'] );
             $this->assertEquals( 'person', $body['response_format']['json_schema']['name'] );
             $this->assertFalse( $body['response_format']['json_schema']['schema']['additionalProperties'] );

@@ -18,7 +18,7 @@ class Xai extends Base implements Structure, Write
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->structuredResponses(
-                'v1/responses', 'grok-3',
+                'v1/responses', 'grok-4.3',
                 [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
                 $schema, $options
             );
@@ -27,7 +27,7 @@ class Xai extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->structuredCompletions(
-            'v1/chat/completions', 'grok-3',
+            'v1/chat/completions', 'grok-4.3',
             $this->messages( $this->content( $prompt, $files ) ),
             $schema, $options
         );
@@ -41,7 +41,7 @@ class Xai extends Base implements Structure, Write
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->responses(
-                'v1/responses', 'grok-3',
+                'v1/responses', 'grok-4.3',
                 [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
                 $options
             );
@@ -50,7 +50,7 @@ class Xai extends Base implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
-            'v1/chat/completions', 'grok-3',
+            'v1/chat/completions', 'grok-4.3',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

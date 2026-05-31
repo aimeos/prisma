@@ -100,7 +100,7 @@ class Bedrock extends BedrockBase implements Structure, Write
      */
     private function generate( array $messages, array $options ) : TextResponse
     {
-        $model = $this->modelName( 'amazon.nova-pro-v1:0' );
+        $model = $this->modelName( 'global.amazon.nova-2-lite-v1:0' );
         $allSteps = [];
         $calls = [];
         $rateLimit = null;

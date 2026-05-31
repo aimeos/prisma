@@ -20,7 +20,7 @@ class Openai extends Base implements Structure, Write
         }
 
         return $this->structuredResponses(
-            'v1/responses', 'gpt-5',
+            'v1/responses', 'gpt-5.5',
             [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
             $schema, $options
         );
@@ -36,7 +36,7 @@ class Openai extends Base implements Structure, Write
         }
 
         return $this->responses(
-            'v1/responses', 'gpt-5',
+            'v1/responses', 'gpt-5.5',
             [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
             $options
         );

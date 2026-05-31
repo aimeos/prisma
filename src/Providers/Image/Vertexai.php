@@ -120,15 +120,17 @@ class Vertexai extends Base implements Imagine, Inpaint, Upscale, Vectorize
 
         $request = [
             'instances' => [[
-                'prompt' => 'Upscale this image',
+                'prompt' => '',
                 'image' => [
                     'bytesBase64Encoded' => $image->base64()
                 ]
             ]],
             'parameters' => [
+                'sampleCount' => 1,
+                'mode' => 'upscale',
                 ...$allowed,
                 'upscaleConfig' => [
-                    'upscaleFactor' => 'x' . min( 2, max( 4, $factor ) )
+                    'upscaleFactor' => 'x' . max( 2, min( 4, $factor ) )
                 ]
             ]
         ];
