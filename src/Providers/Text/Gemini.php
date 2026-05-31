@@ -126,7 +126,7 @@ class Gemini extends Base implements Structure, Write
      */
     private function generate( array $contents, array $options ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-2.5-flash' );
+        $model = $this->modelName( 'gemini-3.5-flash' );
         $allSteps = [];
         $rateLimit = null;
         $texts = [];

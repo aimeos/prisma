@@ -12,7 +12,7 @@ class Gemini extends Base implements Describe
 {
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-2.5-flash' );
+        $model = $this->modelName( 'gemini-3.5-flash' );
         $request = [
             'contents' => [[
                 'parts' => [[
