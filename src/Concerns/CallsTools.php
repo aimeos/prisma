@@ -17,18 +17,22 @@ trait CallsTools
      * Filters out unknown, provider, and exhausted tools, then delegates
      * valid calls to the configured Concurrency strategy for execution.
      *
+     * The call budget tracks the remaining calls per tool name for the current
+     * generation. It is passed by reference so the budget survives across the
+     * steps of one tool loop while resetting per top-level request, and it is
+     * decremented inline once per executed call regardless of the outcome.
+     *
      * @param array<int, array<string, mixed>> $toolCalls Tool calls from the model
+     * @param array<string, int> $calls Remaining calls per tool name (by reference)
      * @return array<int, Step> Tool execution results
      */
-    protected function execTools( array $toolCalls ) : array
+    protected function execTools( array $toolCalls, array &$calls ) : array
     {
         $toolMap = [];
 
         foreach( $this->tools() as $tool ) {
             $toolMap[$tool->name()] = $tool;
         }
-
-        $consumed = [];
 
         // Keyed by the original call position so results can be returned in the
         // model's call order, which order-correlated providers (e.g. Gemini) rely on.
@@ -49,16 +53,18 @@ trait CallsTools
                 continue;
             }
 
-            $used = $consumed[$name] ?? 0;
+            $remaining = $calls[$name] ?? $tool->limit();
 
-            if( $tool->counter() - $used <= 0 ) {
+            if( $remaining <= 0 ) {
                 $step = new Step( $call['id'] ?? null, $name, $call['arguments'] );
                 $step->complete( sprintf( 'Error: Tool "%s" has exhausted its maximum number of calls', $name ) );
                 $steps[$idx] = $step;
                 continue;
             }
 
-            $consumed[$name] = $used + 1;
+            // The parent is the single source of truth for the budget: decrement it
+            // before any fork, so a forked child's discarded copy never matters.
+            $calls[$name] = $remaining - 1;
             $step = new Step( $call['id'] ?? null, $name, $call['arguments'], $tool );
             $steps[$idx] = $step;
 
@@ -71,22 +77,6 @@ trait CallsTools
 
         $this->concurrency()->run( $concurrent );
         ( new \Aimeos\Prisma\Tools\Concurrency\Sequential() )->run( $sequential );
-
-        // Sync counters for concurrent tools only (child fork doesn't affect parent).
-        // Sequential tools already decrement in __invoke() within the same process.
-        $concurrentConsumed = [];
-        foreach( $concurrent as $step )
-        {
-            $name = $step->name();
-            $concurrentConsumed[$name] = ( $concurrentConsumed[$name] ?? 0 ) + 1;
-        }
-
-        foreach( $concurrentConsumed as $name => $count )
-        {
-            $tool = $toolMap[$name];
-            $remaining = $tool->counter() - $count;
-            $tool->max( max( 0, $remaining ) );
-        }
 
         ksort( $steps );
 

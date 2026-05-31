@@ -79,6 +79,7 @@ class Anthropic extends Base implements Structure, Write
     private function generate( array $messages, array $options ) : TextResponse
     {
         $allSteps = [];
+        $calls = [];
         $citations = [];
         $thinking = null;
         $rateLimit = null;
@@ -151,7 +152,7 @@ class Anthropic extends Base implements Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $toolCalls, $calls );
             array_push( $allSteps, ...$toolResults );
             $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );

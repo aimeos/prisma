@@ -102,6 +102,7 @@ class Bedrock extends BedrockBase implements Structure, Write
     {
         $model = $this->modelName( 'amazon.nova-pro-v1:0' );
         $allSteps = [];
+        $calls = [];
         $rateLimit = null;
         $texts = [];
         $result = [];
@@ -173,7 +174,7 @@ class Bedrock extends BedrockBase implements Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $toolCalls, $calls );
             array_push( $allSteps, ...$toolResults );
             $messages[] = $outputMsg ? $this->assistantContent( $outputMsg ) : ['role' => 'assistant', 'content' => []];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );

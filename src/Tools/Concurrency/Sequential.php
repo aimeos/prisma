@@ -20,9 +20,8 @@ class Sequential implements Concurrency
     {
         foreach( $steps as $step )
         {
-            if( $tool = $step->tool() )
-            {
-                $step->complete( $tool( $step->arguments() ) );
+            if( $tool = $step->tool() ) {
+                $step->complete( ( $tool )( $step->arguments() ) );
             }
         }
 

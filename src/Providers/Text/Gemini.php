@@ -128,6 +128,7 @@ class Gemini extends Base implements Structure, Write
     {
         $model = $this->modelName( 'gemini-3.5-flash' );
         $allSteps = [];
+        $calls = [];
         $rateLimit = null;
         $texts = [];
         $data = [];
@@ -179,7 +180,7 @@ class Gemini extends Base implements Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $toolCalls, $calls );
             array_push( $allSteps, ...$toolResults );
 
             $first = current( $candidates );

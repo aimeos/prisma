@@ -82,9 +82,9 @@ class Fork implements Concurrency
             {
                 socket_close( $parentSocket );
 
-                $result = $tool( $step->arguments() );
-
-                $data = is_string( $result ) ? $result : (string) json_encode( $result );
+                // Prefix the result with a marker byte so the parent can tell an
+                // empty tool result apart from a child that died without writing.
+                $data = "\x01" . ( $tool )( $step->arguments() );
                 socket_write( $childSocket, $data, strlen( $data ) );
                 socket_close( $childSocket );
 
@@ -119,9 +119,13 @@ class Fork implements Concurrency
             socket_close( $child['socket'] );
             pcntl_waitpid( $child['pid'], $status );
 
-            $child['step']->complete(
-                $data !== '' ? $data : 'Error: Tool process failed',
-            );
+            $step = $child['step'];
+
+            if( $data === '' ) {
+                $step->complete( 'Error: Tool process failed' );
+            } else {
+                $step->complete( substr( $data, 1 ) );
+            }
         }
     }
 }

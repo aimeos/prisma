@@ -700,7 +700,7 @@ use Aimeos\Prisma\Providers\Base as Provider;
 **Limiting tool calls:**
 
 ```php
-$tool = Tools::make( ... )->max( 3 ); // This specific tool can only be called 3 times
+$tool = Tools::make( ... )->max( 3 ); // This specific tool can only be called 3 times per request
 ```
 
 ### Provider tools
@@ -781,18 +781,19 @@ Unknown or unsupported options are silently ignored by each provider.
 
 ### Tool state
 
-Check a tool's remaining call budget using:
+The configured call limit is available via `limit()`:
 
 ```php
 $tool = Tools::make( ... )->max( 3 );
 
-$tool->counter(); // 3 — remaining calls
-$tool->can();     // true — still callable
-
-// after the model has called the tool 3 times:
-$tool->counter(); // 0
-$tool->can();     // false
+$tool->limit(); // 3 — configured maximum calls
 ```
+
+The remaining budget is tracked per request, not on the tool itself: every
+`write()` / `structure()` call starts fresh, so a tool capped at 3 can be called
+up to 3 times in each request. Every executed call counts against the budget,
+including calls whose handler throws. Once the budget is exhausted within a
+request, further calls to that tool return an error to the model.
 
 ### Error handling
 

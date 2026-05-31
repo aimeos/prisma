@@ -9,7 +9,7 @@ namespace Aimeos\Prisma\Tools\Adapter;
 abstract class Base implements Adapter
 {
     private bool $concurrent = false;
-    private int $counter = PHP_INT_MAX;
+    private int $max = PHP_INT_MAX;
 
     /** @var callable(\Throwable, array<string, mixed>): string|null */
     private $errorHandler = null;
@@ -30,34 +30,34 @@ abstract class Base implements Adapter
     /**
      * Executes the tool with the given arguments.
      *
+     * Catches any error so a failing tool returns a message the model can act
+     * on instead of aborting the tool loop. Non-string results are JSON encoded.
+     *
      * @param array<string, mixed> $arguments Tool call arguments
      * @return string Tool execution result
      */
     public function __invoke( array $arguments ) : string
     {
-        $this->decrement();
-
         try {
             $result = $this->execute( $arguments );
-
-            return is_string( $result ) ? $result : (string) json_encode( $result );
         } catch( \Throwable $e ) {
-            if( $this->errorHandler ) {
-                return ( $this->errorHandler )( $e, $arguments );
-            }
-            return sprintf( 'Error: %s', $e->getMessage() );
+            return $this->errorHandler
+                ? ( $this->errorHandler )( $e, $arguments )
+                : sprintf( 'Error: %s', $e->getMessage() );
         }
+
+        return is_string( $result ) ? $result : (string) json_encode( $result );
     }
 
 
     /**
-     * Returns whether the tool can still be called.
+     * Returns the configured maximum number of calls.
      *
-     * @return bool True if the tool can be called, false if exhausted
+     * @return int Maximum number of calls
      */
-    public function can() : bool
+    public function limit() : int
     {
-        return $this->counter > 0;
+        return $this->max;
     }
 
 
@@ -71,17 +71,6 @@ abstract class Base implements Adapter
     {
         $this->concurrent = $concurrent;
         return $this;
-    }
-
-
-    /**
-     * Returns the counter of remaining calls.
-     *
-     * @return int Remaining calls
-     */
-    public function counter() : int
-    {
-        return $this->counter;
     }
 
 
@@ -117,7 +106,7 @@ abstract class Base implements Adapter
      */
     public function max( int $calls ) : static
     {
-        $this->counter = $calls;
+        $this->max = $calls;
         return $this;
     }
 
@@ -143,14 +132,5 @@ abstract class Base implements Adapter
     {
         $this->options = $options;
         return $this;
-    }
-
-
-    /**
-     * Decrements the call counter.
-     */
-    protected function decrement() : void
-    {
-        $this->counter--;
     }
 }

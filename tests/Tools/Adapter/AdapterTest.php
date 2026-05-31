@@ -53,11 +53,12 @@ class AdapterTest extends TestCase
     {
         $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' )->max( 3 );
 
-        $this->assertTrue( $tool->can() );
+        // The limit is immutable config; invoking the tool does not change it.
+        $this->assertEquals( 3, $tool->limit() );
         $tool( [] );
         $tool( [] );
         $tool( [] );
-        $this->assertFalse( $tool->can() );
+        $this->assertEquals( 3, $tool->limit() );
     }
 
 
@@ -65,9 +66,7 @@ class AdapterTest extends TestCase
     {
         $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' );
 
-        $tool( [] );
-        $tool( [] );
-        $this->assertTrue( $tool->can() );
+        $this->assertEquals( PHP_INT_MAX, $tool->limit() );
     }
 
 

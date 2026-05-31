@@ -84,6 +84,7 @@ class Cohere extends CohereBase implements Structure, Write
     private function generate( array $messages, array $options ) : TextResponse
     {
         $allSteps = [];
+        $calls = [];
         $rateLimit = null;
         $texts = [];
         $result = [];
@@ -143,7 +144,7 @@ class Cohere extends CohereBase implements Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $toolCalls, $calls );
             array_push( $allSteps, ...$toolResults );
             $messages[] = $message ?: ['role' => 'assistant', 'content' => null];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );

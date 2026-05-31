@@ -35,13 +35,13 @@ abstract class Decorator implements Adapter
 
 
     /**
-     * Returns whether the tool can still be called.
+     * Returns the configured maximum number of calls.
      *
-     * @return bool True if the tool can be called, false if exhausted
+     * @return int Maximum number of calls
      */
-    public function can() : bool
+    public function limit() : int
     {
-        return $this->adapter->can();
+        return $this->adapter->limit();
     }
 
 
@@ -55,17 +55,6 @@ abstract class Decorator implements Adapter
     {
         $this->adapter->concurrent( $concurrent );
         return $this;
-    }
-
-
-    /**
-     * Returns the counter of remaining calls.
-     *
-     * @return int Remaining calls
-     */
-    public function counter() : int
-    {
-        return $this->adapter->counter();
     }
 
 

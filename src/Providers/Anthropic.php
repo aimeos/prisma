@@ -151,12 +151,12 @@ class Anthropic extends Base
 
         foreach( $this->providerTools() as $tool )
         {
-            if( $tool->counter() < PHP_INT_MAX )
+            if( $tool->limit() < PHP_INT_MAX )
             {
                 foreach( $tools as &$entry )
                 {
                     if( isset( $map[$tool->name()] ) && ( $entry['type'] ?? '' ) === ( $map[$tool->name()]['type'] ?? '' ) ) {
-                        $entry['max_uses'] = $tool->counter();
+                        $entry['max_uses'] = $tool->limit();
                     }
                 }
             }

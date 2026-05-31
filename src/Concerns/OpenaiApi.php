@@ -20,6 +20,7 @@ trait OpenaiApi
     protected function completions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
+        $calls = [];
         $texts = [];
         $result = [];
         $rateLimit = null;
@@ -74,7 +75,7 @@ trait OpenaiApi
 
             /** @var array<int, array<string, mixed>> $choices */
             $choices = $result['choices'] ?? [];
-            $toolResults = $this->execTools( $toolCalls );
+            $toolResults = $this->execTools( $toolCalls, $calls );
             array_push( $allSteps, ...$toolResults );
             $messages[] = $choices[0]['message'] ?? ['role' => 'assistant', 'content' => null];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
@@ -181,6 +182,7 @@ trait OpenaiApi
     protected function responses( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
+        $calls = [];
         $texts = [];
         $result = [];
         $rateLimit = null;
@@ -232,7 +234,7 @@ trait OpenaiApi
                 break;
             }
 
-            $toolResults = $this->execTools( $parsed['toolCalls'] );
+            $toolResults = $this->execTools( $parsed['toolCalls'], $calls );
             array_push( $allSteps, ...$toolResults );
             // Responses API expects the output items (function_call, message, reasoning)
             // appended verbatim as top-level input items, not wrapped in an assistant message.
