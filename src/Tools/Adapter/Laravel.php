@@ -4,7 +4,7 @@ namespace Aimeos\Prisma\Tools\Adapter;
 
 
 /**
- * Adapts Laravel AI tools to the Adapter interface.
+ * Adapts Laravel AI/MCP tools to the Adapter interface.
  */
 class Laravel extends Base
 {
@@ -12,15 +12,15 @@ class Laravel extends Base
 
 
     /**
-     * Initializes the adapter with a Laravel AI tool.
+     * Initializes the adapter with a Laravel AI/MCP tool.
      *
-     * @param object $tool Laravel AI tool instance
-     * @throws \InvalidArgumentException If the object is not a valid Laravel AI tool
+     * @param object $tool Laravel AI/MCP tool instance
+     * @throws \InvalidArgumentException If the object is not a valid Laravel AI/MCP tool
      */
     public function __construct( object $tool )
     {
         if( !method_exists( $tool, 'name' ) || !method_exists( $tool, 'description' ) || !method_exists( $tool, 'toArray' ) ) {
-            throw new \InvalidArgumentException( sprintf( 'Object of class "%s" is not a valid Laravel AI tool', get_class( $tool ) ) );
+            throw new \InvalidArgumentException( sprintf( 'Object of class "%s" is not a valid Laravel AI/MCP tool', get_class( $tool ) ) );
         }
 
         $this->tool = $tool;
@@ -29,7 +29,11 @@ class Laravel extends Base
 
     protected function execute( array $arguments ) : mixed
     {
-        if( method_exists( $this->tool, '__invoke' ) ) {
+        $class = '\Laravel\Mcp\Server\Tool';
+
+        if( class_exists( $class ) && $this->tool instanceof $class ) {
+            return unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound
+        } elseif( method_exists( $this->tool, '__invoke' ) ) {
             return ( $this->tool )( $arguments );
         } elseif( method_exists( $this->tool, 'handle' ) ) {
             return $this->tool->handle( $arguments );
@@ -71,6 +75,10 @@ class Laravel extends Base
         /** @var array<string, mixed> $arr */
         $arr = $this->tool->toArray(); // @phpstan-ignore method.notFound
 
-        return \Aimeos\Prisma\Schema\Schema::fromArray( $this->name(), $arr );
+        // Laravel MCP/AI tools nest the JSON Schema under "inputSchema" (or "parameters");
+        // fall back to the raw array for tools that already return a bare schema.
+        $schema = $arr['inputSchema'] ?? $arr['parameters'] ?? $arr;
+
+        return \Aimeos\Prisma\Schema\Schema::fromArray( $this->name(), $schema );
     }
 }
