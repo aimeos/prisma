@@ -32,7 +32,7 @@ class Laravel extends Base
         $class = '\Laravel\Mcp\Server\Tool';
 
         if( class_exists( $class ) && $this->tool instanceof $class ) {
-            return unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound
+            return unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound, function.notFound, function.notFound
         } elseif( method_exists( $this->tool, '__invoke' ) ) {
             return ( $this->tool )( $arguments );
         } elseif( method_exists( $this->tool, 'handle' ) ) {
