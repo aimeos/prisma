@@ -15,12 +15,12 @@ use Aimeos\Prisma\Tools\Adapter\Symfony;
 class Tools
 {
     /**
-     * Creates a Laravel adapter from a Laravel AI or MCP server tool object.
+     * Creates a Laravel adapter from a Laravel AI or MCP server tool.
      *
-     * @param object $tool Laravel AI or MCP server tool object
+     * @param object|string $tool Laravel AI/MCP tool object or its fully qualified class name
      * @return Adapter Adapter instance
      */
-    public static function laravel( object $tool ) : Adapter
+    public static function laravel( object|string $tool ) : Adapter
     {
         return new Laravel( $tool );
     }

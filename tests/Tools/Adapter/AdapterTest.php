@@ -7,6 +7,8 @@ use Aimeos\Prisma\Tools;
 use Aimeos\Prisma\Tools\Adapter\Provider;
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/LaravelStubs.php';
+
 
 class AdapterTest extends TestCase
 {
@@ -148,7 +150,7 @@ class AdapterTest extends TestCase
 
     public function testLaravel() : void
     {
-        $laravelTool = new class {
+        $laravelTool = new class implements \Laravel\Ai\Contracts\Tool {
             public function name() : string { return 'laravel-tool'; }
             public function description() : string { return 'A Laravel tool'; }
             public function toArray() : array {
@@ -174,9 +176,16 @@ class AdapterTest extends TestCase
     }
 
 
+    public function testLaravelInvalidClassName() : void
+    {
+        $this->expectException( \InvalidArgumentException::class );
+        Tools::laravel( \stdClass::class );
+    }
+
+
     public function testLaravelWithHandle() : void
     {
-        $handleTool = new class {
+        $handleTool = new class implements \Laravel\Ai\Contracts\Tool {
             public function name() : string { return 'handle-tool'; }
             public function description() : string { return 'A tool with handle method'; }
             public function toArray() : array {
