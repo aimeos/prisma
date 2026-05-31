@@ -73,7 +73,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gpt-4o-transcribe' );
+        $model = $this->modelName( 'whisper-1' );
         $format = $model === 'whisper-1' ? 'verbose_json' : 'json';
 
         $allowed = $this->allowed( $options, [
