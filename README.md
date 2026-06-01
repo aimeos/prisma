@@ -15,11 +15,11 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#ensure">ensure</a><span>: Ensures that the provider has implemented the method</span></li>
     <li><a href="#has">has</a><span>: Tests if the provider has implemented the method</span></li>
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
-    <li><a href="#withClientOptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
-    <li><a href="#withClientRetry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
-    <li><a href="#withSystemPrompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
-    <li><a href="#withMaxTokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
-    <li><a href="#withThinkingBudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
+    <li><a href="#withclientoptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
+    <li><a href="#withclientretry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
+    <li><a href="#withsystemprompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
+    <li><a href="#withmaxtokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
+    <li><a href="#withthinkingbudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
     <li><a href="#citations">Citations</a><span>: Source references from provider responses</span></li>
     <li><a href="#finish-reason">Finish reason</a><span>: Why generation stopped</span></li>
