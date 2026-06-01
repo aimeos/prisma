@@ -62,8 +62,8 @@ trait CallsTools
                 continue;
             }
 
-            // The parent is the single source of truth for the budget: decrement it
-            // before any fork, so a forked child's discarded copy never matters.
+            // Decrement the budget before running the step so the count stays
+            // authoritative regardless of the concurrency strategy used.
             $calls[$name] = $remaining - 1;
             $step = new Step( $call['id'] ?? null, $name, $call['arguments'], $tool );
             $steps[$idx] = $step;

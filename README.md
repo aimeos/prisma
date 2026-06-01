@@ -813,7 +813,7 @@ The handler receives the thrown exception and the original arguments, and must r
 
 ### Concurrent tools
 
-Tools marked as concurrent run in parallel when the auto-detected concurrency strategy supports it (`Fork` when PHP *pcntl* extension is available, otherwise `Sequential`):
+Tools can be marked as concurrent so they are eligible to run in parallel when the configured concurrency strategy supports it:
 
 ```php
 $schema = Schema::for( 'tool' );
@@ -823,7 +823,7 @@ $weather = Tools::make( 'weather', 'Get weather', $schema, fn( $args ) => '...' 
 $save = Tools::make( 'save', 'Save to database', $schema, fn( $args ) => '...' ); // sequential (default)
 ```
 
-When the LLM calls multiple tools in a single step, concurrent tools run in parallel while sequential tools run one after another. You can also disable concurrency again:
+When the LLM calls multiple tools in a single step, the concurrent tools are handed to the configured concurrency strategy while sequential tools always run one after another. You can also disable concurrency again:
 
 ```php
 $tool->concurrent( false );
@@ -831,7 +831,7 @@ $tool->concurrent( false );
 
 **Concurrency strategy:**
 
-Prisma auto-detects the best concurrency strategy: `Fork` (parallel via `pcntl_fork`) when available, otherwise `Sequential`. You can set a different strategy:
+Prisma uses the `Sequential` strategy by default, which runs every step one after another. To run concurrent tools in parallel, provide your own strategy (see below). You can also set the strategy explicitly:
 
 ```php
 use Aimeos\Prisma\Tools\Concurrency\Sequential;

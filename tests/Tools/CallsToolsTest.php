@@ -6,7 +6,6 @@ use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\HasTools;
 use Aimeos\Prisma\Schema\Schema;
 use Aimeos\Prisma\Tools;
-use Aimeos\Prisma\Tools\Concurrency\Fork;
 use Aimeos\Prisma\Tools\Concurrency\Sequential;
 use PHPUnit\Framework\TestCase;
 
@@ -129,30 +128,5 @@ class CallsToolsTest extends TestCase
         $fresh = $harness->exec( $this->calls( 'echo' ), $callsB );
         $this->assertEquals( 'ok', $fresh[0]->result() );
         $this->assertEquals( 0, $callsB['echo'] );
-    }
-
-
-    public function testCallsCountsForkedCalls() : void
-    {
-        if( !function_exists( 'pcntl_fork' ) || !function_exists( 'socket_create_pair' ) ) {
-            $this->markTestSkipped( 'pcntl and sockets required' );
-        }
-
-        $tool = Tools::make( 'echo', 'desc', Schema::fromArray( 'echo', ['type' => 'object'] ), fn() => 'ok' )
-            ->concurrent()
-            ->max( 2 );
-        $harness = $this->harness( new Fork() );
-        $harness->withTools( [$tool] );
-
-        $calls = [];
-
-        // Two concurrent calls fork; both succeed and must each consume one call.
-        $results = $harness->exec( $this->calls( 'echo', 2 ), $calls );
-        $this->assertEquals( 'ok', $results[0]->result() );
-        $this->assertEquals( 'ok', $results[1]->result() );
-        $this->assertEquals( 0, $calls['echo'] );
-
-        $exhausted = $harness->exec( $this->calls( 'echo' ), $calls );
-        $this->assertStringContainsString( 'exhausted', $exhausted[0]->result() );
     }
 }
