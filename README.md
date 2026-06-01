@@ -643,13 +643,15 @@ $tool = Tools::make( 'search', 'Search the web', Schema::for( 'search', [
 ] ), fn( $args ) => file_get_contents( 'https://api.example.com/search?q=' . $args['query'] ) );
 ```
 
-**From a Laravel AI / Prism tool:**
+**From a Laravel AI / MCP tool:**
 
 ```php
 $tool = Tools::laravel( new MyLaravelTool() );
+// or pass the fully qualified class name (resolved via the Laravel container):
+$tool = Tools::laravel( MyLaravelTool::class );
 ```
 
-The object must have `name()`, `description()`, and `toArray()` methods. Execution uses `__invoke()` or `handle()`.
+The tool must extend `\Laravel\Mcp\Server\Tool` (MCP) or implement `\Laravel\Ai\Contracts\Tool` (AI). When a class name is given, the instance is resolved through the Laravel container (`app()`), so constructor dependencies are injected. MCP tools are executed via `handle()`; AI tools via `__invoke()` or `handle()`.
 
 **From a Symfony #[AsTool] class:**
 
