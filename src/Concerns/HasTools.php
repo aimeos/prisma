@@ -102,7 +102,10 @@ trait HasTools
 
 
     /**
-     * Returns the concurrency instance, auto-detecting the best strategy.
+     * Returns the concurrency instance.
+     *
+     * Defaults to sequential execution. Use withConcurrency() to opt into a
+     * different strategy (e.g. forking) explicitly.
      *
      * @return Concurrency Concurrency instance
      */
@@ -110,9 +113,7 @@ trait HasTools
     {
         if( !$this->concurrency )
         {
-            $this->concurrency = function_exists( 'pcntl_fork' ) && function_exists( 'socket_create_pair' )
-                ? new \Aimeos\Prisma\Tools\Concurrency\Fork()
-                : new \Aimeos\Prisma\Tools\Concurrency\Sequential();
+            $this->concurrency = new \Aimeos\Prisma\Tools\Concurrency\Sequential();
         }
 
         return $this->concurrency;
