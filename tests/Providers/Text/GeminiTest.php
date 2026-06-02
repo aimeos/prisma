@@ -224,6 +224,38 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredWithAnyOf() : void
+    {
+        $schema = Schema::for( 'result', [
+            'value' => Schema::anyOf( [
+                Schema::string(),
+                Schema::object( ['code' => Schema::integer()] ),
+            ] ),
+        ] );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"value":"ok"}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $value = $body['generationConfig']['responseSchema']['properties']['value'];
+            // anyOf is kept; branches are reduced to the OpenAPI subset (no additionalProperties)
+            $this->assertArrayHasKey( 'anyOf', $value );
+            $this->assertEquals( 'string', $value['anyOf'][0]['type'] );
+            $this->assertEquals( 'object', $value['anyOf'][1]['type'] );
+            $this->assertArrayNotHasKey( 'additionalProperties', $value['anyOf'][1] );
+        } );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [

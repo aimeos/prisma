@@ -22,6 +22,17 @@ class Schema
     }
 
 
+    /**
+     * Creates an anyOf type allowing any of the given types (JSON Schema "anyOf").
+     *
+     * @param array<int, \Aimeos\Prisma\Schema\Types\Type> $types Allowed types
+     */
+    public static function anyOf( array $types = [] ) : Types\AnyOfType
+    {
+        return new Types\AnyOfType( $types );
+    }
+
+
     public static function array() : Types\ArrayType
     {
         return new Types\ArrayType;
@@ -169,6 +180,13 @@ class Schema
 
         if( isset( $filtered['items'] ) && is_array( $filtered['items'] ) ) {
             $filtered['items'] = $this->filterKeys( $filtered['items'], $keys );
+        }
+
+        if( isset( $filtered['anyOf'] ) && is_array( $filtered['anyOf'] ) ) {
+            $filtered['anyOf'] = array_map(
+                fn( array $sub ) => $this->filterKeys( $sub, $keys ),
+                $filtered['anyOf']
+            );
         }
 
         return $filtered;

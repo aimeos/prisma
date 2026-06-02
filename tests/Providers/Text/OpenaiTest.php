@@ -161,6 +161,37 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testStructuredWithAnyOf() : void
+    {
+        $schema = Schema::for( 'result', [
+            'value' => Schema::anyOf( [
+                Schema::string(),
+                Schema::object( ['code' => Schema::integer()] ),
+            ] ),
+        ] );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [['type' => 'output_text', 'text' => '{"value":"ok"}']]
+                ]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $value = $body['text']['format']['schema']['properties']['value'];
+            $this->assertArrayNotHasKey( 'type', $value );
+            $this->assertEquals( 'string', $value['anyOf'][0]['type'] );
+            // object branches are closed recursively
+            $this->assertFalse( $value['anyOf'][1]['additionalProperties'] );
+        } );
+    }
+
+
     public function testStructuredStrictRequiresAllProperties() : void
     {
         $schema = Schema::for( 'person', [

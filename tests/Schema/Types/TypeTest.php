@@ -276,6 +276,76 @@ class TypeTest extends TestCase
     }
 
 
+    // --- AnyOfType ---
+
+    public function testAnyOfBasic() : void
+    {
+        $type = new \Aimeos\Prisma\Schema\Types\AnyOfType( [
+            new StringType(),
+            new IntegerType(),
+        ] );
+
+        $arr = $type->toArray();
+        $this->assertArrayNotHasKey( 'type', $arr );
+        $this->assertCount( 2, $arr['anyOf'] );
+        $this->assertEquals( 'string', $arr['anyOf'][0]['type'] );
+        $this->assertEquals( 'integer', $arr['anyOf'][1]['type'] );
+    }
+
+
+    public function testAnyOfWithDescriptionAndAdd() : void
+    {
+        $type = ( new \Aimeos\Prisma\Schema\Types\AnyOfType( [new StringType()] ) )
+            ->description( 'A value or an object' )
+            ->add( new ObjectType( ['id' => new IntegerType()] ) );
+
+        $arr = $type->toArray();
+        $this->assertEquals( 'A value or an object', $arr['description'] );
+        $this->assertCount( 2, $arr['anyOf'] );
+        $this->assertEquals( 'object', $arr['anyOf'][1]['type'] );
+    }
+
+
+    public function testAnyOfFromArray() : void
+    {
+        $type = Type::fromArray( [
+            'description' => 'string or number',
+            'anyOf' => [
+                ['type' => 'string'],
+                ['type' => 'number'],
+            ],
+        ] );
+
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\AnyOfType::class, $type );
+        $arr = $type->toArray();
+        $this->assertEquals( 'string or number', $arr['description'] );
+        $this->assertEquals( 'string', $arr['anyOf'][0]['type'] );
+        $this->assertEquals( 'number', $arr['anyOf'][1]['type'] );
+    }
+
+
+    public function testAnyOfAsObjectProperty() : void
+    {
+        $type = Type::fromArray( [
+            'type' => 'object',
+            'properties' => [
+                'value' => [
+                    'anyOf' => [
+                        ['type' => 'string'],
+                        ['type' => 'object', 'properties' => ['x' => ['type' => 'integer']]],
+                    ],
+                ],
+            ],
+            'required' => ['value'],
+        ] );
+
+        $arr = $type->toArray();
+        $this->assertArrayHasKey( 'anyOf', $arr['properties']['value'] );
+        $this->assertContains( 'value', $arr['required'] );
+        $this->assertEquals( 'object', $arr['properties']['value']['anyOf'][1]['type'] );
+    }
+
+
     // --- Shared Type features ---
 
     public function testRequired() : void
