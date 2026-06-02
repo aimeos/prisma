@@ -596,6 +596,25 @@ $schema = Schema::for( 'search', [
 ] )->strict()->withoutAdditionalProperties();
 ```
 
+**Union types** allow a value to match any of several types (JSON Schema `anyOf`):
+
+```php
+$schema = Schema::for( 'result', [
+    'value' => Schema::anyOf( [
+        Schema::string(),
+        Schema::object( [
+            'code' => Schema::integer()->required(),
+            'message' => Schema::string()->required(),
+        ] ),
+    ] )->description( 'Either a plain string or an error object' )->required(),
+] );
+```
+
+`anyOf` is supported by OpenAI, Anthropic and Gemini (it is not supported at the
+root of an OpenAI schema). `oneOf` is not supported by any provider. Each branch
+is adapted to the target provider automatically (object branches are closed for
+OpenAI/Anthropic/Cohere and reduced to the OpenAPI subset for Gemini).
+
 ### From arrays
 
 If you already have a JSON Schema array, use `Schema::fromArray()`:
@@ -623,6 +642,7 @@ All types support these common methods: `description()`, `required()`, `nullable
 | `Schema::boolean()` | Boolean | `default()` |
 | `Schema::array()` | Array | `items()`, `min()`, `max()`, `unique()`, `default()` |
 | `Schema::object()` | Object | `withoutAdditionalProperties()`, `default()` |
+| `Schema::anyOf()` | Union (`anyOf`) | `add()`, `default()` |
 
 ## Tools
 
