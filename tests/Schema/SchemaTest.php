@@ -170,6 +170,40 @@ class SchemaTest extends TestCase
         $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\BooleanType::class, Schema::boolean() );
         $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\ArrayType::class, Schema::array() );
         $this->assertInstanceOf( ObjectType::class, Schema::object() );
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\AnyOfType::class, Schema::anyOf() );
+    }
+
+
+    public function testAnyOfFactory() : void
+    {
+        $anyOf = Schema::anyOf( [Schema::string(), Schema::integer()] );
+
+        $arr = $anyOf->toArray();
+        $this->assertArrayNotHasKey( 'type', $arr );
+        $this->assertEquals( 'string', $arr['anyOf'][0]['type'] );
+        $this->assertEquals( 'integer', $arr['anyOf'][1]['type'] );
+    }
+
+
+    public function testFilterRecursesIntoAnyOf() : void
+    {
+        $schema = Schema::fromArray( 'test', [
+            'type' => 'object',
+            'properties' => [
+                'value' => [
+                    'anyOf' => [
+                        ['type' => 'string', 'description' => 'keep', 'pattern' => 'drop'],
+                        ['type' => 'integer'],
+                    ],
+                ],
+            ],
+        ] );
+
+        $filtered = $schema->filter( ['type', 'properties', 'anyOf', 'description'] );
+        $branch = $filtered['properties']['value']['anyOf'][0];
+
+        $this->assertEquals( 'keep', $branch['description'] );
+        $this->assertArrayNotHasKey( 'pattern', $branch );
     }
 
 
