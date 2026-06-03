@@ -256,6 +256,36 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredWithRefAndDefs() : void
+    {
+        $schema = Schema::for( 'person', [
+            'address' => Schema::ref( 'Address' )->required(),
+        ] )->def( 'Address', Schema::object( [
+            'city' => Schema::string()->required(),
+        ] ) );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"address":{"city":"x"}}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $json = $body['generationConfig']['responseSchema'];
+            // $ref and $defs survive the OpenAPI-subset key filter
+            $this->assertEquals( '#/$defs/Address', $json['properties']['address']['$ref'] );
+            $this->assertArrayHasKey( 'Address', $json['$defs'] );
+            $this->assertEquals( 'object', $json['$defs']['Address']['type'] );
+        } );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [

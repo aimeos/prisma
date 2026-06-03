@@ -192,6 +192,36 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testStructuredWithRefAndDefs() : void
+    {
+        $schema = Schema::for( 'person', [
+            'address' => Schema::ref( 'Address' )->required(),
+        ] )->def( 'Address', Schema::object( [
+            'city' => Schema::string()->required(),
+        ] ) );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[
+                    'content' => [['type' => 'output_text', 'text' => '{"address":{"city":"x"}}']]
+                ]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema->strict() );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $json = $body['text']['format']['schema'];
+            $this->assertEquals( '#/$defs/Address', $json['properties']['address']['$ref'] );
+            // referenced definitions are closed and required recursively
+            $this->assertFalse( $json['$defs']['Address']['additionalProperties'] );
+            $this->assertEquals( ['city'], $json['$defs']['Address']['required'] );
+        } );
+    }
+
+
     public function testStructuredStrictRequiresAllProperties() : void
     {
         $schema = Schema::for( 'person', [
