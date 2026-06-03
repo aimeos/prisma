@@ -365,6 +365,10 @@ trait OpenaiApi
             $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
         }
 
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
+        }
+
         return $schema;
     }
 
@@ -392,6 +396,10 @@ trait OpenaiApi
 
         if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
             $schema['anyOf'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['anyOf'] );
+        }
+
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['$defs'] );
         }
 
         return $schema;

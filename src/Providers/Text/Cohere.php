@@ -75,6 +75,10 @@ class Cohere extends CohereBase implements Structure, Write
             $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
         }
 
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
+        }
+
         return $schema;
     }
 
