@@ -615,6 +615,27 @@ root of an OpenAI schema). `oneOf` is not supported by any provider. Each branch
 is adapted to the target provider automatically (object branches are closed for
 OpenAI/Anthropic/Cohere and reduced to the OpenAPI subset for Gemini).
 
+**Reusable definitions** let you declare a sub-schema once and reference it from
+multiple places (JSON Schema `$defs` and `$ref`). Register a definition with
+`def()` and point to it with `Schema::ref()`:
+
+```php
+$schema = Schema::for( 'order', [
+    'billing'  => Schema::ref( 'Address' )->required(),
+    'shipping' => Schema::ref( 'Address' )->required(),
+] )->def( 'Address', Schema::object( [
+    'street' => Schema::string()->required(),
+    'city'   => Schema::string()->required(),
+] ) );
+```
+
+`Schema::ref( 'Address' )` resolves to the pointer `#/$defs/Address`; a value
+already starting with `#` is used verbatim. Definitions are adapted to the target
+provider just like inline schemas (closed for OpenAI/Anthropic/Cohere, reduced to
+the OpenAPI subset for Gemini). `$ref`/`$defs` are supported by OpenAI, Anthropic,
+Gemini and Cohere; for providers without native schema support (e.g. Bedrock) they
+are passed through in the prompt as-is.
+
 ### From arrays
 
 If you already have a JSON Schema array, use `Schema::fromArray()`:
@@ -641,8 +662,9 @@ All types support these common methods: `description()`, `required()`, `nullable
 | `Schema::number()` | Number (float) | `min()`, `max()`, `multipleOf()`, `default()` |
 | `Schema::boolean()` | Boolean | `default()` |
 | `Schema::array()` | Array | `items()`, `min()`, `max()`, `unique()`, `default()` |
-| `Schema::object()` | Object | `withoutAdditionalProperties()`, `default()` |
+| `Schema::object()` | Object | `withoutAdditionalProperties()`, `default()`, `def()` |
 | `Schema::anyOf()` | Union (`anyOf`) | `add()`, `default()` |
+| `Schema::ref()` | Reference (`$ref`) | — |
 
 ## Tools
 

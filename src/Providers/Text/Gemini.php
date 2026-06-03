@@ -44,7 +44,7 @@ class Gemini extends Base implements Structure, Write
      */
     protected function jsonSchema( array $schema ) : array
     {
-        $keys = ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable', 'anyOf'];
+        $keys = ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable', 'anyOf', '$ref', '$defs'];
         $schema = array_intersect_key( $schema, array_flip( $keys ) );
 
         if( is_array( $schema['type'] ?? null ) )
@@ -66,6 +66,10 @@ class Gemini extends Base implements Structure, Write
 
         if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
             $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
+        }
+
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
         }
 
         return $schema;

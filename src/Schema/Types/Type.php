@@ -24,6 +24,10 @@ abstract class Type
      */
     public static function fromArray( array $def ) : self
     {
+        if( isset( $def['$ref'] ) && is_string( $def['$ref'] ) ) {
+            return RefType::fromArray( $def );
+        }
+
         if( isset( $def['anyOf'] ) && is_array( $def['anyOf'] ) ) {
             return AnyOfType::fromArray( $def );
         }

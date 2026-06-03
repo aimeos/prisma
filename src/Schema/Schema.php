@@ -93,6 +93,18 @@ class Schema
     }
 
 
+    /**
+     * Creates a reference to a reusable definition (JSON Schema "$ref").
+     *
+     * Plain names resolve to the "$defs" section, e.g. "Address" becomes
+     * "#/$defs/Address". Full JSON pointers starting with "#" are kept as-is.
+     */
+    public static function ref( string $ref ) : Types\RefType
+    {
+        return new Types\RefType( $ref );
+    }
+
+
     public static function string() : Types\StringType
     {
         return new Types\StringType;
@@ -102,6 +114,16 @@ class Schema
     public function __toString() : string
     {
         return $this->toString();
+    }
+
+
+    /**
+     * Registers a reusable definition referenced via "$ref".
+     */
+    public function def( string $name, Types\Type $type ) : static
+    {
+        $this->type->def( $name, $type );
+        return $this;
     }
 
 
@@ -186,6 +208,13 @@ class Schema
             $filtered['anyOf'] = array_map(
                 fn( array $sub ) => $this->filterKeys( $sub, $keys ),
                 $filtered['anyOf']
+            );
+        }
+
+        if( isset( $filtered['$defs'] ) && is_array( $filtered['$defs'] ) ) {
+            $filtered['$defs'] = array_map(
+                fn( array $sub ) => $this->filterKeys( $sub, $keys ),
+                $filtered['$defs']
             );
         }
 

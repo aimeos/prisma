@@ -8,6 +8,8 @@ class ObjectType extends Type
     protected ?bool $additionalProperties = null;
     /** @var array<string, Type> */
     protected array $properties = [];
+    /** @var array<string, Type> */
+    protected array $defs = [];
 
 
     /**
@@ -44,10 +46,34 @@ class ObjectType extends Type
             $properties[$name] = $prop;
         }
 
+        $defs = is_array( $def['$defs'] ?? null ) ? $def['$defs'] : [];
+        $definitions = [];
+
+        foreach( $defs as $name => $defDef )
+        {
+            if( !is_string( $name ) || !is_array( $defDef ) ) {
+                continue;
+            }
+
+            /** @var array<string, mixed> $defDef */
+            $definitions[$name] = Type::fromArray( $defDef );
+        }
+
         $type = new self( $properties );
+        $type->defs = $definitions;
         $type->additionalProperties = is_bool( $def['additionalProperties'] ?? null ) ? $def['additionalProperties'] : null;
         $type->default = is_array( $def['default'] ?? null ) ? $def['default'] : null;
         return $type;
+    }
+
+
+    /**
+     * Adds a reusable definition referenced via "$ref".
+     */
+    public function def( string $name, Type $type ) : static
+    {
+        $this->defs[$name] = $type;
+        return $this;
     }
 
 
@@ -79,6 +105,7 @@ class ObjectType extends Type
             'properties' => array_map( fn( Type $p ) => $p->toArray(), $this->properties ) ?: null,
             'required' => $required ?: null,
             'additionalProperties' => $this->additionalProperties,
+            '$defs' => array_map( fn( Type $t ) => $t->toArray(), $this->defs ) ?: null,
         ], fn( $v ) => $v !== null );
     }
 

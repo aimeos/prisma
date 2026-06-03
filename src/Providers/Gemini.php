@@ -144,6 +144,10 @@ class Gemini extends Base
             $schema['items'] = $this->encodeArgs( $schema['items'] );
         }
 
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->encodeArgs( $sub ), $schema['$defs'] );
+        }
+
         return $schema;
     }
 

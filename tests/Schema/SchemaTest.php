@@ -217,4 +217,86 @@ class SchemaTest extends TestCase
         $this->assertEquals( 'object', $arr['type'] );
         $this->assertArrayHasKey( 'name', $arr['properties'] );
     }
+
+
+    public function testRefFactory() : void
+    {
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\RefType::class, Schema::ref( 'Address' ) );
+    }
+
+
+    public function testRefResolvesName() : void
+    {
+        $this->assertEquals( ['$ref' => '#/$defs/Address'], Schema::ref( 'Address' )->toArray() );
+    }
+
+
+    public function testRefKeepsPointer() : void
+    {
+        $this->assertEquals( ['$ref' => '#/components/Address'], Schema::ref( '#/components/Address' )->toArray() );
+    }
+
+
+    public function testDefAndRef() : void
+    {
+        $schema = Schema::for( 'person', [
+            'address' => Schema::ref( 'Address' )->required(),
+        ] )->def( 'Address', Schema::object( [
+            'city' => Schema::string()->required(),
+        ] ) );
+
+        $arr = $schema->toArray();
+
+        $this->assertEquals( '#/$defs/Address', $arr['properties']['address']['$ref'] );
+        $this->assertArrayHasKey( 'Address', $arr['$defs'] );
+        $this->assertEquals( 'object', $arr['$defs']['Address']['type'] );
+        $this->assertEquals( ['city'], $arr['$defs']['Address']['required'] );
+    }
+
+
+    public function testFromArrayRoundTripsRefAndDefs() : void
+    {
+        $def = [
+            'type' => 'object',
+            'properties' => [
+                'address' => ['$ref' => '#/$defs/Address'],
+            ],
+            'required' => ['address'],
+            '$defs' => [
+                'Address' => [
+                    'type' => 'object',
+                    'properties' => ['city' => ['type' => 'string']],
+                    'required' => ['city'],
+                ],
+            ],
+        ];
+
+        $arr = Schema::fromArray( 'person', $def )->toArray();
+
+        $this->assertEquals( $def['properties']['address'], $arr['properties']['address'] );
+        $this->assertEquals( $def['$defs'], $arr['$defs'] );
+    }
+
+
+    public function testFilterRecursesIntoDefs() : void
+    {
+        $schema = Schema::fromArray( 'test', [
+            'type' => 'object',
+            '$defs' => [
+                'Address' => [
+                    'type' => 'object',
+                    'description' => 'keep',
+                    'properties' => [
+                        'city' => ['type' => 'string', 'pattern' => 'drop'],
+                    ],
+                ],
+            ],
+        ] );
+
+        $filtered = $schema->filter( ['type', 'properties', 'description', '$defs'] );
+        $address = $filtered['$defs']['Address'];
+
+        $this->assertEquals( 'keep', $address['description'] );
+        $this->assertArrayNotHasKey( 'pattern', $address['properties']['city'] );
+    }
 }
