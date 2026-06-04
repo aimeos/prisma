@@ -161,6 +161,32 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testStructuredNullableEnum() : void
+    {
+        $schema = Schema::for( 'block', [
+            'align' => Schema::string()->enum( ['start', 'center', 'end'] )->nullable(),
+        ] );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [['content' => [['type' => 'output_text', 'text' => '{"align":"start"}']]]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 2, 'input_tokens' => 1, 'output_tokens' => 1]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Pick alignment', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $align = $body['text']['format']['schema']['properties']['align'];
+
+            // Standard JSON Schema nullable enum: "type" array plus null in the enum.
+            $this->assertEquals( ['string', 'null'], $align['type'] );
+            $this->assertEquals( ['start', 'center', 'end', null], $align['enum'] );
+        } );
+    }
+
+
     public function testStructuredWithAnyOf() : void
     {
         $schema = Schema::for( 'result', [

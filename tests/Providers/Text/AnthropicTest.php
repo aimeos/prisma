@@ -266,6 +266,37 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testStructuredNullableEnum() : void
+    {
+        $schema = Schema::for( 'block', [
+            'align' => Schema::string()->enum( ['start', 'center', 'end'] )->nullable(),
+        ] );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => '{"align":"start"}']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 1, 'output_tokens' => 1]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Pick alignment', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $align = $body['output_config']['format']['schema']['properties']['align'];
+
+            // Nullable enum is sent as anyOf with a dedicated null branch, never as a
+            // "type" array combined with "enum".
+            $this->assertArrayNotHasKey( 'type', $align );
+            $this->assertArrayNotHasKey( 'enum', $align );
+            $this->assertEquals( [
+                ['enum' => ['start', 'center', 'end']],
+                ['type' => 'null'],
+            ], $align['anyOf'] );
+        } );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [

@@ -224,6 +224,35 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredNullableEnum() : void
+    {
+        $schema = Schema::for( 'block', [
+            'align' => Schema::string()->enum( ['start', 'center', 'end'] )->nullable(),
+        ] );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"align":"start"}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 2]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Pick alignment', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $align = $body['generationConfig']['responseSchema']['properties']['align'];
+
+            // OpenAPI 3.0 way: scalar type + "nullable": true, with no null in the enum.
+            $this->assertEquals( 'string', $align['type'] );
+            $this->assertTrue( $align['nullable'] );
+            $this->assertEquals( ['start', 'center', 'end'], $align['enum'] );
+        } );
+    }
+
+
     public function testStructuredWithAnyOf() : void
     {
         $schema = Schema::for( 'result', [
