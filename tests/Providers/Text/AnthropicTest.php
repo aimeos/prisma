@@ -328,6 +328,62 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testStructuredFallsBackWhenSchemaTooComplex() : void
+    {
+        // 30 optional, nullable fields exceeds the 24 optional / 16 union limits.
+        $props = [];
+        for( $i = 0; $i < 30; $i++ ) {
+            $props["field$i"] = Schema::string()->nullable();
+        }
+        $schema = Schema::for( 'big', $props );
+
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => "```json\n{\"field0\":\"x\"}\n```"]],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 1, 'output_tokens' => 1]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Fill it', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // No strict structured output; schema is embedded in the prompt instead.
+            $this->assertArrayNotHasKey( 'output_config', $body );
+            $text = $body['messages'][0]['content'][0]['text'];
+            $this->assertStringContainsString( 'matching this JSON schema', $text );
+            $this->assertStringContainsString( 'field0', $text );
+        } );
+
+        // Markdown code fences are stripped before decoding the response.
+        $this->assertEquals( ['field0' => 'x'], $response->structured() );
+    }
+
+
+    public function testStructuredUsesStrictWhenSchemaFits() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+            'note' => Schema::string()->nullable(),
+        ] );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => '{"name":"John"}']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 1, 'output_tokens' => 1]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'json_schema', $body['output_config']['format']['type'] );
+        } );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [

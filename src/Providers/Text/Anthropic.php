@@ -14,17 +14,27 @@ class Anthropic extends Base implements Structure, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
-        $options['output_config'] = [
-            'format' => [
-                'type' => 'json_schema',
-                'schema' => $this->jsonSchema( $schema->toArray() ),
-            ],
-        ];
+        $json = $this->jsonSchema( $schema->toArray() );
 
-        $messages = [['role' => 'user', 'content' => $this->content( $prompt, $files )]];
+        if( $this->fits( $json ) )
+        {
+            $options['output_config'] = ['format' => ['type' => 'json_schema', 'schema' => $json]];
+            $messages = [['role' => 'user', 'content' => $this->content( $prompt, $files )]];
+        }
+        else
+        {
+            // The schema exceeds Anthropic's strict-grammar limits (24 optional and
+            // 16 union-type parameters). Fall back to a prompt-embedded schema and
+            // parse the JSON from the response text instead.
+            $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $schema->toString();
+            $messages = [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]];
+        }
 
         $response = $this->generate( $messages, $options );
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
+
+        $text = trim( $response->text() ?? '' );
+        $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
+        $structured = json_decode( $text, true ) ?: [];
 
         return $response->withStructured( $structured );
     }
@@ -38,6 +48,26 @@ class Anthropic extends Base implements Structure, Write
             [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
             $options
         );
+    }
+
+
+    /**
+     * Tests whether a JSON Schema stays within Anthropic's strict-grammar limits.
+     *
+     * Strict structured outputs are capped at 24 optional parameters (properties not
+     * listed in "required") and 16 union-type parameters ("anyOf" or "type" arrays).
+     * Schemas beyond either limit are rejected at compile time and must use the
+     * prompt-embedded fallback instead.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return bool True if the schema fits the strict-grammar limits
+     */
+    protected function fits( array $schema ) : bool
+    {
+        $counts = ['optional' => 0, 'union' => 0];
+        $this->complexity( $schema, $counts );
+
+        return $counts['optional'] <= 24 && $counts['union'] <= 16;
     }
 
 
@@ -99,6 +129,52 @@ class Anthropic extends Base implements Structure, Write
         }
 
         return $schema;
+    }
+
+
+    /**
+     * Accumulates the optional and union-type parameter counts of a JSON Schema.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @param array{optional: int, union: int} $counts Running counts, updated in place
+     */
+    private function complexity( array $schema, array &$counts ) : void
+    {
+        $type = $schema['type'] ?? null;
+
+        if( isset( $schema['anyOf'] ) || ( is_array( $type ) && in_array( 'null', $type, true ) ) ) {
+            $counts['union']++;
+        }
+
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
+        {
+            $required = (array) ( $schema['required'] ?? [] );
+
+            foreach( $schema['properties'] as $name => $prop )
+            {
+                if( !in_array( $name, $required, true ) ) {
+                    $counts['optional']++;
+                }
+
+                if( is_array( $prop ) ) {
+                    $this->complexity( $prop, $counts );
+                }
+            }
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $this->complexity( $schema['items'], $counts );
+        }
+
+        foreach( ['anyOf', '$defs'] as $key )
+        {
+            foreach( (array) ( $schema[$key] ?? [] ) as $sub )
+            {
+                if( is_array( $sub ) ) {
+                    $this->complexity( $sub, $counts );
+                }
+            }
+        }
     }
 
 
