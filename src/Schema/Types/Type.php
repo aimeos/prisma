@@ -12,7 +12,7 @@ abstract class Type
     protected ?string $title = null;
     protected ?string $description = null;
     protected mixed $default = null;
-    /** @var array<int, string|int>|null */
+    /** @var array<int, string|int|null>|null */
     protected ?array $enum = null;
     protected ?bool $nullable = null;
 
@@ -124,12 +124,20 @@ abstract class Type
     public function toArray() : array
     {
         $type = static::typeName();
+        $enum = $this->enum;
+
+        // A nullable enum must list null as an allowed value. Strict JSON Schema
+        // validators (Anthropic, OpenAI) reject the schema otherwise because the
+        // declared type permits null while the enum does not.
+        if( $enum !== null && $this->nullable && !in_array( null, $enum, true ) ) {
+            $enum[] = null;
+        }
 
         return array_filter( [
             'type' => $this->nullable ? [$type, 'null'] : $type,
             'title' => $this->title,
             'description' => $this->description,
-            'enum' => $this->enum,
+            'enum' => $enum,
             'default' => $this->default,
         ], fn( $v ) => $v !== null );
     }

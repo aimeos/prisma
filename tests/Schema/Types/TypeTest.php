@@ -394,6 +394,36 @@ class TypeTest extends TestCase
     }
 
 
+    public function testNullableEnumIncludesNull() : void
+    {
+        $type = ( new StringType() )->enum( ['start', 'center', 'end'] )->nullable();
+        $arr = $type->toArray();
+
+        $this->assertEquals( ['string', 'null'], $arr['type'] );
+        $this->assertEquals( ['start', 'center', 'end', null], $arr['enum'] );
+    }
+
+
+    public function testNullableEnumFromArrayIncludesNull() : void
+    {
+        $type = Type::fromArray( [
+            'type' => ['string', 'null'],
+            'enum' => ['start', 'center', 'end'],
+        ] );
+        $arr = $type->toArray();
+
+        $this->assertEquals( ['string', 'null'], $arr['type'] );
+        $this->assertEquals( ['start', 'center', 'end', null], $arr['enum'] );
+    }
+
+
+    public function testNonNullableEnumKeepsNoNull() : void
+    {
+        $type = ( new StringType() )->enum( ['red', 'green', 'blue'] );
+        $this->assertEquals( ['red', 'green', 'blue'], $type->toArray()['enum'] );
+    }
+
+
     public function testToStringMethod() : void
     {
         $type = new StringType();

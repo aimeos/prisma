@@ -49,8 +49,15 @@ class Gemini extends Base implements Structure, Write
 
         if( is_array( $schema['type'] ?? null ) )
         {
-            if( in_array( 'null', $schema['type'], true ) ) {
+            if( in_array( 'null', $schema['type'], true ) )
+            {
                 $schema['nullable'] = true;
+
+                // The OpenAPI subset has no null enum members; nullability is carried
+                // by "nullable" instead, so drop any null left in the enum.
+                if( isset( $schema['enum'] ) && is_array( $schema['enum'] ) ) {
+                    $schema['enum'] = array_values( array_filter( $schema['enum'], fn( $v ) => $v !== null ) );
+                }
             }
 
             $schema['type'] = current( array_filter( $schema['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';

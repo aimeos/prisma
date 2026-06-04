@@ -54,6 +54,17 @@ class Anthropic extends Base implements Structure, Write
     {
         $type = $schema['type'] ?? null;
 
+        // Anthropic rejects a nullable enum expressed as a "type" array combined with
+        // "enum" (e.g. {"type":["string","null"],"enum":[...]}). Rewrite it to the
+        // supported anyOf form with a dedicated null branch.
+        if( isset( $schema['enum'] ) && is_array( $type ) && in_array( 'null', $type, true ) )
+        {
+            $enum = array_values( array_filter( $schema['enum'], fn( $v ) => $v !== null ) );
+            $head = array_filter( ['description' => $schema['description'] ?? null] );
+
+            return $head + ['anyOf' => [['enum' => $enum], ['type' => 'null']]];
+        }
+
         if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
             $schema['additionalProperties'] = false;
         }
