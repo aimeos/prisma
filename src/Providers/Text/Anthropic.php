@@ -65,6 +65,19 @@ class Anthropic extends Base implements Structure, Write
             return $head + ['anyOf' => [['enum' => $enum], ['type' => 'null']]];
         }
 
+        // Anthropic's strict schema rejects numeric, length and item-count
+        // constraints; "minItems" only supports 0 or 1. Drop the unsupported
+        // keywords and clamp "minItems" to a supported value.
+        unset(
+            $schema['minimum'], $schema['maximum'], $schema['exclusiveMinimum'],
+            $schema['exclusiveMaximum'], $schema['multipleOf'],
+            $schema['minLength'], $schema['maxLength'], $schema['maxItems']
+        );
+
+        if( isset( $schema['minItems'] ) && !in_array( $schema['minItems'], [0, 1], true ) ) {
+            $schema['minItems'] = 1;
+        }
+
         if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
             $schema['additionalProperties'] = false;
         }

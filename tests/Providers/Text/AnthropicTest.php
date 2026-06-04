@@ -297,6 +297,37 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testStructuredStripsUnsupportedConstraints() : void
+    {
+        $schema = Schema::for( 'block', [
+            'tags' => Schema::array()->min( 2 )->max( 5 ),
+            'title' => Schema::string()->min( 3 )->max( 100 ),
+        ] );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => '{"tags":["a","b"],"title":"hi there"}']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 1, 'output_tokens' => 1]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Build block', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $props = $body['output_config']['format']['schema']['properties'];
+
+            // maxItems dropped, minItems clamped to the supported value 1.
+            $this->assertArrayNotHasKey( 'maxItems', $props['tags'] );
+            $this->assertEquals( 1, $props['tags']['minItems'] );
+
+            // String length constraints dropped entirely.
+            $this->assertArrayNotHasKey( 'minLength', $props['title'] );
+            $this->assertArrayNotHasKey( 'maxLength', $props['title'] );
+        } );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [
