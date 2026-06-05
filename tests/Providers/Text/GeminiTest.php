@@ -253,6 +253,35 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredStripsEmptyEnumValue() : void
+    {
+        $schema = Schema::for( 'block', [
+            'header' => Schema::string()->enum( ['', 'h1', 'h2', 'h3'] )->nullable(),
+        ] );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"header":"h1"}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 2]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Pick header', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $header = $body['generationConfig']['responseSchema']['properties']['header'];
+
+            // Gemini's OpenAPI subset rejects empty-string enum members ("enum[0]:
+            // cannot be empty"), so the empty value is dropped from the enum.
+            $this->assertEquals( ['h1', 'h2', 'h3'], $header['enum'] );
+            $this->assertTrue( $header['nullable'] );
+        } );
+    }
+
+
     public function testStructuredWithAnyOf() : void
     {
         $schema = Schema::for( 'result', [
