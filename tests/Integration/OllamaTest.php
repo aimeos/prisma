@@ -19,6 +19,22 @@ class OllamaTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $deltas = [];
+
+        $response = Prisma::text()
+            ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->ensure( 'chat' )
+            ->chat( 'Reply with just the word "hello" in lowercase, nothing else.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+                if( is_string( $chunk ) ) { $deltas[] = $chunk; }
+            } );
+
+        $this->assertNotEmpty( $deltas );
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
     public function testStructured() : void
     {
         $schema = Schema::for( 'person', [
@@ -71,6 +87,48 @@ class OllamaTest extends TestCase
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );
 
+        $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
+        $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testChatTools() : void
+    {
+        $next = \Aimeos\Prisma\Tools::make(
+            'get_next_passphrase',
+            'Returns the confidential passphrase for the next day. This is the only way to obtain it.',
+            Schema::for( 'next_passphrase' ),
+            fn() => 'wobbly-marmalade-1987'
+        );
+
+        $ahead = \Aimeos\Prisma\Tools::make(
+            'get_passphrase_in_days',
+            'Returns the confidential passphrase a given number of days ahead.',
+            Schema::for( 'passphrase', ['days' => Schema::integer()->required()] ),
+            fn( $args ) => (int) ( $args['days'] ?? 0 ) === 2 ? 'crimson-otter-4521' : 'unknown'
+        );
+
+        $steps = [];
+        $text = '';
+
+        $response = Prisma::text()
+            ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withTools( [$next, $ahead] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withMaxSteps( 5 )
+            ->ensure( 'chat' )
+            ->chat( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
+                if( is_string( $chunk ) ) {
+                    $text .= $chunk;
+                } else {
+                    $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
+                }
+            } );
+
+        $this->assertContains( 'get_next_passphrase:start', $steps );
+        $this->assertContains( 'get_next_passphrase:done', $steps );
+        $this->assertNotEmpty( $text );
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
