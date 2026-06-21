@@ -521,7 +521,7 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $sse = "data: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\n"
             . "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
@@ -532,8 +532,8 @@ class OpenaiTest extends TestCase
 
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 

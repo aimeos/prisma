@@ -2,7 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
-use Aimeos\Prisma\Contracts\Text\Chat;
+use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Xai as Base;
@@ -10,9 +10,9 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Xai extends Base implements Chat, Structure, Write
+class Xai extends Base implements Stream, Structure, Write
 {
-    public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
         if( $this->providerTools() )
         {

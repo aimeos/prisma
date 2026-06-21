@@ -50,7 +50,7 @@ abstract class Base implements Provider
     /**
      * Ensures that the provider implements the given method.
      *
-     * @param string $method Method name to check (e.g. 'chat', 'generate')
+     * @param string $method Method name to check (e.g. 'stream', 'generate')
      * @return static Same provider instance for fluent calls
      * @throws \Aimeos\Prisma\Exceptions\NotImplementedException If the method is not implemented
      */
@@ -67,7 +67,7 @@ abstract class Base implements Provider
     /**
      * Tests if the provider implements the given method.
      *
-     * @param string $method Method name to check (e.g. 'chat', 'generate')
+     * @param string $method Method name to check (e.g. 'stream', 'generate')
      * @return bool TRUE if the capability is implemented, FALSE otherwise
      */
     public function has( string $method ) : bool

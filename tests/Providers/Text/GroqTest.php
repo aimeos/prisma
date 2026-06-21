@@ -293,7 +293,7 @@ class GroqTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n"
@@ -304,8 +304,8 @@ class GroqTest extends TestCase
 
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 
@@ -322,7 +322,7 @@ class GroqTest extends TestCase
     }
 
 
-    public function testChatWithTools() : void
+    public function testStreamWithTools() : void
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
@@ -342,8 +342,8 @@ class GroqTest extends TestCase
         $chunks = [];
 
         $response = $provider->withTools( [$tool] )
-            ->ensure( 'chat' )
-            ->chat( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
+            ->ensure( 'stream' )
+            ->stream( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
                 // Read Step state inside the callback: the same instance is reused for
                 // both the started and completed notifications.
                 $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
@@ -366,7 +366,7 @@ class GroqTest extends TestCase
     }
 
 
-    public function testChatError() : void
+    public function testStreamError() : void
     {
         $this->expectException( PrismaException::class );
 
@@ -375,12 +375,12 @@ class GroqTest extends TestCase
 
         $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
     }
 
 
-    public function testChatReasoning() : void
+    public function testStreamReasoning() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
@@ -389,15 +389,15 @@ class GroqTest extends TestCase
 
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
 
         $this->assertEquals( 'Answer', $response->text() );
         $this->assertEquals( 'thinking...', $response->meta()['thinking'] );
     }
 
 
-    public function testChatMeta() : void
+    public function testStreamMeta() : void
     {
         $sse = "data: {\"id\":\"chatcmpl-1\",\"model\":\"openai/gpt-oss-120b\",\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":3}}\n\n"
@@ -405,8 +405,8 @@ class GroqTest extends TestCase
 
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
 
         $this->assertEquals( 'Hi', $response->text() );
         $this->assertEquals( 'chatcmpl-1', $response->meta()['id'] );
@@ -414,7 +414,7 @@ class GroqTest extends TestCase
     }
 
 
-    public function testChatZeroContent() : void
+    public function testStreamZeroContent() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"0\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
@@ -422,14 +422,14 @@ class GroqTest extends TestCase
 
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
 
         $this->assertEquals( '0', $response->text() );
     }
 
 
-    public function testChatRejectsInvalidToolArgs() : void
+    public function testStreamRejectsInvalidToolArgs() : void
     {
         $called = false;
         $tool = \Aimeos\Prisma\Tools::make(
@@ -453,8 +453,8 @@ class GroqTest extends TestCase
         $results = [];
 
         $response = $provider->withTools( [$tool] )
-            ->ensure( 'chat' )
-            ->chat( 'weather?', [], [], function( $chunk ) use ( &$results ) {
+            ->ensure( 'stream' )
+            ->stream( 'weather?', [], [], function( $chunk ) use ( &$results ) {
                 if( $chunk instanceof \Aimeos\Prisma\Tools\Step && $chunk->done() ) {
                     $results[] = $chunk->result();
                 }

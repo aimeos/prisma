@@ -5,7 +5,7 @@ namespace Aimeos\Prisma\Contracts\Text;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-interface Chat
+interface Stream
 {
     /**
      * Generates streamed text from the given prompt.
@@ -25,5 +25,5 @@ interface Chat
      * @param callable|null $callback Stream consumer: fn(string|\Aimeos\Prisma\Tools\Step $chunk): void
      * @return TextResponse Response text
      */
-    public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse;
+    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse;
 }

@@ -676,7 +676,7 @@ class AnthropicTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
             . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
@@ -690,8 +690,8 @@ class AnthropicTest extends TestCase
 
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 
@@ -707,7 +707,7 @@ class AnthropicTest extends TestCase
     }
 
 
-    public function testChatError() : void
+    public function testStreamError() : void
     {
         $this->expectException( PrismaException::class );
 
@@ -716,12 +716,12 @@ class AnthropicTest extends TestCase
 
         $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
     }
 
 
-    public function testChatCitations() : void
+    public function testStreamCitations() : void
     {
         $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"model\":\"claude\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
             . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
@@ -732,8 +732,8 @@ class AnthropicTest extends TestCase
 
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'capital of France?', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'capital of France?', [], [], function( $chunk ) {} );
 
         $this->assertEquals( 'Paris', $response->text() );
         $this->assertCount( 1, $response->citations() );
@@ -771,7 +771,7 @@ class AnthropicTest extends TestCase
     }
 
 
-    public function testChatWithTools() : void
+    public function testStreamWithTools() : void
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
@@ -796,8 +796,8 @@ class AnthropicTest extends TestCase
 
         $chunks = [];
         $response = $provider->withTools( [$tool] )
-            ->ensure( 'chat' )
-            ->chat( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
+            ->ensure( 'stream' )
+            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
                 $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
                     ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
                     : $chunk;

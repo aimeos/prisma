@@ -19,14 +19,14 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $deltas = [];
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
-            ->ensure( 'chat' )
-            ->chat( 'Reply with just the word "hello" in lowercase, nothing else.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Reply with just the word "hello" in lowercase, nothing else.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
                 if( is_string( $chunk ) ) { $deltas[] = $chunk; }
             } );
 
@@ -93,7 +93,7 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testChatTools() : void
+    public function testStreamTools() : void
     {
         $next = \Aimeos\Prisma\Tools::make(
             'get_next_passphrase',
@@ -117,8 +117,8 @@ class OllamaTest extends TestCase
             ->withTools( [$next, $ahead] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
-            ->ensure( 'chat' )
-            ->chat( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
+            ->ensure( 'stream' )
+            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
                 if( is_string( $chunk ) ) {
                     $text .= $chunk;
                 } else {

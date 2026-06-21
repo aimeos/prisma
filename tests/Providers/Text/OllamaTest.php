@@ -152,7 +152,7 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n"
@@ -163,8 +163,8 @@ class OllamaTest extends TestCase
 
         $response = $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 
@@ -182,7 +182,7 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testChatWithTools() : void
+    public function testStreamWithTools() : void
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
@@ -202,8 +202,8 @@ class OllamaTest extends TestCase
         $chunks = [];
 
         $response = $provider->withTools( [$tool] )
-            ->ensure( 'chat' )
-            ->chat( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
+            ->ensure( 'stream' )
+            ->stream( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
                 // Read Step state inside the callback: the same instance is reused for
                 // both the started and completed notifications.
                 $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
@@ -226,7 +226,7 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testChatError() : void
+    public function testStreamError() : void
     {
         $this->expectException( \Aimeos\Prisma\Exceptions\PrismaException::class );
 
@@ -235,12 +235,12 @@ class OllamaTest extends TestCase
 
         $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
     }
 
 
-    public function testChatReasoning() : void
+    public function testStreamReasoning() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
@@ -251,8 +251,8 @@ class OllamaTest extends TestCase
 
         $response = $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 

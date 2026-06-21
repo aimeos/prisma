@@ -22,14 +22,14 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $deltas = [];
 
         $response = Prisma::text()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
-            ->ensure( 'chat' )
-            ->chat( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
                 if( is_string( $chunk ) ) {
                     $deltas[] = $chunk;
                 }
@@ -166,7 +166,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testChatTools() : void
+    public function testStreamTools() : void
     {
         $next = \Aimeos\Prisma\Tools::make(
             'get_next_passphrase',
@@ -190,8 +190,8 @@ class GeminiTest extends TestCase
             ->withTools( [$next, $ahead] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
-            ->ensure( 'chat' )
-            ->chat( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
+            ->ensure( 'stream' )
+            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
                 if( $chunk instanceof \Aimeos\Prisma\Tools\Step ) {
                     $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
                 } else {

@@ -661,7 +661,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testChat() : void
+    public function testStream() : void
     {
         $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}\n\n"
             . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" world\"}]}}]}\n\n"
@@ -671,8 +671,8 @@ class GeminiTest extends TestCase
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 
@@ -688,7 +688,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testChatError() : void
+    public function testStreamError() : void
     {
         $this->expectException( PrismaException::class );
 
@@ -696,12 +696,12 @@ class GeminiTest extends TestCase
 
         $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'hi', [], [], function( $chunk ) {} );
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
     }
 
 
-    public function testChatThinkingNotStreamed() : void
+    public function testStreamThinkingNotStreamed() : void
     {
         $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true}]}}]}\n\n"
             . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}\n\n";
@@ -710,8 +710,8 @@ class GeminiTest extends TestCase
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'chat' )
-            ->chat( 'think', [], [], function( $chunk ) use ( &$deltas ) {
+            ->ensure( 'stream' )
+            ->stream( 'think', [], [], function( $chunk ) use ( &$deltas ) {
                 $deltas[] = $chunk;
             } );
 
@@ -722,7 +722,7 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testChatWithTools() : void
+    public function testStreamWithTools() : void
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
@@ -736,8 +736,8 @@ class GeminiTest extends TestCase
 
         $chunks = [];
         $response = $provider->withTools( [$tool] )
-            ->ensure( 'chat' )
-            ->chat( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
+            ->ensure( 'stream' )
+            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
                 $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
                     ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
                     : $chunk;
