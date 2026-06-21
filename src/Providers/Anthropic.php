@@ -45,13 +45,32 @@ class Anthropic extends Base
 
         foreach( $files as $file )
         {
+            $url = $file->url();
+
+            // A URL source doesn't need the mime, so an undeterminable type just defaults
+            // to an image block (the long-standing default) instead of failing; a base64
+            // source needs the mime for media_type, where a genuine mismatch must surface.
+            try {
+                $mime = $file->mimeType();
+            } catch( PrismaException $e ) {
+                if( !$url ) {
+                    throw $e;
+                }
+                $mime = null;
+            }
+
+            // An explicit image mime is authoritative; otherwise a PDF mime, or a ".pdf" URL
+            // path when the type can't be probed, maps to a document block without fetching
+            // the whole file.
+            $image = $mime !== null && str_starts_with( $mime, 'image/' );
+            $document = !$image && ( $mime === 'application/pdf'
+                || ( $url !== null && str_ends_with( strtolower( (string) parse_url( $url, PHP_URL_PATH ) ), '.pdf' ) ) );
+
             $content[] = [
-                'type' => 'image',
-                'source' => [
-                    'type' => 'base64',
-                    'media_type' => $file->mimeType(),
-                    'data' => $file->base64()
-                ]
+                'type' => $document ? 'document' : 'image',
+                'source' => $url
+                    ? ['type' => 'url', 'url' => $url]
+                    : ['type' => 'base64', 'media_type' => $mime, 'data' => $file->base64()],
             ];
         }
 

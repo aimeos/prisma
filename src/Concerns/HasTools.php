@@ -22,7 +22,7 @@ trait HasTools
 
 
     private ?Concurrency $concurrency = null;
-    private int $maxSteps = PHP_INT_MAX;
+    private int $maxSteps = 25;
     private string $toolChoice = self::AUTO;
 
     /** @var array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> */

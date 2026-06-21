@@ -85,8 +85,7 @@ trait CallsTools
         {
             // Notify each step before it runs; steps that exhausted their call limit
             // are already complete and only get the post-execution notification below.
-            foreach( $steps as $step )
-            {
+            foreach( $steps as $step ) {
                 if( !$step->done() ) { $callback( $step ); }
             }
         }
@@ -97,8 +96,7 @@ trait CallsTools
         ksort( $steps );
         $steps = array_values( $steps );
 
-        if( $callback )
-        {
+        if( $callback ) {
             foreach( $steps as $step ) { $callback( $step ); }
         }
 

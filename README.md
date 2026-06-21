@@ -722,7 +722,7 @@ $response = Prisma::text()
     ->write( 'What is the weather in Berlin?' );
 ```
 
-`withMaxSteps()` controls the maximum number of tool calls performed (default is unlimited).
+`withMaxSteps()` controls the maximum number of tool-loop steps performed (default is 25). Raise it for workflows that need more tool calls, or lower it to cap cost.
 
 > **Note:** Tool handlers can return any value. Strings are passed through as-is; all other return types (arrays, objects, numbers) are automatically JSON-encoded.
 

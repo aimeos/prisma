@@ -44,48 +44,35 @@ class Gemini extends Base implements Structure, Write
      */
     protected function jsonSchema( array $schema ) : array
     {
-        $keys = ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable', 'anyOf', '$ref', '$defs'];
-        $schema = array_intersect_key( $schema, array_flip( $keys ) );
+        $flip = array_flip( ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable', 'anyOf', '$ref', '$defs'] );
 
-        if( is_array( $schema['type'] ?? null ) )
-        {
-            if( in_array( 'null', $schema['type'], true ) ) {
-                $schema['nullable'] = true;
+        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) use ( $flip ) {
+            $node = array_intersect_key( $node, $flip );
+
+            if( is_array( $node['type'] ?? null ) )
+            {
+                if( in_array( 'null', $node['type'], true ) ) {
+                    $node['nullable'] = true;
+                }
+
+                $node['type'] = current( array_filter( $node['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';
             }
 
-            $schema['type'] = current( array_filter( $schema['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';
-        }
+            // The OpenAPI subset has no null enum members and rejects empty-string members
+            // ("enum[0]: cannot be empty"); nullability is carried by "nullable" instead and
+            // an empty value can't be expressed as a literal, so drop both. If nothing
+            // remains, drop the enum and leave a free-form value.
+            if( isset( $node['enum'] ) && is_array( $node['enum'] ) )
+            {
+                $node['enum'] = array_values( array_filter( $node['enum'], fn( $v ) => $v !== null && $v !== '' ) );
 
-        // The OpenAPI subset has no null enum members and rejects empty-string members
-        // ("enum[0]: cannot be empty"); nullability is carried by "nullable" instead and
-        // an empty value can't be expressed as a literal, so drop both. If nothing
-        // remains, drop the enum and leave a free-form value.
-        if( isset( $schema['enum'] ) && is_array( $schema['enum'] ) )
-        {
-            $schema['enum'] = array_values( array_filter( $schema['enum'], fn( $v ) => $v !== null && $v !== '' ) );
-
-            if( !$schema['enum'] ) {
-                unset( $schema['enum'] );
+                if( !$node['enum'] ) {
+                    unset( $node['enum'] );
+                }
             }
-        }
 
-        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
-            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
-        }
-
-        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
-            $schema['items'] = $this->jsonSchema( $schema['items'] );
-        }
-
-        if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
-            $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
-        }
-
-        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
-            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
-        }
-
-        return $schema;
+            return $node;
+        } );
     }
 
 

@@ -95,53 +95,39 @@ class Anthropic extends Base implements Chat, Structure, Write
      */
     protected function jsonSchema( array $schema ) : array
     {
-        $type = $schema['type'] ?? null;
+        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) {
+            $type = $node['type'] ?? null;
 
-        // Anthropic rejects a nullable enum expressed as a "type" array combined with
-        // "enum" (e.g. {"type":["string","null"],"enum":[...]}). Rewrite it to the
-        // supported anyOf form with a dedicated null branch.
-        if( isset( $schema['enum'] ) && is_array( $type ) && in_array( 'null', $type, true ) )
-        {
-            $enum = array_values( array_filter( $schema['enum'], fn( $v ) => $v !== null ) );
-            $head = array_filter( ['description' => $schema['description'] ?? null] );
+            // Anthropic rejects a nullable enum expressed as a "type" array combined with
+            // "enum" (e.g. {"type":["string","null"],"enum":[...]}). Rewrite it to the
+            // supported anyOf form with a dedicated null branch.
+            if( isset( $node['enum'] ) && is_array( $type ) && in_array( 'null', $type, true ) )
+            {
+                $enum = array_values( array_filter( $node['enum'], fn( $v ) => $v !== null ) );
+                $head = array_filter( ['description' => $node['description'] ?? null] );
 
-            return $head + ['anyOf' => [['enum' => $enum], ['type' => 'null']]];
-        }
+                return $head + ['anyOf' => [['enum' => $enum], ['type' => 'null']]];
+            }
 
-        // Anthropic's strict schema rejects numeric, length and item-count
-        // constraints; "minItems" only supports 0 or 1. Drop the unsupported
-        // keywords and clamp "minItems" to a supported value.
-        unset(
-            $schema['minimum'], $schema['maximum'], $schema['exclusiveMinimum'],
-            $schema['exclusiveMaximum'], $schema['multipleOf'],
-            $schema['minLength'], $schema['maxLength'], $schema['maxItems']
-        );
+            // Anthropic's strict schema rejects numeric, length and item-count
+            // constraints; "minItems" only supports 0 or 1. Drop the unsupported
+            // keywords and clamp "minItems" to a supported value.
+            unset(
+                $node['minimum'], $node['maximum'], $node['exclusiveMinimum'],
+                $node['exclusiveMaximum'], $node['multipleOf'],
+                $node['minLength'], $node['maxLength'], $node['maxItems']
+            );
 
-        if( isset( $schema['minItems'] ) && !in_array( $schema['minItems'], [0, 1], true ) ) {
-            $schema['minItems'] = 1;
-        }
+            if( isset( $node['minItems'] ) && !in_array( $node['minItems'], [0, 1], true ) ) {
+                $node['minItems'] = 1;
+            }
 
-        if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
-            $schema['additionalProperties'] = false;
-        }
+            if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+                $node['additionalProperties'] = false;
+            }
 
-        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) ) {
-            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
-        }
-
-        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
-            $schema['items'] = $this->jsonSchema( $schema['items'] );
-        }
-
-        if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
-            $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
-        }
-
-        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
-            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
-        }
-
-        return $schema;
+            return $node;
+        } );
     }
 
 

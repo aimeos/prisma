@@ -39,7 +39,6 @@ trait HasHttpStream
         $this->validate( $response );
 
         $this->streamRateLimit = $this->getRateLimit( $response );
-
         $body = $response->getBody();
 
         try

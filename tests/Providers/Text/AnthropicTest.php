@@ -71,6 +71,95 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testWriteWithImageUrl() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'a cat']],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Describe this image', [Image::fromUrl( 'https://example.com/cat.png', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $source = $body['messages'][0]['content'][0]['source'];
+
+            // an image stays an image block, referenced by URL rather than inlined as base64
+            $this->assertEquals( 'image', $body['messages'][0]['content'][0]['type'] );
+            $this->assertEquals( 'url', $source['type'] );
+            $this->assertEquals( 'https://example.com/cat.png', $source['url'] );
+            $this->assertArrayNotHasKey( 'data', $source );
+        } );
+
+        $this->assertEquals( 'a cat', $response->text() );
+    }
+
+
+    public function testWriteWithPdfUrl() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'a report']],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Summarize this', [\Aimeos\Prisma\Files\File::fromUrl( 'https://example.com/r.pdf', 'application/pdf' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $block = $body['messages'][0]['content'][0];
+
+            // a PDF uses a document block, not an image block
+            $this->assertEquals( 'document', $block['type'] );
+            $this->assertEquals( 'url', $block['source']['type'] );
+        } );
+
+        $this->assertEquals( 'a report', $response->text() );
+    }
+
+
+    public function testWriteWithPdfUrlByExtension() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'a report']],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] )
+            ->ensure( 'write' )
+            // mime not detected as a PDF, but the ".pdf" path still selects a document block
+            ->write( 'Summarize this', [\Aimeos\Prisma\Files\File::fromUrl( 'https://example.com/r.pdf?token=1', 'application/octet-stream' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $block = $body['messages'][0]['content'][0];
+
+            $this->assertEquals( 'document', $block['type'] );
+            $this->assertEquals( 'url', $block['source']['type'] );
+        } );
+
+        $this->assertEquals( 'a report', $response->text() );
+    }
+
+
+    public function testWriteImageMimeWinsOverPdfExtension() : void
+    {
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'a cat']],
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] )
+            ->ensure( 'write' )
+            // explicit image mime must win even though the URL path ends in ".pdf"
+            ->write( 'Describe', [Image::fromUrl( 'https://example.com/photo.pdf', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'image', $body['messages'][0]['content'][0]['type'] );
+        } );
+    }
+
+
     public function testWriteWithSystemPrompt() : void
     {
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )

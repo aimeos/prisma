@@ -52,34 +52,19 @@ class Cohere extends CohereBase implements Structure, Write
      */
     protected function jsonSchema( array $schema ) : array
     {
-        $type = $schema['type'] ?? null;
+        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) {
+            $type = $node['type'] ?? null;
 
-        if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
-            $schema['additionalProperties'] = false;
-        }
-
-        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
-        {
-            if( empty( $schema['required'] ) ) {
-                $schema['required'] = array_keys( $schema['properties'] );
+            if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+                $node['additionalProperties'] = false;
             }
 
-            $schema['properties'] = array_map( fn( array $prop ) => $this->jsonSchema( $prop ), $schema['properties'] );
-        }
+            if( isset( $node['properties'] ) && is_array( $node['properties'] ) && empty( $node['required'] ) ) {
+                $node['required'] = array_keys( $node['properties'] );
+            }
 
-        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
-            $schema['items'] = $this->jsonSchema( $schema['items'] );
-        }
-
-        if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
-            $schema['anyOf'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['anyOf'] );
-        }
-
-        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
-            $schema['$defs'] = array_map( fn( array $sub ) => $this->jsonSchema( $sub ), $schema['$defs'] );
-        }
-
-        return $schema;
+            return $node;
+        } );
     }
 
 
