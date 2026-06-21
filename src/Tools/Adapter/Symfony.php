@@ -12,6 +12,7 @@ class Symfony extends Base
     private string $description;
     private string $method;
     private string $name;
+    private ?\Aimeos\Prisma\Schema\Schema $schema = null;
 
 
     /**
@@ -87,6 +88,10 @@ class Symfony extends Base
      */
     public function schema() : \Aimeos\Prisma\Schema\Schema
     {
+        if( $this->schema !== null ) {
+            return $this->schema;
+        }
+
         $method = new \ReflectionMethod( $this->instance, $this->method );
         $properties = [];
         $required = [];
@@ -155,6 +160,6 @@ class Symfony extends Base
             'required' => $required ?: null,
         ], fn( $v ) => $v !== null );
 
-        return \Aimeos\Prisma\Schema\Schema::fromArray( $this->name, $schema );
+        return $this->schema = \Aimeos\Prisma\Schema\Schema::fromArray( $this->name, $schema );
     }
 }

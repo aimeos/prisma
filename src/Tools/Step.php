@@ -14,6 +14,7 @@ class Step
     private string $name;
     private ?Adapter $tool;
     private string $result = '';
+    private bool $done = false;
 
     /** @var array<string, mixed> */
     private array $arguments;
@@ -54,6 +55,18 @@ class Step
     public function complete( string $result ) : void
     {
         $this->result = $result;
+        $this->done = true;
+    }
+
+
+    /**
+     * Returns whether the tool call has been executed.
+     *
+     * @return bool True after complete() was called, false while the call is still pending
+     */
+    public function done() : bool
+    {
+        return $this->done;
     }
 
 
