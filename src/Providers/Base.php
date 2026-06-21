@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Concerns\HasHttpClient;
 use Aimeos\Prisma\Concerns\HasHttpResponse;
+use Aimeos\Prisma\Concerns\HasHttpStream;
 use Aimeos\Prisma\Concerns\HasModel;
 use Aimeos\Prisma\Concerns\HasSystemPrompt;
 use Aimeos\Prisma\Concerns\HasTokens;
@@ -26,6 +27,7 @@ abstract class Base implements Provider
 {
     use HasHttpClient;
     use HasHttpResponse;
+    use HasHttpStream;
     use HasModel;
     use HasSystemPrompt;
     use HasTokens;

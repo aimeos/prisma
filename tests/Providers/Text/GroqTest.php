@@ -262,6 +262,182 @@ class GroqTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":10}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.groq.com/openai/v1/chat/completions', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['stream'] );
+            $this->assertTrue( $body['stream_options']['include_usage'] );
+        } );
+
+        $this->assertSame( ['Hello', ' world'], $deltas );
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 10, $response->usage()['used'] );
+    }
+
+
+    public function testChatWithTools() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{}\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $chunks = [];
+
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'chat' )
+            ->chat( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
+                // Read Step state inside the callback: the same instance is reused for
+                // both the started and completed notifications.
+                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                    : $chunk;
+            } );
+
+        // call started (no result), call completed (result), then the final text delta
+        $this->assertSame( 'ping', $chunks[0]['name'] );
+        $this->assertFalse( $chunks[0]['done'] );
+        $this->assertSame( 'ping', $chunks[1]['name'] );
+        $this->assertTrue( $chunks[1]['done'] );
+        $this->assertSame( 'pong', $chunks[1]['result'] );
+        $this->assertSame( 'pong!', $chunks[2] );
+
+        $this->assertEquals( 'pong!', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+        $this->assertEquals( 'pong', $response->steps()[0]->result() );
+        $this->assertCount( 2, $this->requests() );
+    }
+
+
+    public function testChatError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
+            . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+    }
+
+
+    public function testChatReasoning() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":5}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'thinking...', $response->meta()['thinking'] );
+    }
+
+
+    public function testChatMeta() : void
+    {
+        $sse = "data: {\"id\":\"chatcmpl-1\",\"model\":\"openai/gpt-oss-120b\",\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":3}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+
+        $this->assertEquals( 'Hi', $response->text() );
+        $this->assertEquals( 'chatcmpl-1', $response->meta()['id'] );
+        $this->assertEquals( 'openai/gpt-oss-120b', $response->meta()['model'] );
+    }
+
+
+    public function testChatZeroContent() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"0\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+
+        $this->assertEquals( '0', $response->text() );
+    }
+
+
+    public function testChatRejectsInvalidToolArgs() : void
+    {
+        $called = false;
+        $tool = \Aimeos\Prisma\Tools::make(
+            'get_weather', 'Returns the weather for a city',
+            Schema::for( 'weather', ['city' => Schema::string()->required()] ),
+            function( $args ) use ( &$called ) { $called = true; return 'sunny'; }
+        );
+
+        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{}\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"Which city?\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $results = [];
+
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'chat' )
+            ->chat( 'weather?', [], [], function( $chunk ) use ( &$results ) {
+                if( $chunk instanceof \Aimeos\Prisma\Tools\Step && $chunk->done() ) {
+                    $results[] = $chunk->result();
+                }
+            } );
+
+        // the handler must not run when the arguments fail schema validation
+        $this->assertFalse( $called );
+        $this->assertNotEmpty( $results );
+        $this->assertStringContainsString( 'invalid arguments', $results[0] );
+        $this->assertStringContainsString( 'city', $results[0] );
+        $this->assertEquals( 'Which city?', $response->text() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

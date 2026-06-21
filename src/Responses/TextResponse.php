@@ -79,7 +79,8 @@ class TextResponse implements \IteratorAggregate
             $this->wait();
         }
 
-        return reset( $this->list ) ?: null;
+        $text = reset( $this->list );
+        return $text === false || $text === '' ? null : $text;
     }
 
 
@@ -110,7 +111,8 @@ class TextResponse implements \IteratorAggregate
             $this->wait();
         }
 
-        return current( $this->list ) ?: null;
+        $text = current( $this->list );
+        return $text === false || $text === '' ? null : $text;
     }
 
 

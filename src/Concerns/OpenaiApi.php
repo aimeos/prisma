@@ -15,9 +15,10 @@ trait OpenaiApi
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options, ?callable $callback = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
         $calls = [];
@@ -58,12 +59,24 @@ trait OpenaiApi
                 }
             }
 
-            $response = $this->client()->post( $endpoint, ['json' => $params] );
+            if( $callback !== null )
+            {
+                $params['stream'] = true;
+                $params['stream_options'] = ['include_usage' => true];
 
-            $this->validate( $response );
+                $result = $this->streamCompletion( $endpoint, $params, $callback );
+                $rateLimit = $this->streamRateLimit;
+            }
+            else
+            {
+                $response = $this->client()->post( $endpoint, ['json' => $params] );
 
-            $rateLimit = $this->getRateLimit( $response );
-            $result = $this->fromJson( $response );
+                $this->validate( $response );
+
+                $rateLimit = $this->getRateLimit( $response );
+                $result = $this->fromJson( $response );
+            }
+
             // Keep the last step that produced text so a tool-only final step (e.g.
             // when maxSteps is reached) doesn't discard the model's partial answer.
             $texts = $this->completionTexts( $result ) ?: $texts;
@@ -75,7 +88,7 @@ trait OpenaiApi
 
             /** @var array<int, array<string, mixed>> $choices */
             $choices = $result['choices'] ?? [];
-            $toolResults = $this->execTools( $toolCalls, $calls );
+            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
             array_push( $allSteps, ...$toolResults );
             $messages[] = $choices[0]['message'] ?? ['role' => 'assistant', 'content' => null];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
@@ -177,9 +190,10 @@ trait OpenaiApi
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options, ?callable $callback = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
         $allSteps = [];
         $calls = [];
@@ -216,12 +230,21 @@ trait OpenaiApi
                 }
             }
 
-            $response = $this->client()->post( $endpoint, ['json' => $params] );
+            if( $callback !== null )
+            {
+                $params['stream'] = true;
+                $result = $this->streamResponse( $endpoint, $params, $callback );
+                $rateLimit = $this->streamRateLimit;
+            }
+            else
+            {
+                $response = $this->client()->post( $endpoint, ['json' => $params] );
 
-            $this->validate( $response );
+                $this->validate( $response );
 
-            $rateLimit = $this->getRateLimit( $response );
-            $result = $this->fromJson( $response );
+                $rateLimit = $this->getRateLimit( $response );
+                $result = $this->fromJson( $response );
+            }
 
             /** @var array<int, array<string, mixed>> $output */
             $output = $result['output'] ?? [];
@@ -234,7 +257,7 @@ trait OpenaiApi
                 break;
             }
 
-            $toolResults = $this->execTools( $parsed['toolCalls'], $calls );
+            $toolResults = $this->execTools( $parsed['toolCalls'], $calls, $callback );
             array_push( $allSteps, ...$toolResults );
             // Responses API expects the output items (function_call, message, reasoning)
             // appended verbatim as top-level input items, not wrapped in an assistant message.
@@ -542,7 +565,9 @@ trait OpenaiApi
         {
             /** @var array<string, mixed> $msg */
             $msg = $data['message'] ?? [];
-            if( $text = $msg['content'] ?? null ) {
+            $text = $msg['content'] ?? null;
+
+            if( $text !== null && $text !== '' ) {
                 $texts[] = $text;
             }
         }
@@ -575,7 +600,9 @@ trait OpenaiApi
 
             foreach( $data['content'] ?? [] as $content )
             {
-                if( $text = $content['text'] ?? null ) {
+                $text = $content['text'] ?? null;
+
+                if( $text !== null && $text !== '' ) {
                     $texts[] = $text;
                 }
             }
@@ -698,5 +725,157 @@ trait OpenaiApi
         }
 
         return $messages;
+    }
+
+
+    /**
+     * Streams a chat completions request and rebuilds the non-streaming result.
+     *
+     * Forwards each text delta to the callback while accumulating the assistant
+     * content, reasoning, citations and tool call argument fragments, then returns a
+     * result array shaped like a regular chat completions response so the shared tool
+     * loop and result builder can reuse it.
+     *
+     * @param string $endpoint API endpoint path
+     * @param array<string, mixed> $params Request payload with streaming enabled
+     * @param callable $callback Text delta consumer
+     * @return array<string, mixed> Reassembled API result
+     */
+    private function streamCompletion( string $endpoint, array $params, callable $callback ) : array
+    {
+        $content = '';
+        $reasoning = '';
+        $finish = null;
+        /** @var array<string, mixed> $meta */
+        $meta = [];
+        /** @var array<string, mixed> $usage */
+        $usage = [];
+        /** @var array<int, mixed> $citations */
+        $citations = [];
+        /** @var array<int, array<string, mixed>> $tools */
+        $tools = [];
+        $current = 0;
+
+        foreach( $this->streamData( $endpoint, $params ) as $event )
+        {
+            // Keep the envelope fields (id, model, created, ...) so meta() matches the non-streaming
+            // response; later chunks win per key so the final resolved values are reported.
+            $meta = array_diff_key( $event, ['choices' => true, 'usage' => true, 'citations' => true] ) + $meta;
+
+            if( isset( $event['usage'] ) && is_array( $event['usage'] ) ) {
+                $usage = $event['usage'];
+            }
+
+            if( isset( $event['citations'] ) && is_array( $event['citations'] ) ) {
+                $citations = $event['citations'];
+            }
+
+            /** @var array<string, mixed> $choice */
+            $choice = $event['choices'][0] ?? [];
+
+            if( isset( $choice['finish_reason'] ) ) {
+                $finish = $choice['finish_reason'];
+            }
+
+            /** @var array<string, mixed> $delta */
+            $delta = $choice['delta'] ?? [];
+
+            if( isset( $delta['content'] ) && is_string( $delta['content'] ) && $delta['content'] !== '' )
+            {
+                $content .= $delta['content'];
+                $callback( $delta['content'] );
+            }
+
+            if( isset( $delta['reasoning_content'] ) && is_string( $delta['reasoning_content'] ) ) {
+                $reasoning .= $delta['reasoning_content'];
+            }
+
+            /** @var array<int, array<string, mixed>> $calls */
+            $calls = $delta['tool_calls'] ?? [];
+
+            foreach( $calls as $call )
+            {
+                // Prefer the provider index; fall back to a fresh slot for a new call
+                // (it carries an id) or the current slot for an argument-only fragment.
+                $i = $call['index'] ?? ( isset( $call['id'] ) ? count( $tools ) : $current );
+                $current = $i;
+                $tools[$i] ??= ['id' => null, 'type' => 'function', 'function' => ['name' => '', 'arguments' => '']];
+
+                if( isset( $call['id'] ) ) {
+                    $tools[$i]['id'] = $call['id'];
+                }
+
+                if( isset( $call['function']['name'] ) ) {
+                    $tools[$i]['function']['name'] = $call['function']['name'];
+                }
+
+                if( isset( $call['function']['arguments'] ) ) {
+                    $tools[$i]['function']['arguments'] .= $call['function']['arguments'];
+                }
+            }
+        }
+
+        $message = ['role' => 'assistant', 'content' => $content !== '' ? $content : null];
+
+        if( $reasoning !== '' ) {
+            $message['reasoning_content'] = $reasoning;
+        }
+
+        if( $tools )
+        {
+            ksort( $tools );
+            $message['tool_calls'] = array_values( $tools );
+        }
+
+        /** @var array<string, mixed> $result */
+        $result = $meta + [
+            'choices' => [['message' => $message, 'finish_reason' => $finish]],
+            'usage' => $usage,
+        ];
+
+        if( $citations ) {
+            $result['citations'] = $citations;
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Streams a Responses API request and returns the final response object.
+     *
+     * Forwards each output text delta to the callback. The terminal events
+     * (response.completed/incomplete/failed) carry the full response object, which
+     * is returned as-is so the shared Responses tool loop can reuse it.
+     *
+     * @param string $endpoint API endpoint path
+     * @param array<string, mixed> $params Request payload with streaming enabled
+     * @param callable $callback Text delta consumer
+     * @return array<string, mixed> Final response object
+     */
+    private function streamResponse( string $endpoint, array $params, callable $callback ) : array
+    {
+        /** @var array<string, mixed> $result */
+        $result = [];
+
+        foreach( $this->streamData( $endpoint, $params ) as $event )
+        {
+            if( ( $event['type'] ?? '' ) === 'response.output_text.delta' )
+            {
+                $delta = $event['delta'] ?? '';
+
+                if( is_string( $delta ) && $delta !== '' ) {
+                    $callback( $delta );
+                }
+            }
+            elseif( isset( $event['response'] ) && is_array( $event['response'] ) )
+            {
+                /** @var array<string, mixed> $response */
+                $response = $event['response'];
+                $result = $response;
+            }
+        }
+
+        return $result;
     }
 }
