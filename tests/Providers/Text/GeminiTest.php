@@ -631,6 +631,106 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" world\"}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":9}}\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
+        } );
+
+        $this->assertSame( ['Hello', ' world'], $deltas );
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 9, $response->usage()['used'] );
+    }
+
+
+    public function testChatError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $sse = "data: {\"error\":{\"message\":\"boom\"}}\n\n";
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+    }
+
+
+    public function testChatThinkingNotStreamed() : void
+    {
+        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'think', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        // thinking stays out of the stream but is kept on the response meta
+        $this->assertSame( ['Answer'], $deltas );
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'pondering', $response->meta()['thinking'] );
+    }
+
+
+    public function testChatWithTools() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        // turn 1 streams a functionCall part, turn 2 streams the final text after the tool ran
+        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{}}}]},\"finishReason\":\"STOP\"}]}\n\n";
+        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
+
+        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $chunks = [];
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'chat' )
+            ->chat( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
+                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                    : $chunk;
+            } );
+
+        // the tool is announced (done=false), then completed (done=true) before the final text delta
+        $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );
+        $this->assertSame( ['name' => 'ping', 'done' => true, 'result' => 'pong'], $chunks[1] );
+        $this->assertSame( 'Done', $chunks[2] );
+
+        $this->assertEquals( 'Done', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // both turns hit the streaming endpoint and the tool result is resent to the model
+        $this->assertStringContainsString( ':streamGenerateContent?alt=sse', (string) $requests[1]->getUri() );
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $this->assertEquals( 'pong', $body['contents'][2]['parts'][0]['functionResponse']['response']['result'] );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Chat;
 use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Gemini as Base;
@@ -9,8 +10,16 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Gemini extends Base implements Structure, Write
+class Gemini extends Base implements Chat, Structure, Write
 {
+    public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+
+        return $this->generate( [['parts' => $this->content( $prompt, $files )]], $options, $callback );
+    }
+
+
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
@@ -131,8 +140,9 @@ class Gemini extends Base implements Structure, Write
      *
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      */
-    private function generate( array $contents, array $options ) : TextResponse
+    private function generate( array $contents, array $options, ?callable $callback = null ) : TextResponse
     {
         $model = $this->modelName( 'gemini-3.5-flash' );
         $allSteps = [];
@@ -162,12 +172,20 @@ class Gemini extends Base implements Structure, Write
                     $request['toolConfig'] = ['functionCallingConfig' => ['mode' => 'ANY']];
                 }
 
-                $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+                if( $callback !== null )
+                {
+                    $data = $this->streamGenerate( $model, $request, $callback );
+                    $rateLimit = $this->streamRateLimit;
+                }
+                else
+                {
+                    $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
 
-                $this->validate( $response );
+                    $this->validate( $response );
 
-                $rateLimit = $this->getRateLimit( $response );
-                $data = $this->fromJson( $response );
+                    $rateLimit = $this->getRateLimit( $response );
+                    $data = $this->fromJson( $response );
+                }
 
                 /** @var array<int, array<string, mixed>> $candidates */
                 $candidates = $data['candidates'] ?? [];
@@ -188,7 +206,7 @@ class Gemini extends Base implements Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls, $calls );
+            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
             array_push( $allSteps, ...$toolResults );
 
             $first = current( $candidates );
@@ -354,5 +372,102 @@ class Gemini extends Base implements Structure, Write
             )
             ->withRateLimit( $rateLimit )
             ->withMeta( $meta );
+    }
+
+
+    /**
+     * Streams a Gemini generateContent request and rebuilds the non-streaming result.
+     *
+     * Forwards each answer-text delta to the callback while accumulating the streamed
+     * parts (answer text, thinking and the complete functionCall parts), then returns a
+     * result array shaped like a regular generateContent response so the shared tool
+     * loop and result builder can reuse it.
+     *
+     * @param string|null $model Model name
+     * @param array<string, mixed> $request Request payload
+     * @param callable $callback Text delta consumer
+     * @return array<string, mixed> Reassembled API result
+     */
+    private function streamGenerate( ?string $model, array $request, callable $callback ) : array
+    {
+        $text = '';
+        $thinking = '';
+        $finishReason = null;
+        /** @var array<int, array<string, mixed>> $functionCalls */
+        $functionCalls = [];
+        /** @var array<string, mixed> $grounding */
+        $grounding = [];
+        /** @var array<string, mixed> $usage */
+        $usage = [];
+
+        // The "alt=sse" query switches the streaming endpoint to Server-Sent Events;
+        // without it Gemini returns one large JSON array instead of one event per chunk.
+        $endpoint = 'v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
+
+        foreach( $this->streamData( $endpoint, $request ) as $event )
+        {
+            /** @var array<int, array<string, mixed>> $candidates */
+            $candidates = $event['candidates'] ?? [];
+            /** @var array<string, mixed> $candidate */
+            $candidate = current( $candidates ) ?: [];
+
+            /** @var array<int, array<string, mixed>> $parts */
+            $parts = $candidate['content']['parts'] ?? [];
+
+            foreach( $parts as $part )
+            {
+                if( isset( $part['functionCall'] ) ) {
+                    $functionCalls[] = $part;
+                } elseif( $part['thought'] ?? false ) {
+                    $thinking .= $part['text'] ?? '';
+                } elseif( ( $chunk = $part['text'] ?? '' ) !== '' ) {
+                    $text .= $chunk;
+                    $callback( $chunk );
+                }
+            }
+
+            if( isset( $candidate['finishReason'] ) ) {
+                $finishReason = $candidate['finishReason'];
+            }
+
+            // Grounding metadata and usage arrive complete in a later chunk, so the
+            // latest non-empty value wins instead of being concatenated.
+            if( !empty( $candidate['groundingMetadata'] ) && is_array( $candidate['groundingMetadata'] ) ) {
+                $grounding = $candidate['groundingMetadata'];
+            }
+
+            if( !empty( $event['usageMetadata'] ) && is_array( $event['usageMetadata'] ) ) {
+                $usage = $event['usageMetadata'];
+            }
+        }
+
+        // Rebuild the candidate parts in the non-streaming order (thinking, answer, tool
+        // calls) so candidateTexts(), parseToolCalls() and result() read the same shape.
+        $parts = [];
+
+        if( $thinking !== '' ) {
+            $parts[] = ['text' => $thinking, 'thought' => true];
+        }
+
+        if( $text !== '' ) {
+            $parts[] = ['text' => $text];
+        }
+
+        $parts = array_merge( $parts, $functionCalls );
+
+        $candidate = ['content' => ['role' => 'model', 'parts' => $parts]];
+
+        if( $finishReason !== null ) {
+            $candidate['finishReason'] = $finishReason;
+        }
+
+        if( $grounding ) {
+            $candidate['groundingMetadata'] = $grounding;
+        }
+
+        return [
+            'candidates' => [$candidate],
+            'usageMetadata' => $usage,
+        ];
     }
 }
