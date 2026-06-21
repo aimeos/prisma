@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Files;
 
+use Aimeos\Prisma\Concerns\FetchesUrls;
 use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -12,11 +13,15 @@ use Aimeos\Prisma\Exceptions\PrismaException;
  */
 class File
 {
+    use FetchesUrls;
+
+
     protected ?string $url = null;
     protected ?string $base64 = null;
     protected ?string $binary = null;
     protected ?string $filename = null;
     protected ?string $mimeType = null;
+    protected int $maxBytes = 67108864;
 
 
     final protected function __construct()
@@ -67,6 +72,12 @@ class File
      */
     public static function fromLocalPath( string $path, ?string $mimeType = null ) : static
     {
+        // reject stream wrappers (php://, http://, ftp://, phar://, ...) so a local-path
+        // argument cannot be turned into a remote fetch or a filter-based file disclosure
+        if( preg_match( '#^[a-zA-Z][a-zA-Z0-9+.\-]*://#', $path ) ) {
+            throw new PrismaException( "Not a local file path: $path" );
+        }
+
         if( !( $content = file_get_contents( $path ) ) ) {
             throw new PrismaException( "Unable to read file from $path or it is empty" );
         }
@@ -175,7 +186,7 @@ class File
             return $this->binary = base64_decode( (string) $this->base64 );
         }
 
-        if( $this->url && !( $this->binary = file_get_contents( $this->url ) ?: null ) ) {
+        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), true ) ?: null ) ) {
             throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
         }
 
@@ -195,6 +206,19 @@ class File
 
 
     /**
+     * Sets the maximum number of bytes fetched from a URL.
+     *
+     * @param int $bytes Maximum size in bytes
+     * @return self File instance
+     */
+    public function maxSize( int $bytes ) : self
+    {
+        $this->maxBytes = $bytes;
+        return $this;
+    }
+
+
+    /**
      * Returns the mime type.
      *
      * @return string|null Mime type
@@ -205,8 +229,14 @@ class File
         {
             if( $this->binary || $this->base64 ) {
                 $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
-            } elseif( $this->url && ( $content = file_get_contents( $this->url, false, null, 0, 255 ) ) ) {
-                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $content ) ?: null;
+            } elseif( $this->url ) {
+                // best-effort probe of the first bytes; an unsafe or unreachable URL stays null
+                try {
+                    $content = $this->fetch( $this->url, 255, false );
+                    $this->mimeType = $content !== '' ? ( (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null ) : null;
+                } catch( PrismaException $e ) {
+                    $this->mimeType = null;
+                }
             }
         }
 
