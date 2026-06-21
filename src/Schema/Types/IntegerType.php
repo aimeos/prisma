@@ -70,6 +70,18 @@ class IntegerType extends Type
     }
 
 
+    protected function check( mixed $data, array $defs, string $path ) : array
+    {
+        // Accept whole-number floats (JSON 5.0, or values beyond PHP_INT_MAX) as integers,
+        // but reject non-finite values (INF/NAN) that floor() would otherwise let through.
+        if( !is_int( $data ) && !( is_float( $data ) && is_finite( $data ) && floor( $data ) === $data ) ) {
+            return [$this->label( $path ) . ' must be an integer'];
+        }
+
+        return $this->bounds( $data, $this->minimum, $this->maximum, $this->multipleOf, $path );
+    }
+
+
     protected static function typeName() : string
     {
         return 'integer';

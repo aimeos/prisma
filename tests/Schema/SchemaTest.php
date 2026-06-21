@@ -299,4 +299,28 @@ class SchemaTest extends TestCase
         $this->assertEquals( 'keep', $address['description'] );
         $this->assertArrayNotHasKey( 'pattern', $address['properties']['city'] );
     }
+
+
+    public function testMap() : void
+    {
+        $schema = [
+            'type' => 'object',
+            'properties' => [
+                'name' => ['type' => 'string'],
+                'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
+            ],
+        ];
+
+        $result = Schema::map( $schema, function( array $node ) {
+            if( ( $node['type'] ?? null ) === 'object' ) {
+                $node['additionalProperties'] = false;
+            }
+
+            return $node;
+        } );
+
+        $this->assertFalse( $result['additionalProperties'] );                                 // root transformed
+        $this->assertArrayNotHasKey( 'additionalProperties', $result['properties']['name'] );  // non-object untouched
+        $this->assertEquals( 'string', $result['properties']['tags']['items']['type'] );       // recursion reaches nested items
+    }
 }

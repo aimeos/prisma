@@ -26,6 +26,12 @@ class BooleanType extends Type
     }
 
 
+    protected function check( mixed $data, array $defs, string $path ) : array
+    {
+        return is_bool( $data ) ? [] : [$this->label( $path ) . ' must be a boolean'];
+    }
+
+
     protected static function typeName() : string
     {
         return 'boolean';

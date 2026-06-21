@@ -91,6 +91,57 @@ class ArrayType extends Type
     }
 
 
+    protected function check( mixed $data, array $defs, string $path ) : array
+    {
+        if( !is_array( $data ) || ( $data !== [] && !array_is_list( $data ) ) ) {
+            return [$this->label( $path ) . ' must be an array'];
+        }
+
+        $errors = [];
+        $count = count( $data );
+
+        if( $this->minItems !== null && $count < $this->minItems ) {
+            $errors[] = sprintf( '%s must have at least %d items', $this->label( $path ), $this->minItems );
+        }
+
+        if( $this->maxItems !== null && $count > $this->maxItems ) {
+            $errors[] = sprintf( '%s must have at most %d items', $this->label( $path ), $this->maxItems );
+        }
+
+        if( $this->uniqueItems )
+        {
+            $seen = [];
+
+            foreach( $data as $item )
+            {
+                // Strict, type-sensitive equality per JSON Schema: numbers compare by value
+                // (1 and 1.0 collide) but distinct types stay distinct (1 and "1" differ).
+                $key = match( true ) {
+                    is_int( $item ), is_float( $item ) => 'n:' . $item,
+                    is_string( $item ) => 's:' . $item,
+                    default => 'j:' . json_encode( $item ),
+                };
+
+                if( isset( $seen[$key] ) ) {
+                    $errors[] = $this->label( $path ) . ' must not contain duplicate items';
+                    break;
+                }
+
+                $seen[$key] = true;
+            }
+        }
+
+        if( $this->items !== null )
+        {
+            foreach( $data as $i => $item ) {
+                $errors = array_merge( $errors, $this->items->validate( $item, $defs, $this->join( $path, (string) $i ) ) );
+            }
+        }
+
+        return $errors;
+    }
+
+
     protected static function typeName() : string
     {
         return 'array';

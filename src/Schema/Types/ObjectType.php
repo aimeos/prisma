@@ -117,6 +117,53 @@ class ObjectType extends Type
     }
 
 
+    protected function check( mixed $data, array $defs, string $path ) : array
+    {
+        if( !is_array( $data ) || ( $data !== [] && array_is_list( $data ) ) ) {
+            return [$this->label( $path ) . ' must be an object'];
+        }
+
+        // A root object carries the $defs registry; nested objects inherit it. Merge (own
+        // first) rather than replace, so a nested object's own $defs don't shadow root defs.
+        $defs = $this->defs + $defs;
+        $errors = [];
+
+        foreach( $this->properties as $name => $type )
+        {
+            if( $type->required === true && !array_key_exists( $name, $data ) ) {
+                $errors[] = sprintf( '%s is missing required property "%s"', $this->label( $path ), $name );
+            }
+        }
+
+        if( $this->additionalProperties === false )
+        {
+            foreach( $data as $key => $value )
+            {
+                if( !array_key_exists( $key, $this->properties ) ) {
+                    $errors[] = sprintf( '%s has unexpected property "%s"', $this->label( $path ), (string) $key );
+                }
+            }
+        }
+
+        foreach( $this->properties as $name => $type )
+        {
+            if( !array_key_exists( $name, $data ) ) {
+                continue;
+            }
+
+            // A null value for an optional property means "not provided"; skip it rather
+            // than rejecting, since models commonly emit null for absent optional fields.
+            if( $data[$name] === null && $type->required !== true ) {
+                continue;
+            }
+
+            $errors = array_merge( $errors, $type->validate( $data[$name], $defs, $this->join( $path, $name ) ) );
+        }
+
+        return $errors;
+    }
+
+
     protected static function typeName() : string
     {
         return 'object';

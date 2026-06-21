@@ -52,6 +52,21 @@ class RefType extends Type
     }
 
 
+    /**
+     * Validates the value against the referenced definition.
+     *
+     * @param array<string, Type> $defs Reusable definitions for $ref resolution
+     * @return array<int, string> Validation error messages
+     */
+    public function validate( mixed $data, array $defs = [], string $path = '' ) : array
+    {
+        $name = str_starts_with( $this->ref, '#/$defs/' ) ? substr( $this->ref, 8 ) : $this->ref;
+        $type = $defs[$name] ?? null;
+
+        return $type instanceof Type ? $type->validate( $data, $defs, $path ) : [];
+    }
+
+
     protected static function typeName() : string
     {
         return '';

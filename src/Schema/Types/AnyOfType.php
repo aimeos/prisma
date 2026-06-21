@@ -73,6 +73,25 @@ class AnyOfType extends Type
     }
 
 
+    /**
+     * Validates the value against the allowed types, passing if any one matches.
+     *
+     * @param array<string, Type> $defs Reusable definitions for $ref resolution
+     * @return array<int, string> Validation error messages
+     */
+    public function validate( mixed $data, array $defs = [], string $path = '' ) : array
+    {
+        foreach( $this->types as $type )
+        {
+            if( !$type->validate( $data, $defs, $path ) ) {
+                return [];
+            }
+        }
+
+        return [$this->label( $path ) . ' does not match any allowed type'];
+    }
+
+
     protected static function typeName() : string
     {
         return '';

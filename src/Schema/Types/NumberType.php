@@ -70,6 +70,16 @@ class NumberType extends Type
     }
 
 
+    protected function check( mixed $data, array $defs, string $path ) : array
+    {
+        if( !is_int( $data ) && !( is_float( $data ) && is_finite( $data ) ) ) {
+            return [$this->label( $path ) . ' must be a number'];
+        }
+
+        return $this->bounds( $data, $this->minimum, $this->maximum, $this->multipleOf, $path );
+    }
+
+
     protected static function typeName() : string
     {
         return 'number';
