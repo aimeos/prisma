@@ -126,7 +126,7 @@ trait OpenaiApi
 
 
     /**
-     * Builds chat messages array with optional system prompt and user content.
+     * Builds chat messages array with optional system prompt, history and user content.
      *
      * @param array<int, array<string, mixed>> $content User message content blocks
      * @return array<int, array<string, mixed>> Messages array
@@ -137,6 +137,13 @@ trait OpenaiApi
 
         if( $system = $this->systemPrompt() ) {
             $messages[] = ['role' => 'system', 'content' => $system];
+        }
+
+        foreach( $this->history() as $msg )
+        {
+            $messages[] = $msg['role'] === 'assistant'
+                ? ['role' => 'assistant', 'content' => $msg['content']]
+                : ['role' => 'user', 'content' => $this->content( $msg['content'], $msg['files'] )];
         }
 
         $messages[] = ['role' => 'user', 'content' => $content];
@@ -288,6 +295,30 @@ trait OpenaiApi
         }
 
         return $content;
+    }
+
+
+    /**
+     * Builds the Responses API input array from the history and current prompt.
+     *
+     * @param string $prompt Text prompt for the current turn
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Image files for the current turn
+     * @return array<int, array<string, mixed>> Input items
+     */
+    protected function responsesInput( string $prompt, array $files ) : array
+    {
+        $input = [];
+
+        foreach( $this->history() as $msg )
+        {
+            $input[] = $msg['role'] === 'assistant'
+                ? ['role' => 'assistant', 'content' => [['type' => 'output_text', 'text' => $msg['content']]]]
+                : ['role' => 'user', 'content' => $this->responsesContent( $msg['content'], $msg['files'] )];
+        }
+
+        $input[] = ['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )];
+
+        return $input;
     }
 
 

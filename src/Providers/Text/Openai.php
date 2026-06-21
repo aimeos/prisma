@@ -22,7 +22,7 @@ class Openai extends Base implements Chat, Structure, Write
 
         return $this->responses(
             'v1/responses', 'gpt-5.5',
-            [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+            $this->responsesInput( $prompt, $files ),
             $options, $callback
         );
     }
@@ -39,7 +39,7 @@ class Openai extends Base implements Chat, Structure, Write
 
         return $this->structuredResponses(
             'v1/responses', 'gpt-5.5',
-            [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+            $this->responsesInput( $prompt, $files ),
             $schema, $options
         );
     }
@@ -55,7 +55,7 @@ class Openai extends Base implements Chat, Structure, Write
 
         return $this->responses(
             'v1/responses', 'gpt-5.5',
-            [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+            $this->responsesInput( $prompt, $files ),
             $options
         );
     }

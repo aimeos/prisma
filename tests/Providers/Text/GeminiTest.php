@@ -14,6 +14,36 @@ class GeminiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testWriteWithMessages() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[ 'content' => [ 'parts' => [[ 'text' => 'Blue' ]] ] ]],
+            ] ) )
+            ->withMessages( [
+                ['role' => 'user', 'content' => 'Recommend a colour'],
+                ['role' => 'assistant', 'content' => 'How about blue?'],
+            ] )
+            ->write( 'Sounds good, why?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertCount( 3, $body['contents'] );
+
+            $this->assertEquals( 'user', $body['contents'][0]['role'] );
+            $this->assertEquals( 'Recommend a colour', $body['contents'][0]['parts'][0]['text'] );
+
+            $this->assertEquals( 'model', $body['contents'][1]['role'] );
+            $this->assertEquals( 'How about blue?', $body['contents'][1]['parts'][0]['text'] );
+
+            $this->assertEquals( 'Sounds good, why?', $body['contents'][2]['parts'][0]['text'] );
+        } );
+
+        $this->assertEquals( 'Blue', $response->text() );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )

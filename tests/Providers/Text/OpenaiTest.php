@@ -14,6 +14,50 @@ class OpenaiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testWriteWithMessages() : void
+    {
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [[ 'content' => [[ 'type' => 'output_text', 'text' => 'Blue' ]] ]],
+            ] )
+            ->withMessages( [
+                ['role' => 'user', 'content' => 'What is in this image?', 'files' => [Image::fromBinary( 'PNG', 'image/png' )]],
+                ['role' => 'assistant', 'content' => 'A bicycle.'],
+            ] )
+            ->write( 'What colour is it?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertCount( 3, $body['input'] );
+
+            $this->assertEquals( 'user', $body['input'][0]['role'] );
+            $this->assertEquals( 'What is in this image?', $body['input'][0]['content'][0]['text'] );
+            $this->assertEquals( 'input_image', $body['input'][0]['content'][1]['type'] );
+
+            $this->assertEquals( 'assistant', $body['input'][1]['role'] );
+            $this->assertEquals( 'output_text', $body['input'][1]['content'][0]['type'] );
+            $this->assertEquals( 'A bicycle.', $body['input'][1]['content'][0]['text'] );
+
+            $this->assertEquals( 'user', $body['input'][2]['role'] );
+            $this->assertEquals( 'What colour is it?', $body['input'][2]['content'][0]['text'] );
+        } );
+
+        $this->assertEquals( 'Blue', $response->text() );
+    }
+
+
+    public function testWithMessagesInvalidRole() : void
+    {
+        $this->expectException( \Aimeos\Prisma\Exceptions\BadRequestException::class );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [] )
+            ->withMessages( [['role' => 'system', 'content' => 'nope']] )
+            ->write( 'hi' );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )

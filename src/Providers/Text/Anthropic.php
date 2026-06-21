@@ -17,7 +17,7 @@ class Anthropic extends Base implements Chat, Structure, Write
         $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
 
         return $this->generate(
-            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
             $options, $callback
         );
     }
@@ -32,7 +32,7 @@ class Anthropic extends Base implements Chat, Structure, Write
         if( $this->fits( $json ) )
         {
             $options['output_config'] = ['format' => ['type' => 'json_schema', 'schema' => $json]];
-            $messages = [['role' => 'user', 'content' => $this->content( $prompt, $files )]];
+            $messages = array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] );
         }
         else
         {
@@ -40,7 +40,7 @@ class Anthropic extends Base implements Chat, Structure, Write
             // 16 union-type parameters). Fall back to a prompt-embedded schema and
             // parse the JSON from the response text instead.
             $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $schema->toString();
-            $messages = [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]];
+            $messages = array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]] );
         }
 
         $response = $this->generate( $messages, $options );
@@ -58,7 +58,7 @@ class Anthropic extends Base implements Chat, Structure, Write
         $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
 
         return $this->generate(
-            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
             $options
         );
     }

@@ -20,7 +20,7 @@ class Xai extends Base implements Chat, Structure, Write
 
             return $this->responses(
                 'v1/responses', 'grok-4.3',
-                [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+                $this->responsesInput( $prompt, $files ),
                 $options, $callback
             );
         }
@@ -44,7 +44,7 @@ class Xai extends Base implements Chat, Structure, Write
 
             return $this->structuredResponses(
                 'v1/responses', 'grok-4.3',
-                [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+                $this->responsesInput( $prompt, $files ),
                 $schema, $options
             );
         }
@@ -67,7 +67,7 @@ class Xai extends Base implements Chat, Structure, Write
 
             return $this->responses(
                 'v1/responses', 'grok-4.3',
-                [['role' => 'user', 'content' => $this->responsesContent( $prompt, $files )]],
+                $this->responsesInput( $prompt, $files ),
                 $options
             );
         }
