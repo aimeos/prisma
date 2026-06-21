@@ -19,6 +19,24 @@ class XaiTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $deltas = [];
+
+        $response = Prisma::text()
+            ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+            ->ensure( 'chat' )
+            ->chat( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+                if( is_string( $chunk ) ) {
+                    $deltas[] = $chunk;
+                }
+            } );
+
+        $this->assertNotEmpty( $deltas );
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+    }
+
+
     public function testStructured() : void
     {
         $schema = Schema::for( 'person', [

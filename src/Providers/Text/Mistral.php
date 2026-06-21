@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Chat;
 use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Mistral as Base;
@@ -9,8 +10,26 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Mistral extends Base implements Structure, Write
+class Mistral extends Base implements Chat, Structure, Write
 {
+    public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'top_p'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
+
+        // Provider tools require the Mistral Agents API, which is not streamable; fall
+        // back to a non-streamed response (the callback is not invoked in that case).
+        if( $this->providerTools() ) {
+            return $this->createAgent( $messages, $options );
+        }
+
+        return $this->completions(
+            'v1/chat/completions', 'mistral-large-latest', $messages, $options, $callback
+        );
+    }
+
+
+
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p'] );

@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Chat;
 use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Anthropic as Base;
@@ -9,8 +10,20 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Anthropic extends Base implements Structure, Write
+class Anthropic extends Base implements Chat, Structure, Write
 {
+    public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
+
+        return $this->generate(
+            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            $options, $callback
+        );
+    }
+
+
+
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
@@ -183,8 +196,9 @@ class Anthropic extends Base implements Structure, Write
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      */
-    private function generate( array $messages, array $options ) : TextResponse
+    private function generate( array $messages, array $options, ?callable $callback = null ) : TextResponse
     {
         $allSteps = [];
         $calls = [];
@@ -193,6 +207,7 @@ class Anthropic extends Base implements Structure, Write
         $rateLimit = null;
         $texts = [];
         $result = [];
+        $tools = $this->toolsParam();
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
@@ -210,7 +225,7 @@ class Anthropic extends Base implements Structure, Write
                 $params['system'] = $system;
             }
 
-            if( $tools = $this->toolsParam() ) {
+            if( $tools ) {
                 $params['tools'] = $tools;
 
                 // Apply the configured tool choice only on the first step so the
@@ -226,13 +241,23 @@ class Anthropic extends Base implements Structure, Write
                 }
             }
 
-            $response = $this->client()->post( 'v1/messages', ['json' => $params] );
+            if( $callback !== null )
+            {
+                $params['stream'] = true;
+                $result = $this->streamMessage( $params, $callback );
+                $rateLimit = $this->streamRateLimit;
+            }
+            else
+            {
+                $response = $this->client()->post( 'v1/messages', ['json' => $params] );
 
-            $this->validate( $response );
+                $this->validate( $response );
 
-            $rateLimit = $this->getRateLimit( $response );
-            $result = $this->fromJson( $response );
-            $texts = [];
+                $rateLimit = $this->getRateLimit( $response );
+                $result = $this->fromJson( $response );
+            }
+
+            $stepTexts = [];
 
             /** @var array<int, array<string, mixed>> $contentBlocks */
             $contentBlocks = $result['content'] ?? [];
@@ -240,7 +265,7 @@ class Anthropic extends Base implements Structure, Write
             foreach( $contentBlocks as $block )
             {
                 if( ( $block['type'] ?? null ) === 'text' && isset( $block['text'] ) ) {
-                    $texts[] = $block['text'];
+                    $stepTexts[] = $block['text'];
                 } elseif( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
                     $thinking = $block['thinking'];
                 }
@@ -254,13 +279,17 @@ class Anthropic extends Base implements Structure, Write
                 }
             }
 
+            // Keep the last step that produced text so a tool-only final step (e.g. when
+            // maxSteps is reached) doesn't discard the model's partial answer.
+            $texts = $stepTexts ?: $texts;
+
             $toolCalls = $this->parseToolCalls( $result );
 
             if( !$toolCalls ) {
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls, $calls );
+            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
             array_push( $allSteps, ...$toolResults );
             $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
@@ -347,5 +376,110 @@ class Anthropic extends Base implements Structure, Write
             )
             ->withRateLimit( $rateLimit )
             ->withMeta( $meta );
+    }
+
+
+    /**
+     * Streams an Anthropic Messages request and rebuilds the non-streaming result.
+     *
+     * Forwards each text delta to the callback while reassembling the content blocks
+     * (text, thinking and tool_use with their accumulated JSON input), then returns a
+     * result array shaped like a regular Messages response so the shared tool loop and
+     * result builder can reuse it.
+     *
+     * @param array<string, mixed> $params Request payload with streaming enabled
+     * @param callable $callback Text delta consumer
+     * @return array<string, mixed> Reassembled API result
+     */
+    private function streamMessage( array $params, callable $callback ) : array
+    {
+        /** @var array<string, mixed> $message */
+        $message = [];
+        /** @var array<int, array<string, mixed>> $blocks */
+        $blocks = [];
+        /** @var array<int, string> $buffers */
+        $buffers = [];
+        $stopReason = null;
+        /** @var array<string, mixed> $usage */
+        $usage = [];
+
+        foreach( $this->streamData( 'v1/messages', $params ) as $event )
+        {
+            $idx = $event['index'] ?? 0;
+
+            switch( $event['type'] ?? '' )
+            {
+                case 'message_start':
+                    // Seed the result with the message envelope (id, model, role, ...) so
+                    // meta() carries the same fields the non-streaming response does.
+                    /** @var array<string, mixed> $message */
+                    $message = $event['message'] ?? [];
+                    /** @var array<string, mixed> $startUsage */
+                    $startUsage = $message['usage'] ?? [];
+                    $usage = $startUsage + $usage;
+                    break;
+
+                case 'content_block_start':
+                    $blocks[$idx] = $event['content_block'] ?? [];
+                    $buffers[$idx] = '';
+                    break;
+
+                case 'content_block_delta':
+                    /** @var array<string, mixed> $delta */
+                    $delta = $event['delta'] ?? [];
+
+                    switch( $delta['type'] ?? '' )
+                    {
+                        case 'text_delta':
+                            $text = $delta['text'] ?? '';
+                            $blocks[$idx]['text'] = ( $blocks[$idx]['text'] ?? '' ) . $text;
+
+                            if( $text !== '' ) {
+                                $callback( $text );
+                            }
+                            break;
+
+                        case 'input_json_delta':
+                            $buffers[$idx] = ( $buffers[$idx] ?? '' ) . ( $delta['partial_json'] ?? '' );
+                            break;
+
+                        case 'thinking_delta':
+                            $blocks[$idx]['thinking'] = ( $blocks[$idx]['thinking'] ?? '' ) . ( $delta['thinking'] ?? '' );
+                            break;
+
+                        case 'signature_delta':
+                            $blocks[$idx]['signature'] = ( $blocks[$idx]['signature'] ?? '' ) . ( $delta['signature'] ?? '' );
+                            break;
+
+                        case 'citations_delta':
+                            if( isset( $delta['citation'] ) ) {
+                                $blocks[$idx]['citations'][] = $delta['citation'];
+                            }
+                            break;
+                    }
+                    break;
+
+                case 'content_block_stop':
+                    if( ( $blocks[$idx]['type'] ?? '' ) === 'tool_use' ) {
+                        $blocks[$idx]['input'] = json_decode( $buffers[$idx] ?? '', true ) ?: [];
+                    }
+                    break;
+
+                case 'message_delta':
+                    $stopReason = $event['delta']['stop_reason'] ?? $stopReason;
+                    /** @var array<string, mixed> $deltaUsage */
+                    $deltaUsage = $event['usage'] ?? [];
+                    $usage = $deltaUsage + $usage;
+                    break;
+            }
+        }
+
+        ksort( $blocks );
+
+        $message['content'] = array_values( $blocks );
+        $message['stop_reason'] = $stopReason;
+        $message['usage'] = $usage;
+
+        return $message;
     }
 }

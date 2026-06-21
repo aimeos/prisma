@@ -557,6 +557,144 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
+            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" world\"}}\n\n"
+            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":7}}\n\n"
+            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.anthropic.com/v1/messages', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['stream'] );
+        } );
+
+        $this->assertSame( ['Hello', ' world'], $deltas );
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 12, $response->usage()['used'] );
+    }
+
+
+    public function testChatError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5}}}\n\n"
+            . "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n";
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'hi', [], [], function( $chunk ) {} );
+    }
+
+
+    public function testChatCitations() : void
+    {
+        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"model\":\"claude\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
+            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Paris\"}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"citations_delta\",\"citation\":{\"document_title\":\"Geo\",\"cited_text\":\"Paris is the capital\"}}}\n\n"
+            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}\n\n";
+
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'capital of France?', [], [], function( $chunk ) {} );
+
+        $this->assertEquals( 'Paris', $response->text() );
+        $this->assertCount( 1, $response->citations() );
+        $this->assertEquals( 'msg_1', $response->meta()['id'] );
+    }
+
+
+    public function testWriteMaxStepsKeepsText() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $provider = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [
+                    ['type' => 'text', 'text' => 'Working on it'],
+                    ['type' => 'tool_use', 'id' => 'c1', 'name' => 'ping', 'input' => []],
+                ],
+                'stop_reason' => 'tool_use',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+            ] );
+        $this->response( [
+            'content' => [['type' => 'tool_use', 'id' => 'c2', 'name' => 'ping', 'input' => []]],
+            'stop_reason' => 'tool_use',
+            'usage' => ['input_tokens' => 5, 'output_tokens' => 3]
+        ] );
+
+        $response = $provider->withTools( [$tool] )
+            ->withMaxSteps( 2 )
+            ->ensure( 'write' )
+            ->write( 'go' );
+
+        // the final step (capped by maxSteps) is tool-only; the earlier step's text must survive
+        $this->assertEquals( 'Working on it', $response->text() );
+        $this->assertCount( 2, $this->requests() );
+    }
+
+
+    public function testChatWithTools() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        // turn 1 streams a tool_use block, turn 2 streams the final text after the tool ran
+        $turn1 = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
+            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"c1\",\"name\":\"ping\",\"input\":{}}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{}\"}}\n\n"
+            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":3}}\n\n"
+            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
+
+        $turn2 = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
+            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
+            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Done\"}}\n\n"
+            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":2}}\n\n"
+            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
+
+        $provider = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $chunks = [];
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'chat' )
+            ->chat( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
+                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                    : $chunk;
+            } );
+
+        // the tool is announced (done=false), then completed (done=true) before the final text delta
+        $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );
+        $this->assertSame( ['name' => 'ping', 'done' => true, 'result' => 'pong'], $chunks[1] );
+        $this->assertSame( 'Done', $chunks[2] );
+
+        $this->assertEquals( 'Done', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+        $this->assertCount( 2, $this->requests() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -477,6 +477,34 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testChat() : void
+    {
+        $sse = "data: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\n"
+            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
+            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
+            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'chat' )
+            ->chat( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['stream'] );
+        } );
+
+        $this->assertSame( ['Hello', ' world'], $deltas );
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 9, $response->usage()['used'] );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

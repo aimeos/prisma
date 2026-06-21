@@ -24,9 +24,10 @@ trait CallsTools
      *
      * @param array<int, array<string, mixed>> $toolCalls Tool calls from the model
      * @param array<string, int> $calls Remaining calls per tool name (by reference)
+     * @param callable|null $callback Step notifier invoked before execution (done() === false) and after (done() === true)
      * @return array<int, Step> Tool execution results
      */
-    protected function execTools( array $toolCalls, array &$calls ) : array
+    protected function execTools( array $toolCalls, array &$calls, ?callable $callback = null ) : array
     {
         $toolMap = [];
 
@@ -56,9 +57,14 @@ trait CallsTools
             $remaining = $calls[$name] ?? $tool->limit();
 
             if( $remaining <= 0 ) {
-                $step = new Step( $call['id'] ?? null, $name, $call['arguments'] );
-                $step->complete( sprintf( 'Error: Tool "%s" has exhausted its maximum number of calls', $name ) );
-                $steps[$idx] = $step;
+                $steps[$idx] = $this->errorStep( $call, sprintf( 'Error: Tool "%s" has exhausted its maximum number of calls', $name ) );
+                continue;
+            }
+
+            // Reject model-supplied arguments that violate the tool schema before the
+            // handler runs; the error is returned so the model can correct and retry.
+            if( $errors = $tool->schema()->validate( $call['arguments'] ) ) {
+                $steps[$idx] = $this->errorStep( $call, sprintf( 'Error: invalid arguments for tool "%s" - %s', $name, implode( '; ', $errors ) ) );
                 continue;
             }
 
@@ -75,12 +81,28 @@ trait CallsTools
             }
         }
 
+        if( $callback )
+        {
+            // Notify each step before it runs; steps that exhausted their call limit
+            // are already complete and only get the post-execution notification below.
+            foreach( $steps as $step )
+            {
+                if( !$step->done() ) { $callback( $step ); }
+            }
+        }
+
         $this->concurrency()->run( $concurrent );
         ( new \Aimeos\Prisma\Tools\Concurrency\Sequential() )->run( $sequential );
 
         ksort( $steps );
+        $steps = array_values( $steps );
 
-        return array_values( $steps );
+        if( $callback )
+        {
+            foreach( $steps as $step ) { $callback( $step ); }
+        }
+
+        return $steps;
     }
 
 
@@ -135,5 +157,21 @@ trait CallsTools
         }
 
         return $tools;
+    }
+
+
+    /**
+     * Builds a completed error step for a call that will not be executed.
+     *
+     * @param array{id?: string|null, name: string, arguments: array<string, mixed>} $call Tool call
+     * @param string $message Error message returned to the model
+     * @return Step Completed error step
+     */
+    private function errorStep( array $call, string $message ) : Step
+    {
+        $step = new Step( $call['id'] ?? null, $call['name'], $call['arguments'] );
+        $step->complete( $message );
+
+        return $step;
     }
 }
