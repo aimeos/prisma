@@ -46,6 +46,26 @@ class Gemini extends Base
 
 
     /**
+     * Maps the conversation history to Gemini contents.
+     *
+     * @return array<int, array<string, mixed>> History contents
+     */
+    protected function mapMessages() : array
+    {
+        $contents = [];
+
+        foreach( $this->history() as $msg )
+        {
+            $contents[] = $msg['role'] === 'assistant'
+                ? ['role' => 'model', 'parts' => [['text' => $msg['content']]]]
+                : ['role' => 'user', 'parts' => $this->content( $msg['content'], $msg['files'] )];
+        }
+
+        return $contents;
+    }
+
+
+    /**
      * Builds tool result messages in Gemini format.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results

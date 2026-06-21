@@ -14,6 +14,37 @@ class GroqTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testWriteWithMessages() : void
+    {
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[ 'message' => [ 'content' => 'Blue' ] ]],
+            ] )
+            ->withMessages( [
+                ['role' => 'user', 'content' => 'Recommend a colour'],
+                ['role' => 'assistant', 'content' => 'How about blue?'],
+            ] )
+            ->write( 'Sounds good, why?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertCount( 3, $body['messages'] );
+
+            $this->assertEquals( 'user', $body['messages'][0]['role'] );
+            $this->assertEquals( 'Recommend a colour', $body['messages'][0]['content'][0]['text'] );
+
+            $this->assertEquals( 'assistant', $body['messages'][1]['role'] );
+            $this->assertEquals( 'How about blue?', $body['messages'][1]['content'] );
+
+            $this->assertEquals( 'user', $body['messages'][2]['role'] );
+            $this->assertEquals( 'Sounds good, why?', $body['messages'][2]['content'][0]['text'] );
+        } );
+
+        $this->assertEquals( 'Blue', $response->text() );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )

@@ -81,6 +81,26 @@ class Anthropic extends Base
 
 
     /**
+     * Maps the conversation history to Anthropic messages.
+     *
+     * @return array<int, array<string, mixed>> History messages
+     */
+    protected function mapMessages() : array
+    {
+        $messages = [];
+
+        foreach( $this->history() as $msg )
+        {
+            $messages[] = $msg['role'] === 'assistant'
+                ? ['role' => 'assistant', 'content' => $msg['content']]
+                : ['role' => 'user', 'content' => $this->content( $msg['content'], $msg['files'] )];
+        }
+
+        return $messages;
+    }
+
+
+    /**
      * Builds tool result messages in Anthropic format.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results

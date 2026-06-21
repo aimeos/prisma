@@ -16,7 +16,10 @@ class Gemini extends Base implements Chat, Structure, Write
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
 
-        return $this->generate( [['parts' => $this->content( $prompt, $files )]], $options, $callback );
+        return $this->generate(
+            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            $options, $callback
+        );
     }
 
 
@@ -26,7 +29,10 @@ class Gemini extends Base implements Chat, Structure, Write
         $options['responseMimeType'] = 'application/json';
         $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
 
-        $response = $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
+        $response = $this->generate(
+            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            $options
+        );
         $structured = json_decode( $response->text() ?? '', true ) ?: [];
 
         return $response->withStructured( $structured );
@@ -37,7 +43,10 @@ class Gemini extends Base implements Chat, Structure, Write
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
 
-        return $this->generate( [['parts' => $this->content( $prompt, $files )]], $options );
+        return $this->generate(
+            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            $options
+        );
     }
 
 

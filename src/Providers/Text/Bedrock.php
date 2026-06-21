@@ -17,7 +17,7 @@ class Bedrock extends BedrockBase implements Structure, Write
         $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this schema:\n" . $schema->toString();
 
         $response = $this->generate(
-            [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]],
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]] ),
             $options
         );
 
@@ -34,7 +34,7 @@ class Bedrock extends BedrockBase implements Structure, Write
         $options = $this->allowed( $options, ['temperature', 'topP'] );
 
         return $this->generate(
-            [['role' => 'user', 'content' => $this->content( $prompt, $files )]],
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
             $options
         );
     }
@@ -89,6 +89,26 @@ class Bedrock extends BedrockBase implements Structure, Write
         $content[] = ['text' => $prompt];
 
         return $content;
+    }
+
+
+    /**
+     * Maps the conversation history to Bedrock Converse messages.
+     *
+     * @return array<int, array<string, mixed>> History messages
+     */
+    private function mapMessages() : array
+    {
+        $messages = [];
+
+        foreach( $this->history() as $msg )
+        {
+            $messages[] = $msg['role'] === 'assistant'
+                ? ['role' => 'assistant', 'content' => [['text' => $msg['content']]]]
+                : ['role' => 'user', 'content' => $this->content( $msg['content'], $msg['files'] )];
+        }
+
+        return $messages;
     }
 
 
