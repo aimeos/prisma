@@ -154,7 +154,9 @@ class Schema
      */
     public function filter( array $keys ) : array
     {
-        return $this->filterKeys( $this->toArray(), $keys );
+        $flip = array_flip( $keys );
+
+        return self::map( $this->toArray(), fn( array $node ) => array_intersect_key( $node, $flip ) );
     }
 
 
@@ -182,42 +184,47 @@ class Schema
 
 
     /**
-     * Recursively filters schema keys to only include allowed ones.
+     * Validates a value against this schema.
+     *
+     * Intended to check untrusted, model-supplied input (e.g. the decoded arguments of a
+     * tool call) before it reaches a handler. Each type validates its own value, so only
+     * the constraints this builder can express are evaluated.
+     *
+     * @param mixed $data Value to validate
+     * @return array<int, string> Validation error messages; an empty array means the value is valid
+     */
+    public function validate( mixed $data ) : array
+    {
+        return $this->type->validate( $data );
+    }
+
+
+    /**
+     * Recursively applies a transform to a JSON Schema array and its sub-schemas.
+     *
+     * The callback transforms one (sub-)schema node; map() then recurses into the node's
+     * properties, items, anyOf and $defs. This is the single schema-tree traversal shared
+     * by the provider jsonSchema() hooks and filter() so the recursion lives in one place.
      *
      * @param array<string, mixed> $schema JSON Schema definition
-     * @param array<int, string> $keys Allowed keys
-     * @return array<string, mixed> Filtered schema
+     * @param callable(array<string, mixed>): array<string, mixed> $node Per-node transform
+     * @return array<string, mixed> Transformed schema
      */
-    private function filterKeys( array $schema, array $keys ) : array
+    public static function map( array $schema, callable $node ) : array
     {
-        $filtered = array_intersect_key( $schema, array_flip( $keys ) );
+        $schema = $node( $schema );
 
-        if( isset( $filtered['properties'] ) && is_array( $filtered['properties'] ) )
+        foreach( ['properties', 'anyOf', '$defs'] as $key )
         {
-            $filtered['properties'] = array_map(
-                fn( array $prop ) => $this->filterKeys( $prop, $keys ),
-                $filtered['properties']
-            );
+            if( isset( $schema[$key] ) && is_array( $schema[$key] ) ) {
+                $schema[$key] = array_map( fn( $sub ) => is_array( $sub ) ? self::map( $sub, $node ) : $sub, $schema[$key] );
+            }
         }
 
-        if( isset( $filtered['items'] ) && is_array( $filtered['items'] ) ) {
-            $filtered['items'] = $this->filterKeys( $filtered['items'], $keys );
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = self::map( $schema['items'], $node );
         }
 
-        if( isset( $filtered['anyOf'] ) && is_array( $filtered['anyOf'] ) ) {
-            $filtered['anyOf'] = array_map(
-                fn( array $sub ) => $this->filterKeys( $sub, $keys ),
-                $filtered['anyOf']
-            );
-        }
-
-        if( isset( $filtered['$defs'] ) && is_array( $filtered['$defs'] ) ) {
-            $filtered['$defs'] = array_map(
-                fn( array $sub ) => $this->filterKeys( $sub, $keys ),
-                $filtered['$defs']
-            );
-        }
-
-        return $filtered;
+        return $schema;
     }
 }
