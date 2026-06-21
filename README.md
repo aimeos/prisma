@@ -67,6 +67,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
+    <li><a href="#chat">chat</a><span>: Stream a chat response token by token via a callback</span></li>
     <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
@@ -1550,6 +1551,126 @@ $vectors = $vectorResponse->vectors();
 ```
 
 ## Text API
+
+### chat
+
+Generate text from the given prompt and stream it token by token. Each text delta is passed to the callback as a string as soon as it arrives, while the fully assembled response is returned as a regular `TextResponse` once the stream finished. Streaming uses the same endpoint the provider's [write()](#write) method uses, so tools, system prompts and options work identically.
+
+```php
+public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+```
+
+* @param **string** `$prompt` Input prompt for text generation
+* @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @param **callable&#124;null** `$callback` Stream consumer: `fn( string|Step $chunk ): void`
+* @return **TextResponse** Response text
+
+The callback receives:
+
+* a **string** for every streamed text delta, and
+* a **Step** for every executed tool call - once before it runs (`done() === false`) and once after it completed (`done() === true`). A tool that hit its call limit is not executed and is reported once (completed).
+
+> The same `Step` instance is reused for both notifications, so read `done()` / `result()` **inside** the callback (a stored reference reflects the final state).
+
+**Supported providers:**
+
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
+* [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
+* [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
+* [Groq](https://console.groq.com/docs/text-chat)
+* [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
+* [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
+* [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
+* [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->ensure( 'chat' )
+    ->chat( 'Summarize the benefits of renewable energy', [], [], function( string $delta ) {
+        echo $delta; // print each token as it arrives
+    } );
+
+$full = $textResponse->text();  // the complete answer
+$usage = $textResponse->usage(); // token usage
+```
+
+**Streaming with tools:**
+
+```php
+use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Tools\Step;
+
+$textResponse = Prisma::text()
+    ->using( 'anthropic', ['api_key' => 'xxx'] )
+    ->withTools( [$weatherTool] )
+    ->ensure( 'chat' )
+    ->chat( 'What is the weather in Berlin?', [], [], function( string|Step $chunk ) {
+        if( !$chunk instanceof Step ) {
+            echo $chunk;                                                        // text delta
+        } elseif( $chunk->done() ) {
+            printf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() );       // tool result
+        } else {
+            printf( "\n[calling %s(%s)]\n", $chunk->name(), json_encode( $chunk->arguments() ) ); // tool call
+        }
+    } );
+
+$steps = $textResponse->steps(); // executed tool steps, same as write()
+```
+
+> **Performance:** the callback runs once per token, synchronously in the read loop. For high-frequency sinks (broadcast, WebSocket, database), coalesce deltas - buffer them and flush every ~50ms or every N characters - instead of doing a round trip per token.
+
+**GraphQL subscriptions:**
+
+Streaming over GraphQL means subscriptions - a query or mutation returns one document and cannot emit tokens incrementally. Run `chat()` in a mutation (or queued job) and publish each delta to a subscription topic; the subscription fans them out. Example using [Lighthouse](https://lighthouse-php.com/):
+
+```graphql
+type Mutation {
+  chat(conversationId: ID!, prompt: String!): Boolean!
+    @field(resolver: "App\\GraphQL\\Chat")
+}
+
+type Subscription {
+  chatStream(conversationId: ID!): String!
+}
+```
+
+```php
+namespace App\GraphQL;
+
+use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Tools\Step;
+
+final class Chat
+{
+    public function __invoke( mixed $root, array $args ) : bool
+    {
+        $id = $args['conversationId'];
+
+        Prisma::text()->using( 'openai', config( 'services.openai' ) )
+            ->withTools( [ /* your Contracts\Tool instances */ ] )
+            ->chat( $args['prompt'], [], [], function( string|Step $chunk ) use ( $id ) {
+                $text = match( true ) {
+                    !$chunk instanceof Step => $chunk,
+                    $chunk->done()          => sprintf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() ),
+                    default                 => sprintf( "\n[calling %s(%s)]\n", $chunk->name(), json_encode( $chunk->arguments() ) ),
+                };
+
+                \Subscription::broadcast( 'chatStream', ['conversationId' => $id, 'text' => $text] );
+            } );
+
+        return true;
+    }
+}
+```
+
+The subscription resolver filters by `conversationId` and returns `$event['text']`. Subscriptions need a driver (Pusher, Laravel Reverb or graphql-sse); for long answers, dispatch the `chat()` call from a queued job so the mutation returns immediately.
 
 ### structure
 
