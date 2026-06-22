@@ -65,6 +65,28 @@ trait MakesPrismaRequests
 
 
     /**
+     * Get the underlying provider instance.
+     *
+     * @return Provider Prisma provider instance
+     */
+    protected function provider() : Provider
+    {
+        return $this->prismaProvider;
+    }
+
+
+    /**
+     * Get all recorded requests.
+     *
+     * @return array<RequestInterface> List of requests
+     */
+    protected function requests(): array
+    {
+        return array_map( fn( $h ) => $h['request'], $this->prismaHistory );
+    }
+
+
+    /**
      * Add a fake response, optionally return the Provider for direct use.
      *
      * @param string|array<string, mixed> $body Response body
@@ -83,28 +105,6 @@ trait MakesPrismaRequests
 
         $this->prismaHandler->append( new Response( $status, $headers, $body, '1.1', $reason ) );
 
-        return $this->prismaProvider;
-    }
-
-
-    /**
-     * Get all recorded requests.
-     *
-     * @return array<RequestInterface> List of requests
-     */
-    protected function requests(): array
-    {
-        return array_map( fn( $h ) => $h['request'], $this->prismaHistory );
-    }
-
-
-    /**
-     * Get the underlying provider instance.
-     *
-     * @return Provider Prisma provider instance
-     */
-    protected function provider() : Provider
-    {
         return $this->prismaProvider;
     }
 }

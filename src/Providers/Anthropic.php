@@ -101,6 +101,67 @@ class Anthropic extends Base
 
 
     /**
+     * @param array<string, array<string, mixed>> $map
+     * @return array<int, array<string, mixed>>
+     */
+    protected function mapProviderTools( array $map ) : array
+    {
+        $tools = $this->baseMapProviderTools( $map );
+
+        foreach( $this->providerTools() as $tool )
+        {
+            if( $tool->limit() < PHP_INT_MAX )
+            {
+                foreach( $tools as &$entry )
+                {
+                    if( isset( $map[$tool->name()] ) && ( $entry['type'] ?? '' ) === ( $map[$tool->name()]['type'] ?? '' ) ) {
+                        $entry['max_uses'] = $tool->limit();
+                    }
+                }
+            }
+        }
+
+        return $tools;
+    }
+
+
+    /**
+     * Parses tool calls from Anthropic API response.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
+     */
+    protected function parseToolCalls( array $result ) : array
+    {
+        $toolCalls = [];
+
+        /** @var array<int, array<string, mixed>> $content */
+        $content = $result['content'] ?? [];
+
+        foreach( $content as $block )
+        {
+            if( ( $block['type'] ?? '' ) === 'tool_use' ) {
+                /** @var string|null $id */
+                $id = $block['id'] ?? null;
+                /** @var string $name */
+                $name = $block['name'] ?? '';
+                // A scalar/null "input" would break the array contract downstream, so
+                // anything that is not an array is normalized to an empty argument map.
+                $input = is_array( $block['input'] ?? null ) ? $block['input'] : [];
+
+                $toolCalls[] = [
+                    'id' => $id,
+                    'name' => $name,
+                    'arguments' => $input,
+                ];
+            }
+        }
+
+        return $toolCalls;
+    }
+
+
+    /**
      * Builds tool result messages in Anthropic format.
      *
      * @param array<int, \Aimeos\Prisma\Tools\Step> $results Tool execution results
@@ -151,66 +212,5 @@ class Anthropic extends Base
         }
 
         return array_merge( $tools, $this->mapProviderTools( self::$providerToolMap ) );
-    }
-
-
-    /**
-     * Parses tool calls from Anthropic API response.
-     *
-     * @param array<string, mixed> $result API response data
-     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
-     */
-    protected function parseToolCalls( array $result ) : array
-    {
-        $toolCalls = [];
-
-        /** @var array<int, array<string, mixed>> $content */
-        $content = $result['content'] ?? [];
-
-        foreach( $content as $block )
-        {
-            if( ( $block['type'] ?? '' ) === 'tool_use' ) {
-                /** @var string|null $id */
-                $id = $block['id'] ?? null;
-                /** @var string $name */
-                $name = $block['name'] ?? '';
-                // A scalar/null "input" would break the array contract downstream, so
-                // anything that is not an array is normalized to an empty argument map.
-                $input = is_array( $block['input'] ?? null ) ? $block['input'] : [];
-
-                $toolCalls[] = [
-                    'id' => $id,
-                    'name' => $name,
-                    'arguments' => $input,
-                ];
-            }
-        }
-
-        return $toolCalls;
-    }
-
-
-    /**
-     * @param array<string, array<string, mixed>> $map
-     * @return array<int, array<string, mixed>>
-     */
-    protected function mapProviderTools( array $map ) : array
-    {
-        $tools = $this->baseMapProviderTools( $map );
-
-        foreach( $this->providerTools() as $tool )
-        {
-            if( $tool->limit() < PHP_INT_MAX )
-            {
-                foreach( $tools as &$entry )
-                {
-                    if( isset( $map[$tool->name()] ) && ( $entry['type'] ?? '' ) === ( $map[$tool->name()]['type'] ?? '' ) ) {
-                        $entry['max_uses'] = $tool->limit();
-                    }
-                }
-            }
-        }
-
-        return $tools;
     }
 }

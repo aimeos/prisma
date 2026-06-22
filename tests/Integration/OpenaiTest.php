@@ -11,34 +11,6 @@ use PHPUnit\Framework\TestCase;
 
 class OpenaiTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['OPENAI_API_KEY'] ) ) {
-            $this->markTestSkipped( 'OPENAI_API_KEY is not defined in the environment' );
-        }
-    }
-
-
-    public function testStream() : void
-    {
-        $deltas = [];
-
-        $response = Prisma::text()
-            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
-            ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
-
-        $this->assertNotEmpty( $deltas );
-        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
-    }
-
-
     public function testDescribeAudio() : void
     {
         $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
@@ -107,15 +79,21 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testWrite() : void
+    public function testStream() : void
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $deltas = [];
+
         $response = Prisma::text()
             ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+            ->ensure( 'stream' )
+            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+                if( is_string( $chunk ) ) {
+                    $deltas[] = $chunk;
+                }
+            } );
 
-        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+        $this->assertNotEmpty( $deltas );
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
     }
 
 
@@ -134,18 +112,6 @@ class OpenaiTest extends TestCase
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );
-    }
-
-
-    public function testTranscribe() : void
-    {
-        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
-        $response = Prisma::audio()
-            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']])
-            ->ensure( 'transcribe' )
-            ->transcribe( $audio );
-
-        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
     }
 
 
@@ -176,5 +142,39 @@ class OpenaiTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['OPENAI_API_KEY'] ) ) {
+            $this->markTestSkipped( 'OPENAI_API_KEY is not defined in the environment' );
+        }
     }
 }

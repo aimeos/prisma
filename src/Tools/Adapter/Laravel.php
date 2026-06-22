@@ -28,22 +28,6 @@ class Laravel extends Base
     }
 
 
-    protected function execute( array $arguments ) : mixed
-    {
-        $class = '\Laravel\Mcp\Server\Tool';
-
-        if( class_exists( $class ) && $this->tool instanceof $class ) {
-            return $this->unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound, function.notFound
-        } elseif( method_exists( $this->tool, '__invoke' ) ) {
-            return ( $this->tool )( $arguments );
-        } elseif( method_exists( $this->tool, 'handle' ) ) {
-            return $this->tool->handle( $arguments );
-        }
-
-        return '';
-    }
-
-
     /**
      * Returns the tool description.
      *
@@ -85,6 +69,22 @@ class Laravel extends Base
         $schema = $arr['inputSchema'] ?? $arr['parameters'] ?? $arr;
 
         return $this->schema = \Aimeos\Prisma\Schema\Schema::fromArray( $this->name(), $schema );
+    }
+
+
+    protected function execute( array $arguments ) : mixed
+    {
+        $class = '\Laravel\Mcp\Server\Tool';
+
+        if( class_exists( $class ) && $this->tool instanceof $class ) {
+            return $this->unwrap( app()->call( [$this->tool, 'handle'], ['request' => new \Laravel\Mcp\Request( $arguments )] ) ); // @phpstan-ignore class.notFound, function.notFound
+        } elseif( method_exists( $this->tool, '__invoke' ) ) {
+            return ( $this->tool )( $arguments );
+        } elseif( method_exists( $this->tool, 'handle' ) ) {
+            return $this->tool->handle( $arguments );
+        }
+
+        return '';
     }
 
 

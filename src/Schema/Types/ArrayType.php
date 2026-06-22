@@ -12,6 +12,18 @@ class ArrayType extends Type
 
 
     /**
+     * Sets the default value.
+     *
+     * @param array<int, mixed> $value Default array value
+     */
+    public function default( array $value ) : static
+    {
+        $this->default = $value;
+        return $this;
+    }
+
+
+    /**
      * Creates an array type from a JSON Schema definition.
      *
      * @param array<string, mixed> $def JSON Schema type definition
@@ -29,18 +41,6 @@ class ArrayType extends Type
         $type->uniqueItems = is_bool( $def['uniqueItems'] ?? null ) ? $def['uniqueItems'] : null;
 
         return $type;
-    }
-
-
-    /**
-     * Sets the default value.
-     *
-     * @param array<int, mixed> $value Default array value
-     */
-    public function default( array $value ) : static
-    {
-        $this->default = $value;
-        return $this;
     }
 
 

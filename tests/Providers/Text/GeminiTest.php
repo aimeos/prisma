@@ -14,202 +14,175 @@ class GeminiTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testWriteWithMessages() : void
+    public function testNoApiKey() : void
     {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[ 'content' => [ 'parts' => [[ 'text' => 'Blue' ]] ] ]],
-            ] ) )
-            ->withMessages( [
-                ['role' => 'user', 'content' => 'Recommend a colour'],
-                ['role' => 'assistant', 'content' => 'How about blue?'],
-            ] )
-            ->write( 'Sounds good, why?' );
+        $this->expectException( PrismaException::class );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-
-            $this->assertCount( 3, $body['contents'] );
-
-            $this->assertEquals( 'user', $body['contents'][0]['role'] );
-            $this->assertEquals( 'Recommend a colour', $body['contents'][0]['parts'][0]['text'] );
-
-            $this->assertEquals( 'model', $body['contents'][1]['role'] );
-            $this->assertEquals( 'How about blue?', $body['contents'][1]['parts'][0]['text'] );
-
-            $this->assertEquals( 'Sounds good, why?', $body['contents'][2]['parts'][0]['text'] );
-        } );
-
-        $this->assertEquals( 'Blue', $response->text() );
+        $this->prisma( 'text', 'gemini', [] );
     }
 
 
-    public function testWrite() : void
+    public function testRateLimitRetryAfter() : void
     {
+        try
+        {
+            $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+                ->response( [
+                    'error' => [
+                        'code' => 429,
+                        'message' => 'Resource exhausted',
+                        'details' => [
+                            ['@type' => 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay' => '42s'],
+                        ],
+                    ],
+                ], status: 429, reason: 'Too Many Requests' )
+                ->ensure( 'write' )
+                ->write( 'hi' );
+
+            $this->fail( 'Expected RateLimitException' );
+        }
+        catch( \Aimeos\Prisma\Exceptions\RateLimitException $e )
+        {
+            $this->assertEquals( 42, $e->retryAfter() );
+        }
+    }
+
+
+    public function testStream() : void
+    {
+        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" world\"}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":9}}\n\n";
+
+        $deltas = [];
+
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'Hello world'
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', (string) $request->getUri() );
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertEquals( 'test', $request->getHeaderLine( 'x-goog-api-key' ) );
-
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
-            $this->assertEquals( ['TEXT'], $body['generationConfig']['responseModalities'] );
-            $this->assertArrayNotHasKey( 'systemInstruction', $body );
         } );
 
+        $this->assertSame( ['Hello', ' world'], $deltas );
         $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( ['Hello world'], $response->texts() );
+        $this->assertEquals( 9, $response->usage()['used'] );
     }
 
 
-    public function testWriteWithFiles() : void
+    public function testStreamBackfillsThoughtSignature() : void
     {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'An image of a cat'
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->ensure( 'write' )
-            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
+        $ping = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+        $pong = \Aimeos\Prisma\Tools::make( 'pong', 'Returns ping', Schema::for( 'pong', [] ), fn() => 'ping' );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['contents'][0]['parts'] );
-            $this->assertArrayHasKey( 'inlineData', $body['contents'][0]['parts'][0] );
-            $this->assertEquals( 'Describe this image', $body['contents'][0]['parts'][1]['text'] );
-        } );
+        // turn 1 streams two functionCall parts, but only the first carries a thoughtSignature
+        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":["
+            . "{\"functionCall\":{\"name\":\"ping\",\"args\":{}},\"thoughtSignature\":\"sig-abc\"},"
+            . "{\"functionCall\":{\"name\":\"pong\",\"args\":{}}}"
+            . "]},\"finishReason\":\"STOP\"}]}\n\n";
+        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
 
-        $this->assertEquals( 'An image of a cat', $response->text() );
+        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $provider->withTools( [$ping, $pong] )
+            ->ensure( 'stream' )
+            ->stream( 'do both', [], [], function( $chunk ) {} );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+
+        $sigs = [];
+        foreach( $body['contents'][1]['parts'] as $part ) {
+            if( isset( $part['functionCall'] ) ) {
+                $sigs[] = $part['thoughtSignature'] ?? null;
+            }
+        }
+
+        // Gemini 3 requires a thoughtSignature on every replayed functionCall part; the
+        // missing one on the second call is backfilled from the first.
+        $this->assertSame( ['sig-abc', 'sig-abc'], $sigs );
     }
 
 
-    public function testWriteWithSystemPrompt() : void
+    public function testStreamError() : void
     {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'Bonjour'
-                        ]]
-                    ]
-                ]]
-            ] ) );
+        $this->expectException( PrismaException::class );
 
-        $response->withSystemPrompt( 'Always respond in French' )
-            ->write( 'Say hello' );
+        $sse = "data: {\"error\":{\"message\":\"boom\"}}\n\n";
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'Always respond in French', $body['systemInstruction']['parts'][0]['text'] );
-        } );
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
     }
 
 
-    public function testWriteWithOptions() : void
+    public function testStreamThinkingNotStreamed() : void
     {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'result'
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->ensure( 'write' )
-            ->withMaxTokens( 100 )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
+        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true}]}}]}\n\n"
+            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}\n\n";
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.5, $body['generationConfig']['temperature'] );
-            $this->assertEquals( 100, $body['generationConfig']['maxOutputTokens'] );
-            $this->assertArrayNotHasKey( 'unknown', $body['generationConfig'] );
-        } );
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'think', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        // thinking stays out of the stream but is kept on the response meta
+        $this->assertSame( ['Answer'], $deltas );
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'pondering', $response->meta()['thinking'] );
     }
 
 
-    public function testWriteWithCitations() : void
+    public function testStreamWithTools() : void
     {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'Paris is the capital of France.'
-                        ]]
-                    ],
-                    'groundingMetadata' => [
-                        'groundingChunks' => [[
-                            'web' => [
-                                'uri' => 'https://example.com/france',
-                                'title' => 'France Facts'
-                            ]
-                        ], [
-                            'web' => [
-                                'uri' => 'https://example.com/paris',
-                                'title' => 'Paris Guide'
-                            ]
-                        ]],
-                        'groundingSupports' => [[
-                            'segment' => [
-                                'startIndex' => 0,
-                                'endIndex' => 30
-                            ],
-                            'groundingChunkIndices' => [0, 1]
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->write( 'What is the capital of France?' );
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $citations = $response->citations();
-        $this->assertCount( 2, $citations );
-        $this->assertEquals( 'France Facts', $citations[0]->title() );
-        $this->assertEquals( 'https://example.com/france', $citations[0]->url() );
-        $this->assertEquals( 'Paris is the capital of France', $citations[0]->text() );
-        $this->assertNull( $citations[0]->source() );
-        $this->assertEquals( 'Paris Guide', $citations[1]->title() );
-        $this->assertEquals( 'https://example.com/paris', $citations[1]->url() );
-        $this->assertEquals( 'Paris is the capital of France', $citations[1]->text() );
-    }
+        // turn 1 streams a functionCall part, turn 2 streams the final text after the tool ran
+        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{}}}]},\"finishReason\":\"STOP\"}]}\n\n";
+        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
 
+        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
 
-    public function testWriteWithoutCitations() : void
-    {
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => 'Hello'
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->write( 'Say hello' );
+        $chunks = [];
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'stream' )
+            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
+                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                    : $chunk;
+            } );
 
-        $this->assertEmpty( $response->citations() );
+        // the tool is announced (done=false), then completed (done=true) before the final text delta
+        $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );
+        $this->assertSame( ['name' => 'ping', 'done' => true, 'result' => 'pong'], $chunks[1] );
+        $this->assertSame( 'Done', $chunks[2] );
+
+        $this->assertEquals( 'Done', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        // both turns hit the streaming endpoint and the tool result is resent to the model
+        $this->assertStringContainsString( ':streamGenerateContent?alt=sse', (string) $requests[1]->getUri() );
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+        $this->assertEquals( 'pong', $body['contents'][2]['parts'][0]['functionResponse']['response']['result'] );
     }
 
 
@@ -344,33 +317,31 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testStructuredWithRefAndDefs() : void
+    public function testStructuredWithFiles() : void
     {
-        $schema = Schema::for( 'person', [
-            'address' => Schema::ref( 'Address' )->required(),
-        ] )->def( 'Address', Schema::object( [
-            'city' => Schema::string()->required(),
-        ] ) );
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
 
-        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
                 'candidates' => [[
-                    'content' => ['parts' => [['text' => '{"address":{"city":"x"}}']]],
-                    'finishReason' => 'STOP'
-                ]],
-                'usageMetadata' => ['totalTokenCount' => 5]
+                    'content' => [
+                        'parts' => [[
+                            'text' => '{"text":"a cat"}'
+                        ]]
+                    ]
+                ]]
             ] ) )
-            ->ensure( 'structure' )
-            ->structure( 'Extract', $schema );
+            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $json = $body['generationConfig']['responseSchema'];
-            // $ref and $defs survive the OpenAPI-subset key filter
-            $this->assertEquals( '#/$defs/Address', $json['properties']['address']['$ref'] );
-            $this->assertArrayHasKey( 'Address', $json['$defs'] );
-            $this->assertEquals( 'object', $json['$defs']['Address']['type'] );
+            $this->assertCount( 2, $body['contents'][0]['parts'] );
+            $this->assertArrayHasKey( 'inlineData', $body['contents'][0]['parts'][0] );
         } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
     }
 
 
@@ -402,125 +373,32 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testStructuredWithFiles() : void
+    public function testStructuredWithRefAndDefs() : void
     {
-        $schema = Schema::for( 'description', [
-            'text' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( [
-                'candidates' => [[
-                    'content' => [
-                        'parts' => [[
-                            'text' => '{"text":"a cat"}'
-                        ]]
-                    ]
-                ]]
-            ] ) )
-            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['contents'][0]['parts'] );
-            $this->assertArrayHasKey( 'inlineData', $body['contents'][0]['parts'][0] );
-        } );
-
-        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
-    }
-
-
-    public function testWriteError() : void
-    {
-        $this->expectException( PrismaException::class );
+        $schema = Schema::for( 'person', [
+            'address' => Schema::ref( 'Address' )->required(),
+        ] )->def( 'Address', Schema::object( [
+            'city' => Schema::string()->required(),
+        ] ) );
 
         $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( json_encode( ['error' => ['message' => 'Bad request']] ), status: 400, reason: 'Bad Request' )
-            ->ensure( 'write' )
-            ->write( 'prompt' );
-    }
-
-
-
-
-    public function testWriteToolLoopEmptyArgsIsObject() : void
-    {
-        $tool = \Aimeos\Prisma\Tools::make(
-            'ping',
-            'Returns pong',
-            Schema::for( 'ping', [] ),
-            fn() => 'pong'
-        );
-
-        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
-
-        // First response: model calls the tool without arguments ("args": {})
-        $this->response( json_encode( [
-            'candidates' => [[
-                'content' => [
-                    'role' => 'model',
-                    'parts' => [[
-                        'functionCall' => ['name' => 'ping', 'args' => (object) []]
-                    ]]
-                ]
-            ]]
-        ] ) );
-
-        // Second response: model finishes after receiving the tool result
-        $response = $this->response( json_encode( [
-            'candidates' => [[
-                'content' => [
-                    'role' => 'model',
-                    'parts' => [['text' => 'Done']]
-                ]
-            ]]
-        ] ) );
-
-        $response->withTools( [$tool] )
-            ->withMaxSteps( 5 )
-            ->ensure( 'write' )
-            ->write( 'Ping the tool' );
-
-        $requests = $this->requests();
-        $this->assertCount( 2, $requests );
-
-        // The resent model turn must carry an object args, not a JSON array
-        $body = $requests[1]->getBody()->getContents();
-        $this->assertStringContainsString( '"args":{}', $body );
-
-        $decoded = json_decode( $body, true );
-        $this->assertSame( [], $decoded['contents'][1]['parts'][0]['functionCall']['args'] );
-    }
-
-
-    public function testToolWithoutParametersOmitsParametersField() : void
-    {
-        $noArgs = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
-        $withArgs = \Aimeos\Prisma\Tools::make( 'greet', 'Greets', Schema::for( 'greet', ['name' => Schema::string()] ), fn() => 'hi' );
-
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
                 'candidates' => [[
-                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
-                ]]
-            ] ) );
-
-        $response->withTools( [$noArgs, $withArgs] )
-            ->ensure( 'write' )
-            ->write( 'hello' );
+                    'content' => ['parts' => [['text' => '{"address":{"city":"x"}}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $decls = $body['tools'][0]['functionDeclarations'];
-
-            // Zero-argument tool: parameters omitted entirely (Gemini rejects empty object schemas)
-            $this->assertEquals( 'ping', $decls[0]['name'] );
-            $this->assertArrayNotHasKey( 'parameters', $decls[0] );
-
-            // Tool with arguments: parameters included
-            $this->assertEquals( 'greet', $decls[1]['name'] );
-            $this->assertEquals( 'object', $decls[1]['parameters']['type'] );
-            $this->assertArrayHasKey( 'name', $decls[1]['parameters']['properties'] );
+            $json = $body['generationConfig']['responseSchema'];
+            // $ref and $defs survive the OpenAPI-subset key filter
+            $this->assertEquals( '#/$defs/Address', $json['properties']['address']['$ref'] );
+            $this->assertArrayHasKey( 'Address', $json['$defs'] );
+            $this->assertEquals( 'object', $json['$defs']['Address']['type'] );
         } );
     }
 
@@ -556,6 +434,8 @@ class GeminiTest extends TestCase
         $this->assertEquals( 'ping-1', $steps[0]->id() );
         $this->assertEquals( 'ping-2', $steps[1]->id() );
     }
+
+
 
 
     public function testToolResultListWrappedAsObject() : void
@@ -661,103 +541,249 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testStream() : void
+    public function testToolWithoutParametersOmitsParametersField() : void
     {
-        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" world\"}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":9}}\n\n";
-
-        $deltas = [];
+        $noArgs = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+        $withArgs = \Aimeos\Prisma\Tools::make( 'greet', 'Greets', Schema::for( 'greet', ['name' => Schema::string()] ), fn() => 'hi' );
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Done']]]
+                ]]
+            ] ) );
+
+        $response->withTools( [$noArgs, $withArgs] )
+            ->ensure( 'write' )
+            ->write( 'hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
-        } );
+            $decls = $body['tools'][0]['functionDeclarations'];
 
-        $this->assertSame( ['Hello', ' world'], $deltas );
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( 9, $response->usage()['used'] );
+            // Zero-argument tool: parameters omitted entirely (Gemini rejects empty object schemas)
+            $this->assertEquals( 'ping', $decls[0]['name'] );
+            $this->assertArrayNotHasKey( 'parameters', $decls[0] );
+
+            // Tool with arguments: parameters included
+            $this->assertEquals( 'greet', $decls[1]['name'] );
+            $this->assertEquals( 'object', $decls[1]['parameters']['type'] );
+            $this->assertArrayHasKey( 'name', $decls[1]['parameters']['properties'] );
+        } );
     }
 
 
-    public function testStreamError() : void
+    public function testWrite() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Hello world'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'test', $request->getHeaderLine( 'x-goog-api-key' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
+            $this->assertEquals( ['TEXT'], $body['generationConfig']['responseModalities'] );
+            $this->assertArrayNotHasKey( 'systemInstruction', $body );
+        } );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( ['Hello world'], $response->texts() );
+    }
+
+
+    public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );
 
-        $sse = "data: {\"error\":{\"message\":\"boom\"}}\n\n";
-
         $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->response( json_encode( ['error' => ['message' => 'Bad request']] ), status: 400, reason: 'Bad Request' )
+            ->ensure( 'write' )
+            ->write( 'prompt' );
     }
 
 
-    public function testStreamThinkingNotStreamed() : void
+    public function testWriteThinkingDisabled() : void
     {
-        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}\n\n";
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 2],
+            ] )
+            ->withThinkingBudget( 0 )
+            ->ensure( 'write' )
+            ->write( 'hi' );
 
-        $deltas = [];
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
 
-        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'stream' )
-            ->stream( 'think', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
-
-        // thinking stays out of the stream but is kept on the response meta
-        $this->assertSame( ['Answer'], $deltas );
-        $this->assertEquals( 'Answer', $response->text() );
-        $this->assertEquals( 'pondering', $response->meta()['thinking'] );
+            // withThinkingBudget(0) explicitly disables thinking instead of being ignored
+            $this->assertEquals( 0, $body['generationConfig']['thinkingConfig']['thinkingBudget'] );
+        } );
     }
 
 
-    public function testStreamWithTools() : void
+    public function testWriteToolLoopEmptyArgsIsObject() : void
     {
-        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping',
+            'Returns pong',
+            Schema::for( 'ping', [] ),
+            fn() => 'pong'
+        );
 
-        // turn 1 streams a functionCall part, turn 2 streams the final text after the tool ran
-        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{}}}]},\"finishReason\":\"STOP\"}]}\n\n";
-        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] );
 
-        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+        // First response: model calls the tool without arguments ("args": {})
+        $this->response( json_encode( [
+            'candidates' => [[
+                'content' => [
+                    'role' => 'model',
+                    'parts' => [[
+                        'functionCall' => ['name' => 'ping', 'args' => (object) []]
+                    ]]
+                ]
+            ]]
+        ] ) );
 
-        $chunks = [];
-        $response = $provider->withTools( [$tool] )
-            ->ensure( 'stream' )
-            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
-                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
-                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
-                    : $chunk;
-            } );
+        // Second response: model finishes after receiving the tool result
+        $response = $this->response( json_encode( [
+            'candidates' => [[
+                'content' => [
+                    'role' => 'model',
+                    'parts' => [['text' => 'Done']]
+                ]
+            ]]
+        ] ) );
 
-        // the tool is announced (done=false), then completed (done=true) before the final text delta
-        $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );
-        $this->assertSame( ['name' => 'ping', 'done' => true, 'result' => 'pong'], $chunks[1] );
-        $this->assertSame( 'Done', $chunks[2] );
-
-        $this->assertEquals( 'Done', $response->text() );
-        $this->assertCount( 1, $response->steps() );
+        $response->withTools( [$tool] )
+            ->withMaxSteps( 5 )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
 
         $requests = $this->requests();
         $this->assertCount( 2, $requests );
 
-        // both turns hit the streaming endpoint and the tool result is resent to the model
-        $this->assertStringContainsString( ':streamGenerateContent?alt=sse', (string) $requests[1]->getUri() );
-        $body = json_decode( $requests[1]->getBody()->getContents(), true );
-        $this->assertEquals( 'pong', $body['contents'][2]['parts'][0]['functionResponse']['response']['result'] );
+        // The resent model turn must carry an object args, not a JSON array
+        $body = $requests[1]->getBody()->getContents();
+        $this->assertStringContainsString( '"args":{}', $body );
+
+        $decoded = json_decode( $body, true );
+        $this->assertSame( [], $decoded['contents'][1]['parts'][0]['functionCall']['args'] );
+    }
+
+
+    public function testWriteWithCitations() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Paris is the capital of France.'
+                        ]]
+                    ],
+                    'groundingMetadata' => [
+                        'groundingChunks' => [[
+                            'web' => [
+                                'uri' => 'https://example.com/france',
+                                'title' => 'France Facts'
+                            ]
+                        ], [
+                            'web' => [
+                                'uri' => 'https://example.com/paris',
+                                'title' => 'Paris Guide'
+                            ]
+                        ]],
+                        'groundingSupports' => [[
+                            'segment' => [
+                                'startIndex' => 0,
+                                'endIndex' => 30
+                            ],
+                            'groundingChunkIndices' => [0, 1]
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->write( 'What is the capital of France?' );
+
+        $citations = $response->citations();
+        $this->assertCount( 2, $citations );
+        $this->assertEquals( 'France Facts', $citations[0]->title() );
+        $this->assertEquals( 'https://example.com/france', $citations[0]->url() );
+        $this->assertEquals( 'Paris is the capital of France', $citations[0]->text() );
+        $this->assertNull( $citations[0]->source() );
+        $this->assertEquals( 'Paris Guide', $citations[1]->title() );
+        $this->assertEquals( 'https://example.com/paris', $citations[1]->url() );
+        $this->assertEquals( 'Paris is the capital of France', $citations[1]->text() );
+    }
+
+
+    public function testWriteWithFiles() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'An image of a cat'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->ensure( 'write' )
+            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['contents'][0]['parts'] );
+            $this->assertArrayHasKey( 'inlineData', $body['contents'][0]['parts'][0] );
+            $this->assertEquals( 'Describe this image', $body['contents'][0]['parts'][1]['text'] );
+        } );
+
+        $this->assertEquals( 'An image of a cat', $response->text() );
+    }
+
+
+    public function testWriteWithMessages() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[ 'content' => [ 'parts' => [[ 'text' => 'Blue' ]] ] ]],
+            ] ) )
+            ->withMessages( [
+                ['role' => 'user', 'content' => 'Recommend a colour'],
+                ['role' => 'assistant', 'content' => 'How about blue?'],
+            ] )
+            ->write( 'Sounds good, why?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertCount( 3, $body['contents'] );
+
+            $this->assertEquals( 'user', $body['contents'][0]['role'] );
+            $this->assertEquals( 'Recommend a colour', $body['contents'][0]['parts'][0]['text'] );
+
+            $this->assertEquals( 'model', $body['contents'][1]['role'] );
+            $this->assertEquals( 'How about blue?', $body['contents'][1]['parts'][0]['text'] );
+
+            $this->assertEquals( 'Sounds good, why?', $body['contents'][2]['parts'][0]['text'] );
+        } );
+
+        $this->assertEquals( 'Blue', $response->text() );
     }
 
 
@@ -795,6 +821,31 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testWriteWithOptions() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'result'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->ensure( 'write' )
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.5, $body['generationConfig']['temperature'] );
+            $this->assertEquals( 100, $body['generationConfig']['maxOutputTokens'] );
+            $this->assertArrayNotHasKey( 'unknown', $body['generationConfig'] );
+        } );
+    }
+
+
     public function testWriteWithServiceTier() : void
     {
         $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
@@ -815,94 +866,43 @@ class GeminiTest extends TestCase
     }
 
 
-    public function testWriteThinkingDisabled() : void
+    public function testWriteWithSystemPrompt() : void
     {
-        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( [
-                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
-                'usageMetadata' => ['totalTokenCount' => 2],
-            ] )
-            ->withThinkingBudget( 0 )
-            ->ensure( 'write' )
-            ->write( 'hi' );
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Bonjour'
+                        ]]
+                    ]
+                ]]
+            ] ) );
+
+        $response->withSystemPrompt( 'Always respond in French' )
+            ->write( 'Say hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-
-            // withThinkingBudget(0) explicitly disables thinking instead of being ignored
-            $this->assertEquals( 0, $body['generationConfig']['thinkingConfig']['thinkingBudget'] );
+            $this->assertEquals( 'Always respond in French', $body['systemInstruction']['parts'][0]['text'] );
         } );
     }
 
 
-    public function testRateLimitRetryAfter() : void
+    public function testWriteWithoutCitations() : void
     {
-        try
-        {
-            $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-                ->response( [
-                    'error' => [
-                        'code' => 429,
-                        'message' => 'Resource exhausted',
-                        'details' => [
-                            ['@type' => 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay' => '42s'],
-                        ],
-                    ],
-                ], status: 429, reason: 'Too Many Requests' )
-                ->ensure( 'write' )
-                ->write( 'hi' );
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [[
+                            'text' => 'Hello'
+                        ]]
+                    ]
+                ]]
+            ] ) )
+            ->write( 'Say hello' );
 
-            $this->fail( 'Expected RateLimitException' );
-        }
-        catch( \Aimeos\Prisma\Exceptions\RateLimitException $e )
-        {
-            $this->assertEquals( 42, $e->retryAfter() );
-        }
-    }
-
-
-    public function testStreamBackfillsThoughtSignature() : void
-    {
-        $ping = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
-        $pong = \Aimeos\Prisma\Tools::make( 'pong', 'Returns ping', Schema::for( 'pong', [] ), fn() => 'ping' );
-
-        // turn 1 streams two functionCall parts, but only the first carries a thoughtSignature
-        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":["
-            . "{\"functionCall\":{\"name\":\"ping\",\"args\":{}},\"thoughtSignature\":\"sig-abc\"},"
-            . "{\"functionCall\":{\"name\":\"pong\",\"args\":{}}}"
-            . "]},\"finishReason\":\"STOP\"}]}\n\n";
-        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
-
-        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
-
-        $provider->withTools( [$ping, $pong] )
-            ->ensure( 'stream' )
-            ->stream( 'do both', [], [], function( $chunk ) {} );
-
-        $requests = $this->requests();
-        $this->assertCount( 2, $requests );
-
-        $body = json_decode( $requests[1]->getBody()->getContents(), true );
-
-        $sigs = [];
-        foreach( $body['contents'][1]['parts'] as $part ) {
-            if( isset( $part['functionCall'] ) ) {
-                $sigs[] = $part['thoughtSignature'] ?? null;
-            }
-        }
-
-        // Gemini 3 requires a thoughtSignature on every replayed functionCall part; the
-        // missing one on the second call is backfilled from the first.
-        $this->assertSame( ['sig-abc', 'sig-abc'], $sigs );
-    }
-
-
-    public function testNoApiKey() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'gemini', [] );
+        $this->assertEmpty( $response->citations() );
     }
 }

@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class AzureTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['AZURE_API_KEY'] ) || empty( $_ENV['AZURE_RESOURCE'] ) ) {
-            $this->markTestSkipped( 'AZURE_API_KEY / AZURE_RESOURCE are not defined in the environment' );
-        }
-    }
-
-
     public function testStream() : void
     {
         $deltas = [];
@@ -32,16 +22,6 @@ class AzureTest extends TestCase
             } );
 
         $this->assertNotEmpty( $deltas );
-        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
-    }
-
-
-    public function testWrite() : void
-    {
-        $response = $this->provider()
-            ->ensure( 'write' )
-            ->write( 'What is the capital of France? Reply with only the city name.' );
-
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
     }
 
@@ -91,6 +71,16 @@ class AzureTest extends TestCase
     }
 
 
+    public function testWrite() : void
+    {
+        $response = $this->provider()
+            ->ensure( 'write' )
+            ->write( 'What is the capital of France? Reply with only the city name.' );
+
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+    }
+
+
     /**
      * Builds an Azure text provider configured from the environment.
      *
@@ -105,5 +95,15 @@ class AzureTest extends TestCase
         }
 
         return Prisma::text()->using( 'azure', $config )->model( $_ENV['AZURE_DEPLOYMENT'] ?? 'gpt-4o' );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['AZURE_API_KEY'] ) || empty( $_ENV['AZURE_RESOURCE'] ) ) {
+            $this->markTestSkipped( 'AZURE_API_KEY / AZURE_RESOURCE are not defined in the environment' );
+        }
     }
 }

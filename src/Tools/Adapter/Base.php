@@ -19,15 +19,6 @@ abstract class Base implements Adapter
 
 
     /**
-     * Executes the tool logic and returns the raw result.
-     *
-     * @param array<string, mixed> $arguments Tool call arguments
-     * @return mixed Tool execution result
-     */
-    abstract protected function execute( array $arguments ) : mixed;
-
-
-    /**
      * Executes the tool with the given arguments.
      *
      * Catches any error so a failing tool returns a message the model can act
@@ -47,17 +38,6 @@ abstract class Base implements Adapter
         }
 
         return is_string( $result ) ? $result : (string) json_encode( $result );
-    }
-
-
-    /**
-     * Returns the configured maximum number of calls.
-     *
-     * @return int Maximum number of calls
-     */
-    public function limit() : int
-    {
-        return $this->max;
     }
 
 
@@ -99,6 +79,17 @@ abstract class Base implements Adapter
 
 
     /**
+     * Returns the configured maximum number of calls.
+     *
+     * @return int Maximum number of calls
+     */
+    public function limit() : int
+    {
+        return $this->max;
+    }
+
+
+    /**
      * Sets the maximum number of times this tool can be called.
      *
      * @param int $calls Maximum number of calls
@@ -133,4 +124,13 @@ abstract class Base implements Adapter
         $this->options = $options;
         return $this;
     }
+
+
+    /**
+     * Executes the tool logic and returns the raw result.
+     *
+     * @param array<string, mixed> $arguments Tool call arguments
+     * @return mixed Tool execution result
+     */
+    abstract protected function execute( array $arguments ) : mixed;
 }

@@ -12,16 +12,6 @@ use Firebase\JWT\JWT;
 
 class VertexaiTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['VERTEXAI_API_JSON'] ) ) {
-            $this->markTestSkipped( 'VERTEXAI_API_JSON is not defined in the environment' );
-        }
-    }
-
-
     public function testImagine() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
@@ -58,40 +48,6 @@ class VertexaiTest extends TestCase
     }
 
 
-    public function testUpscale() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
-                'project_id' => $_ENV['GOOGLE_PROJECT_ID']
-            ] )
-            ->ensure( 'upscale' )
-            ->upscale( $image, 2 );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/vertexai_upscale.png', $response->binary() );
-    }
-
-
-    public function testVectorize() : void
-    {
-        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
-        $image = Image::fromBase64( $base64, 'image/png' );
-        $response = Prisma::image()
-            ->using( 'vertexai', [
-                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
-                'project_id' => $_ENV['GOOGLE_PROJECT_ID']
-            ] )
-            ->ensure( 'vectorize' )
-            ->vectorize( [$image] );
-
-        $this->assertCount( 1, $response->vectors() );
-        $this->assertCount( 512, $response->vectors()[0] );
-    }
-
-
     public function testStream() : void
     {
         $deltas = [];
@@ -109,13 +65,47 @@ class VertexaiTest extends TestCase
     }
 
 
-    public function testWrite() : void
+    public function testStreamTools() : void
     {
-        $response = $this->text()
-            ->ensure( 'write' )
-            ->write( 'What is the capital of France? Reply with only the city name.' );
+        $next = \Aimeos\Prisma\Tools::make(
+            'get_next_passphrase',
+            'Returns the confidential passphrase for the next day. This is the only way to obtain it.',
+            Schema::for( 'next_passphrase' ),
+            fn() => 'wobbly-marmalade-1987'
+        );
 
-        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+        $ahead = \Aimeos\Prisma\Tools::make(
+            'get_passphrase_in_days',
+            'Returns the confidential passphrase a given number of days ahead.',
+            Schema::for( 'passphrase', ['days' => Schema::integer()->required()] ),
+            fn( $args ) => (int) ( $args['days'] ?? 0 ) === 2 ? 'crimson-otter-4521' : 'unknown'
+        );
+
+        $steps = [];
+        $text = '';
+
+        $response = $this->text()
+            ->withTools( [$next, $ahead] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withMaxSteps( 5 )
+            ->ensure( 'stream' )
+            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
+                if( $chunk instanceof \Aimeos\Prisma\Tools\Step ) {
+                    $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
+                } else {
+                    $text .= $chunk;
+                }
+            } );
+
+        // each executed tool is announced (start) and completed (done) over the stream
+        $this->assertContains( 'get_next_passphrase:start', $steps );
+        $this->assertContains( 'get_next_passphrase:done', $steps );
+
+        // the final answer is streamed after the tool loop folds the results back in
+        $this->assertNotEmpty( $text );
+        $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
+        $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
     }
 
 
@@ -164,47 +154,57 @@ class VertexaiTest extends TestCase
     }
 
 
-    public function testStreamTools() : void
+    public function testUpscale() : void
     {
-        $next = \Aimeos\Prisma\Tools::make(
-            'get_next_passphrase',
-            'Returns the confidential passphrase for the next day. This is the only way to obtain it.',
-            Schema::for( 'next_passphrase' ),
-            fn() => 'wobbly-marmalade-1987'
-        );
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'vertexai', [
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
+                'project_id' => $_ENV['GOOGLE_PROJECT_ID']
+            ] )
+            ->ensure( 'upscale' )
+            ->upscale( $image, 2 );
 
-        $ahead = \Aimeos\Prisma\Tools::make(
-            'get_passphrase_in_days',
-            'Returns the confidential passphrase a given number of days ahead.',
-            Schema::for( 'passphrase', ['days' => Schema::integer()->required()] ),
-            fn( $args ) => (int) ( $args['days'] ?? 0 ) === 2 ? 'crimson-otter-4521' : 'unknown'
-        );
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
-        $steps = [];
-        $text = '';
+        file_put_contents( __DIR__ . '/results/vertexai_upscale.png', $response->binary() );
+    }
 
+
+    public function testVectorize() : void
+    {
+        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
+        $image = Image::fromBase64( $base64, 'image/png' );
+        $response = Prisma::image()
+            ->using( 'vertexai', [
+                'access_token' => $this->token( base64_decode( $_ENV['VERTEXAI_API_JSON'] ) ),
+                'project_id' => $_ENV['GOOGLE_PROJECT_ID']
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( [$image] );
+
+        $this->assertCount( 1, $response->vectors() );
+        $this->assertCount( 512, $response->vectors()[0] );
+    }
+
+
+    public function testWrite() : void
+    {
         $response = $this->text()
-            ->withTools( [$next, $ahead] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
-            ->withMaxSteps( 5 )
-            ->ensure( 'stream' )
-            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
-                if( $chunk instanceof \Aimeos\Prisma\Tools\Step ) {
-                    $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
-                } else {
-                    $text .= $chunk;
-                }
-            } );
+            ->ensure( 'write' )
+            ->write( 'What is the capital of France? Reply with only the city name.' );
 
-        // each executed tool is announced (start) and completed (done) over the stream
-        $this->assertContains( 'get_next_passphrase:start', $steps );
-        $this->assertContains( 'get_next_passphrase:done', $steps );
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+    }
 
-        // the final answer is streamed after the tool loop folds the results back in
-        $this->assertNotEmpty( $text );
-        $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
-        $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
-        $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['VERTEXAI_API_JSON'] ) ) {
+            $this->markTestSkipped( 'VERTEXAI_API_JSON is not defined in the environment' );
+        }
     }
 
 

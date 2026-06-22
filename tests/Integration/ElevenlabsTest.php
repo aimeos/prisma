@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class ElevenlabsTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['ELEVENLABS_API_KEY'] ) ) {
-            $this->markTestSkipped( 'ELEVENLABS_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testRevoice() : void
     {
         $response = Prisma::audio()
@@ -54,5 +44,15 @@ class ElevenlabsTest extends TestCase
             ->transcribe( $audio );
 
         $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['ELEVENLABS_API_KEY'] ) ) {
+            $this->markTestSkipped( 'ELEVENLABS_API_KEY is not defined in the environment' );
+        }
     }
 }

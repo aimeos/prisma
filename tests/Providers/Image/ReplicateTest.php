@@ -37,22 +37,14 @@ class ReplicateTest extends TestCase
     }
 
 
-    public function testImagineStringOutput() : void
+    public function testImagineFailed() : void
     {
-        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
-            ->response( ['status' => 'succeeded', 'output' => 'https://replicate.delivery/single.png'] )
-            ->model( 'owner/model' )
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['status' => 'failed', 'error' => 'boom'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals(
-                'https://api.replicate.com/v1/models/owner/model/predictions',
-                (string) $request->getUri()
-            );
-        } );
-
-        $this->assertEquals( 'https://replicate.delivery/single.png', $response->first()?->url() );
     }
 
 
@@ -70,14 +62,22 @@ class ReplicateTest extends TestCase
     }
 
 
-    public function testImagineFailed() : void
+    public function testImagineStringOutput() : void
     {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
-            ->response( ['status' => 'failed', 'error' => 'boom'] )
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://replicate.delivery/single.png'] )
+            ->model( 'owner/model' )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://api.replicate.com/v1/models/owner/model/predictions',
+                (string) $request->getUri()
+            );
+        } );
+
+        $this->assertEquals( 'https://replicate.delivery/single.png', $response->first()?->url() );
     }
 
 

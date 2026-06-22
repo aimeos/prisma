@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class DeepseekTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['DEEPSEEK_API_KEY'] ) ) {
-            $this->markTestSkipped( 'DEEPSEEK_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testStream() : void
     {
         $deltas = [];
@@ -54,17 +44,6 @@ class DeepseekTest extends TestCase
     }
 
 
-    public function testWrite() : void
-    {
-        $response = Prisma::text()
-            ->using( 'deepseek', ['api_key' => $_ENV['DEEPSEEK_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
-
-        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
-    }
-
-
     public function testTools() : void
     {
         $next = \Aimeos\Prisma\Tools::make(
@@ -92,5 +71,26 @@ class DeepseekTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $response = Prisma::text()
+            ->using( 'deepseek', ['api_key' => $_ENV['DEEPSEEK_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['DEEPSEEK_API_KEY'] ) ) {
+            $this->markTestSkipped( 'DEEPSEEK_API_KEY is not defined in the environment' );
+        }
     }
 }

@@ -12,6 +12,118 @@ require_once __DIR__ . '/LaravelStubs.php';
 
 class AdapterTest extends TestCase
 {
+    public function testConcurrentDefault() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' );
+
+        $this->assertFalse( $tool->isConcurrent() );
+    }
+
+
+    public function testConcurrentFalse() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' )
+            ->concurrent()
+            ->concurrent( false );
+
+        $this->assertFalse( $tool->isConcurrent() );
+    }
+
+
+    public function testConcurrentFlag() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' )->concurrent();
+
+        $this->assertTrue( $tool->isConcurrent() );
+    }
+
+
+    public function testFailed() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => throw new \RuntimeException( 'boom' ) );
+
+        $output = $tool( [] );
+
+        $this->assertEquals( 'Error: boom', $output );
+    }
+
+
+    public function testFailedChaining() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => 'ok' );
+        $returned = $tool->failed( fn() => 'err' );
+
+        $this->assertSame( $tool, $returned );
+    }
+
+
+    public function testFailedCustomHandler() : void
+    {
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => throw new \RuntimeException( 'boom' ) )
+            ->failed( fn( \Throwable $e, array $args ) => 'Custom: ' . $e->getMessage() );
+
+        $output = $tool( [] );
+
+        $this->assertEquals( 'Custom: boom', $output );
+    }
+
+
+    public function testLaravel() : void
+    {
+        $laravelTool = new class implements \Laravel\Ai\Contracts\Tool {
+            public function name() : string { return 'laravel-tool'; }
+            public function description() : string { return 'A Laravel tool'; }
+            public function toArray() : array {
+                return [
+                    'type' => 'object',
+                    'properties' => ['input' => ['type' => 'string']],
+                ];
+            }
+            public function __invoke( array $args ) : string { return 'invoked'; }
+        };
+
+        $tool = Tools::laravel( $laravelTool );
+        $this->assertEquals( 'laravel-tool', $tool->name() );
+        $this->assertEquals( 'A Laravel tool', $tool->description() );
+        $this->assertEquals( 'invoked', $tool( [] ) );
+    }
+
+
+    public function testLaravelInvalid() : void
+    {
+        $this->expectException( \InvalidArgumentException::class );
+        Tools::laravel( new \stdClass() );
+    }
+
+
+    public function testLaravelInvalidClassName() : void
+    {
+        $this->expectException( \InvalidArgumentException::class );
+        Tools::laravel( \stdClass::class );
+    }
+
+
+    public function testLaravelWithHandle() : void
+    {
+        $handleTool = new class implements \Laravel\Ai\Contracts\Tool {
+            public function name() : string { return 'handle-tool'; }
+            public function description() : string { return 'A tool with handle method'; }
+            public function toArray() : array {
+                return [
+                    'type' => 'object',
+                    'properties' => ['text' => ['type' => 'string']],
+                ];
+            }
+            public function handle( array $args ) : string { return 'handled'; }
+        };
+
+        $tool = Tools::laravel( $handleTool );
+        $this->assertEquals( 'handle-tool', $tool->name() );
+        $this->assertEquals( 'A tool with handle method', $tool->description() );
+        $this->assertEquals( 'handled', $tool( [] ) );
+    }
+
+
     public function testMake() : void
     {
         $tool = Tools::make( 'my-tool', 'My tool desc', Schema::fromArray( 'my-tool', [
@@ -72,62 +184,6 @@ class AdapterTest extends TestCase
     }
 
 
-    public function testFailed() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => throw new \RuntimeException( 'boom' ) );
-
-        $output = $tool( [] );
-
-        $this->assertEquals( 'Error: boom', $output );
-    }
-
-
-    public function testFailedCustomHandler() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => throw new \RuntimeException( 'boom' ) )
-            ->failed( fn( \Throwable $e, array $args ) => 'Custom: ' . $e->getMessage() );
-
-        $output = $tool( [] );
-
-        $this->assertEquals( 'Custom: boom', $output );
-    }
-
-
-    public function testFailedChaining() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => 'ok' );
-        $returned = $tool->failed( fn() => 'err' );
-
-        $this->assertSame( $tool, $returned );
-    }
-
-
-    public function testConcurrentDefault() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' );
-
-        $this->assertFalse( $tool->isConcurrent() );
-    }
-
-
-    public function testConcurrentFlag() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' )->concurrent();
-
-        $this->assertTrue( $tool->isConcurrent() );
-    }
-
-
-    public function testConcurrentFalse() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => '' )
-            ->concurrent()
-            ->concurrent( false );
-
-        $this->assertFalse( $tool->isConcurrent() );
-    }
-
-
     public function testProvider() : void
     {
         $tool = Tools::provider( 'web_search' );
@@ -145,62 +201,6 @@ class AdapterTest extends TestCase
         $this->assertInstanceOf( Provider::class, $tool );
         $this->assertEquals( 'web_search', $tool->name() );
         $this->assertEquals( ['search_context_size' => 'medium'], $tool->options() );
-    }
-
-
-    public function testLaravel() : void
-    {
-        $laravelTool = new class implements \Laravel\Ai\Contracts\Tool {
-            public function name() : string { return 'laravel-tool'; }
-            public function description() : string { return 'A Laravel tool'; }
-            public function toArray() : array {
-                return [
-                    'type' => 'object',
-                    'properties' => ['input' => ['type' => 'string']],
-                ];
-            }
-            public function __invoke( array $args ) : string { return 'invoked'; }
-        };
-
-        $tool = Tools::laravel( $laravelTool );
-        $this->assertEquals( 'laravel-tool', $tool->name() );
-        $this->assertEquals( 'A Laravel tool', $tool->description() );
-        $this->assertEquals( 'invoked', $tool( [] ) );
-    }
-
-
-    public function testLaravelInvalid() : void
-    {
-        $this->expectException( \InvalidArgumentException::class );
-        Tools::laravel( new \stdClass() );
-    }
-
-
-    public function testLaravelInvalidClassName() : void
-    {
-        $this->expectException( \InvalidArgumentException::class );
-        Tools::laravel( \stdClass::class );
-    }
-
-
-    public function testLaravelWithHandle() : void
-    {
-        $handleTool = new class implements \Laravel\Ai\Contracts\Tool {
-            public function name() : string { return 'handle-tool'; }
-            public function description() : string { return 'A tool with handle method'; }
-            public function toArray() : array {
-                return [
-                    'type' => 'object',
-                    'properties' => ['text' => ['type' => 'string']],
-                ];
-            }
-            public function handle( array $args ) : string { return 'handled'; }
-        };
-
-        $tool = Tools::laravel( $handleTool );
-        $this->assertEquals( 'handle-tool', $tool->name() );
-        $this->assertEquals( 'A tool with handle method', $tool->description() );
-        $this->assertEquals( 'handled', $tool( [] ) );
     }
 
 

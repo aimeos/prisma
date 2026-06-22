@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class StabilityaiTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['STABILITYAI_API_KEY'] ) ) {
-            $this->markTestSkipped( 'STABILITYAI_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testErase() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
@@ -104,5 +94,15 @@ class StabilityaiTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/stabilityai_upscale.png', $response->binary() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['STABILITYAI_API_KEY'] ) ) {
+            $this->markTestSkipped( 'STABILITYAI_API_KEY is not defined in the environment' );
+        }
     }
 }

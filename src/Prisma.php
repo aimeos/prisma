@@ -101,17 +101,6 @@ class Prisma
 
 
     /**
-     * Creates a new instance for video providers.
-     *
-     * @return self New Prisma instance for video
-     */
-    public static function video() : self
-    {
-        return new self( 'video' );
-    }
-
-
-    /**
      * Returns a provider instance for the given name.
      *
      * @param string|null $name Provider name
@@ -139,5 +128,16 @@ class Prisma
         }
 
         return self::$fake ? self::$fake->use( $provider ) : $provider;
+    }
+
+
+    /**
+     * Creates a new instance for video providers.
+     *
+     * @return self New Prisma instance for video
+     */
+    public static function video() : self
+    {
+        return new self( 'video' );
     }
 }

@@ -21,6 +21,16 @@ class AnyOfType extends Type
 
 
     /**
+     * Adds another allowed type to the anyOf.
+     */
+    public function add( Type $type ) : static
+    {
+        $this->types[] = $type;
+        return $this;
+    }
+
+
+    /**
      * Creates an anyOf type from a JSON Schema definition.
      *
      * @param array<string, mixed> $def JSON Schema type definition
@@ -44,16 +54,6 @@ class AnyOfType extends Type
         $type->default = $def['default'] ?? null;
 
         return $type;
-    }
-
-
-    /**
-     * Adds another allowed type to the anyOf.
-     */
-    public function add( Type $type ) : static
-    {
-        $this->types[] = $type;
-        return $this;
     }
 
 

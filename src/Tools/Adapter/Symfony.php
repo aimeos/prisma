@@ -53,12 +53,6 @@ class Symfony extends Base
     }
 
 
-    protected function execute( array $arguments ) : mixed
-    {
-        return $this->instance->{$this->method}( ...$arguments );
-    }
-
-
     /**
      * Returns the tool description.
      *
@@ -161,5 +155,11 @@ class Symfony extends Base
         ], fn( $v ) => $v !== null );
 
         return $this->schema = \Aimeos\Prisma\Schema\Schema::fromArray( $this->name, $schema );
+    }
+
+
+    protected function execute( array $arguments ) : mixed
+    {
+        return $this->instance->{$this->method}( ...$arguments );
     }
 }

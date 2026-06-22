@@ -132,6 +132,25 @@ class Anthropic extends Base implements Stream, Structure, Write
 
 
     /**
+     * Forces an empty tool_use "input" ([]) back to an object ({}) so the resent message is accepted.
+     *
+     * @param array<int, array<string, mixed>> $content Assistant content blocks
+     * @return array<int, array<string, mixed>> Normalized content blocks
+     */
+    private function assistantContent( array $content ) : array
+    {
+        foreach( $content as &$block )
+        {
+            if( ( $block['type'] ?? '' ) === 'tool_use' && empty( $block['input'] ) ) {
+                $block['input'] = (object) [];
+            }
+        }
+
+        return $content;
+    }
+
+
+    /**
      * Accumulates the optional and union-type parameter counts of a JSON Schema.
      *
      * @param array<string, mixed> $schema JSON Schema definition
@@ -294,25 +313,6 @@ class Anthropic extends Base implements Stream, Structure, Write
         }
 
         return $this->result( $result, $allSteps, $texts, $rateLimit );
-    }
-
-
-    /**
-     * Forces an empty tool_use "input" ([]) back to an object ({}) so the resent message is accepted.
-     *
-     * @param array<int, array<string, mixed>> $content Assistant content blocks
-     * @return array<int, array<string, mixed>> Normalized content blocks
-     */
-    private function assistantContent( array $content ) : array
-    {
-        foreach( $content as &$block )
-        {
-            if( ( $block['type'] ?? '' ) === 'tool_use' && empty( $block['input'] ) ) {
-                $block['input'] = (object) [];
-            }
-        }
-
-        return $content;
     }
 
 

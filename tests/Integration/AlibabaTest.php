@@ -10,34 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 class AlibabaTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['ALIBABA_API_KEY'] ) ) {
-            $this->markTestSkipped( 'ALIBABA_API_KEY is not defined in the environment' );
-        }
-    }
-
-
-    public function testStream() : void
-    {
-        $deltas = [];
-
-        $response = Prisma::text()
-            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
-            ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
-
-        $this->assertNotEmpty( $deltas );
-        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
-    }
-
-
     public function testImagine() : void
     {
         $response = Prisma::image()
@@ -64,17 +36,21 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testVectorize() : void
+    public function testStream() : void
     {
-        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
-        $image = Image::fromBase64( $base64, 'image/png' );
-        $response = Prisma::image()
-            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
-            ->ensure( 'vectorize' )
-            ->vectorize( [$image], 1024 );
+        $deltas = [];
 
-        $this->assertCount( 1, $response->vectors() );
-        $this->assertCount( 1024, $response->vectors()[0] );
+        $response = Prisma::text()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'stream' )
+            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
+                if( is_string( $chunk ) ) {
+                    $deltas[] = $chunk;
+                }
+            } );
+
+        $this->assertNotEmpty( $deltas );
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
     }
 
 
@@ -93,18 +69,6 @@ class AlibabaTest extends TestCase
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );
-    }
-
-
-    public function testWrite() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::text()
-            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
-
-        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
     }
 
 
@@ -136,5 +100,41 @@ class AlibabaTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testVectorize() : void
+    {
+        $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
+        $image = Image::fromBase64( $base64, 'image/png' );
+        $response = Prisma::image()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( [$image], 1024 );
+
+        $this->assertCount( 1, $response->vectors() );
+        $this->assertCount( 1024, $response->vectors()[0] );
+    }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['ALIBABA_API_KEY'] ) ) {
+            $this->markTestSkipped( 'ALIBABA_API_KEY is not defined in the environment' );
+        }
     }
 }

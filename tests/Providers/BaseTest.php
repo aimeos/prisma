@@ -11,15 +11,101 @@ use PHPUnit\Framework\TestCase;
 
 class BaseTest extends TestCase
 {
-    private function provider() : Base
+    public function testCallThrowsNotImplementedException() : void
     {
-        return new class( [] ) extends Base {
-            public function __construct( array $config ) {}
+        $provider = $this->provider();
+        $this->expectException( NotImplementedException::class );
+        $provider->nonExistentMethod();
+    }
 
-            public function getSystemPrompt() : ?string { return $this->systemPrompt(); }
-            public function getTools() : array { return $this->tools(); }
-            public function getModelName( ?string $default = null ) : ?string { return $this->modelName( $default ); }
-        };
+
+    public function testEnsureThrowsForUnimplemented() : void
+    {
+        $provider = $this->provider();
+        $this->expectException( NotImplementedException::class );
+        $provider->ensure( 'nonExistent' );
+    }
+
+
+    public function testHasReturnsFalseForUnimplemented() : void
+    {
+        $provider = $this->provider();
+        $this->assertFalse( $provider->has( 'nonExistent' ) );
+    }
+
+
+    public function testModel() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->model( 'gpt-4' );
+
+        $this->assertSame( $provider, $result );
+        $this->assertEquals( 'gpt-4', $provider->getModelName() );
+    }
+
+
+    public function testModelNameDefault() : void
+    {
+        $provider = $this->provider();
+        $this->assertEquals( 'default-model', $provider->getModelName( 'default-model' ) );
+    }
+
+
+    public function testModelNameOverridesDefault() : void
+    {
+        $provider = $this->provider();
+        $provider->model( 'custom-model' );
+        $this->assertEquals( 'custom-model', $provider->getModelName( 'default-model' ) );
+    }
+
+
+    public function testModelNull() : void
+    {
+        $provider = $this->provider();
+        $provider->model( null );
+
+        $this->assertNull( $provider->getModelName() );
+    }
+
+
+    public function testWithClientHandler() : void
+    {
+        $provider = $this->provider();
+        $stack = \GuzzleHttp\HandlerStack::create();
+        $result = $provider->withClientHandler( $stack );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientOptions() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientOptions( ['timeout' => 30] );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientRetry() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, 200 );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientRetryClosure() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, fn( $attempt, $response ) => $attempt * 100 );
+        $this->assertSame( $provider, $result );
+    }
+
+
+    public function testWithClientRetryWhen() : void
+    {
+        $provider = $this->provider();
+        $result = $provider->withClientRetry( 3, 100, fn( $response, $attempt ) => true );
+        $this->assertSame( $provider, $result );
     }
 
 
@@ -81,100 +167,14 @@ class BaseTest extends TestCase
     }
 
 
-    public function testModel() : void
+    private function provider() : Base
     {
-        $provider = $this->provider();
-        $result = $provider->model( 'gpt-4' );
+        return new class( [] ) extends Base {
+            public function __construct( array $config ) {}
 
-        $this->assertSame( $provider, $result );
-        $this->assertEquals( 'gpt-4', $provider->getModelName() );
-    }
-
-
-    public function testModelNull() : void
-    {
-        $provider = $this->provider();
-        $provider->model( null );
-
-        $this->assertNull( $provider->getModelName() );
-    }
-
-
-    public function testModelNameDefault() : void
-    {
-        $provider = $this->provider();
-        $this->assertEquals( 'default-model', $provider->getModelName( 'default-model' ) );
-    }
-
-
-    public function testModelNameOverridesDefault() : void
-    {
-        $provider = $this->provider();
-        $provider->model( 'custom-model' );
-        $this->assertEquals( 'custom-model', $provider->getModelName( 'default-model' ) );
-    }
-
-
-    public function testCallThrowsNotImplementedException() : void
-    {
-        $provider = $this->provider();
-        $this->expectException( NotImplementedException::class );
-        $provider->nonExistentMethod();
-    }
-
-
-    public function testEnsureThrowsForUnimplemented() : void
-    {
-        $provider = $this->provider();
-        $this->expectException( NotImplementedException::class );
-        $provider->ensure( 'nonExistent' );
-    }
-
-
-    public function testHasReturnsFalseForUnimplemented() : void
-    {
-        $provider = $this->provider();
-        $this->assertFalse( $provider->has( 'nonExistent' ) );
-    }
-
-
-    public function testWithClientOptions() : void
-    {
-        $provider = $this->provider();
-        $result = $provider->withClientOptions( ['timeout' => 30] );
-        $this->assertSame( $provider, $result );
-    }
-
-
-    public function testWithClientHandler() : void
-    {
-        $provider = $this->provider();
-        $stack = \GuzzleHttp\HandlerStack::create();
-        $result = $provider->withClientHandler( $stack );
-        $this->assertSame( $provider, $result );
-    }
-
-
-    public function testWithClientRetry() : void
-    {
-        $provider = $this->provider();
-        $result = $provider->withClientRetry( 3, 200 );
-        $this->assertSame( $provider, $result );
-    }
-
-
-    public function testWithClientRetryClosure() : void
-    {
-        $provider = $this->provider();
-        $result = $provider->withClientRetry( 3, fn( $attempt, $response ) => $attempt * 100 );
-        $this->assertSame( $provider, $result );
-    }
-
-
-    public function testWithClientRetryWhen() : void
-    {
-        $provider = $this->provider();
-        $result = $provider->withClientRetry( 3, 100, fn( $response, $attempt ) => true );
-        $this->assertSame( $provider, $result );
+            public function getSystemPrompt() : ?string { return $this->systemPrompt(); }
+            public function getTools() : array { return $this->tools(); }
+            public function getModelName( ?string $default = null ) : ?string { return $this->modelName( $default ); }
+        };
     }
 }

@@ -11,13 +11,27 @@ use PHPUnit\Framework\TestCase;
 
 class MistralTest extends TestCase
 {
-    protected function setUp() : void
+    public function testDescribeAudio() : void
     {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
+            ->ensure( 'describe' )
+            ->describe( $audio );
 
-        if( empty( $_ENV['MISTRAL_API_KEY'] ) ) {
-            $this->markTestSkipped( 'MISTRAL_API_KEY is not defined in the environment' );
-        }
+        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
+    public function testRecognize() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
+        $response = Prisma::image()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
+            ->ensure( 'recognize' )
+            ->recognize( $image );
+
+        $this->assertStringContainsString( 'This is text', $response->text() );
     }
 
 
@@ -39,42 +53,6 @@ class MistralTest extends TestCase
     }
 
 
-    public function testDescribeAudio() : void
-    {
-        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
-        $response = Prisma::audio()
-            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
-            ->ensure( 'describe' )
-            ->describe( $audio );
-
-        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
-    }
-
-
-    public function testTranscribe() : void
-    {
-        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
-        $response = Prisma::audio()
-            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
-            ->ensure( 'transcribe' )
-            ->transcribe( $audio );
-
-        $this->assertStringContainsString( 'Hello', $response->text() );
-    }
-
-
-    public function testRecognize() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
-        $response = Prisma::image()
-            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
-            ->ensure( 'recognize' )
-            ->recognize( $image );
-
-        $this->assertStringContainsString( 'This is text', $response->text() );
-    }
-
-
     public function testStructured() : void
     {
         $schema = Schema::for( 'person', [
@@ -90,18 +68,6 @@ class MistralTest extends TestCase
 
         $this->assertEquals( 'John', $response->structured()['name'] );
         $this->assertEquals( 30, $response->structured()['age'] );
-    }
-
-
-    public function testWrite() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::text()
-            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
-
-        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
     }
 
 
@@ -132,5 +98,39 @@ class MistralTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsString( 'Hello', $response->text() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['MISTRAL_API_KEY'] ) ) {
+            $this->markTestSkipped( 'MISTRAL_API_KEY is not defined in the environment' );
+        }
     }
 }

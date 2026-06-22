@@ -14,105 +14,11 @@ class OpenrouterTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testWrite() : void
+    public function testNoApiKey() : void
     {
-        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Hello world'
-                    ]
-                ]],
-                'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
+        $this->expectException( PrismaException::class );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://openrouter.ai/api/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
-
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'openai/gpt-5.5', $body['model'] );
-            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
-            $this->assertCount( 1, $body['messages'] );
-        } );
-
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( ['Hello world'], $response->texts() );
-        $this->assertEquals( 10, $response->usage()['used'] );
-    }
-
-
-    public function testWriteWithFiles() : void
-    {
-        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'An image of a cat'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $content = $body['messages'][0]['content'];
-            $this->assertCount( 2, $content );
-            $this->assertEquals( 'image_url', $content[0]['type'] );
-            $this->assertEquals( 'text', $content[1]['type'] );
-        } );
-
-        $this->assertEquals( 'An image of a cat', $response->text() );
-    }
-
-
-    public function testWriteWithSystemPrompt() : void
-    {
-        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Bonjour'
-                    ]
-                ]]
-            ] );
-
-        $response->withSystemPrompt( 'Always respond in French' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['messages'] );
-            $this->assertEquals( 'system', $body['messages'][0]['role'] );
-            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
-        } );
-    }
-
-
-    public function testWriteWithOptions() : void
-    {
-        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'result'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->withMaxTokens( 100 )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.5, $body['temperature'] );
-            $this->assertEquals( 100, $body['max_tokens'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
+        $this->prisma( 'text', 'openrouter', [] );
     }
 
 
@@ -149,33 +55,6 @@ class OpenrouterTest extends TestCase
     }
 
 
-    public function testStructuredWithOptions() : void
-    {
-        $schema = Schema::for( 'person', [
-            'name' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => '{"name":"Jane"}'
-                    ]
-                ]],
-                'usage' => ['total_tokens' => 10]
-            ] )
-            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.2, $body['temperature'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
-
-        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
-    }
-
-
     public function testStructuredWithFiles() : void
     {
         $schema = Schema::for( 'description', [
@@ -204,6 +83,64 @@ class OpenrouterTest extends TestCase
     }
 
 
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"name":"Jane"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Hello world'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://openrouter.ai/api/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'openai/gpt-5.5', $body['model'] );
+            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
+            $this->assertCount( 1, $body['messages'] );
+        } );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( ['Hello world'], $response->texts() );
+        $this->assertEquals( 10, $response->usage()['used'] );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );
@@ -212,6 +149,44 @@ class OpenrouterTest extends TestCase
             ->response( ['error' => ['message' => 'Bad request']], status: 400, reason: 'Bad Request' )
             ->ensure( 'write' )
             ->write( 'prompt' );
+    }
+
+
+    public function testWriteNormalizesObjectContent() : void
+    {
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => ['result' => 'ok', 'n' => 1]]]],
+                'usage' => ['total_tokens' => 3],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'hi' );
+
+        // an object content is serialized to a JSON string instead of breaking text()
+        $this->assertEquals( '{"result":"ok","n":1}', $response->text() );
+    }
+
+
+    public function testWriteSurfacesReasoning() : void
+    {
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => [
+                        'content' => 'Answer',
+                        'reasoning' => 'because...',
+                        'reasoning_details' => [['type' => 'reasoning.encrypted', 'data' => 'xyz']],
+                    ],
+                ]],
+                'usage' => ['total_tokens' => 5],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'why?' );
+
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'because...', $response->meta()['thinking'] );
+        $this->assertEquals( [['type' => 'reasoning.encrypted', 'data' => 'xyz']], $response->meta()['reasoning_details'] );
     }
 
 
@@ -239,48 +214,73 @@ class OpenrouterTest extends TestCase
     }
 
 
-    public function testWriteSurfacesReasoning() : void
+    public function testWriteWithFiles() : void
     {
         $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
             ->response( [
                 'choices' => [[
-                    'finish_reason' => 'stop',
                     'message' => [
-                        'content' => 'Answer',
-                        'reasoning' => 'because...',
-                        'reasoning_details' => [['type' => 'reasoning.encrypted', 'data' => 'xyz']],
-                    ],
-                ]],
-                'usage' => ['total_tokens' => 5],
+                        'content' => 'An image of a cat'
+                    ]
+                ]]
             ] )
             ->ensure( 'write' )
-            ->write( 'why?' );
+            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
 
-        $this->assertEquals( 'Answer', $response->text() );
-        $this->assertEquals( 'because...', $response->meta()['thinking'] );
-        $this->assertEquals( [['type' => 'reasoning.encrypted', 'data' => 'xyz']], $response->meta()['reasoning_details'] );
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+            $this->assertEquals( 'text', $content[1]['type'] );
+        } );
+
+        $this->assertEquals( 'An image of a cat', $response->text() );
     }
 
 
-    public function testWriteNormalizesObjectContent() : void
+    public function testWriteWithOptions() : void
     {
         $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
             ->response( [
-                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => ['result' => 'ok', 'n' => 1]]]],
-                'usage' => ['total_tokens' => 3],
+                'choices' => [[
+                    'message' => [
+                        'content' => 'result'
+                    ]
+                ]]
             ] )
             ->ensure( 'write' )
-            ->write( 'hi' );
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
 
-        // an object content is serialized to a JSON string instead of breaking text()
-        $this->assertEquals( '{"result":"ok","n":1}', $response->text() );
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.5, $body['temperature'] );
+            $this->assertEquals( 100, $body['max_tokens'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
     }
 
 
-    public function testNoApiKey() : void
+    public function testWriteWithSystemPrompt() : void
     {
-        $this->expectException( PrismaException::class );
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Bonjour'
+                    ]
+                ]]
+            ] );
 
-        $this->prisma( 'text', 'openrouter', [] );
+        $response->withSystemPrompt( 'Always respond in French' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['messages'] );
+            $this->assertEquals( 'system', $body['messages'][0]['role'] );
+            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
+        } );
     }
 }

@@ -63,18 +63,6 @@ class Gemini extends Base implements Stream, Structure, Write
 
 
     /**
-     * Returns the endpoint for a streaming generateContent request.
-     *
-     * @param string|null $model Model name
-     * @return string Endpoint path
-     */
-    protected function streamEndpoint( ?string $model ) : string
-    {
-        return 'v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
-    }
-
-
-    /**
      * Returns the JSON Schema reduced to the OpenAPI subset accepted by Gemini.
      *
      * Gemini's "responseSchema" is an OpenAPI 3.0 subset that has no
@@ -115,6 +103,18 @@ class Gemini extends Base implements Stream, Structure, Write
 
             return $node;
         } );
+    }
+
+
+    /**
+     * Returns the endpoint for a streaming generateContent request.
+     *
+     * @param string|null $model Model name
+     * @return string Endpoint path
+     */
+    protected function streamEndpoint( ?string $model ) : string
+    {
+        return 'v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
     }
 
 

@@ -9,13 +9,16 @@ use PHPUnit\Framework\TestCase;
 
 class XaiTest extends TestCase
 {
-    protected function setUp() : void
+    public function testImagine() : void
     {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+        $response = Prisma::image()
+            ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'a cartoon dog' );
 
-        if( empty( $_ENV['XAI_API_KEY'] ) ) {
-            $this->markTestSkipped( 'XAI_API_KEY is not defined in the environment' );
-        }
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/xai_imagine.png', $response->binary() );
     }
 
 
@@ -55,17 +58,6 @@ class XaiTest extends TestCase
     }
 
 
-    public function testWrite() : void
-    {
-        $response = Prisma::text()
-            ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
-
-        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
-    }
-
-
     public function testTools() : void
     {
         $next = \Aimeos\Prisma\Tools::make(
@@ -96,15 +88,23 @@ class XaiTest extends TestCase
     }
 
 
-    public function testImagine() : void
+    public function testWrite() : void
     {
-        $response = Prisma::image()
+        $response = Prisma::text()
             ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
-            ->ensure( 'imagine' )
-            ->imagine( 'a cartoon dog' );
+            ->ensure( 'write' )
+            ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
 
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
 
-        file_put_contents( __DIR__ . '/results/xai_imagine.png', $response->binary() );
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['XAI_API_KEY'] ) ) {
+            $this->markTestSkipped( 'XAI_API_KEY is not defined in the environment' );
+        }
     }
 }

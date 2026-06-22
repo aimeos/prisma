@@ -12,6 +12,22 @@ class VertexaiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testNoAccessToken() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'vertexai', ['project_id' => 'proj'] );
+    }
+
+
+    public function testNoProjectId() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'vertexai', ['access_token' => 'tok'] );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->prisma( 'text', 'vertexai', ['access_token' => 'tok', 'project_id' => 'proj', 'region' => 'us-central1'] )
@@ -55,21 +71,5 @@ class VertexaiTest extends TestCase
                 (string) $request->getUri()
             );
         } );
-    }
-
-
-    public function testNoAccessToken() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'vertexai', ['project_id' => 'proj'] );
-    }
-
-
-    public function testNoProjectId() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'vertexai', ['access_token' => 'tok'] );
     }
 }

@@ -12,6 +12,42 @@ use PHPUnit\Framework\TestCase;
 
 class StepTest extends TestCase
 {
+    public function testComplete() : void
+    {
+        $step = new Step( 'id1', 'test', [] );
+        $step->complete( 'result text' );
+
+        $this->assertEquals( 'result text', $step->result() );
+    }
+
+
+    public function testCompleteDefaults() : void
+    {
+        $step = new Step( 'id1', 'test', [] );
+
+        $this->assertEquals( '', $step->result() );
+    }
+
+
+    public function testRateLimit() : void
+    {
+        $response = TextResponse::fromText( 'hello' )
+            ->withRateLimit( new \Aimeos\Prisma\Values\RateLimit( limit: 100, remaining: 95, reset: '1234567890' ) );
+
+        $this->assertEquals( 100, $response->rateLimit()->limit() );
+        $this->assertEquals( 95, $response->rateLimit()->remaining() );
+        $this->assertEquals( '1234567890', $response->rateLimit()->reset() );
+    }
+
+
+    public function testRateLimitEmpty() : void
+    {
+        $response = TextResponse::fromText( 'hello' );
+
+        $this->assertNull( $response->rateLimit() );
+    }
+
+
     public function testStep() : void
     {
         $step = new Step( 'call_123', 'search', ['query' => 'hello'] );
@@ -49,23 +85,6 @@ class StepTest extends TestCase
     }
 
 
-    public function testComplete() : void
-    {
-        $step = new Step( 'id1', 'test', [] );
-        $step->complete( 'result text' );
-
-        $this->assertEquals( 'result text', $step->result() );
-    }
-
-
-    public function testCompleteDefaults() : void
-    {
-        $step = new Step( 'id1', 'test', [] );
-
-        $this->assertEquals( '', $step->result() );
-    }
-
-
     public function testStepsOnResponse() : void
     {
         $step1 = new Step( 'id1', 'search', ['q' => 'a'] );
@@ -82,22 +101,17 @@ class StepTest extends TestCase
     }
 
 
-    public function testRateLimit() : void
+    public function testToolReturnsArray() : void
     {
-        $response = TextResponse::fromText( 'hello' )
-            ->withRateLimit( new \Aimeos\Prisma\Values\RateLimit( limit: 100, remaining: 95, reset: '1234567890' ) );
+        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => ['key' => 'value'] );
 
-        $this->assertEquals( 100, $response->rateLimit()->limit() );
-        $this->assertEquals( 95, $response->rateLimit()->remaining() );
-        $this->assertEquals( '1234567890', $response->rateLimit()->reset() );
-    }
+        $steps = [new Step( '1', 'test', [], $tool )];
 
+        $runner = new Sequential();
+        $results = $runner->run( $steps );
 
-    public function testRateLimitEmpty() : void
-    {
-        $response = TextResponse::fromText( 'hello' );
-
-        $this->assertNull( $response->rateLimit() );
+        $this->assertCount( 1, $results );
+        $this->assertEquals( '{"key":"value"}', $results[0]->result() );
     }
 
 
@@ -112,19 +126,5 @@ class StepTest extends TestCase
 
         $this->assertCount( 1, $results );
         $this->assertEquals( 'plain string', $results[0]->result() );
-    }
-
-
-    public function testToolReturnsArray() : void
-    {
-        $tool = Tools::make( 'test', 'desc', Schema::fromArray( 'test', ['type' => 'object'] ), fn() => ['key' => 'value'] );
-
-        $steps = [new Step( '1', 'test', [], $tool )];
-
-        $runner = new Sequential();
-        $results = $runner->run( $steps );
-
-        $this->assertCount( 1, $results );
-        $this->assertEquals( '{"key":"value"}', $results[0]->result() );
     }
 }

@@ -24,6 +24,28 @@ class ObjectType extends Type
 
 
     /**
+     * Adds a reusable definition referenced via "$ref".
+     */
+    public function def( string $name, Type $type ) : static
+    {
+        $this->defs[$name] = $type;
+        return $this;
+    }
+
+
+    /**
+     * Sets the default value.
+     *
+     * @param array<string, mixed> $value Default object value
+     */
+    public function default( array $value ) : static
+    {
+        $this->default = $value;
+        return $this;
+    }
+
+
+    /**
      * Creates an object type from a JSON Schema definition.
      *
      * @param array<string, mixed> $def JSON Schema type definition
@@ -64,28 +86,6 @@ class ObjectType extends Type
         $type->additionalProperties = is_bool( $def['additionalProperties'] ?? null ) ? $def['additionalProperties'] : null;
         $type->default = is_array( $def['default'] ?? null ) ? $def['default'] : null;
         return $type;
-    }
-
-
-    /**
-     * Adds a reusable definition referenced via "$ref".
-     */
-    public function def( string $name, Type $type ) : static
-    {
-        $this->defs[$name] = $type;
-        return $this;
-    }
-
-
-    /**
-     * Sets the default value.
-     *
-     * @param array<string, mixed> $value Default object value
-     */
-    public function default( array $value ) : static
-    {
-        $this->default = $value;
-        return $this;
     }
 
 

@@ -13,145 +13,6 @@ class OllamaTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testWrite() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Hello world'
-                    ]
-                ]],
-                'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'http://localhost:11434/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'POST', $request->getMethod() );
-
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'llama4', $body['model'] );
-            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
-            $this->assertCount( 1, $body['messages'] );
-        } );
-
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( ['Hello world'], $response->texts() );
-        $this->assertEquals( 10, $response->usage()['used'] );
-    }
-
-
-    public function testWriteWithFiles() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'An image of a cat'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $content = $body['messages'][0]['content'];
-            $this->assertCount( 2, $content );
-            $this->assertEquals( 'image_url', $content[0]['type'] );
-            $this->assertEquals( 'text', $content[1]['type'] );
-        } );
-
-        $this->assertEquals( 'An image of a cat', $response->text() );
-    }
-
-
-    public function testWriteWithSystemPrompt() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Bonjour'
-                    ]
-                ]]
-            ] );
-
-        $response->withSystemPrompt( 'Always respond in French' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['messages'] );
-            $this->assertEquals( 'system', $body['messages'][0]['role'] );
-            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
-        } );
-    }
-
-
-    public function testWriteWithOptions() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'result'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->withMaxTokens( 100 )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.5, $body['temperature'] );
-            $this->assertEquals( 100, $body['max_tokens'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
-    }
-
-
-    public function testWriteWithCustomUrl() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', ['url' => 'http://gpu-server:11434'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Hello'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'http://gpu-server:11434/v1/chat/completions', (string) $request->getUri() );
-        } );
-    }
-
-
-    public function testWriteWithApiKey() : void
-    {
-        $response = $this->prisma( 'text', 'ollama', ['api_key' => 'test-key'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => 'Hello'
-                    ]
-                ]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertStringContainsString( 'Bearer test-key', $request->getHeaderLine( 'Authorization' ) );
-        } );
-    }
-
-
     public function testStream() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
@@ -179,6 +40,43 @@ class OllamaTest extends TestCase
         $this->assertSame( ['Hello', ' world'], $deltas );
         $this->assertEquals( 'Hello world', $response->text() );
         $this->assertEquals( 10, $response->usage()['used'] );
+    }
+
+
+    public function testStreamError() : void
+    {
+        $this->expectException( \Aimeos\Prisma\Exceptions\PrismaException::class );
+
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
+            . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
+
+        $this->prisma( 'text', 'ollama', [] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) {} );
+    }
+
+
+    public function testStreamReasoning() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":5}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $deltas = [];
+
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'hi', [], [], function( $chunk ) use ( &$deltas ) {
+                $deltas[] = $chunk;
+            } );
+
+        // reasoning is not streamed to the callback but is kept on the response meta
+        $this->assertSame( ['Answer'], $deltas );
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'thinking...', $response->meta()['thinking'] );
     }
 
 
@@ -226,43 +124,6 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testStreamError() : void
-    {
-        $this->expectException( \Aimeos\Prisma\Exceptions\PrismaException::class );
-
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
-            . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
-
-        $this->prisma( 'text', 'ollama', [] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
-    }
-
-
-    public function testStreamReasoning() : void
-    {
-        $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":5}}\n\n"
-            . "data: [DONE]\n\n";
-
-        $deltas = [];
-
-        $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
-            ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
-
-        // reasoning is not streamed to the callback but is kept on the response meta
-        $this->assertSame( ['Answer'], $deltas );
-        $this->assertEquals( 'Answer', $response->text() );
-        $this->assertEquals( 'thinking...', $response->meta()['thinking'] );
-    }
-
-
     public function testStructured() : void
     {
         $schema = Schema::for( 'person', [
@@ -297,6 +158,35 @@ class OllamaTest extends TestCase
     }
 
 
+    public function testStructuredWithFiles() : void
+    {
+        $schema = Schema::for( 'description', [
+            'text' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"text":"a cat"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+            $this->assertEquals( 'json_object', $body['response_format']['type'] );
+        } );
+
+        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
+    }
+
+
     public function testStructuredWithOptions() : void
     {
         $schema = Schema::for( 'person', [
@@ -325,31 +215,141 @@ class OllamaTest extends TestCase
     }
 
 
-    public function testStructuredWithFiles() : void
+    public function testWrite() : void
     {
-        $schema = Schema::for( 'description', [
-            'text' => Schema::string(),
-        ] );
-
         $response = $this->prisma( 'text', 'ollama', [] )
             ->response( [
                 'choices' => [[
                     'message' => [
-                        'content' => '{"text":"a cat"}'
+                        'content' => 'Hello world'
                     ]
                 ]],
-                'usage' => ['total_tokens' => 10]
+                'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
             ] )
-            ->structure( 'Describe', $schema, [Image::fromBinary( 'PNG', 'image/png' )] );
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'http://localhost:11434/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'POST', $request->getMethod() );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'llama4', $body['model'] );
+            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
+            $this->assertCount( 1, $body['messages'] );
+        } );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( ['Hello world'], $response->texts() );
+        $this->assertEquals( 10, $response->usage()['used'] );
+    }
+
+
+    public function testWriteWithApiKey() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', ['api_key' => 'test-key'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Hello'
+                    ]
+                ]]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertStringContainsString( 'Bearer test-key', $request->getHeaderLine( 'Authorization' ) );
+        } );
+    }
+
+
+    public function testWriteWithCustomUrl() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', ['url' => 'http://gpu-server:11434'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Hello'
+                    ]
+                ]]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'http://gpu-server:11434/v1/chat/completions', (string) $request->getUri() );
+        } );
+    }
+
+
+    public function testWriteWithFiles() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'An image of a cat'
+                    ]
+                ]]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $content = $body['messages'][0]['content'];
             $this->assertCount( 2, $content );
             $this->assertEquals( 'image_url', $content[0]['type'] );
-            $this->assertEquals( 'json_object', $body['response_format']['type'] );
+            $this->assertEquals( 'text', $content[1]['type'] );
         } );
 
-        $this->assertEquals( ['text' => 'a cat'], $response->structured() );
+        $this->assertEquals( 'An image of a cat', $response->text() );
+    }
+
+
+    public function testWriteWithOptions() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'result'
+                    ]
+                ]]
+            ] )
+            ->ensure( 'write' )
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.5, $body['temperature'] );
+            $this->assertEquals( 100, $body['max_tokens'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testWriteWithSystemPrompt() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => 'Bonjour'
+                    ]
+                ]]
+            ] );
+
+        $response->withSystemPrompt( 'Always respond in French' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['messages'] );
+            $this->assertEquals( 'system', $body['messages'][0]['role'] );
+            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
+        } );
     }
 }

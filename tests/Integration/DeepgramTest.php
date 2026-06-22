@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class DeepgramTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['DEEPGRAM_API_KEY'] ) ) {
-            $this->markTestSkipped( 'DEEPGRAM_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testSpeak() : void
     {
         $response = Prisma::audio()
@@ -41,5 +31,15 @@ class DeepgramTest extends TestCase
             ->transcribe( $audio );
 
         $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['DEEPGRAM_API_KEY'] ) ) {
+            $this->markTestSkipped( 'DEEPGRAM_API_KEY is not defined in the environment' );
+        }
     }
 }

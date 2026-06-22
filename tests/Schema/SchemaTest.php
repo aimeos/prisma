@@ -11,101 +11,31 @@ use PHPUnit\Framework\TestCase;
 
 class SchemaTest extends TestCase
 {
-    public function testName() : void
+    public function testAnyOfFactory() : void
     {
-        $schema = Schema::for( 'test-schema' );
-        $this->assertEquals( 'test-schema', $schema->name() );
+        $anyOf = Schema::anyOf( [Schema::string(), Schema::integer()] );
+
+        $arr = $anyOf->toArray();
+        $this->assertArrayNotHasKey( 'type', $arr );
+        $this->assertEquals( 'string', $arr['anyOf'][0]['type'] );
+        $this->assertEquals( 'integer', $arr['anyOf'][1]['type'] );
     }
 
 
-    public function testForWithArray() : void
+    public function testDefAndRef() : void
     {
-        $schema = Schema::for( 'test', [
-            'name' => Schema::string()->required(),
-            'age' => Schema::integer(),
-        ] );
-
-        $this->assertEquals( 'test', $schema->name() );
-        $arr = $schema->toArray();
-        $this->assertEquals( 'object', $arr['type'] );
-        $this->assertArrayHasKey( 'name', $arr['properties'] );
-        $this->assertArrayHasKey( 'age', $arr['properties'] );
-        $this->assertContains( 'name', $arr['required'] );
-    }
-
-
-    public function testStrict() : void
-    {
-        $schema = Schema::for( 'test' );
-        $this->assertFalse( $schema->isStrict() );
-
-        $schema->strict();
-        $this->assertTrue( $schema->isStrict() );
-
-        $schema->strict( false );
-        $this->assertFalse( $schema->isStrict() );
-    }
-
-
-    public function testType() : void
-    {
-        $schema = Schema::for( 'test', [
-            'field' => Schema::string(),
-        ] );
-
-        $this->assertInstanceOf( ObjectType::class, $schema->type() );
-    }
-
-
-    public function testToArray() : void
-    {
-        $schema = Schema::for( 'test', [
-            'title' => Schema::string()->required(),
-            'count' => Schema::integer()->required(),
-        ] );
+        $schema = Schema::for( 'person', [
+            'address' => Schema::ref( 'Address' )->required(),
+        ] )->def( 'Address', Schema::object( [
+            'city' => Schema::string()->required(),
+        ] ) );
 
         $arr = $schema->toArray();
-        $this->assertEquals( 'object', $arr['type'] );
-        $this->assertEquals( 'string', $arr['properties']['title']['type'] );
-        $this->assertEquals( 'integer', $arr['properties']['count']['type'] );
-        $this->assertEquals( ['title', 'count'], $arr['required'] );
-    }
 
-
-    public function testToString() : void
-    {
-        $schema = Schema::for( 'test' );
-        $json = $schema->toString();
-        $this->assertJson( $json );
-
-        $data = json_decode( $json, true );
-        $this->assertEquals( 'object', $data['type'] );
-    }
-
-
-    public function testMagicToString() : void
-    {
-        $schema = Schema::for( 'test' );
-        $this->assertEquals( $schema->toString(), (string) $schema );
-    }
-
-
-    public function testFromArray() : void
-    {
-        $schema = Schema::fromArray( 'imported', [
-            'type' => 'object',
-            'properties' => [
-                'query' => ['type' => 'string', 'description' => 'Search query'],
-                'limit' => ['type' => 'integer', 'minimum' => 1],
-            ],
-            'required' => ['query'],
-        ] );
-
-        $this->assertEquals( 'imported', $schema->name() );
-        $arr = $schema->toArray();
-        $this->assertEquals( 'object', $arr['type'] );
-        $this->assertArrayHasKey( 'query', $arr['properties'] );
-        $this->assertContains( 'query', $arr['required'] );
+        $this->assertEquals( '#/$defs/Address', $arr['properties']['address']['$ref'] );
+        $this->assertArrayHasKey( 'Address', $arr['$defs'] );
+        $this->assertEquals( 'object', $arr['$defs']['Address']['type'] );
+        $this->assertEquals( ['city'], $arr['$defs']['Address']['required'] );
     }
 
 
@@ -162,29 +92,6 @@ class SchemaTest extends TestCase
     }
 
 
-    public function testStaticTypeFactories() : void
-    {
-        $this->assertInstanceOf( StringType::class, Schema::string() );
-        $this->assertInstanceOf( IntegerType::class, Schema::integer() );
-        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\NumberType::class, Schema::number() );
-        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\BooleanType::class, Schema::boolean() );
-        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\ArrayType::class, Schema::array() );
-        $this->assertInstanceOf( ObjectType::class, Schema::object() );
-        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\AnyOfType::class, Schema::anyOf() );
-    }
-
-
-    public function testAnyOfFactory() : void
-    {
-        $anyOf = Schema::anyOf( [Schema::string(), Schema::integer()] );
-
-        $arr = $anyOf->toArray();
-        $this->assertArrayNotHasKey( 'type', $arr );
-        $this->assertEquals( 'string', $arr['anyOf'][0]['type'] );
-        $this->assertEquals( 'integer', $arr['anyOf'][1]['type'] );
-    }
-
-
     public function testFilterRecursesIntoAnyOf() : void
     {
         $schema = Schema::fromArray( 'test', [
@@ -207,50 +114,61 @@ class SchemaTest extends TestCase
     }
 
 
-    public function testObjectWithProperties() : void
+    public function testFilterRecursesIntoDefs() : void
     {
-        $obj = Schema::object( [
-            'name' => Schema::string()->required(),
+        $schema = Schema::fromArray( 'test', [
+            'type' => 'object',
+            '$defs' => [
+                'Address' => [
+                    'type' => 'object',
+                    'description' => 'keep',
+                    'properties' => [
+                        'city' => ['type' => 'string', 'pattern' => 'drop'],
+                    ],
+                ],
+            ],
         ] );
 
-        $arr = $obj->toArray();
+        $filtered = $schema->filter( ['type', 'properties', 'description', '$defs'] );
+        $address = $filtered['$defs']['Address'];
+
+        $this->assertEquals( 'keep', $address['description'] );
+        $this->assertArrayNotHasKey( 'pattern', $address['properties']['city'] );
+    }
+
+
+    public function testForWithArray() : void
+    {
+        $schema = Schema::for( 'test', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer(),
+        ] );
+
+        $this->assertEquals( 'test', $schema->name() );
+        $arr = $schema->toArray();
         $this->assertEquals( 'object', $arr['type'] );
         $this->assertArrayHasKey( 'name', $arr['properties'] );
+        $this->assertArrayHasKey( 'age', $arr['properties'] );
+        $this->assertContains( 'name', $arr['required'] );
     }
 
 
-    public function testRefFactory() : void
+    public function testFromArray() : void
     {
-        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\RefType::class, Schema::ref( 'Address' ) );
-    }
+        $schema = Schema::fromArray( 'imported', [
+            'type' => 'object',
+            'properties' => [
+                'query' => ['type' => 'string', 'description' => 'Search query'],
+                'limit' => ['type' => 'integer', 'minimum' => 1],
+            ],
+            'required' => ['query'],
+        ] );
 
-
-    public function testRefResolvesName() : void
-    {
-        $this->assertEquals( ['$ref' => '#/$defs/Address'], Schema::ref( 'Address' )->toArray() );
-    }
-
-
-    public function testRefKeepsPointer() : void
-    {
-        $this->assertEquals( ['$ref' => '#/components/Address'], Schema::ref( '#/components/Address' )->toArray() );
-    }
-
-
-    public function testDefAndRef() : void
-    {
-        $schema = Schema::for( 'person', [
-            'address' => Schema::ref( 'Address' )->required(),
-        ] )->def( 'Address', Schema::object( [
-            'city' => Schema::string()->required(),
-        ] ) );
-
+        $this->assertEquals( 'imported', $schema->name() );
         $arr = $schema->toArray();
-
-        $this->assertEquals( '#/$defs/Address', $arr['properties']['address']['$ref'] );
-        $this->assertArrayHasKey( 'Address', $arr['$defs'] );
-        $this->assertEquals( 'object', $arr['$defs']['Address']['type'] );
-        $this->assertEquals( ['city'], $arr['$defs']['Address']['required'] );
+        $this->assertEquals( 'object', $arr['type'] );
+        $this->assertArrayHasKey( 'query', $arr['properties'] );
+        $this->assertContains( 'query', $arr['required'] );
     }
 
 
@@ -278,26 +196,10 @@ class SchemaTest extends TestCase
     }
 
 
-    public function testFilterRecursesIntoDefs() : void
+    public function testMagicToString() : void
     {
-        $schema = Schema::fromArray( 'test', [
-            'type' => 'object',
-            '$defs' => [
-                'Address' => [
-                    'type' => 'object',
-                    'description' => 'keep',
-                    'properties' => [
-                        'city' => ['type' => 'string', 'pattern' => 'drop'],
-                    ],
-                ],
-            ],
-        ] );
-
-        $filtered = $schema->filter( ['type', 'properties', 'description', '$defs'] );
-        $address = $filtered['$defs']['Address'];
-
-        $this->assertEquals( 'keep', $address['description'] );
-        $this->assertArrayNotHasKey( 'pattern', $address['properties']['city'] );
+        $schema = Schema::for( 'test' );
+        $this->assertEquals( $schema->toString(), (string) $schema );
     }
 
 
@@ -322,5 +224,103 @@ class SchemaTest extends TestCase
         $this->assertFalse( $result['additionalProperties'] );                                 // root transformed
         $this->assertArrayNotHasKey( 'additionalProperties', $result['properties']['name'] );  // non-object untouched
         $this->assertEquals( 'string', $result['properties']['tags']['items']['type'] );       // recursion reaches nested items
+    }
+
+
+    public function testName() : void
+    {
+        $schema = Schema::for( 'test-schema' );
+        $this->assertEquals( 'test-schema', $schema->name() );
+    }
+
+
+    public function testObjectWithProperties() : void
+    {
+        $obj = Schema::object( [
+            'name' => Schema::string()->required(),
+        ] );
+
+        $arr = $obj->toArray();
+        $this->assertEquals( 'object', $arr['type'] );
+        $this->assertArrayHasKey( 'name', $arr['properties'] );
+    }
+
+
+    public function testRefFactory() : void
+    {
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\RefType::class, Schema::ref( 'Address' ) );
+    }
+
+
+    public function testRefKeepsPointer() : void
+    {
+        $this->assertEquals( ['$ref' => '#/components/Address'], Schema::ref( '#/components/Address' )->toArray() );
+    }
+
+
+    public function testRefResolvesName() : void
+    {
+        $this->assertEquals( ['$ref' => '#/$defs/Address'], Schema::ref( 'Address' )->toArray() );
+    }
+
+
+    public function testStaticTypeFactories() : void
+    {
+        $this->assertInstanceOf( StringType::class, Schema::string() );
+        $this->assertInstanceOf( IntegerType::class, Schema::integer() );
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\NumberType::class, Schema::number() );
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\BooleanType::class, Schema::boolean() );
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\ArrayType::class, Schema::array() );
+        $this->assertInstanceOf( ObjectType::class, Schema::object() );
+        $this->assertInstanceOf( \Aimeos\Prisma\Schema\Types\AnyOfType::class, Schema::anyOf() );
+    }
+
+
+    public function testStrict() : void
+    {
+        $schema = Schema::for( 'test' );
+        $this->assertFalse( $schema->isStrict() );
+
+        $schema->strict();
+        $this->assertTrue( $schema->isStrict() );
+
+        $schema->strict( false );
+        $this->assertFalse( $schema->isStrict() );
+    }
+
+
+    public function testToArray() : void
+    {
+        $schema = Schema::for( 'test', [
+            'title' => Schema::string()->required(),
+            'count' => Schema::integer()->required(),
+        ] );
+
+        $arr = $schema->toArray();
+        $this->assertEquals( 'object', $arr['type'] );
+        $this->assertEquals( 'string', $arr['properties']['title']['type'] );
+        $this->assertEquals( 'integer', $arr['properties']['count']['type'] );
+        $this->assertEquals( ['title', 'count'], $arr['required'] );
+    }
+
+
+    public function testToString() : void
+    {
+        $schema = Schema::for( 'test' );
+        $json = $schema->toString();
+        $this->assertJson( $json );
+
+        $data = json_decode( $json, true );
+        $this->assertEquals( 'object', $data['type'] );
+    }
+
+
+    public function testType() : void
+    {
+        $schema = Schema::for( 'test', [
+            'field' => Schema::string(),
+        ] );
+
+        $this->assertInstanceOf( ObjectType::class, $schema->type() );
     }
 }

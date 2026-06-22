@@ -22,6 +22,12 @@ class Schema
     }
 
 
+    public function __toString() : string
+    {
+        return $this->toString();
+    }
+
+
     /**
      * Creates an anyOf type allowing any of the given types (JSON Schema "anyOf").
      *
@@ -42,6 +48,30 @@ class Schema
     public static function boolean() : Types\BooleanType
     {
         return new Types\BooleanType;
+    }
+
+
+    /**
+     * Registers a reusable definition referenced via "$ref".
+     */
+    public function def( string $name, Types\Type $type ) : static
+    {
+        $this->type->def( $name, $type );
+        return $this;
+    }
+
+
+    /**
+     * Returns a filtered schema array keeping only the allowed keys.
+     *
+     * @param array<int, string> $keys Allowed JSON Schema keys
+     * @return array<string, mixed> Filtered JSON Schema definition
+     */
+    public function filter( array $keys ) : array
+    {
+        $flip = array_flip( $keys );
+
+        return self::map( $this->toArray(), fn( array $node ) => array_intersect_key( $node, $flip ) );
     }
 
 
@@ -76,6 +106,48 @@ class Schema
     }
 
 
+    public function isStrict() : bool
+    {
+        return $this->strict;
+    }
+
+
+    /**
+     * Recursively applies a transform to a JSON Schema array and its sub-schemas.
+     *
+     * The callback transforms one (sub-)schema node; map() then recurses into the node's
+     * properties, items, anyOf and $defs. This is the single schema-tree traversal shared
+     * by the provider jsonSchema() hooks and filter() so the recursion lives in one place.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @param callable(array<string, mixed>): array<string, mixed> $node Per-node transform
+     * @return array<string, mixed> Transformed schema
+     */
+    public static function map( array $schema, callable $node ) : array
+    {
+        $schema = $node( $schema );
+
+        foreach( ['properties', 'anyOf', '$defs'] as $key )
+        {
+            if( isset( $schema[$key] ) && is_array( $schema[$key] ) ) {
+                $schema[$key] = array_map( fn( $sub ) => is_array( $sub ) ? self::map( $sub, $node ) : $sub, $schema[$key] );
+            }
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = self::map( $schema['items'], $node );
+        }
+
+        return $schema;
+    }
+
+
+    public function name() : string
+    {
+        return $this->name;
+    }
+
+
     public static function number() : Types\NumberType
     {
         return new Types\NumberType;
@@ -105,40 +177,6 @@ class Schema
     }
 
 
-    public static function string() : Types\StringType
-    {
-        return new Types\StringType;
-    }
-
-
-    public function __toString() : string
-    {
-        return $this->toString();
-    }
-
-
-    /**
-     * Registers a reusable definition referenced via "$ref".
-     */
-    public function def( string $name, Types\Type $type ) : static
-    {
-        $this->type->def( $name, $type );
-        return $this;
-    }
-
-
-    public function isStrict() : bool
-    {
-        return $this->strict;
-    }
-
-
-    public function name() : string
-    {
-        return $this->name;
-    }
-
-
     public function strict( bool $strict = true ) : static
     {
         $this->strict = $strict;
@@ -146,17 +184,9 @@ class Schema
     }
 
 
-    /**
-     * Returns a filtered schema array keeping only the allowed keys.
-     *
-     * @param array<int, string> $keys Allowed JSON Schema keys
-     * @return array<string, mixed> Filtered JSON Schema definition
-     */
-    public function filter( array $keys ) : array
+    public static function string() : Types\StringType
     {
-        $flip = array_flip( $keys );
-
-        return self::map( $this->toArray(), fn( array $node ) => array_intersect_key( $node, $flip ) );
+        return new Types\StringType;
     }
 
 
@@ -196,35 +226,5 @@ class Schema
     public function validate( mixed $data ) : array
     {
         return $this->type->validate( $data );
-    }
-
-
-    /**
-     * Recursively applies a transform to a JSON Schema array and its sub-schemas.
-     *
-     * The callback transforms one (sub-)schema node; map() then recurses into the node's
-     * properties, items, anyOf and $defs. This is the single schema-tree traversal shared
-     * by the provider jsonSchema() hooks and filter() so the recursion lives in one place.
-     *
-     * @param array<string, mixed> $schema JSON Schema definition
-     * @param callable(array<string, mixed>): array<string, mixed> $node Per-node transform
-     * @return array<string, mixed> Transformed schema
-     */
-    public static function map( array $schema, callable $node ) : array
-    {
-        $schema = $node( $schema );
-
-        foreach( ['properties', 'anyOf', '$defs'] as $key )
-        {
-            if( isset( $schema[$key] ) && is_array( $schema[$key] ) ) {
-                $schema[$key] = array_map( fn( $sub ) => is_array( $sub ) ? self::map( $sub, $node ) : $sub, $schema[$key] );
-            }
-        }
-
-        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
-            $schema['items'] = self::map( $schema['items'], $node );
-        }
-
-        return $schema;
     }
 }

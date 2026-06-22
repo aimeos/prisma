@@ -33,6 +33,17 @@ class ModelslabTest extends TestCase
     }
 
 
+    public function testImagineError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'image', 'modelslab', ['api_key' => 'test'] )
+            ->response( ['status' => 'error', 'message' => 'Invalid key'] )
+            ->ensure( 'imagine' )
+            ->imagine( 'x' );
+    }
+
+
     public function testImagineProcessingPolls() : void
     {
         $provider = $this->prisma( 'image', 'modelslab', ['api_key' => 'test'] )
@@ -44,17 +55,6 @@ class ModelslabTest extends TestCase
         // the queued job is resolved by polling the fetch_result URL
         $this->assertTrue( $response->ready() );
         $this->assertEquals( 'https://cdn.modelslab.com/b.png', $response->first()?->url() );
-    }
-
-
-    public function testImagineError() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'image', 'modelslab', ['api_key' => 'test'] )
-            ->response( ['status' => 'error', 'message' => 'Invalid key'] )
-            ->ensure( 'imagine' )
-            ->imagine( 'x' );
     }
 
 

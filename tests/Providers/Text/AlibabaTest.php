@@ -15,115 +15,11 @@ class AlibabaTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testWrite() : void
+    public function testNoApiKey() : void
     {
-        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'finish_reason' => 'stop',
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'Hello world'
-                    ]
-                ]],
-                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3, 'total_tokens' => 8],
-                'request_id' => 'req-123'
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
+        $this->expectException( PrismaException::class );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
-
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'qwen-vl-plus', $body['model'] );
-            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
-            $this->assertCount( 1, $body['messages'] );
-        } );
-
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( ['Hello world'], $response->texts() );
-        $this->assertEquals( 8, $response->usage()['used'] );
-    }
-
-
-    public function testWriteWithFiles() : void
-    {
-        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'An image of a cat'
-                    ]
-                ]],
-                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $content = $body['messages'][0]['content'];
-            $this->assertCount( 2, $content );
-            $this->assertEquals( 'image_url', $content[0]['type'] );
-            $this->assertArrayHasKey( 'image_url', $content[0] );
-            $this->assertEquals( 'text', $content[1]['type'] );
-        } );
-
-        $this->assertEquals( 'An image of a cat', $response->text() );
-    }
-
-
-    public function testWriteWithSystemPrompt() : void
-    {
-        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'Bonjour'
-                    ]
-                ]],
-                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2, 'total_tokens' => 7]
-            ] );
-
-        $response->withSystemPrompt( 'Always respond in French' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['messages'] );
-            $this->assertEquals( 'system', $body['messages'][0]['role'] );
-            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
-        } );
-    }
-
-
-    public function testWriteWithOptions() : void
-    {
-        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'result'
-                    ]
-                ]],
-                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2, 'total_tokens' => 7]
-            ] )
-            ->ensure( 'write' )
-            ->withMaxTokens( 100 )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.5, $body['temperature'] );
-            $this->assertEquals( 100, $body['max_tokens'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
+        $this->prisma( 'text', 'alibaba', [] );
     }
 
 
@@ -160,33 +56,6 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testStructuredWithOptions() : void
-    {
-        $schema = Schema::for( 'person', [
-            'name' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
-            ->response( [
-                'choices' => [[
-                    'message' => [
-                        'content' => '{"name":"Jane"}'
-                    ]
-                ]],
-                'usage' => ['total_tokens' => 10]
-            ] )
-            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.2, $body['temperature'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
-
-        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
-    }
-
-
     public function testStructuredWithFiles() : void
     {
         $schema = Schema::for( 'description', [
@@ -215,6 +84,67 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'content' => '{"name":"Jane"}'
+                    ]
+                ]],
+                'usage' => ['total_tokens' => 10]
+            ] )
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'Hello world'
+                    ]
+                ]],
+                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 3, 'total_tokens' => 8],
+                'request_id' => 'req-123'
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'qwen-vl-plus', $body['model'] );
+            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
+            $this->assertCount( 1, $body['messages'] );
+        } );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( ['Hello world'], $response->texts() );
+        $this->assertEquals( 8, $response->usage()['used'] );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );
@@ -223,6 +153,59 @@ class AlibabaTest extends TestCase
             ->response( ['message' => 'Bad request'], status: 400, reason: 'Bad Request' )
             ->ensure( 'write' )
             ->write( 'prompt' );
+    }
+
+
+    public function testWriteWithFiles() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'An image of a cat'
+                    ]
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+            $this->assertArrayHasKey( 'image_url', $content[0] );
+            $this->assertEquals( 'text', $content[1]['type'] );
+        } );
+
+        $this->assertEquals( 'An image of a cat', $response->text() );
+    }
+
+
+    public function testWriteWithOptions() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'result'
+                    ]
+                ]],
+                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2, 'total_tokens' => 7]
+            ] )
+            ->ensure( 'write' )
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.5, $body['temperature'] );
+            $this->assertEquals( 100, $body['max_tokens'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
     }
 
 
@@ -248,35 +231,53 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testWriteWithTools() : void
+    public function testWriteWithSystemPrompt() : void
     {
-        $tool = Tools::make( 'get_weather', 'Get weather for a city', Schema::fromArray( 'get_weather', [
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'Bonjour'
+                    ]
+                ]],
+                'usage' => ['prompt_tokens' => 5, 'completion_tokens' => 2, 'total_tokens' => 7]
+            ] );
+
+        $response->withSystemPrompt( 'Always respond in French' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['messages'] );
+            $this->assertEquals( 'system', $body['messages'][0]['role'] );
+            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
+        } );
+    }
+
+
+    public function testWriteWithToolChoice() : void
+    {
+        $tool = Tools::make( 'get_weather', 'Get weather', Schema::fromArray( 'get_weather', [
             'type' => 'object',
             'properties' => ['city' => ['type' => 'string']],
-            'required' => ['city'],
-        ] ), fn() => 'sunny' );
+        ] ), fn() => '' );
 
         $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] );
         $this->response( [
             'choices' => [[
-                'finish_reason' => 'stop',
-                'message' => [
-                    'content' => 'The weather is sunny'
-                ]
+                'message' => ['content' => 'result']
             ]],
-            'usage' => ['total_tokens' => 10]
+            'usage' => ['total_tokens' => 5]
         ] );
 
         $this->provider()->withTools( [$tool] )
-            ->write( 'What is the weather?' );
+            ->withToolChoice( 'required' )
+            ->write( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertArrayHasKey( 'tools', $body );
-            $this->assertCount( 1, $body['tools'] );
-            $this->assertEquals( 'function', $body['tools'][0]['type'] );
-            $this->assertEquals( 'get_weather', $body['tools'][0]['function']['name'] );
-            $this->assertArrayHasKey( 'tool_choice', $body );
+            $this->assertEquals( 'required', $body['tool_choice'] );
         } );
     }
 
@@ -339,36 +340,35 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testWriteWithToolChoice() : void
+    public function testWriteWithTools() : void
     {
-        $tool = Tools::make( 'get_weather', 'Get weather', Schema::fromArray( 'get_weather', [
+        $tool = Tools::make( 'get_weather', 'Get weather for a city', Schema::fromArray( 'get_weather', [
             'type' => 'object',
             'properties' => ['city' => ['type' => 'string']],
-        ] ), fn() => '' );
+            'required' => ['city'],
+        ] ), fn() => 'sunny' );
 
         $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] );
         $this->response( [
             'choices' => [[
-                'message' => ['content' => 'result']
+                'finish_reason' => 'stop',
+                'message' => [
+                    'content' => 'The weather is sunny'
+                ]
             ]],
-            'usage' => ['total_tokens' => 5]
+            'usage' => ['total_tokens' => 10]
         ] );
 
         $this->provider()->withTools( [$tool] )
-            ->withToolChoice( 'required' )
-            ->write( 'prompt' );
+            ->write( 'What is the weather?' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'required', $body['tool_choice'] );
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertCount( 1, $body['tools'] );
+            $this->assertEquals( 'function', $body['tools'][0]['type'] );
+            $this->assertEquals( 'get_weather', $body['tools'][0]['function']['name'] );
+            $this->assertArrayHasKey( 'tool_choice', $body );
         } );
-    }
-
-
-    public function testNoApiKey() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'alibaba', [] );
     }
 }

@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class VoyageaiTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['VOYAGEAI_API_KEY'] ) ) {
-            $this->markTestSkipped( 'VOYAGEAI_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testVectorize() : void
     {
         $base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC';
@@ -30,5 +20,15 @@ class VoyageaiTest extends TestCase
 
         $this->assertCount( 1, $response->vectors() );
         $this->assertCount( 1024, $response->vectors()[0] );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['VOYAGEAI_API_KEY'] ) ) {
+            $this->markTestSkipped( 'VOYAGEAI_API_KEY is not defined in the environment' );
+        }
     }
 }

@@ -13,6 +13,43 @@ class AzureTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testNoApiKey() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'azure', ['resource' => 'r'] );
+    }
+
+
+    public function testNoResource() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'azure', ['api_key' => 'test'] );
+    }
+
+
+    public function testStructured() : void
+    {
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'r'] )
+            ->response( [
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"name":"Jane"}']]],
+                'usage' => ['total_tokens' => 5],
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'myres'] )
@@ -49,42 +86,5 @@ class AzureTest extends TestCase
                 (string) $request->getUri()
             );
         } );
-    }
-
-
-    public function testStructured() : void
-    {
-        $schema = Schema::for( 'person', ['name' => Schema::string()] );
-
-        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'r'] )
-            ->response( [
-                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"name":"Jane"}']]],
-                'usage' => ['total_tokens' => 5],
-            ] )
-            ->ensure( 'structure' )
-            ->structure( 'Extract', $schema );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
-        } );
-
-        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
-    }
-
-
-    public function testNoApiKey() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'azure', ['resource' => 'r'] );
-    }
-
-
-    public function testNoResource() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'azure', ['api_key' => 'test'] );
     }
 }

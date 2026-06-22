@@ -9,16 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class BlackforestlabsTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['BLACKFORESTLABS_API_KEY'] ) ) {
-            $this->markTestSkipped( 'BLACKFORESTLABS_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testImagine() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
@@ -60,5 +50,15 @@ class BlackforestlabsTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/blackforestlabs_uncrop.png', $response->binary() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['BLACKFORESTLABS_API_KEY'] ) ) {
+            $this->markTestSkipped( 'BLACKFORESTLABS_API_KEY is not defined in the environment' );
+        }
     }
 }

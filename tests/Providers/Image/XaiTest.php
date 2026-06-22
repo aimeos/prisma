@@ -41,6 +41,17 @@ class XaiTest extends TestCase
     }
 
 
+    public function testImagineError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'image', 'xai', ['api_key' => 'test'] )
+            ->response( ['error' => ['message' => 'Bad request']], status: 400, reason: 'Bad Request' )
+            ->ensure( 'imagine' )
+            ->imagine( 'a fox' );
+    }
+
+
     public function testImagineFromUrl() : void
     {
         $response = $this->prisma( 'image', 'xai', ['api_key' => 'test'] )
@@ -51,17 +62,6 @@ class XaiTest extends TestCase
             ->imagine( 'a fox' );
 
         $this->assertEquals( 'https://example.com/fox.png', $response->first()?->url() );
-    }
-
-
-    public function testImagineError() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'image', 'xai', ['api_key' => 'test'] )
-            ->response( ['error' => ['message' => 'Bad request']], status: 400, reason: 'Bad Request' )
-            ->ensure( 'imagine' )
-            ->imagine( 'a fox' );
     }
 
 

@@ -69,6 +69,39 @@ class Cohere extends CohereBase implements Structure, Write
 
 
     /**
+     * Parses tool calls from Cohere API response.
+     *
+     * @param array<string, mixed> $result API response data
+     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
+     */
+    protected function parseToolCalls( array $result ) : array
+    {
+        $toolCalls = [];
+
+        /** @var array<string, mixed> $msg */
+        $msg = $result['message'] ?? [];
+        /** @var array<int, array<string, mixed>> $calls */
+        $calls = $msg['tool_calls'] ?? [];
+
+        foreach( $calls as $call )
+        {
+            /** @var string|null $id */
+            $id = $call['id'] ?? null;
+            /** @var array{name?: string, arguments?: string} $fn */
+            $fn = $call['function'] ?? [];
+
+            $toolCalls[] = [
+                'id' => $id,
+                'name' => $fn['name'] ?? '',
+                'arguments' => $this->jsonArgs( $fn['arguments'] ?? '{}' ),
+            ];
+        }
+
+        return $toolCalls;
+    }
+
+
+    /**
      * Runs the tool loop for the Cohere Chat API.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
@@ -144,39 +177,6 @@ class Cohere extends CohereBase implements Structure, Write
         }
 
         return $this->result( $result, $allSteps, $texts, $rateLimit );
-    }
-
-
-    /**
-     * Parses tool calls from Cohere API response.
-     *
-     * @param array<string, mixed> $result API response data
-     * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
-     */
-    protected function parseToolCalls( array $result ) : array
-    {
-        $toolCalls = [];
-
-        /** @var array<string, mixed> $msg */
-        $msg = $result['message'] ?? [];
-        /** @var array<int, array<string, mixed>> $calls */
-        $calls = $msg['tool_calls'] ?? [];
-
-        foreach( $calls as $call )
-        {
-            /** @var string|null $id */
-            $id = $call['id'] ?? null;
-            /** @var array{name?: string, arguments?: string} $fn */
-            $fn = $call['function'] ?? [];
-
-            $toolCalls[] = [
-                'id' => $id,
-                'name' => $fn['name'] ?? '',
-                'arguments' => $this->jsonArgs( $fn['arguments'] ?? '{}' ),
-            ];
-        }
-
-        return $toolCalls;
     }
 
 

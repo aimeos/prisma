@@ -10,6 +10,13 @@ class IntegerType extends Type
     protected ?int $multipleOf = null;
 
 
+    public function default( int $value ) : static
+    {
+        $this->default = $value;
+        return $this;
+    }
+
+
     /**
      * Creates an integer type from a JSON Schema definition.
      *
@@ -24,13 +31,6 @@ class IntegerType extends Type
         $type->default = is_int( $def['default'] ?? null ) ? $def['default'] : null;
 
         return $type;
-    }
-
-
-    public function default( int $value ) : static
-    {
-        $this->default = $value;
-        return $this;
     }
 
 

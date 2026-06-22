@@ -14,116 +14,11 @@ class CohereTest extends TestCase
     use MakesPrismaRequests;
 
 
-    public function testWrite() : void
+    public function testNoApiKey() : void
     {
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => [
-                    'role' => 'assistant',
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => 'Hello world'
-                    ]]
-                ],
-                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Say hello' );
+        $this->expectException( PrismaException::class );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.cohere.ai/v2/chat', (string) $request->getUri() );
-            $this->assertEquals( 'POST', $request->getMethod() );
-            $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
-
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'command-a-plus-05-2026', $body['model'] );
-            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
-            $this->assertCount( 1, $body['messages'] );
-        } );
-
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( ['Hello world'], $response->texts() );
-        $this->assertEquals( 8, $response->usage()['used'] );
-    }
-
-
-    public function testWriteWithFiles() : void
-    {
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => [
-                    'role' => 'assistant',
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => 'An image of a cat'
-                    ]]
-                ],
-                'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
-            ] )
-            ->ensure( 'write' )
-            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $content = $body['messages'][0]['content'];
-            $this->assertCount( 2, $content );
-            $this->assertEquals( 'image_url', $content[0]['type'] );
-            $this->assertEquals( 'text', $content[1]['type'] );
-        } );
-
-        $this->assertEquals( 'An image of a cat', $response->text() );
-    }
-
-
-    public function testWriteWithSystemPrompt() : void
-    {
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => [
-                    'role' => 'assistant',
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => 'Bonjour'
-                    ]]
-                ],
-                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
-            ] );
-
-        $response->withSystemPrompt( 'Always respond in French' )
-            ->write( 'Say hello' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertCount( 2, $body['messages'] );
-            $this->assertEquals( 'system', $body['messages'][0]['role'] );
-            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
-        } );
-    }
-
-
-    public function testWriteWithOptions() : void
-    {
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => [
-                    'role' => 'assistant',
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => 'result'
-                    ]]
-                ],
-                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
-            ] )
-            ->ensure( 'write' )
-            ->withMaxTokens( 100 )
-            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.5, $body['temperature'] );
-            $this->assertEquals( 100, $body['max_tokens'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
+        $this->prisma( 'text', 'cohere', [] );
     }
 
 
@@ -165,35 +60,6 @@ class CohereTest extends TestCase
     }
 
 
-    public function testStructuredWithOptions() : void
-    {
-        $schema = Schema::for( 'person', [
-            'name' => Schema::string(),
-        ] );
-
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => [
-                    'role' => 'assistant',
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => '{"name":"Jane"}'
-                    ]]
-                ],
-                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
-            ] )
-            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 0.2, $body['temperature'] );
-            $this->assertArrayNotHasKey( 'unknown', $body );
-        } );
-
-        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
-    }
-
-
     public function testStructuredWithFiles() : void
     {
         $schema = Schema::for( 'description', [
@@ -224,6 +90,68 @@ class CohereTest extends TestCase
     }
 
 
+    public function testStructuredWithOptions() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string(),
+        ] );
+
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => '{"name":"Jane"}'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
+            ] )
+            ->structure( 'Extract', $schema, [], ['temperature' => 0.2, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'Hello world'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 3]]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.cohere.ai/v2/chat', (string) $request->getUri() );
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'command-a-plus-05-2026', $body['model'] );
+            $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
+            $this->assertCount( 1, $body['messages'] );
+        } );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( ['Hello world'], $response->texts() );
+        $this->assertEquals( 8, $response->usage()['used'] );
+    }
+
+
     public function testWriteError() : void
     {
         $this->expectException( PrismaException::class );
@@ -232,29 +160,6 @@ class CohereTest extends TestCase
             ->response( ['message' => 'Bad request'], status: 400, reason: 'Bad Request' )
             ->ensure( 'write' )
             ->write( 'prompt' );
-    }
-
-
-    public function testWriteToolChoiceRequiredMapped() : void
-    {
-        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
-
-        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
-            ->response( [
-                'message' => ['role' => 'assistant', 'content' => [['type' => 'text', 'text' => 'Done']]],
-                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
-            ] );
-
-        $response->withTools( [$tool] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
-            ->ensure( 'write' )
-            ->write( 'Ping the tool' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            // Cohere requires uppercase "REQUIRED", not the internal "required"
-            $this->assertEquals( 'REQUIRED', $body['tool_choice'] );
-        } );
     }
 
 
@@ -281,10 +186,105 @@ class CohereTest extends TestCase
     }
 
 
-    public function testNoApiKey() : void
+    public function testWriteToolChoiceRequiredMapped() : void
     {
-        $this->expectException( PrismaException::class );
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $this->prisma( 'text', 'cohere', [] );
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => ['role' => 'assistant', 'content' => [['type' => 'text', 'text' => 'Done']]],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
+            ] );
+
+        $response->withTools( [$tool] )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->ensure( 'write' )
+            ->write( 'Ping the tool' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Cohere requires uppercase "REQUIRED", not the internal "required"
+            $this->assertEquals( 'REQUIRED', $body['tool_choice'] );
+        } );
+    }
+
+
+    public function testWriteWithFiles() : void
+    {
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'An image of a cat'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 10, 'output_tokens' => 5]]
+            ] )
+            ->ensure( 'write' )
+            ->write( 'Describe this image', [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+            $this->assertCount( 2, $content );
+            $this->assertEquals( 'image_url', $content[0]['type'] );
+            $this->assertEquals( 'text', $content[1]['type'] );
+        } );
+
+        $this->assertEquals( 'An image of a cat', $response->text() );
+    }
+
+
+    public function testWriteWithOptions() : void
+    {
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'result'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
+            ] )
+            ->ensure( 'write' )
+            ->withMaxTokens( 100 )
+            ->write( 'prompt', [], ['temperature' => 0.5, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0.5, $body['temperature'] );
+            $this->assertEquals( 100, $body['max_tokens'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testWriteWithSystemPrompt() : void
+    {
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'Bonjour'
+                    ]]
+                ],
+                'usage' => ['tokens' => ['input_tokens' => 5, 'output_tokens' => 2]]
+            ] );
+
+        $response->withSystemPrompt( 'Always respond in French' )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 2, $body['messages'] );
+            $this->assertEquals( 'system', $body['messages'][0]['role'] );
+            $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
+        } );
     }
 }

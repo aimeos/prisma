@@ -32,12 +32,6 @@ class Prisma extends Base
     }
 
 
-    protected function execute( array $arguments ) : mixed
-    {
-        return ( $this->fn )( $arguments );
-    }
-
-
     /**
      * Returns the tool description.
      *
@@ -68,5 +62,11 @@ class Prisma extends Base
     public function schema() : \Aimeos\Prisma\Schema\Schema
     {
         return $this->schema;
+    }
+
+
+    protected function execute( array $arguments ) : mixed
+    {
+        return ( $this->fn )( $arguments );
     }
 }

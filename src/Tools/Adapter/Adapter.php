@@ -25,13 +25,6 @@ interface Adapter
     public function concurrent( bool $concurrent = true ) : static;
 
     /**
-     * Returns whether this tool can run concurrently.
-     *
-     * @return bool True if the tool can run concurrently
-     */
-    public function isConcurrent() : bool;
-
-    /**
      * Returns the tool description.
      *
      * @return string Tool description
@@ -45,6 +38,13 @@ interface Adapter
      * @return static Self for chaining
      */
     public function failed( callable $handler ) : static;
+
+    /**
+     * Returns whether this tool can run concurrently.
+     *
+     * @return bool True if the tool can run concurrently
+     */
+    public function isConcurrent() : bool;
 
     /**
      * Returns the configured maximum number of calls.

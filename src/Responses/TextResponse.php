@@ -27,34 +27,6 @@ class TextResponse implements \IteratorAggregate
     /** @var array<string|int, string|null> */
     private array $list = [];
 
-    final private function __construct()
-    {
-    }
-
-
-    public static function fromText( ?string $text ) : self
-    {
-        $instance = new self;
-        $instance->list[] = $text;
-
-        return $instance;
-    }
-
-
-    /**
-     * Creates a response from multiple text values.
-     *
-     * @param array<string|int, string|null> $texts Response texts
-     */
-    public static function fromTexts( array $texts ) : self
-    {
-        $instance = new self;
-        $instance->list = $texts;
-
-        return $instance;
-    }
-
-
     public function add( ?string $text, int|string|null $key = null ) : self
     {
         if( $key !== null ) {
@@ -81,6 +53,29 @@ class TextResponse implements \IteratorAggregate
 
         $text = reset( $this->list );
         return $text === false || $text === '' ? null : $text;
+    }
+
+
+    public static function fromText( ?string $text ) : self
+    {
+        $instance = new self;
+        $instance->list[] = $text;
+
+        return $instance;
+    }
+
+
+    /**
+     * Creates a response from multiple text values.
+     *
+     * @param array<string|int, string|null> $texts Response texts
+     */
+    public static function fromTexts( array $texts ) : self
+    {
+        $instance = new self;
+        $instance->list = $texts;
+
+        return $instance;
     }
 
 
@@ -155,5 +150,10 @@ class TextResponse implements \IteratorAggregate
     {
         $this->structured = $structured;
         return $this;
+    }
+
+
+    final private function __construct()
+    {
     }
 }

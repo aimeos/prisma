@@ -13,6 +13,20 @@ class StringType extends Type
     protected ?string $format = null;
 
 
+    public function default( string $value ) : static
+    {
+        $this->default = $value;
+        return $this;
+    }
+
+
+    public function format( string $value ) : static
+    {
+        $this->format = $value;
+        return $this;
+    }
+
+
     /**
      * Creates a string type from a JSON Schema definition.
      *
@@ -28,20 +42,6 @@ class StringType extends Type
         $type->format = is_string( $def['format'] ?? null ) ? $def['format'] : null;
 
         return $type;
-    }
-
-
-    public function default( string $value ) : static
-    {
-        $this->default = $value;
-        return $this;
-    }
-
-
-    public function format( string $value ) : static
-    {
-        $this->format = $value;
-        return $this;
     }
 
 

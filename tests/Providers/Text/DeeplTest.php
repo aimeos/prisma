@@ -12,6 +12,14 @@ class DeeplTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testNoApiKey() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'deepl', [] );
+    }
+
+
     public function testTranslate() : void
     {
         $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
@@ -35,20 +43,14 @@ class DeeplTest extends TestCase
     }
 
 
-    public function testTranslateWithFrom() : void
+    public function testTranslateError() : void
     {
-        $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
-            ->response( ['translations' => [['text' => 'Bonjour']]] )
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
+            ->response( ['message' => 'Forbidden'], status: 403, reason: 'Forbidden' )
             ->ensure( 'translate' )
-            ->translate( ['Hello'], 'fr', 'en' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'EN', $body['source_lang'] );
-            $this->assertEquals( 'FR', $body['target_lang'] );
-        } );
-
-        $this->assertEquals( ['Bonjour'], $response->texts() );
+            ->translate( ['Hello'], 'de' );
     }
 
 
@@ -69,6 +71,36 @@ class DeeplTest extends TestCase
     }
 
 
+    public function testTranslateWithCustomUrl() : void
+    {
+        $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test', 'url' => 'https://api.deepl.com'] )
+            ->response( ['translations' => [['text' => 'Hallo']]] )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'de' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.deepl.com/v2/translate', (string) $request->getUri() );
+        } );
+    }
+
+
+    public function testTranslateWithFrom() : void
+    {
+        $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
+            ->response( ['translations' => [['text' => 'Bonjour']]] )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'fr', 'en' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'EN', $body['source_lang'] );
+            $this->assertEquals( 'FR', $body['target_lang'] );
+        } );
+
+        $this->assertEquals( ['Bonjour'], $response->texts() );
+    }
+
+
     public function testTranslateWithOptions() : void
     {
         $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
@@ -83,37 +115,5 @@ class DeeplTest extends TestCase
         } );
 
         $this->assertEquals( ['Hallo'], $response->texts() );
-    }
-
-
-    public function testTranslateWithCustomUrl() : void
-    {
-        $response = $this->prisma( 'text', 'deepl', ['api_key' => 'test', 'url' => 'https://api.deepl.com'] )
-            ->response( ['translations' => [['text' => 'Hallo']]] )
-            ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.deepl.com/v2/translate', (string) $request->getUri() );
-        } );
-    }
-
-
-    public function testTranslateError() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'deepl', ['api_key' => 'test'] )
-            ->response( ['message' => 'Forbidden'], status: 403, reason: 'Forbidden' )
-            ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
-    }
-
-
-    public function testNoApiKey() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'deepl', [] );
     }
 }

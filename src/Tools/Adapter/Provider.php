@@ -23,12 +23,6 @@ class Provider extends Base
     }
 
 
-    protected function execute( array $arguments ) : mixed
-    {
-        return '';
-    }
-
-
     /**
      * Returns the tool description.
      *
@@ -59,5 +53,11 @@ class Provider extends Base
     public function schema() : \Aimeos\Prisma\Schema\Schema
     {
         return $this->schema ??= \Aimeos\Prisma\Schema\Schema::fromArray( $this->name, [] );
+    }
+
+
+    protected function execute( array $arguments ) : mixed
+    {
+        return '';
     }
 }

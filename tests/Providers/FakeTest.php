@@ -10,14 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 class FakeTest extends TestCase
 {
-    public function testConstructorSetsResponses() : void
-    {
-        $responses = ['response1', 'response2'];
-        $fake = new Fake($responses);
-
-        $this->assertInstanceOf(Fake::class, $fake);
-    }
-
     public function testCallReturnsResponsesInOrder() : void
     {
         $responses = ['first', 'second', 'third'];
@@ -30,7 +22,6 @@ class FakeTest extends TestCase
         $this->assertEquals('third', $fake->imagine());
     }
 
-
     public function testCallThrowsExceptionWhenMethodNotExists() : void
     {
         $provider = $this->createStub(Provider::class);
@@ -40,6 +31,15 @@ class FakeTest extends TestCase
 
         $this->expectException(NotImplementedException::class);
         $fake->nonExistentMethod();
+    }
+
+
+    public function testConstructorSetsResponses() : void
+    {
+        $responses = ['response1', 'response2'];
+        $fake = new Fake($responses);
+
+        $this->assertInstanceOf(Fake::class, $fake);
     }
 
 
@@ -68,6 +68,18 @@ class FakeTest extends TestCase
     }
 
 
+    public function testHasReturnsFalseWhenProviderDoesNotHaveMethod() : void
+    {
+        $provider = $this->createMock(Provider::class);
+        $provider->method('has')->with('testMethod')->willReturn(false);
+
+        $fake = new Fake(['response']);
+        $fake->use($provider);
+
+        $this->assertFalse($fake->has('testMethod'));
+    }
+
+
     public function testHasReturnsTrueWhenProviderHasMethod() : void
     {
         $provider = $this->createMock(Provider::class);
@@ -79,18 +91,6 @@ class FakeTest extends TestCase
         $fake->use($provider);
 
         $this->assertTrue($fake->has('testMethod'));
-    }
-
-
-    public function testHasReturnsFalseWhenProviderDoesNotHaveMethod() : void
-    {
-        $provider = $this->createMock(Provider::class);
-        $provider->method('has')->with('testMethod')->willReturn(false);
-
-        $fake = new Fake(['response']);
-        $fake->use($provider);
-
-        $this->assertFalse($fake->has('testMethod'));
     }
 
 

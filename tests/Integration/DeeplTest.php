@@ -8,16 +8,6 @@ use PHPUnit\Framework\TestCase;
 
 class DeeplTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['DEEPL_API_KEY'] ) ) {
-            $this->markTestSkipped( 'DEEPL_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testTranslate() : void
     {
         $response = Prisma::text()
@@ -43,5 +33,15 @@ class DeeplTest extends TestCase
 
         $this->assertCount( 1, $texts );
         $this->assertNotEmpty( $texts[0] );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['DEEPL_API_KEY'] ) ) {
+            $this->markTestSkipped( 'DEEPL_API_KEY is not defined in the environment' );
+        }
     }
 }

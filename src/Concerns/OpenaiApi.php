@@ -126,6 +126,29 @@ trait OpenaiApi
 
 
     /**
+     * Returns the JSON Schema with "additionalProperties" disabled on every object.
+     *
+     * The OpenAI-compatible chat completions and responses endpoints require
+     * "additionalProperties": false on each object for strict schema adherence.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> JSON Schema definition with closed objects
+     */
+    protected function jsonSchema( array $schema ) : array
+    {
+        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) {
+            $type = $node['type'] ?? null;
+
+            if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
+                $node['additionalProperties'] = false;
+            }
+
+            return $node;
+        } );
+    }
+
+
+    /**
      * Builds chat messages array with optional system prompt, history and user content.
      *
      * @param array<int, array<string, mixed>> $content User message content blocks
@@ -389,62 +412,6 @@ trait OpenaiApi
 
 
     /**
-     * Returns the JSON Schema with "additionalProperties" disabled on every object.
-     *
-     * The OpenAI-compatible chat completions and responses endpoints require
-     * "additionalProperties": false on each object for strict schema adherence.
-     *
-     * @param array<string, mixed> $schema JSON Schema definition
-     * @return array<string, mixed> JSON Schema definition with closed objects
-     */
-    protected function jsonSchema( array $schema ) : array
-    {
-        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) {
-            $type = $node['type'] ?? null;
-
-            if( $type === 'object' || ( is_array( $type ) && in_array( 'object', $type, true ) ) ) {
-                $node['additionalProperties'] = false;
-            }
-
-            return $node;
-        } );
-    }
-
-
-    /**
-     * Recursively lists every property of an object in its "required" array.
-     *
-     * OpenAI strict mode requires all properties to be listed as required;
-     * optional fields are expressed as nullable types instead.
-     *
-     * @param array<string, mixed> $schema JSON Schema definition
-     * @return array<string, mixed> Schema with all properties required
-     */
-    private function requireAll( array $schema ) : array
-    {
-        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
-        {
-            $schema['required'] = array_keys( $schema['properties'] );
-            $schema['properties'] = array_map( fn( array $prop ) => $this->requireAll( $prop ), $schema['properties'] );
-        }
-
-        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
-            $schema['items'] = $this->requireAll( $schema['items'] );
-        }
-
-        if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
-            $schema['anyOf'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['anyOf'] );
-        }
-
-        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
-            $schema['$defs'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['$defs'] );
-        }
-
-        return $schema;
-    }
-
-
-    /**
      * Returns the provider-specific tool_choice value, or null to omit it.
      *
      * The default mapping matches the OpenAI API ("auto"/"required"/"none").
@@ -456,31 +423,6 @@ trait OpenaiApi
     protected function toolChoiceParam() : ?string
     {
         return $this->toolChoice();
-    }
-
-
-    /**
-     * Builds the tools parameter for the API request.
-     *
-     * @return array<int, array<string, mixed>> Formatted tools definition
-     */
-    protected function toolsParam() : array
-    {
-        $tools = [];
-
-        foreach( $this->tools() as $tool )
-        {
-            $tools[] = [
-                'type' => 'function',
-                'function' => [
-                    'name' => $tool->name(),
-                    'description' => $tool->description(),
-                    'parameters' => $this->toolParameters( $tool->schema() ),
-                ],
-            ];
-        }
-
-        return $tools;
     }
 
 
@@ -526,6 +468,31 @@ trait OpenaiApi
         }
 
         return $messages;
+    }
+
+
+    /**
+     * Builds the tools parameter for the API request.
+     *
+     * @return array<int, array<string, mixed>> Formatted tools definition
+     */
+    protected function toolsParam() : array
+    {
+        $tools = [];
+
+        foreach( $this->tools() as $tool )
+        {
+            $tools[] = [
+                'type' => 'function',
+                'function' => [
+                    'name' => $tool->name(),
+                    'description' => $tool->description(),
+                    'parameters' => $this->toolParameters( $tool->schema() ),
+                ],
+            ];
+        }
+
+        return $tools;
     }
 
 
@@ -623,6 +590,39 @@ trait OpenaiApi
         }
 
         return $texts;
+    }
+
+
+    /**
+     * Recursively lists every property of an object in its "required" array.
+     *
+     * OpenAI strict mode requires all properties to be listed as required;
+     * optional fields are expressed as nullable types instead.
+     *
+     * @param array<string, mixed> $schema JSON Schema definition
+     * @return array<string, mixed> Schema with all properties required
+     */
+    private function requireAll( array $schema ) : array
+    {
+        if( isset( $schema['properties'] ) && is_array( $schema['properties'] ) )
+        {
+            $schema['required'] = array_keys( $schema['properties'] );
+            $schema['properties'] = array_map( fn( array $prop ) => $this->requireAll( $prop ), $schema['properties'] );
+        }
+
+        if( isset( $schema['items'] ) && is_array( $schema['items'] ) ) {
+            $schema['items'] = $this->requireAll( $schema['items'] );
+        }
+
+        if( isset( $schema['anyOf'] ) && is_array( $schema['anyOf'] ) ) {
+            $schema['anyOf'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['anyOf'] );
+        }
+
+        if( isset( $schema['$defs'] ) && is_array( $schema['$defs'] ) ) {
+            $schema['$defs'] = array_map( fn( array $sub ) => $this->requireAll( $sub ), $schema['$defs'] );
+        }
+
+        return $schema;
     }
 
 

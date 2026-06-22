@@ -24,8 +24,65 @@ class File
     protected int $maxBytes = 67108864;
 
 
-    final protected function __construct()
+    /**
+     * Set the file name.
+     *
+     * @param string $name New file name
+     * @return self File instance
+     */
+    public function as( string $name ) : self
     {
+        $this->filename = $name;
+        return $this;
+    }
+
+
+    /**
+     * Returns the base64 encoded file content.
+     *
+     * @return string|null Base64 encoded content
+     */
+    public function base64() : ?string
+    {
+        if( !$this->base64 ) {
+            $this->base64 = base64_encode( (string) $this->binary() );
+        }
+
+        return $this->base64;
+    }
+
+
+    /**
+     * Returns the binary file content.
+     *
+     * @return string|null Binary content
+     */
+    public function binary() : ?string
+    {
+        if( $this->binary ) {
+            return $this->binary;
+        }
+
+        if( $this->base64 ) {
+            return $this->binary = base64_decode( (string) $this->base64 );
+        }
+
+        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), true ) ?: null ) ) {
+            throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
+        }
+
+        return $this->binary;
+    }
+
+
+    /**
+     * Returns the file name.
+     *
+     * @return string|null File name
+     */
+    public function filename() : ?string
+    {
+        return $this->filename;
     }
 
 
@@ -144,68 +201,6 @@ class File
 
 
     /**
-     * Set the file name.
-     *
-     * @param string $name New file name
-     * @return self File instance
-     */
-    public function as( string $name ) : self
-    {
-        $this->filename = $name;
-        return $this;
-    }
-
-
-    /**
-     * Returns the base64 encoded file content.
-     *
-     * @return string|null Base64 encoded content
-     */
-    public function base64() : ?string
-    {
-        if( !$this->base64 ) {
-            $this->base64 = base64_encode( (string) $this->binary() );
-        }
-
-        return $this->base64;
-    }
-
-
-    /**
-     * Returns the binary file content.
-     *
-     * @return string|null Binary content
-     */
-    public function binary() : ?string
-    {
-        if( $this->binary ) {
-            return $this->binary;
-        }
-
-        if( $this->base64 ) {
-            return $this->binary = base64_decode( (string) $this->base64 );
-        }
-
-        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), true ) ?: null ) ) {
-            throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
-        }
-
-        return $this->binary;
-    }
-
-
-    /**
-     * Returns the file name.
-     *
-     * @return string|null File name
-     */
-    public function filename() : ?string
-    {
-        return $this->filename;
-    }
-
-
-    /**
      * Sets the maximum number of bytes fetched from a URL.
      *
      * @param int $bytes Maximum size in bytes
@@ -256,17 +251,6 @@ class File
 
 
     /**
-     * Returns the file URL.
-     *
-     * @return string|null File URL
-     */
-    public function url() : ?string
-    {
-        return $this->url;
-    }
-
-
-    /**
      * Sets the mime type.
      *
      * @param string|null $mimeType Mime type
@@ -280,6 +264,22 @@ class File
 
         $this->mimeType = $mimeType;
         return $this;
+    }
+
+
+    /**
+     * Returns the file URL.
+     *
+     * @return string|null File URL
+     */
+    public function url() : ?string
+    {
+        return $this->url;
+    }
+
+
+    final protected function __construct()
+    {
     }
 
 

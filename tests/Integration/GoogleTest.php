@@ -8,16 +8,6 @@ use PHPUnit\Framework\TestCase;
 
 class GoogleTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['GOOGLE_API_KEY'] ) ) {
-            $this->markTestSkipped( 'GOOGLE_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testTranslate() : void
     {
         $response = Prisma::text()
@@ -29,5 +19,15 @@ class GoogleTest extends TestCase
 
         $this->assertCount( 2, $texts );
         $this->assertStringContainsStringIgnoringCase( 'Hallo', $texts[0] );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['GOOGLE_API_KEY'] ) ) {
+            $this->markTestSkipped( 'GOOGLE_API_KEY is not defined in the environment' );
+        }
     }
 }

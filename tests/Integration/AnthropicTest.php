@@ -10,16 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 class AnthropicTest extends TestCase
 {
-    protected function setUp() : void
-    {
-        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
-
-        if( empty( $_ENV['ANTHROPIC_API_KEY'] ) ) {
-            $this->markTestSkipped( 'ANTHROPIC_API_KEY is not defined in the environment' );
-        }
-    }
-
-
     public function testStream() : void
     {
         $deltas = [];
@@ -57,18 +47,6 @@ class AnthropicTest extends TestCase
     }
 
 
-    public function testWrite() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::text()
-            ->using( 'anthropic', ['api_key' => $_ENV['ANTHROPIC_API_KEY']] )
-            ->ensure( 'write' )
-            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
-
-        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
-    }
-
-
     public function testTools() : void
     {
         $next = \Aimeos\Prisma\Tools::make(
@@ -96,5 +74,27 @@ class AnthropicTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testWrite() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::text()
+            ->using( 'anthropic', ['api_key' => $_ENV['ANTHROPIC_API_KEY']] )
+            ->ensure( 'write' )
+            ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
+
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
+    protected function setUp() : void
+    {
+        \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
+
+        if( empty( $_ENV['ANTHROPIC_API_KEY'] ) ) {
+            $this->markTestSkipped( 'ANTHROPIC_API_KEY is not defined in the environment' );
+        }
     }
 }

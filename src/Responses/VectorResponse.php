@@ -18,8 +18,14 @@ class VectorResponse
     private array $vectors;
 
 
-    final private function __construct()
+    /**
+     * Get the first embedding vector.
+     *
+     * @return array<int, float>|null First embedding vector
+     */
+    public function first() : ?array
     {
+        return $this->vectors[0] ?? null;
     }
 
 
@@ -35,17 +41,6 @@ class VectorResponse
         $instance->vectors = $vectors;
 
         return $instance;
-    }
-
-
-    /**
-     * Get the first embedding vector.
-     *
-     * @return array<int, float>|null First embedding vector
-     */
-    public function first() : ?array
-    {
-        return $this->vectors[0] ?? null;
     }
 
 
@@ -68,5 +63,10 @@ class VectorResponse
     public function vectors() : array
     {
         return $this->vectors;
+    }
+
+
+    final private function __construct()
+    {
     }
 }

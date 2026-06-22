@@ -17,6 +17,40 @@ abstract class Type
     protected ?bool $nullable = null;
 
 
+    public function __toString() : string
+    {
+        return $this->toString();
+    }
+
+
+    public function description( string $value ) : static
+    {
+        $this->description = $value;
+        return $this;
+    }
+
+
+    /**
+     * Sets the allowed enum values.
+     *
+     * @param array<int, string|int>|string $values Enum values or BackedEnum class
+     */
+    public function enum( array|string $values ) : static
+    {
+        if( is_string( $values ) ) {
+            if( !is_subclass_of( $values, BackedEnum::class ) ) {
+                throw new InvalidArgumentException( 'The provided class must be a BackedEnum.' );
+            }
+
+            $values = array_column( $values::cases(), 'value' );
+        }
+
+        $this->enum = array_values( $values );
+
+        return $this;
+    }
+
+
     /**
      * Creates a type instance from a JSON Schema definition.
      *
@@ -59,40 +93,6 @@ abstract class Type
             : null;
 
         return $type;
-    }
-
-
-    public function __toString() : string
-    {
-        return $this->toString();
-    }
-
-
-    public function description( string $value ) : static
-    {
-        $this->description = $value;
-        return $this;
-    }
-
-
-    /**
-     * Sets the allowed enum values.
-     *
-     * @param array<int, string|int>|string $values Enum values or BackedEnum class
-     */
-    public function enum( array|string $values ) : static
-    {
-        if( is_string( $values ) ) {
-            if( !is_subclass_of( $values, BackedEnum::class ) ) {
-                throw new InvalidArgumentException( 'The provided class must be a BackedEnum.' );
-            }
-
-            $values = array_column( $values::cases(), 'value' );
-        }
-
-        $this->enum = array_values( $values );
-
-        return $this;
     }
 
 

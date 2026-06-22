@@ -12,6 +12,14 @@ class GoogleTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testNoApiKey() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'google', [] );
+    }
+
+
     public function testTranslate() : void
     {
         $response = $this->prisma( 'text', 'google', ['api_key' => 'test'] )
@@ -31,6 +39,30 @@ class GoogleTest extends TestCase
         } );
 
         $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
+    }
+
+
+    public function testTranslateError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'google', ['api_key' => 'test'] )
+            ->response( ['error' => ['message' => 'Forbidden']], status: 403, reason: 'Forbidden' )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'de' );
+    }
+
+
+    public function testTranslateWithCustomUrl() : void
+    {
+        $response = $this->prisma( 'text', 'google', ['api_key' => 'test', 'url' => 'https://custom.googleapis.com'] )
+            ->response( ['data' => ['translations' => [['translatedText' => 'Hallo']]]] )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'de' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://custom.googleapis.com/language/translate/v2?key=test', (string) $request->getUri() );
+        } );
     }
 
 
@@ -65,37 +97,5 @@ class GoogleTest extends TestCase
         } );
 
         $this->assertEquals( ['Hallo'], $response->texts() );
-    }
-
-
-    public function testTranslateWithCustomUrl() : void
-    {
-        $response = $this->prisma( 'text', 'google', ['api_key' => 'test', 'url' => 'https://custom.googleapis.com'] )
-            ->response( ['data' => ['translations' => [['translatedText' => 'Hallo']]]] )
-            ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://custom.googleapis.com/language/translate/v2?key=test', (string) $request->getUri() );
-        } );
-    }
-
-
-    public function testTranslateError() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'google', ['api_key' => 'test'] )
-            ->response( ['error' => ['message' => 'Forbidden']], status: 403, reason: 'Forbidden' )
-            ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
-    }
-
-
-    public function testNoApiKey() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'google', [] );
     }
 }

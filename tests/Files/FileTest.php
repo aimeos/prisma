@@ -15,50 +15,24 @@ class FileTest extends TestCase
     private string $path = '';
 
 
-    protected function tearDown() : void
+    public function testBinaryAllowsPrivateIp() : void
     {
-        if( $this->path !== '' && file_exists( $this->path ) ) {
-            unlink( $this->path );
-        }
+        // private and reserved addresses are intentionally permitted
+        $content = File::fromUrl( 'http://10.0.0.5/internal.png' )
+            ->withClientHandler( $this->handler( new Response( 200, [], 'internal' ) ) )
+            ->binary();
+
+        $this->assertEquals( 'internal', $content );
     }
 
 
-    private function handler( Response ...$responses ) : HandlerStack
+    public function testBinaryFetchesHost() : void
     {
-        return HandlerStack::create( new MockHandler( $responses ) );
-    }
+        $content = File::fromUrl( 'http://example.com/file.png' )
+            ->withClientHandler( $this->handler( new Response( 200, [], 'hello' ) ) )
+            ->binary();
 
-
-    private function tempFile( string $content ) : string
-    {
-        $this->path = (string) tempnam( sys_get_temp_dir(), 'prisma' );
-        file_put_contents( $this->path, $content );
-
-        return $this->path;
-    }
-
-
-    public function testFromLocalPathRejectsWrapper() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        File::fromLocalPath( 'php://filter/read=convert.base64-encode/resource=/etc/passwd' );
-    }
-
-
-    public function testFromLocalPathRejectsRemoteScheme() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        File::fromLocalPath( 'http://169.254.169.254/latest/meta-data/' );
-    }
-
-
-    public function testFromLocalPathReadsLocalFile() : void
-    {
-        $file = File::fromLocalPath( $this->tempFile( 'hello world' ) );
-
-        $this->assertEquals( 'hello world', $file->binary() );
+        $this->assertEquals( 'hello', $content );
     }
 
 
@@ -78,27 +52,6 @@ class FileTest extends TestCase
     }
 
 
-    public function testBinaryFetchesHost() : void
-    {
-        $content = File::fromUrl( 'http://example.com/file.png' )
-            ->withClientHandler( $this->handler( new Response( 200, [], 'hello' ) ) )
-            ->binary();
-
-        $this->assertEquals( 'hello', $content );
-    }
-
-
-    public function testBinaryAllowsPrivateIp() : void
-    {
-        // private and reserved addresses are intentionally permitted
-        $content = File::fromUrl( 'http://10.0.0.5/internal.png' )
-            ->withClientHandler( $this->handler( new Response( 200, [], 'internal' ) ) )
-            ->binary();
-
-        $this->assertEquals( 'internal', $content );
-    }
-
-
     public function testFollowsRedirect() : void
     {
         $content = File::fromUrl( 'http://example.com/redirect' )
@@ -109,6 +62,30 @@ class FileTest extends TestCase
             ->binary();
 
         $this->assertEquals( 'final', $content );
+    }
+
+
+    public function testFromLocalPathReadsLocalFile() : void
+    {
+        $file = File::fromLocalPath( $this->tempFile( 'hello world' ) );
+
+        $this->assertEquals( 'hello world', $file->binary() );
+    }
+
+
+    public function testFromLocalPathRejectsRemoteScheme() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        File::fromLocalPath( 'http://169.254.169.254/latest/meta-data/' );
+    }
+
+
+    public function testFromLocalPathRejectsWrapper() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        File::fromLocalPath( 'php://filter/read=convert.base64-encode/resource=/etc/passwd' );
     }
 
 
@@ -130,5 +107,28 @@ class FileTest extends TestCase
         $this->assertEquals( 'audio/wav', File::fromBinary( 'RIFFdata', 'audio/x-wav' )->mimeType() );
         $this->assertEquals( 'audio/wav', File::fromBase64( base64_encode( 'RIFFdata' ), 'audio/vnd.wave' )->mimeType() );
         $this->assertEquals( 'audio/mpeg', File::fromBinary( 'data', 'audio/mpeg' )->mimeType() );
+    }
+
+
+    protected function tearDown() : void
+    {
+        if( $this->path !== '' && file_exists( $this->path ) ) {
+            unlink( $this->path );
+        }
+    }
+
+
+    private function handler( Response ...$responses ) : HandlerStack
+    {
+        return HandlerStack::create( new MockHandler( $responses ) );
+    }
+
+
+    private function tempFile( string $content ) : string
+    {
+        $this->path = (string) tempnam( sys_get_temp_dir(), 'prisma' );
+        file_put_contents( $this->path, $content );
+
+        return $this->path;
     }
 }

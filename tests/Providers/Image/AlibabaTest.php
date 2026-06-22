@@ -62,7 +62,7 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testImagineWithUrlImages() : void
+    public function testImagineWan() : void
     {
         $file = $this->prisma( 'image', 'alibaba', ['api_key' => 'test'] )
             ->response( '{
@@ -72,25 +72,34 @@ class AlibabaTest extends TestCase
                         "message": {
                             "role": "assistant",
                             "content": [{
-                                "image": "https://dashscope-result.oss-cn-beijing.aliyuncs.com/edited.png"
+                                "image": "https://dashscope-result.oss-cn-beijing.aliyuncs.com/wan.png"
                             }]
                         }
                     }]
                 },
-                "usage": {"image_count": 1},
-                "request_id": "req-img-url"
+                "usage": {
+                    "image_count": 1,
+                    "size": "1280*1280"
+                },
+                "request_id": "req-wan-123"
             }' )
+            ->model( 'wan2.6-t2i' )
             ->ensure( 'imagine' )
-            ->imagine( 'make it brighter', [Image::fromUrl( 'https://example.com/photo.jpg' )] );
+            ->imagine( 'a mountain landscape', [], ['size' => '1104*1472', 'negative_prompt' => 'blurry', 'n' => 4, 'seed' => 55, 'prompt_extend' => true, 'watermark' => true] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $content = $body['input']['messages'][0]['content'];
-            $this->assertEquals( 'make it brighter', $content[0]['text'] );
-            $this->assertEquals( 'https://example.com/photo.jpg', $content[1]['image'] );
+            $this->assertEquals( 'wan2.6-t2i', $body['model'] );
+            $this->assertEquals( 'a mountain landscape', $body['input']['messages'][0]['content'][0]['text'] );
+            $this->assertEquals( '1104*1472', $body['parameters']['size'] );
+            $this->assertEquals( 'blurry', $body['parameters']['negative_prompt'] );
+            $this->assertEquals( 4, $body['parameters']['n'] );
+            $this->assertEquals( 55, $body['parameters']['seed'] );
+            $this->assertTrue( $body['parameters']['prompt_extend'] );
+            $this->assertTrue( $body['parameters']['watermark'] );
         } );
 
-        $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/edited.png', $file->url() );
+        $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/wan.png', $file->url() );
     }
 
 
@@ -157,6 +166,38 @@ class AlibabaTest extends TestCase
             $this->assertEquals( 'combine these', $content[0]['text'] );
             $this->assertEquals( 'https://example.com/a.jpg', $content[1]['image'] );
             $this->assertEquals( 'data:image/png;base64,dGVzdA==', $content[2]['image'] );
+        } );
+
+        $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/edited.png', $file->url() );
+    }
+
+
+    public function testImagineWithUrlImages() : void
+    {
+        $file = $this->prisma( 'image', 'alibaba', ['api_key' => 'test'] )
+            ->response( '{
+                "output": {
+                    "choices": [{
+                        "finish_reason": "stop",
+                        "message": {
+                            "role": "assistant",
+                            "content": [{
+                                "image": "https://dashscope-result.oss-cn-beijing.aliyuncs.com/edited.png"
+                            }]
+                        }
+                    }]
+                },
+                "usage": {"image_count": 1},
+                "request_id": "req-img-url"
+            }' )
+            ->ensure( 'imagine' )
+            ->imagine( 'make it brighter', [Image::fromUrl( 'https://example.com/photo.jpg' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['input']['messages'][0]['content'];
+            $this->assertEquals( 'make it brighter', $content[0]['text'] );
+            $this->assertEquals( 'https://example.com/photo.jpg', $content[1]['image'] );
         } );
 
         $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/edited.png', $file->url() );
@@ -242,46 +283,5 @@ class AlibabaTest extends TestCase
 
         $this->assertEquals( [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], $result->vectors() );
         $this->assertEquals( ['request_id' => 'req-vec-123'], $result->meta() );
-    }
-
-
-    public function testImagineWan() : void
-    {
-        $file = $this->prisma( 'image', 'alibaba', ['api_key' => 'test'] )
-            ->response( '{
-                "output": {
-                    "choices": [{
-                        "finish_reason": "stop",
-                        "message": {
-                            "role": "assistant",
-                            "content": [{
-                                "image": "https://dashscope-result.oss-cn-beijing.aliyuncs.com/wan.png"
-                            }]
-                        }
-                    }]
-                },
-                "usage": {
-                    "image_count": 1,
-                    "size": "1280*1280"
-                },
-                "request_id": "req-wan-123"
-            }' )
-            ->model( 'wan2.6-t2i' )
-            ->ensure( 'imagine' )
-            ->imagine( 'a mountain landscape', [], ['size' => '1104*1472', 'negative_prompt' => 'blurry', 'n' => 4, 'seed' => 55, 'prompt_extend' => true, 'watermark' => true] );
-
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'wan2.6-t2i', $body['model'] );
-            $this->assertEquals( 'a mountain landscape', $body['input']['messages'][0]['content'][0]['text'] );
-            $this->assertEquals( '1104*1472', $body['parameters']['size'] );
-            $this->assertEquals( 'blurry', $body['parameters']['negative_prompt'] );
-            $this->assertEquals( 4, $body['parameters']['n'] );
-            $this->assertEquals( 55, $body['parameters']['seed'] );
-            $this->assertTrue( $body['parameters']['prompt_extend'] );
-            $this->assertTrue( $body['parameters']['watermark'] );
-        } );
-
-        $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/wan.png', $file->url() );
     }
 }
