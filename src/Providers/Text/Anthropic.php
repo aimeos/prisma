@@ -14,7 +14,7 @@ class Anthropic extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
-        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
+        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k', 'thinking', 'effort'] );
 
         return $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
@@ -26,7 +26,7 @@ class Anthropic extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'thinking', 'effort'] );
         $json = $this->jsonSchema( $schema->toArray() );
 
         if( $this->fits( $json ) )
@@ -55,7 +55,7 @@ class Anthropic extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k'] );
+        $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k', 'thinking', 'effort'] );
 
         return $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
@@ -203,7 +203,10 @@ class Anthropic extends Base implements Stream, Structure, Write
                 'max_tokens' => $this->maxTokens() ?? 4096,
             ] + $options;
 
-            if( $thinkingBudget = $this->thinkingBudget() ) {
+            // Claude 4.6+ supports adaptive thinking via the "thinking"/"effort" options
+            // (e.g. ['thinking' => ['type' => 'adaptive'], 'effort' => 'high']). An explicit
+            // thinking option wins; otherwise withThinkingBudget() enables a fixed budget.
+            if( !isset( $params['thinking'] ) && ( $thinkingBudget = $this->thinkingBudget() ) ) {
                 $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
             }
 
@@ -271,7 +274,16 @@ class Anthropic extends Base implements Stream, Structure, Write
 
             $toolCalls = $this->parseToolCalls( $result );
 
-            if( !$toolCalls ) {
+            if( !$toolCalls )
+            {
+                // Anthropic returns stop_reason "pause_turn" when a long-running server-side
+                // tool (e.g. web_search) needs another turn to finish; resend the accumulated
+                // assistant content to resume instead of ending with a partial answer.
+                if( ( $result['stop_reason'] ?? null ) === 'pause_turn' && $step < $this->maxSteps() ) {
+                    $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
+                    continue;
+                }
+
                 break;
             }
 
@@ -351,8 +363,9 @@ class Anthropic extends Base implements Stream, Structure, Write
             ->withCitations( $citations )
             ->withReason( match( $result['stop_reason'] ?? null ) {
                 'end_turn', 'stop_sequence' => TextResponse::STOP,
-                'tool_use' => TextResponse::TOOL,
+                'tool_use', 'pause_turn' => TextResponse::TOOL,
                 'max_tokens' => TextResponse::LENGTH,
+                'refusal' => TextResponse::CONTENT,
                 default => TextResponse::UNKNOWN,
             } )
             ->withUsage(
@@ -447,7 +460,7 @@ class Anthropic extends Base implements Stream, Structure, Write
 
                 case 'content_block_stop':
                     if( ( $blocks[$idx]['type'] ?? '' ) === 'tool_use' ) {
-                        $blocks[$idx]['input'] = json_decode( $buffers[$idx] ?? '', true ) ?: [];
+                        $blocks[$idx]['input'] = $this->jsonArgs( $buffers[$idx] ?? '' );
                     }
                     break;
 

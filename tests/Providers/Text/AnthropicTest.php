@@ -814,6 +814,116 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testWriteWithAdaptiveThinking() : void
+    {
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'ok']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3],
+            ] )
+            ->withThinkingBudget( 2048 )
+            ->ensure( 'write' )
+            ->write( 'think hard', [], ['thinking' => ['type' => 'adaptive'], 'effort' => 'high'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // an explicit adaptive thinking option takes precedence over the budget fallback
+            $this->assertEquals( ['type' => 'adaptive'], $body['thinking'] );
+            $this->assertEquals( 'high', $body['effort'] );
+        } );
+    }
+
+
+    public function testWriteWithEagerInputStreaming() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' )
+            ->with( ['eager_input_streaming' => true] );
+
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'ok']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3],
+            ] )
+            ->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'ping' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertTrue( $body['tools'][0]['eager_input_streaming'] );
+        } );
+    }
+
+
+    public function testWritePauseTurnResumes() : void
+    {
+        $provider = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'Let me look that up.']],
+                'stop_reason' => 'pause_turn',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3],
+            ] );
+        $this->response( [
+            'content' => [['type' => 'text', 'text' => 'The answer is 42.']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 6, 'output_tokens' => 4],
+        ] );
+
+        $response = $provider->ensure( 'write' )->write( 'What is the answer?' );
+
+        // a pause_turn is resumed with another request instead of ending with a partial answer
+        $this->assertCount( 2, $this->requests() );
+        $this->assertEquals( 'The answer is 42.', $response->text() );
+    }
+
+
+    public function testWriteScalarToolInputNormalized() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $provider = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'tool_use', 'id' => 't1', 'name' => 'ping', 'input' => 'not-an-object']],
+                'stop_reason' => 'tool_use',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 2],
+            ] );
+        $this->response( [
+            'content' => [['type' => 'text', 'text' => 'done']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 6, 'output_tokens' => 2],
+        ] );
+
+        // a scalar tool_use "input" must not crash; it is normalized to empty arguments
+        $response = $provider->withTools( [$tool] )->ensure( 'write' )->write( 'Ping' );
+
+        $this->assertEquals( [], $response->steps()[0]->arguments() );
+        $this->assertEquals( 'pong', $response->steps()[0]->result() );
+    }
+
+
+    public function testOutputCombinesTexts() : void
+    {
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [
+                    ['type' => 'text', 'text' => 'Hello '],
+                    ['type' => 'text', 'text' => 'world'],
+                ],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'hi' );
+
+        // text() returns the first entry, output() concatenates every collected text
+        $this->assertEquals( 'Hello ', $response->text() );
+        $this->assertEquals( 'Hello world', $response->output() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

@@ -134,11 +134,20 @@ class Anthropic extends Base
 
         foreach( $this->tools() as $tool )
         {
-            $tools[] = [
+            $definition = [
                 'name' => $tool->name(),
                 'description' => $tool->description(),
                 'input_schema' => $tool->schema()->toArray(),
             ];
+
+            // Anthropic's fine-grained tool streaming sends the tool input incrementally for
+            // lower latency on large arguments; enable it per tool via
+            // ->with(['eager_input_streaming' => true]).
+            if( $tool->options()['eager_input_streaming'] ?? false ) {
+                $definition['eager_input_streaming'] = true;
+            }
+
+            $tools[] = $definition;
         }
 
         return array_merge( $tools, $this->mapProviderTools( self::$providerToolMap ) );
@@ -165,8 +174,9 @@ class Anthropic extends Base
                 $id = $block['id'] ?? null;
                 /** @var string $name */
                 $name = $block['name'] ?? '';
-                /** @var array<string, mixed> $input */
-                $input = $block['input'] ?? [];
+                // A scalar/null "input" would break the array contract downstream, so
+                // anything that is not an array is normalized to an empty argument map.
+                $input = is_array( $block['input'] ?? null ) ? $block['input'] : [];
 
                 $toolCalls[] = [
                     'id' => $id,
