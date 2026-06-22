@@ -50,7 +50,7 @@ class Openai extends Base
                 'type' => 'function',
                 'name' => $tool->name(),
                 'description' => $tool->description(),
-                'parameters' => $tool->schema()->toArray(),
+                'parameters' => $this->toolParameters( $tool->schema() ),
                 'strict' => $tool->schema()->isStrict(),
             ];
         }

@@ -176,12 +176,10 @@ trait OpenaiApi
                 $fn = $call['function'] ?? [];
                 /** @var string|null $callId */
                 $callId = $call['id'] ?? null;
-                /** @var array<string, mixed> $decoded */
-                $decoded = json_decode( $fn['arguments'] ?? '{}', true ) ?: [];
                 $toolCalls[] = [
                     'id' => $callId,
                     'name' => $fn['name'] ?? '',
-                    'arguments' => $decoded,
+                    'arguments' => $this->jsonArgs( $fn['arguments'] ?? '{}' ),
                 ];
             }
         }
@@ -477,12 +475,34 @@ trait OpenaiApi
                 'function' => [
                     'name' => $tool->name(),
                     'description' => $tool->description(),
-                    'parameters' => $tool->schema()->toArray(),
+                    'parameters' => $this->toolParameters( $tool->schema() ),
                 ],
             ];
         }
 
         return $tools;
+    }
+
+
+    /**
+     * Returns a tool's parameter schema, closed for strict mode when required.
+     *
+     * OpenAI strict function calling requires "additionalProperties": false on every
+     * object and all properties listed as required, so strict tool schemas are run
+     * through the same normalization as strict structured output.
+     *
+     * @param \Aimeos\Prisma\Schema\Schema $schema Tool parameter schema
+     * @return array<string, mixed> Tool parameter definition
+     */
+    protected function toolParameters( \Aimeos\Prisma\Schema\Schema $schema ) : array
+    {
+        $params = $schema->toArray();
+
+        if( $schema->isStrict() ) {
+            $params = $this->requireAll( $this->jsonSchema( $params ) );
+        }
+
+        return $params;
     }
 
 
@@ -524,12 +544,18 @@ trait OpenaiApi
         $choices = $result['choices'] ?? [];
         /** @var array<string, mixed> $lastMsg */
         $lastMsg = $choices[0]['message'] ?? [];
-        $thinking = $lastMsg['reasoning_content'] ?? null;
+        // DeepSeek/Groq use "reasoning_content", OpenRouter uses "reasoning"
+        $thinking = $lastMsg['reasoning_content'] ?? $lastMsg['reasoning'] ?? null;
         $meta = $result;
         unset( $meta['choices'], $meta['usage'] );
 
         if( $thinking ) {
             $meta['thinking'] = $thinking;
+        }
+
+        // OpenRouter returns encrypted reasoning blocks for multi-turn continuity
+        if( isset( $lastMsg['reasoning_details'] ) ) {
+            $meta['reasoning_details'] = $lastMsg['reasoning_details'];
         }
 
         /** @var array<int, \Aimeos\Prisma\Values\Citation> */
@@ -584,6 +610,13 @@ trait OpenaiApi
             $msg = $data['message'] ?? [];
             $text = $msg['content'] ?? null;
 
+            // Some OpenAI-compatible gateways (e.g. Cloudflare Workers AI) return the
+            // content as an object/array instead of a string; serialize it so text() and
+            // structured output (json_decode of the text) keep working.
+            if( is_array( $text ) ) {
+                $text = json_encode( $text );
+            }
+
             if( $text !== null && $text !== '' ) {
                 $texts[] = $text;
             }
@@ -610,7 +643,7 @@ trait OpenaiApi
                 $toolCalls[] = [
                     'id' => $data['call_id'] ?? null,
                     'name' => $data['name'] ?? '',
-                    'arguments' => json_decode( $data['arguments'] ?? '{}', true ) ?: [],
+                    'arguments' => $this->jsonArgs( $data['arguments'] ?? '{}' ),
                 ];
                 continue;
             }
@@ -803,8 +836,11 @@ trait OpenaiApi
                 $callback( $delta['content'] );
             }
 
-            if( isset( $delta['reasoning_content'] ) && is_string( $delta['reasoning_content'] ) ) {
-                $reasoning .= $delta['reasoning_content'];
+            // DeepSeek/Groq stream "reasoning_content", OpenRouter streams "reasoning"
+            $reasoningDelta = $delta['reasoning_content'] ?? $delta['reasoning'] ?? null;
+
+            if( is_string( $reasoningDelta ) ) {
+                $reasoning .= $reasoningDelta;
             }
 
             /** @var array<int, array<string, mixed>> $calls */

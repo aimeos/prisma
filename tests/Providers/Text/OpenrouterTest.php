@@ -239,6 +239,44 @@ class OpenrouterTest extends TestCase
     }
 
 
+    public function testWriteSurfacesReasoning() : void
+    {
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => [
+                        'content' => 'Answer',
+                        'reasoning' => 'because...',
+                        'reasoning_details' => [['type' => 'reasoning.encrypted', 'data' => 'xyz']],
+                    ],
+                ]],
+                'usage' => ['total_tokens' => 5],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'why?' );
+
+        $this->assertEquals( 'Answer', $response->text() );
+        $this->assertEquals( 'because...', $response->meta()['thinking'] );
+        $this->assertEquals( [['type' => 'reasoning.encrypted', 'data' => 'xyz']], $response->meta()['reasoning_details'] );
+    }
+
+
+    public function testWriteNormalizesObjectContent() : void
+    {
+        $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => ['result' => 'ok', 'n' => 1]]]],
+                'usage' => ['total_tokens' => 3],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'hi' );
+
+        // an object content is serialized to a JSON string instead of breaking text()
+        $this->assertEquals( '{"result":"ok","n":1}', $response->text() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

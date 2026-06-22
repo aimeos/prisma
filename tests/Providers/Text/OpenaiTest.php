@@ -549,6 +549,54 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testWriteStrictToolClosesParameters() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'get_weather', 'Returns the weather',
+            Schema::for( 'get_weather', ['city' => Schema::string()] )->strict(),
+            fn() => 'sunny'
+        );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['output' => [['content' => [['type' => 'output_text', 'text' => 'ok']]]], 'status' => 'completed'] )
+            ->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'weather?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $params = $body['tools'][0]['parameters'];
+
+            // strict tool params require additionalProperties:false and every property required
+            $this->assertTrue( $body['tools'][0]['strict'] );
+            $this->assertFalse( $params['additionalProperties'] );
+            $this->assertEquals( ['city'], $params['required'] );
+        } );
+    }
+
+
+    public function testWriteNonStrictToolKeepsParameters() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'get_weather', 'Returns the weather',
+            Schema::for( 'get_weather', ['city' => Schema::string()] ),
+            fn() => 'sunny'
+        );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['output' => [['content' => [['type' => 'output_text', 'text' => 'ok']]]], 'status' => 'completed'] )
+            ->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'weather?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // a non-strict tool schema is sent unchanged (no forced closing)
+            $this->assertArrayNotHasKey( 'additionalProperties', $body['tools'][0]['parameters'] );
+        } );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

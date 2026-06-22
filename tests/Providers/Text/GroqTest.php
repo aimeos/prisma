@@ -469,6 +469,151 @@ class GroqTest extends TestCase
     }
 
 
+    public function testWriteRelaxesScalarToolTypes() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'calc', 'Adds two numbers',
+            Schema::for( 'calc', ['a' => Schema::integer(), 'flag' => Schema::boolean()] ),
+            fn() => '3'
+        );
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'done']]]] )
+            ->withTools( [$tool] )
+            ->ensure( 'write' )
+            ->write( 'add' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $props = $body['tools'][0]['function']['parameters']['properties'];
+
+            // Groq rejects scalar params it may receive as strings, so they are wrapped in anyOf
+            $this->assertArrayNotHasKey( 'type', $props['a'] );
+            $this->assertEquals( [['type' => 'integer'], ['type' => 'string']], $props['a']['anyOf'] );
+            $this->assertEquals( [['type' => 'boolean'], ['type' => 'string']], $props['flag']['anyOf'] );
+        } );
+    }
+
+
+    public function testWriteSplitsMangledToolName() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'get_weather', 'Returns the weather for a city',
+            Schema::for( 'get_weather', ['city' => Schema::string()] ),
+            fn( $args ) => 'sunny in ' . ( $args['city'] ?? '?' )
+        );
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'tool_calls',
+                    'message' => [
+                        'role' => 'assistant',
+                        'tool_calls' => [[
+                            'id' => 'call_1',
+                            'function' => ['name' => 'get_weather,{"city":"NYC"}', 'arguments' => '{}'],
+                        ]],
+                    ],
+                ]],
+            ] );
+        $this->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'done']]]] );
+
+        $response = $provider->withTools( [$tool] )->ensure( 'write' )->write( 'Weather?' );
+
+        // the mangled "name,{json}" is split so the call resolves to the registered tool
+        $this->assertCount( 1, $response->steps() );
+        $this->assertEquals( 'get_weather', $response->steps()[0]->name() );
+        $this->assertEquals( 'sunny in NYC', $response->steps()[0]->result() );
+    }
+
+
+    public function testWriteSanitizesToolArguments() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make(
+            'get_weather', 'Returns the weather for a city',
+            Schema::for( 'get_weather', ['city' => Schema::string()] ),
+            fn( $args ) => 'sunny in ' . ( $args['city'] ?? '?' )
+        );
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'tool_calls',
+                    'message' => [
+                        'role' => 'assistant',
+                        'tool_calls' => [[
+                            'id' => 'c1',
+                            // a raw control char in the arguments would normally break json_decode
+                            'function' => ['name' => 'get_weather', 'arguments' => "{\"city\":\"NYC\x00\"}"],
+                        ]],
+                    ],
+                ]],
+            ] );
+        $this->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'done']]]] );
+
+        $response = $provider->withTools( [$tool] )->ensure( 'write' )->write( 'weather?' );
+
+        $this->assertEquals( 'sunny in NYC', $response->steps()[0]->result() );
+    }
+
+
+    public function testWriteToolApprovalDenied() : void
+    {
+        $called = false;
+        $tool = \Aimeos\Prisma\Tools::make(
+            'delete_account', 'Deletes the account',
+            Schema::for( 'delete_account', [] ),
+            function() use ( &$called ) { $called = true; return 'deleted'; }
+        )->with( ['needs_approval' => true] );
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'tool_calls',
+                    'message' => ['role' => 'assistant', 'tool_calls' => [['id' => 'c1', 'function' => ['name' => 'delete_account', 'arguments' => '{}']]]],
+                ]],
+            ] );
+        $this->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'Okay, cancelled.']]]] );
+
+        $response = $provider->withTools( [$tool] )
+            ->withToolApproval( fn( $name, $args ) => false )
+            ->ensure( 'write' )
+            ->write( 'Delete my account' );
+
+        // a denied approval must skip the handler and return a denial to the model
+        $this->assertFalse( $called );
+        $this->assertStringContainsString( 'denied', $response->steps()[0]->result() );
+        $this->assertEquals( 'Okay, cancelled.', $response->text() );
+    }
+
+
+    public function testWriteToolApprovalAllowed() : void
+    {
+        $called = false;
+        $tool = \Aimeos\Prisma\Tools::make(
+            'ping', 'Returns pong', Schema::for( 'ping', [] ),
+            function() use ( &$called ) { $called = true; return 'pong'; }
+        )->with( ['needs_approval' => true] );
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'tool_calls',
+                    'message' => ['role' => 'assistant', 'tool_calls' => [['id' => 'c1', 'function' => ['name' => 'ping', 'arguments' => '{}']]]],
+                ]],
+            ] );
+        $this->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'pong!']]]] );
+
+        $response = $provider->withTools( [$tool] )
+            ->withToolApproval( fn() => true )
+            ->ensure( 'write' )
+            ->write( 'ping' );
+
+        $this->assertTrue( $called );
+        $this->assertEquals( 'pong', $response->steps()[0]->result() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );
