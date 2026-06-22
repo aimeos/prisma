@@ -240,6 +240,13 @@ class File
             }
         }
 
+        // finfo reports several non-canonical WAV types; normalize them to "audio/wav" so
+        // providers that only accept the canonical type (e.g. Gemini, Anthropic) work.
+        $this->mimeType = match( $this->mimeType ) {
+            'audio/x-wav', 'audio/wave', 'audio/x-pn-wav', 'audio/vnd.wave' => 'audio/wav',
+            default => $this->mimeType,
+        };
+
         if( ( $prefix = $this->mimePrefix() ) && !str_starts_with( (string) $this->mimeType, $prefix ) ) {
             throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $this->mimeType ) );
         }

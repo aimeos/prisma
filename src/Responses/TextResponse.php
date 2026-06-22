@@ -95,6 +95,21 @@ class TextResponse implements \IteratorAggregate
 
 
     /**
+     * Returns all response texts concatenated into a single string.
+     *
+     * text() returns only the first entry; this combines every collected text, which
+     * is useful when a model emits its answer across multiple steps (e.g. text before
+     * and after tool calls).
+     *
+     * @return string Combined response text
+     */
+    public function output() : string
+    {
+        return implode( '', array_map( fn( $text ) => (string) $text, $this->texts() ) );
+    }
+
+
+    /**
      * Returns the structured output data.
      *
      * @return array<string|int, mixed> Structured data

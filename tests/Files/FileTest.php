@@ -122,4 +122,13 @@ class FileTest extends TestCase
             ->maxSize( 4 )
             ->binary();
     }
+
+
+    public function testWavMimeNormalization() : void
+    {
+        // finfo reports several non-canonical WAV types; they normalize to "audio/wav"
+        $this->assertEquals( 'audio/wav', File::fromBinary( 'RIFFdata', 'audio/x-wav' )->mimeType() );
+        $this->assertEquals( 'audio/wav', File::fromBase64( base64_encode( 'RIFFdata' ), 'audio/vnd.wave' )->mimeType() );
+        $this->assertEquals( 'audio/mpeg', File::fromBinary( 'data', 'audio/mpeg' )->mimeType() );
+    }
 }

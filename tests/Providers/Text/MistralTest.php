@@ -304,6 +304,57 @@ class MistralTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningEffort() : void
+    {
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'ok']]], 'usage' => ['total_tokens' => 5]] )
+            ->ensure( 'write' )
+            ->write( 'hi', [], ['reasoning_effort' => 'high', 'unknown' => 'x'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'high', $body['reasoning_effort'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testStructuredWithTools() : void
+    {
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+        $tool = \Aimeos\Prisma\Tools::make( 'lookup', 'Looks up a person', Schema::for( 'lookup', [] ), fn() => 'found' );
+
+        $provider = $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [[
+                    'finish_reason' => 'tool_calls',
+                    'message' => [
+                        'role' => 'assistant',
+                        'tool_calls' => [['id' => 'c1', 'function' => ['name' => 'lookup', 'arguments' => '{}']]],
+                    ],
+                ]],
+            ] );
+        $this->response( [
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"name":"John"}']]],
+            'usage' => ['total_tokens' => 10],
+        ] );
+
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract person', $schema );
+
+        // Mistral can't combine response_format with tools, so the schema is embedded instead
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertArrayHasKey( 'tools', $body );
+            $this->assertArrayNotHasKey( 'response_format', $body );
+        } );
+
+        $this->assertEquals( ['name' => 'John'], $response->structured() );
+        $this->assertCount( 1, $response->steps() );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

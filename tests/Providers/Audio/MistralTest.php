@@ -62,4 +62,21 @@ class MistralTest extends TestCase
 
         $this->assertEquals( "A test file", $response->text() );
     }
+
+
+    public function testTranscribeWithDiarize() : void
+    {
+        $this->prisma( 'audio', 'mistral', ['api_key' => 'test'] )
+            ->response( '{"text":"A test","segments":[],"usage":{"total_tokens":10}}' )
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), null, ['diarize' => 'true', 'unknown' => 'x'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            // the diarize option is forwarded as a multipart field; unknown options are dropped
+            $this->assertStringContainsString( 'name="diarize"', $body );
+            $this->assertStringNotContainsString( 'name="unknown"', $body );
+        } );
+    }
 }

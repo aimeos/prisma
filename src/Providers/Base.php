@@ -115,6 +115,25 @@ abstract class Base implements Provider
 
 
     /**
+     * Decodes a tool-call arguments JSON string into an array.
+     *
+     * Strips raw control characters that some models emit (which would otherwise make
+     * json_decode() fail) and coerces any non-array result (e.g. a literal "null") to an
+     * empty array so callers always receive a usable arguments map.
+     *
+     * @param string|null $json Tool-call arguments as a JSON string
+     * @return array<string, mixed> Decoded arguments
+     */
+    protected function jsonArgs( ?string $json ) : array
+    {
+        $clean = preg_replace( '/[\x00-\x1F\x7F]/', '', (string) $json );
+        $decoded = json_decode( (string) $clean, true );
+
+        return is_array( $decoded ) ? $decoded : [];
+    }
+
+
+    /**
      * Adapts the JSON Schema array to the provider's structured output requirements.
      *
      * Providers override this method to adapt the schema to their own structured

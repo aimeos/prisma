@@ -230,8 +230,8 @@ class Bedrock extends BedrockBase implements Structure, Write
                 $id = $toolUse['toolUseId'] ?? null;
                 /** @var string $name */
                 $name = $toolUse['name'] ?? '';
-                /** @var array<string, mixed> $input */
-                $input = $toolUse['input'] ?? [];
+                // Normalize a scalar/null "input" to an empty argument map.
+                $input = is_array( $toolUse['input'] ?? null ) ? $toolUse['input'] : [];
 
                 $toolCalls[] = [
                     'id' => $id,

@@ -168,13 +168,11 @@ class Cohere extends CohereBase implements Structure, Write
             $id = $call['id'] ?? null;
             /** @var array{name?: string, arguments?: string} $fn */
             $fn = $call['function'] ?? [];
-            /** @var array<string, mixed> $decoded */
-            $decoded = json_decode( $fn['arguments'] ?? '{}', true ) ?: [];
 
             $toolCalls[] = [
                 'id' => $id,
                 'name' => $fn['name'] ?? '',
-                'arguments' => $decoded,
+                'arguments' => $this->jsonArgs( $fn['arguments'] ?? '{}' ),
             ];
         }
 

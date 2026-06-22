@@ -14,7 +14,7 @@ class Mistral extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning_effort'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         // Provider tools require the Mistral Agents API, which is not streamable; fall
@@ -32,7 +32,26 @@ class Mistral extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning_effort'] );
+
+        // Mistral rejects "response_format" together with "tools" in a single request. With
+        // custom tools registered, embed the schema in the prompt and run the normal tool
+        // loop, then parse the JSON from the final text instead of native structured output.
+        if( $this->tools() )
+        {
+            $prompt .= "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $schema->toString();
+
+            $response = $this->completions(
+                'v1/chat/completions', 'mistral-large-latest',
+                $this->messages( $this->content( $prompt, $files ) ),
+                $options
+            );
+
+            $text = trim( $response->text() ?? '' );
+            $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
+
+            return $response->withStructured( json_decode( $text, true ) ?: [] );
+        }
 
         return $this->structuredCompletions(
             'v1/chat/completions', 'mistral-large-latest',
@@ -44,7 +63,7 @@ class Mistral extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning_effort'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         if( $this->providerTools() ) {

@@ -22,6 +22,7 @@ trait HasTools
 
 
     private ?Concurrency $concurrency = null;
+    private ?\Closure $toolApproval = null;
     private int $maxSteps = 25;
     private string $toolChoice = self::AUTO;
 
@@ -54,6 +55,25 @@ trait HasTools
     public function withMaxSteps( int $steps ) : self
     {
         $this->maxSteps = max( 1, $steps );
+        return $this;
+    }
+
+
+    /**
+     * Sets the human-in-the-loop approval callback for tools that require it.
+     *
+     * The callback is invoked before executing any tool registered with the
+     * `needs_approval` option (e.g. `Tool::make(...)->with(['needs_approval' => true])`).
+     * It receives the tool name and the model-supplied arguments and must return true
+     * to allow execution or false to deny it; a denied call returns an error to the
+     * model so it can choose a different action.
+     *
+     * @param callable|null $callback Approval resolver: fn(string $name, array $arguments): bool
+     * @return self
+     */
+    public function withToolApproval( ?callable $callback ) : self
+    {
+        $this->toolApproval = $callback !== null ? \Closure::fromCallable( $callback ) : null;
         return $this;
     }
 
@@ -139,6 +159,17 @@ trait HasTools
     protected function providerTools() : array
     {
         return $this->providerTools;
+    }
+
+
+    /**
+     * Returns the configured human-in-the-loop approval callback.
+     *
+     * @return \Closure|null Approval resolver or null when none is set
+     */
+    protected function toolApproval() : ?\Closure
+    {
+        return $this->toolApproval;
     }
 
 
