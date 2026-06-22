@@ -14,10 +14,10 @@ class Gemini extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
 
         return $this->generate(
-            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
             $options, $callback
         );
     }
@@ -25,12 +25,12 @@ class Gemini extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
         $options['responseMimeType'] = 'application/json';
         $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
 
         $response = $this->generate(
-            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
             $options
         );
         $structured = json_decode( $response->text() ?? '', true ) ?: [];
@@ -41,12 +41,36 @@ class Gemini extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
 
         return $this->generate(
-            array_merge( $this->mapMessages(), [['parts' => $this->content( $prompt, $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
             $options
         );
+    }
+
+
+    /**
+     * Returns the endpoint for a non-streaming generateContent request.
+     *
+     * @param string|null $model Model name
+     * @return string Endpoint path
+     */
+    protected function generateEndpoint( ?string $model ) : string
+    {
+        return 'v1beta/models/' . $model . ':generateContent';
+    }
+
+
+    /**
+     * Returns the endpoint for a streaming generateContent request.
+     *
+     * @param string|null $model Model name
+     * @return string Endpoint path
+     */
+    protected function streamEndpoint( ?string $model ) : string
+    {
+        return 'v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
     }
 
 
@@ -188,7 +212,7 @@ class Gemini extends Base implements Stream, Structure, Write
                 }
                 else
                 {
-                    $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
+                    $response = $this->client()->post( $this->generateEndpoint( $model ), ['json' => $request] );
 
                     $this->validate( $response );
 
@@ -241,6 +265,11 @@ class Gemini extends Base implements Stream, Structure, Write
      */
     private function generateRequest( array $system, array $contents, array $options, int $step ) : array
     {
+        // service_tier (Flex Inference) is a top-level request field, not a generationConfig
+        // entry, so it is pulled out before the remaining options are merged into the config.
+        $serviceTier = $options['serviceTier'] ?? null;
+        unset( $options['serviceTier'] );
+
         $genConfig = [
             'responseModalities' => ['TEXT']
         ] + $options;
@@ -249,7 +278,9 @@ class Gemini extends Base implements Stream, Structure, Write
             $genConfig['maxOutputTokens'] = $this->maxTokens();
         }
 
-        if( $this->thinkingBudget() ) {
+        // A positive budget caps thinking, withThinkingBudget(0) disables it explicitly
+        // (Gemini turns thinking off for thinkingBudget=0), null leaves the model default.
+        if( $this->thinkingBudget() !== null ) {
             $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
         }
 
@@ -257,6 +288,10 @@ class Gemini extends Base implements Stream, Structure, Write
             'contents' => $contents,
             'generationConfig' => $genConfig,
         ];
+
+        if( $serviceTier !== null ) {
+            $request['service_tier'] = $serviceTier;
+        }
 
         if( $tools = $this->toolsParam() ) {
             $request['tools'] = $tools;
@@ -270,8 +305,16 @@ class Gemini extends Base implements Stream, Structure, Write
                 default => null,
             } : 'AUTO';
 
-            if( $mode ) {
-                $request['toolConfig'] = ['functionCallingConfig' => ['mode' => $mode]];
+            $toolConfig = $mode ? ['functionCallingConfig' => ['mode' => $mode]] : [];
+
+            // Gemini runs server-side provider tools (e.g. google_search) in the same turn
+            // as custom function tools only when this flag is set.
+            if( $this->tools() && $this->providerTools() ) {
+                $toolConfig['includeServerSideToolInvocations'] = true;
+            }
+
+            if( $toolConfig ) {
+                $request['toolConfig'] = $toolConfig;
             }
         }
 
@@ -402,6 +445,7 @@ class Gemini extends Base implements Stream, Structure, Write
         $text = '';
         $thinking = '';
         $finishReason = null;
+        $signature = null;
         /** @var array<int, array<string, mixed>> $functionCalls */
         $functionCalls = [];
         /** @var array<string, mixed> $grounding */
@@ -411,7 +455,7 @@ class Gemini extends Base implements Stream, Structure, Write
 
         // The "alt=sse" query switches the streaming endpoint to Server-Sent Events;
         // without it Gemini returns one large JSON array instead of one event per chunk.
-        $endpoint = 'v1beta/models/' . $model . ':streamGenerateContent?alt=sse';
+        $endpoint = $this->streamEndpoint( $model );
 
         foreach( $this->streamData( $endpoint, $request ) as $event )
         {
@@ -432,6 +476,12 @@ class Gemini extends Base implements Stream, Structure, Write
                 } elseif( ( $chunk = $part['text'] ?? '' ) !== '' ) {
                     $text .= $chunk;
                     $callback( $chunk );
+                }
+
+                // Gemini 3 thinking emits a thoughtSignature only once per turn; capture
+                // the first one so it can be backfilled onto the other function calls.
+                if( !empty( $part['thoughtSignature'] ) ) {
+                    $signature ??= $part['thoughtSignature'];
                 }
             }
 
@@ -460,6 +510,20 @@ class Gemini extends Base implements Stream, Structure, Write
 
         if( $text !== '' ) {
             $parts[] = ['text' => $text];
+        }
+
+        // Each replayed functionCall part must carry a thoughtSignature or Gemini 3 rejects
+        // the follow-up turn; backfill the captured signature onto the calls missing it.
+        if( $signature !== null )
+        {
+            foreach( $functionCalls as &$call )
+            {
+                if( empty( $call['thoughtSignature'] ) ) {
+                    $call['thoughtSignature'] = $signature;
+                }
+            }
+
+            unset( $call );
         }
 
         $parts = array_merge( $parts, $functionCalls );

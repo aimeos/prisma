@@ -761,6 +761,144 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testWriteWithMixedTools() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', ['x' => Schema::string()] ), fn() => 'pong' );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => 'done']]],
+                    'finishReason' => 'STOP',
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 5],
+            ] )
+            ->withTools( [$tool, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'write' )
+            ->write( 'search and ping' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $hasDeclarations = false;
+            $hasGoogleSearch = false;
+            foreach( $body['tools'] as $entry ) {
+                $hasDeclarations = $hasDeclarations || isset( $entry['functionDeclarations'] );
+                $hasGoogleSearch = $hasGoogleSearch || isset( $entry['google_search'] );
+            }
+
+            // Gemini now accepts custom function tools alongside provider tools
+            $this->assertTrue( $hasDeclarations );
+            $this->assertTrue( $hasGoogleSearch );
+            $this->assertTrue( $body['toolConfig']['includeServerSideToolInvocations'] );
+        } );
+    }
+
+
+    public function testWriteWithServiceTier() : void
+    {
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 3],
+            ] )
+            ->ensure( 'write' )
+            ->write( 'hi', [], ['serviceTier' => 'flex'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // service_tier is a top-level request field, not part of generationConfig
+            $this->assertEquals( 'flex', $body['service_tier'] );
+            $this->assertArrayNotHasKey( 'serviceTier', $body['generationConfig'] );
+        } );
+    }
+
+
+    public function testWriteThinkingDisabled() : void
+    {
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 2],
+            ] )
+            ->withThinkingBudget( 0 )
+            ->ensure( 'write' )
+            ->write( 'hi' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            // withThinkingBudget(0) explicitly disables thinking instead of being ignored
+            $this->assertEquals( 0, $body['generationConfig']['thinkingConfig']['thinkingBudget'] );
+        } );
+    }
+
+
+    public function testRateLimitRetryAfter() : void
+    {
+        try
+        {
+            $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+                ->response( [
+                    'error' => [
+                        'code' => 429,
+                        'message' => 'Resource exhausted',
+                        'details' => [
+                            ['@type' => 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay' => '42s'],
+                        ],
+                    ],
+                ], status: 429, reason: 'Too Many Requests' )
+                ->ensure( 'write' )
+                ->write( 'hi' );
+
+            $this->fail( 'Expected RateLimitException' );
+        }
+        catch( \Aimeos\Prisma\Exceptions\RateLimitException $e )
+        {
+            $this->assertEquals( 42, $e->retryAfter() );
+        }
+    }
+
+
+    public function testStreamBackfillsThoughtSignature() : void
+    {
+        $ping = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+        $pong = \Aimeos\Prisma\Tools::make( 'pong', 'Returns ping', Schema::for( 'pong', [] ), fn() => 'ping' );
+
+        // turn 1 streams two functionCall parts, but only the first carries a thoughtSignature
+        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":["
+            . "{\"functionCall\":{\"name\":\"ping\",\"args\":{}},\"thoughtSignature\":\"sig-abc\"},"
+            . "{\"functionCall\":{\"name\":\"pong\",\"args\":{}}}"
+            . "]},\"finishReason\":\"STOP\"}]}\n\n";
+        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
+
+        $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $provider->withTools( [$ping, $pong] )
+            ->ensure( 'stream' )
+            ->stream( 'do both', [], [], function( $chunk ) {} );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+
+        $body = json_decode( $requests[1]->getBody()->getContents(), true );
+
+        $sigs = [];
+        foreach( $body['contents'][1]['parts'] as $part ) {
+            if( isset( $part['functionCall'] ) ) {
+                $sigs[] = $part['thoughtSignature'] ?? null;
+            }
+        }
+
+        // Gemini 3 requires a thoughtSignature on every replayed functionCall part; the
+        // missing one on the second call is backfilled from the first.
+        $this->assertSame( ['sig-abc', 'sig-abc'], $sigs );
+    }
+
+
     public function testNoApiKey() : void
     {
         $this->expectException( PrismaException::class );

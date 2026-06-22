@@ -119,18 +119,21 @@ class Gemini extends Base
             $declarations[] = $declaration;
         }
 
-        // Gemini doesn't support provider tools and custom tools in parallel, so
-        // custom tools take precedence and provider tools are only sent without them.
-        if( $declarations ) {
-            return [['functionDeclarations' => $declarations]];
-        }
-
         $providerToolMap = [
             'web_search' => ['google_search' => (object) [], 'options' => []],
             'code_execution' => ['code_execution' => (object) [], 'options' => []],
         ];
 
-        return $this->mapProviderTools( $providerToolMap );
+        $tools = $this->mapProviderTools( $providerToolMap );
+
+        // Gemini 3+ allows custom function tools alongside provider tools; the function
+        // declarations are sent as an additional tools entry while the request enables
+        // includeServerSideToolInvocations (see generateRequest()) so both work together.
+        if( $declarations ) {
+            array_unshift( $tools, ['functionDeclarations' => $declarations] );
+        }
+
+        return $tools;
     }
 
 
@@ -213,6 +216,10 @@ class Gemini extends Base
                         $args = $this->decodeArgs( $args, $schemas[$name] );
                     }
 
+                    // decodeArgs() or a malformed functionCall can yield a scalar; the
+                    // downstream arguments contract requires an array.
+                    $args = is_array( $args ) ? $args : [];
+
                     // Gemini has no tool call id, so the name is used and a number is
                     // appended when the same tool is called more than once in a response.
                     $count = $counts[$name] = ( $counts[$name] ?? 0 ) + 1;
@@ -283,10 +290,39 @@ class Gemini extends Base
             /** @var string $error */
             $error = $errorObj['message'] ?? $response->getReasonPhrase();
 
+            // Gemini returns the retry delay in the 429 body (RetryInfo) rather than a
+            // header, so it is parsed here and attached to the rate-limit exception.
+            if( $status === 429 )
+            {
+                /** @var array<int, array<string, mixed>> $details */
+                $details = $errorObj['details'] ?? [];
+                throw ( new \Aimeos\Prisma\Exceptions\RateLimitException( is_string( $error ) ? $error : '' ) )
+                    ->withRetryAfter( $this->retryDelay( $details ) );
+            }
+
             $this->throw( match( $status ) {
                 403 => 401, // unauthorized, not forbidden content
                 default   => $status
             }, $error );
         }
+    }
+
+
+    /**
+     * Extracts the retry delay (seconds) from a Gemini error's RetryInfo detail.
+     *
+     * @param array<int, array<string, mixed>> $details Error details from the response body
+     * @return int|null Retry delay in seconds or null if absent
+     */
+    private function retryDelay( array $details ) : ?int
+    {
+        foreach( $details as $detail )
+        {
+            if( str_ends_with( (string) ( $detail['@type'] ?? '' ), 'RetryInfo' ) && isset( $detail['retryDelay'] ) ) {
+                return (int) rtrim( (string) $detail['retryDelay'], 's' );
+            }
+        }
+
+        return null;
     }
 }
