@@ -94,4 +94,17 @@ class XaiTest extends TestCase
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
     }
+
+
+    public function testImagine() : void
+    {
+        $response = Prisma::image()
+            ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'a cartoon dog' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/xai_imagine.png', $response->binary() );
+    }
 }
