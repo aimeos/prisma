@@ -18,6 +18,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#withclientoptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withclientretry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
     <li><a href="#withsystemprompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
+    <li><a href="#withmessages">withMessages</a><span>: Add prior conversation turns for multi-turn chat</span></li>
     <li><a href="#withmaxtokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
     <li><a href="#withthinkingbudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
@@ -67,7 +68,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
-    <li><a href="#chat">chat</a><span>: Stream a chat response token by token via a callback</span></li>
+    <li><a href="#stream">stream</a><span>: Stream a response token by token via a callback</span></li>
     <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
@@ -135,31 +136,36 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
+| **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
+| **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
+| **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 
 ### Text
 
-|                       | structure | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
-| :---                  | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
-| **Alibaba**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Anthropic**         | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Bedrock**           | yes        |           | yes   | -         | yes          |                | yes           | yes             |
-| **Cohere**            | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **Deepseek**          | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **DeepL**             |            | yes       |       |           |              |                |               |                 |
-| **Gemini**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Google**            |            | yes       |       |           |              |                |               |                 |
-| **Groq**              | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **Mistral**           | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Ollama**            | beta       |           | beta  | -         | yes          |                | yes           | -               |
-| **OpenAI**            | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Openrouter**        | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Perplexity**        | beta       |           | beta  | yes       | yes          |                | yes           | -               |
-| **xAI**               | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
+|                       | stream | structure | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
+| :---                  | :---: | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
+| **Alibaba**           | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Anthropic**         | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Azure**             | beta  | beta       |           | beta  | -         | yes          |                | yes           | -               |
+| **Bedrock**           | -     | yes        |           | yes   | -         | yes          |                | yes           | yes             |
+| **Cohere**            | -     | yes        |           | yes   | -         | yes          |                | yes           | -               |
+| **Deepseek**          | yes   | yes        |           | yes   | -         | yes          |                | yes           | -               |
+| **DeepL**             |       |            | yes       |       |           |              |                |               |                 |
+| **Gemini**            | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google**            |       |            | yes       |       |           |              |                |               |                 |
+| **Groq**              | yes   | yes        |           | yes   | -         | yes          |                | yes           | -               |
+| **Mistral**           | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Ollama**            | beta  | beta       |           | beta  | -         | yes          |                | yes           | -               |
+| **OpenAI**            | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Openrouter**        | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
+| **Perplexity**        | beta  | beta       |           | beta  | yes       | yes          |                | yes           | -               |
+| **Vertexai**          | beta  | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
+| **xAI**               | beta  | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -192,6 +198,20 @@ $texts = Prisma::text()
     ->ensure( 'translate' )
     ->translate( ['Hello'], 'de' )
     ->texts();
+```
+
+#### OpenAI-compatible gateways
+
+Any OpenAI-compatible endpoint (local servers, proxies or gateways like LiteLLM,
+vLLM or OpenRouter-style services) works with the `openai` provider by overriding
+the base `url`:
+
+```php
+$text = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx', 'url' => 'https://my-gateway.example.com'] )
+    ->model( 'my-model' )
+    ->write( 'Hello' )
+    ->text();
 ```
 
 ### ensure
@@ -328,6 +348,38 @@ public function withSystemPrompt( ?string $prompt ) : self
 \Aimeos\Prisma\Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->withSystemPrompt( 'You are a professional illustrator' );
+```
+
+### withMessages
+
+Add prior conversation turns sent before the current prompt, so the model has
+context from earlier exchanges in a multi-turn chat.
+
+Each entry is an array with a `role` of `user` or `assistant` and a string
+`content`. User turns may add a `files` key with an array of `File` objects for
+multimodal input, subject to the provider's file support (images for all text
+providers; PDFs additionally on Anthropic; images, audio, video and PDFs on
+Gemini). System context is set via [withSystemPrompt](#withsystemprompt), not as
+a message. The current prompt passed to `stream()`/`write()`/`structure()` is
+appended as the final user turn.
+
+```php
+public function withMessages( array $messages ) : self
+```
+
+* @param **array** `$messages` Conversation turns (`['role' => 'user'|'assistant', 'content' => '…', 'files' => []]`)
+* @return **self** Provider interface
+
+**Example:**
+
+```php
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'] )
+    ->withMessages( [
+        ['role' => 'user', 'content' => 'Recommend a laptop'],
+        ['role' => 'assistant', 'content' => 'Sure - what is your budget?'],
+    ] )
+    ->write( 'Around $1500' );
 ```
 
 ### withMaxTokens
@@ -1244,6 +1296,8 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * Clipdrop
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
+* [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
+* [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
 * [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
@@ -1251,6 +1305,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
+* [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations)
 
 **Example:**
 
@@ -1552,12 +1607,12 @@ $vectors = $vectorResponse->vectors();
 
 ## Text API
 
-### chat
+### stream
 
-Generate text from the given prompt and stream it token by token. Each text delta is passed to the callback as a string as soon as it arrives, while the fully assembled response is returned as a regular `TextResponse` once the stream finished. Streaming uses the same endpoint the provider's [write()](#write) method uses, so tools, system prompts and options work identically.
+Generate text from the given prompt and stream it token by token. Each text delta is passed to the callback as a string as soon as it arrives, while the fully assembled response is returned as a regular `TextResponse` once the stream finished. Streaming uses the same endpoint the provider's [write()](#write) method uses, so tools, system prompts, [conversation history](#withmessages) and options work identically.
 
 ```php
-public function chat( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
 ```
 
 * @param **string** `$prompt` Input prompt for text generation
@@ -1578,8 +1633,10 @@ The callback receives:
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 * [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
+* [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
+* [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
 * [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
@@ -1592,13 +1649,32 @@ use Aimeos\Prisma\Prisma;
 
 $textResponse = Prisma::text()
     ->using( 'openai', ['api_key' => 'xxx'] )
-    ->ensure( 'chat' )
-    ->chat( 'Summarize the benefits of renewable energy', [], [], function( string $delta ) {
+    ->ensure( 'stream' )
+    ->stream( 'Summarize the benefits of renewable energy', [], [], function( string $delta ) {
         echo $delta; // print each token as it arrives
     } );
 
 $full = $textResponse->text();  // the complete answer
 $usage = $textResponse->usage(); // token usage
+```
+
+**Multi-turn conversation:**
+
+Pass the earlier turns with [withMessages()](#withmessages); the current prompt is appended as the next user message.
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->withMessages( [
+        ['role' => 'user', 'content' => 'Recommend a laptop'],
+        ['role' => 'assistant', 'content' => 'Sure - what is your budget?'],
+    ] )
+    ->ensure( 'stream' )
+    ->stream( 'Around $1500', [], [], function( string $delta ) {
+        echo $delta;
+    } );
 ```
 
 **Streaming with tools:**
@@ -1610,8 +1686,8 @@ use Aimeos\Prisma\Tools\Step;
 $textResponse = Prisma::text()
     ->using( 'anthropic', ['api_key' => 'xxx'] )
     ->withTools( [$weatherTool] )
-    ->ensure( 'chat' )
-    ->chat( 'What is the weather in Berlin?', [], [], function( string|Step $chunk ) {
+    ->ensure( 'stream' )
+    ->stream( 'What is the weather in Berlin?', [], [], function( string|Step $chunk ) {
         if( !$chunk instanceof Step ) {
             echo $chunk;                                                        // text delta
         } elseif( $chunk->done() ) {
@@ -1628,7 +1704,7 @@ $steps = $textResponse->steps(); // executed tool steps, same as write()
 
 **GraphQL subscriptions:**
 
-Streaming over GraphQL means subscriptions - a query or mutation returns one document and cannot emit tokens incrementally. Run `chat()` in a mutation (or queued job) and publish each delta to a subscription topic; the subscription fans them out. Example using [Lighthouse](https://lighthouse-php.com/):
+Streaming over GraphQL means subscriptions - a query or mutation returns one document and cannot emit tokens incrementally. Run `stream()` in a mutation (or queued job) and publish each delta to a subscription topic; the subscription fans them out. Example using [Lighthouse](https://lighthouse-php.com/):
 
 ```graphql
 type Mutation {
@@ -1655,7 +1731,7 @@ final class Chat
 
         Prisma::text()->using( 'openai', config( 'services.openai' ) )
             ->withTools( [ /* your Contracts\Tool instances */ ] )
-            ->chat( $args['prompt'], [], [], function( string|Step $chunk ) use ( $id ) {
+            ->stream( $args['prompt'], [], [], function( string|Step $chunk ) use ( $id ) {
                 $text = match( true ) {
                     !$chunk instanceof Step => $chunk,
                     $chunk->done()          => sprintf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() ),
@@ -1670,7 +1746,7 @@ final class Chat
 }
 ```
 
-The subscription resolver filters by `conversationId` and returns `$event['text']`. Subscriptions need a driver (Pusher, Laravel Reverb or graphql-sse); for long answers, dispatch the `chat()` call from a queued job so the mutation returns immediately.
+The subscription resolver filters by `conversationId` and returns `$event['text']`. Subscriptions need a driver (Pusher, Laravel Reverb or graphql-sse); for long answers, dispatch the `stream()` call from a queued job so the mutation returns immediately.
 
 ### structure
 
@@ -1685,6 +1761,8 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **TextResponse** Response text with structured data
+
+> Supply prior conversation turns with [withMessages()](#withmessages); the current `$prompt` is appended as the final user message.
 
 **Supported options:**
 
@@ -1767,6 +1845,8 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
 * @return **TextResponse** Response text
+
+> Supply prior conversation turns with [withMessages()](#withmessages); the current `$prompt` is appended as the final user message.
 
 **Supported options:**
 
