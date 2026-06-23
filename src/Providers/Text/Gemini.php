@@ -25,17 +25,24 @@ class Gemini extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
         $options['responseMimeType'] = 'application/json';
-        $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
+
+        if( $this->isJsonMode( $mode ) ) {
+            // JSON mode: keep responseMimeType but embed the schema in the prompt and
+            // parse it from the response text instead of a native responseSchema.
+            $prompt = $this->schemaPrompt( $prompt, $schema );
+        } else {
+            $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
+        }
 
         $response = $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
             $options
         );
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
 
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 

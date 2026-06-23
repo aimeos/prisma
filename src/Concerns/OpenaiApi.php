@@ -346,68 +346,94 @@ trait OpenaiApi
     /**
      * Runs a structured output request using the chat completions API.
      *
+     * Native strict mode sends the schema as a json_schema response format; JSON mode
+     * embeds the schema in the prompt and parses the JSON from the response text. The
+     * "mode" option forces either path, otherwise it is chosen automatically.
+     *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
-     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param string $prompt User prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Input files
      * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param string|null $mode Structured output mode ("json"/"structured") or null for automatic
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function structuredCompletions( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function structuredCompletions( string $endpoint, string $defaultModel, string $prompt, array $files, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
-        $json = $this->jsonSchema( $schema->toArray() );
+        if( $this->isJsonMode( $mode ) )
+        {
+            $options['response_format'] = ['type' => 'json_object'];
+            $prompt = $this->schemaPrompt( $prompt, $schema );
+        }
+        else
+        {
+            $json = $this->jsonSchema( $schema->toArray() );
 
-        if( $schema->isStrict() ) {
-            $json = $this->requireAll( $json );
+            if( $schema->isStrict() ) {
+                $json = $this->requireAll( $json );
+            }
+
+            $options['response_format'] = [
+                'type' => 'json_schema',
+                'json_schema' => [
+                    'name' => $schema->name(),
+                    'strict' => $schema->isStrict(),
+                    'schema' => $json,
+                ],
+            ];
         }
 
-        $options['response_format'] = [
-            'type' => 'json_schema',
-            'json_schema' => [
-                'name' => $schema->name(),
-                'strict' => $schema->isStrict(),
-                'schema' => $json,
-            ],
-        ];
+        $response = $this->completions( $endpoint, $defaultModel, $this->messages( $this->content( $prompt, $files ) ), $options );
 
-        $response = $this->completions( $endpoint, $defaultModel, $messages, $options );
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
-
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 
     /**
      * Runs a structured output request using the Responses API.
      *
+     * Native strict mode sends the schema as a json_schema text format; JSON mode embeds
+     * the schema in the prompt and parses the JSON from the response text. The "mode"
+     * option forces either path, otherwise it is chosen automatically.
+     *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
-     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param string $prompt User prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Input files
      * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
      * @param array<string, mixed> $options Pre-filtered request options
+     * @param string|null $mode Structured output mode ("json"/"structured") or null for automatic
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function structuredResponses( string $endpoint, string $defaultModel, array $messages, \Aimeos\Prisma\Schema\Schema $schema, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function structuredResponses( string $endpoint, string $defaultModel, string $prompt, array $files, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
-        $json = $this->jsonSchema( $schema->toArray() );
+        if( $this->isJsonMode( $mode ) )
+        {
+            $options['text'] = ['format' => ['type' => 'json_object']];
+            $prompt = $this->schemaPrompt( $prompt, $schema );
+        }
+        else
+        {
+            $json = $this->jsonSchema( $schema->toArray() );
 
-        if( $schema->isStrict() ) {
-            $json = $this->requireAll( $json );
+            if( $schema->isStrict() ) {
+                $json = $this->requireAll( $json );
+            }
+
+            $options['text'] = [
+                'format' => [
+                    'type' => 'json_schema',
+                    'name' => $schema->name(),
+                    'strict' => $schema->isStrict(),
+                    'schema' => $json,
+                ],
+            ];
         }
 
-        $options['text'] = [
-            'format' => [
-                'type' => 'json_schema',
-                'name' => $schema->name(),
-                'strict' => $schema->isStrict(),
-                'schema' => $json,
-            ],
-        ];
+        $response = $this->responses( $endpoint, $defaultModel, $this->responsesInput( $prompt, $files ), $options );
 
-        $response = $this->responses( $endpoint, $defaultModel, $messages, $options );
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
-
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 

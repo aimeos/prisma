@@ -24,9 +24,7 @@ class Cohere extends CohereBase implements Structure, Write
             $options
         );
 
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
-
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 
