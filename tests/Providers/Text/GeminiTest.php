@@ -960,4 +960,32 @@ class GeminiTest extends TestCase
 
         $this->assertEmpty( $response->citations() );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'embeddings' => [
+                    ['values' => [0.1, 0.2, 0.3]],
+                ],
+            ] ) )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 768 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents',
+                (string) $request->getUri()
+            );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertCount( 1, $body['requests'] );
+            $this->assertEquals( 'models/gemini-embedding-001', $body['requests'][0]['model'] );
+            $this->assertEquals( 'Hello world', $body['requests'][0]['content']['parts'][0]['text'] );
+            $this->assertEquals( 768, $body['requests'][0]['outputDimensionality'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( [0.1, 0.2, 0.3], $response->first() );
+    }
 }

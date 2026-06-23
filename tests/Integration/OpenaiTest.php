@@ -169,6 +169,18 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testVectorize() : void
+    {
+        $response = Prisma::text()
+            ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['The quick brown fox', 'jumps over the lazy dog'], 256 );
+
+        $this->assertCount( 2, $response->vectors() );
+        $this->assertCount( 256, $response->first() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();

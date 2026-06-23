@@ -352,4 +352,31 @@ class OllamaTest extends TestCase
             $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'ollama', [] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'model' => 'nomic-embed-text',
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'http://localhost:11434/v1/embeddings', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'nomic-embed-text', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+            $this->assertArrayNotHasKey( 'dimensions', $body );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 5, $response->usage()['used'] );
+    }
 }

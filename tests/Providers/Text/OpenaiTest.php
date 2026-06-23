@@ -672,4 +672,33 @@ class OpenaiTest extends TestCase
 
         $this->assertEmpty( $response->citations() );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'model' => 'text-embedding-3-small',
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 256 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'https://api.openai.com/v1/embeddings', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'text-embedding-3-small', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+            $this->assertEquals( 256, $body['dimensions'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( [0.1, 0.2, 0.3], $response->first() );
+        $this->assertEquals( 5, $response->usage()['used'] );
+    }
 }

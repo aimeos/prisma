@@ -4,13 +4,15 @@ namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Mistral as Base;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Mistral extends Base implements Stream, Structure, Write
+class Mistral extends Base implements Stream, Structure, Vectorize, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
@@ -53,6 +55,14 @@ class Mistral extends Base implements Stream, Structure, Write
             'v1/chat/completions', 'mistral-large-latest',
             $prompt, $files, $schema, $options, $mode
         );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $options = $this->allowed( $options, ['output_dtype'] );
+
+        return $this->embeddings( 'v1/embeddings', 'mistral-embed', $texts, $size, $options, 'output_dimension' );
     }
 
 

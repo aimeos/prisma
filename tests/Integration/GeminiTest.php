@@ -201,6 +201,18 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testVectorize() : void
+    {
+        $response = Prisma::text()
+            ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['The quick brown fox', 'jumps over the lazy dog'], 768 );
+
+        $this->assertCount( 2, $response->vectors() );
+        $this->assertCount( 768, $response->first() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
