@@ -185,36 +185,29 @@ class AnthropicTest extends TestCase
     }
 
 
-    public function testStructuredFallsBackWhenSchemaTooComplex() : void
+    public function testStructuredModeJsonOverridesNative() : void
     {
-        // 30 optional, nullable fields exceeds the 24 optional / 16 union limits.
-        $props = [];
-        for( $i = 0; $i < 30; $i++ ) {
-            $props["field$i"] = Schema::string()->nullable();
-        }
-        $schema = Schema::for( 'big', $props );
+        // A simple schema would use native output_config automatically; mode=json forces prompt JSON mode.
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
 
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( [
-                'content' => [['type' => 'text', 'text' => "```json\n{\"field0\":\"x\"}\n```"]],
+                'content' => [['type' => 'text', 'text' => '{"name":"Jane"}']],
                 'stop_reason' => 'end_turn',
                 'usage' => ['input_tokens' => 1, 'output_tokens' => 1]
             ] )
             ->ensure( 'structure' )
-            ->structure( 'Fill it', $schema );
+            ->structure( 'Extract', $schema, [], ['mode' => 'json'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
 
-            // No strict structured output; schema is embedded in the prompt instead.
+            // No native structured output; the schema is embedded in the prompt instead.
             $this->assertArrayNotHasKey( 'output_config', $body );
-            $text = $body['messages'][0]['content'][0]['text'];
-            $this->assertStringContainsString( 'matching this JSON schema', $text );
-            $this->assertStringContainsString( 'field0', $text );
+            $this->assertStringContainsString( 'matching this JSON schema', $body['messages'][0]['content'][0]['text'] );
         } );
 
-        // Markdown code fences are stripped before decoding the response.
-        $this->assertEquals( ['field0' => 'x'], $response->structured() );
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
     }
 
 

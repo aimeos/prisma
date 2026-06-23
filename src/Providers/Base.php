@@ -14,6 +14,7 @@ use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Schema\Schema;
 
 
 /**
@@ -149,6 +150,22 @@ abstract class Base implements Provider
 
 
     /**
+     * Decodes the JSON object from a model response, ignoring surrounding code fences.
+     *
+     * @param string|null $text Model response text
+     * @return array<string, mixed> Decoded JSON, or an empty array if invalid
+     */
+    protected function parseJson( ?string $text ) : array
+    {
+        $text = trim( (string) $text );
+        $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
+        $data = json_decode( $text, true );
+
+        return is_array( $data ) ? $data : [];
+    }
+
+
+    /**
      * Builds multipart form data for file upload requests.
      *
      * @param array<string, mixed> $options Request options
@@ -225,5 +242,39 @@ abstract class Base implements Provider
         }
 
         return $options;
+    }
+
+
+    /**
+     * Appends the JSON-schema instruction to a prompt for prompt-based structured output.
+     *
+     * @param string $prompt User prompt
+     * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
+     * @return string Prompt with the JSON-schema instruction appended
+     */
+    protected function schemaPrompt( string $prompt, Schema $schema ) : string
+    {
+        return $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $schema->toString();
+    }
+
+
+    /**
+     * Decides whether structured output should use JSON mode instead of native strict mode.
+     *
+     * The "mode" option selects the path: "json" uses prompt-embedded JSON mode,
+     * "structured" (the default when omitted) uses native strict mode. An unknown value
+     * is rejected.
+     *
+     * @param string|null $mode Requested mode ("json"/"structured") or null for the default (structured)
+     * @return bool True to use JSON mode, false for native strict mode
+     * @throws \Aimeos\Prisma\Exceptions\BadRequestException If $mode is not null, "json" or "structured"
+     */
+    protected function isJsonMode( ?string $mode ) : bool
+    {
+        return match( $mode ) {
+            'json' => true,
+            'structured', null => false,
+            default => throw new BadRequestException( sprintf( 'Invalid structured output mode "%s", use "json" or "structured"', $mode ) ),
+        };
     }
 }

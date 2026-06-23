@@ -227,6 +227,61 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredModeStructured() : void
+    {
+        // mode=structured selects native responseSchema regardless of schema depth.
+        $schema = Schema::for( 'deep', [
+            'a' => Schema::object( ['b' => Schema::object( ['c' => Schema::object( [
+                'd' => Schema::object( ['e' => Schema::object( ['f' => Schema::string()] )] ),
+            ] )] )] ),
+        ] );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => '{"a":{"b":{"c":{"d":{"e":{"f":"x"}}}}}}']]],
+                    'finishReason' => 'STOP'
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'structured'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Native responseSchema selected by mode=structured.
+            $this->assertArrayHasKey( 'responseSchema', $body['generationConfig'] );
+            $this->assertArrayNotHasKey( 'mode', $body['generationConfig'] );
+        } );
+    }
+
+
+    public function testStructuredModeJsonOverridesNative() : void
+    {
+        // A shallow schema would use native responseSchema automatically; mode=json forces JSON mode.
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [['content' => ['parts' => [['text' => '{"name":"Jane"}']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'json'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // JSON mode: responseMimeType kept, responseSchema dropped, schema embedded in the prompt.
+            $this->assertEquals( 'application/json', $body['generationConfig']['responseMimeType'] );
+            $this->assertArrayNotHasKey( 'responseSchema', $body['generationConfig'] );
+            $parts = end( $body['contents'] )['parts'];
+            $this->assertStringContainsString( 'matching this JSON schema', $parts[0]['text'] );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
     public function testStructuredNullableEnum() : void
     {
         $schema = Schema::for( 'block', [

@@ -232,6 +232,32 @@ class GroqTest extends TestCase
     }
 
 
+    public function testStructuredModeStructured() : void
+    {
+        // mode=structured selects native strict mode regardless of schema depth.
+        $schema = Schema::for( 'deep', [
+            'a' => Schema::object( ['b' => Schema::object( ['c' => Schema::object( [
+                'd' => Schema::object( ['e' => Schema::object( ['f' => Schema::string()] )] ),
+            ] )] )] ),
+        ] );
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( [
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"a":{"b":{"c":{"d":{"e":{"f":"x"}}}}}}']]],
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'structured'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+            $this->assertArrayHasKey( 'json_schema', $body['response_format'] );
+            $this->assertArrayNotHasKey( 'mode', $body );
+        } );
+    }
+
+
     public function testStructuredWithFiles() : void
     {
         $schema = Schema::for( 'description', [

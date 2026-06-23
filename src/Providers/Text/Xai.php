@@ -38,14 +38,15 @@ class Xai extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
+
         if( $this->providerTools() )
         {
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->structuredResponses(
                 'v1/responses', 'grok-4.3',
-                $this->responsesInput( $prompt, $files ),
-                $schema, $options
+                $prompt, $files, $schema, $options, $mode
             );
         }
 
@@ -53,8 +54,7 @@ class Xai extends Base implements Stream, Structure, Write
 
         return $this->structuredCompletions(
             'v1/chat/completions', 'grok-4.3',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $schema, $options
+            $prompt, $files, $schema, $options, $mode
         );
     }
 

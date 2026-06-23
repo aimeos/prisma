@@ -31,12 +31,12 @@ class Alibaba extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
         return $this->structuredCompletions(
             'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $schema, $options
+            $prompt, $files, $schema, $options, $mode
         );
     }
 

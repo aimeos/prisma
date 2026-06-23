@@ -1800,6 +1800,30 @@ $data = $textResponse->structured(); // ['name' => 'John', 'age' => 30]
 $json = $textResponse->text(); // '{"name":"John","age":30}'
 ```
 
+**Output mode:**
+
+By default the schema is enforced by the provider's native structured-output API (strict mode). Pass `['mode' => 'json']` to instead embed the schema in the prompt and parse the JSON from the response — useful when a schema is too large or deeply nested for a provider's strict-mode limits. `['mode' => 'structured']` selects native mode explicitly; any other value throws a `BadRequestException`. Providers without a native strict mode (Bedrock, Cohere, Deepseek, Ollama) always use JSON mode and ignore the option.
+
+```php
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->ensure( 'structure' )
+    ->structure( 'Extract the person', $schema, [], ['mode' => 'json'] );
+```
+
+> **Warning:** `structured()` is the model's output parsed as-is — always treat it as untrusted. Guard two separate things:
+>
+> * **Shape** — it is not validated against your schema. Native strict mode is provider-enforced, but JSON mode (`['mode' => 'json']`, and the JSON-only providers above) gives no guarantee the result matches the schema. Check it with `$schema->validate( $data )` (returns `[]` when valid).
+> * **Values** — even a schema-conformant result contains model-generated text. `validate()` verifies types and constraints, not safety, so never drop a value straight into SQL, a shell command, a file path, or markup. Use bound parameters, escaping, or allow-lists, exactly as you would for any user input.
+>
+> ```php
+> $data = $textResponse->structured();
+> $errors = $schema->validate( $data ); // [] when valid
+> if( $errors ) {
+>     // reject, retry, or handle the mismatch
+> }
+> ```
+
 ### translate
 
 Translate one or more texts from one language to another.

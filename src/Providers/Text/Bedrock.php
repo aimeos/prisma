@@ -14,18 +14,13 @@ class Bedrock extends BedrockBase implements Structure, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP'] );
-        $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this schema:\n" . $schema->toString();
 
         $response = $this->generate(
-            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $this->schemaPrompt( $prompt, $schema ), $files )]] ),
             $options
         );
 
-        $text = trim( $response->text() ?? '' );
-        $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
-        $structured = json_decode( $text, true ) ?: [];
-
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 

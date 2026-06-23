@@ -31,6 +31,7 @@ class Openai extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p', 'store', 'reasoning'] );
 
         if( $budget = $this->thinkingBudget() ) {
@@ -39,8 +40,7 @@ class Openai extends Base implements Stream, Structure, Write
 
         return $this->structuredResponses(
             'v1/responses', 'gpt-5.5',
-            $this->responsesInput( $prompt, $files ),
-            $schema, $options
+            $prompt, $files, $schema, $options, $mode
         );
     }
 
