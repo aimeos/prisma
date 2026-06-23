@@ -287,4 +287,34 @@ class CohereTest extends TestCase
             $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'cohere', ['api_key' => 'test'] )
+            ->response( [
+                'id' => 'da6e531f',
+                'embeddings' => [
+                    'float' => [[0.1, 0.2, 0.3]],
+                ],
+                'meta' => [
+                    'billed_units' => ['input_tokens' => 4],
+                ],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 256 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.cohere.ai/v2/embed', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'embed-v4.0', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['texts'] );
+            $this->assertEquals( 'search_document', $body['input_type'] );
+            $this->assertEquals( 256, $body['output_dimension'] );
+            $this->assertEquals( ['float'], $body['embedding_types'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 4, $response->usage()['used'] );
+    }
 }

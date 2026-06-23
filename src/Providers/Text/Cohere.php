@@ -3,13 +3,15 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Cohere as CohereBase;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Cohere extends CohereBase implements Structure, Write
+class Cohere extends CohereBase implements Structure, Vectorize, Write
 {
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
@@ -27,6 +29,41 @@ class Cohere extends CohereBase implements Structure, Write
         $structured = json_decode( $response->text() ?? '', true ) ?: [];
 
         return $response->withStructured( $structured );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $allowed = $this->allowed( $options, ['input_type', 'embedding_types', 'truncate', 'max_tokens'] );
+        $request = [
+            'model' => $this->modelName( 'embed-v4.0' ),
+            'texts' => array_values( $texts ),
+            'input_type' => 'search_document',
+            'output_dimension' => $size ?: 1536,
+            ...$allowed,
+        ] + ['embedding_types' => ['float']];
+
+        $response = $this->client()->post( 'v2/embed', ['json' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+
+        /** @var array<string, mixed> $embeddings */
+        $embeddings = $data['embeddings'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = $embeddings['float'] ?? [];
+
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'] ?? [];
+        /** @var array<string, mixed> $billedUnits */
+        $billedUnits = $meta['billed_units'] ?? [];
+        $used = $billedUnits['input_tokens'] ?? 0;
+
+        return VectorResponse::fromVectors( $vectors )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
+            ->withMeta( $meta );
     }
 
 

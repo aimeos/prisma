@@ -87,4 +87,31 @@ class AzureTest extends TestCase
             );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'myres'] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://myres.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-10-21',
+                (string) $request->getUri()
+            );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 5, $response->usage()['used'] );
+    }
 }

@@ -126,6 +126,49 @@ trait OpenaiApi
 
 
     /**
+     * Creates embedding vectors for the OpenAI-compatible embeddings endpoint.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default embedding model name
+     * @param array<int, string> $texts Input texts to embed
+     * @param int|null $size Requested vector size or null for the provider default
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @param string $sizeParam Request field carrying the vector size (e.g. "dimensions")
+     * @return \Aimeos\Prisma\Responses\VectorResponse Embedding vector response
+     */
+    protected function embeddings( string $endpoint, string $defaultModel, array $texts, ?int $size, array $options, string $sizeParam = 'dimensions' ) : \Aimeos\Prisma\Responses\VectorResponse
+    {
+        $request = [
+            'model' => $this->modelName( $defaultModel ),
+            'input' => array_values( $texts ),
+        ] + ( $size ? [$sizeParam => $size] : [] ) + $options;
+
+        $response = $this->client()->post( $endpoint, ['json' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+
+        /** @var array<int, array<string, mixed>> $items */
+        $items = $data['data'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $item ) => $item['embedding'] ?? null, $items );
+
+        /** @var array<string, mixed> $usage */
+        $usage = $data['usage'] ?? [];
+        $used = $usage['total_tokens'] ?? 0;
+
+        $meta = $data;
+        unset( $meta['data'], $meta['usage'] );
+
+        return \Aimeos\Prisma\Responses\VectorResponse::fromVectors( $vectors )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
+            ->withMeta( $meta );
+    }
+
+
+    /**
      * Returns the JSON Schema with "additionalProperties" disabled on every object.
      *
      * The OpenAI-compatible chat completions and responses endpoints require

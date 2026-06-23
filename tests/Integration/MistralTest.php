@@ -125,6 +125,18 @@ class MistralTest extends TestCase
     }
 
 
+    public function testVectorize() : void
+    {
+        $response = Prisma::text()
+            ->using( 'mistral', ['api_key' => $_ENV['MISTRAL_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['The quick brown fox', 'jumps over the lazy dog'] );
+
+        $this->assertCount( 2, $response->vectors() );
+        $this->assertNotEmpty( $response->first() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();

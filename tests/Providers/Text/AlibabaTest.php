@@ -371,4 +371,31 @@ class AlibabaTest extends TestCase
             $this->assertArrayHasKey( 'tool_choice', $body );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'model' => 'text-embedding-v4',
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 512 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/embeddings', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'text-embedding-v4', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+            $this->assertEquals( 512, $body['dimensions'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 5, $response->usage()['used'] );
+    }
 }

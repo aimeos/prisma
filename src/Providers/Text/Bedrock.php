@@ -3,13 +3,15 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Bedrock as BedrockBase;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Bedrock extends BedrockBase implements Structure, Write
+class Bedrock extends BedrockBase implements Structure, Vectorize, Write
 {
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
@@ -26,6 +28,41 @@ class Bedrock extends BedrockBase implements Structure, Write
         $structured = json_decode( $text, true ) ?: [];
 
         return $response->withStructured( $structured );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $promises = $vectors = [];
+        $model = $this->modelName( 'amazon.titan-embed-text-v2:0' );
+        $allowed = $this->allowed( $options, ['normalize', 'embeddingTypes'] );
+
+        foreach( array_values( $texts ) as $index => $text )
+        {
+            $promises[$index] = $this->client()->postAsync( $this->baseUrl . '/model/' . $model . '/invoke', [
+                'json' => ['inputText' => $text] + ( $size ? ['dimensions' => $size] : [] ) + $allowed,
+            ] );
+        }
+
+        $used = 0;
+
+        foreach( $promises as $index => $promise )
+        {
+            /** @var \Psr\Http\Message\ResponseInterface $response */
+            $response = $promise->wait();
+            $this->validate( $response );
+
+            /** @var array<string, mixed> $data */
+            $data = $this->fromJson( $response );
+
+            /** @var array<int, float> $embedding */
+            $embedding = $data['embedding'] ?? [];
+            $vectors[$index] = $embedding;
+            $used += is_numeric( $data['inputTextTokenCount'] ?? null ) ? (float) $data['inputTextTokenCount'] : 0;
+        }
+
+        /** @var array<int, array<int, float>|null> $vectors */
+        return VectorResponse::fromVectors( $vectors )->withUsage( $used );
     }
 
 
