@@ -57,9 +57,11 @@ class AnthropicTest extends TestCase
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'Say hello' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.anthropic.com/v1/messages', (string) $request->getUri() );
@@ -85,7 +87,7 @@ class AnthropicTest extends TestCase
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'capital of France?', [], [], function( $chunk ) {} );
+            ->stream( 'capital of France?' );
 
         $this->assertEquals( 'Paris', $response->text() );
         $this->assertCount( 1, $response->citations() );
@@ -100,10 +102,12 @@ class AnthropicTest extends TestCase
         $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5}}}\n\n"
             . "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n";
 
-        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+        $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {}
     }
 
 
@@ -133,11 +137,13 @@ class AnthropicTest extends TestCase
         $chunks = [];
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
-            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
-                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
-                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
-                    : $chunk;
-            } );
+            ->stream( 'ping it' );
+
+        foreach( $response->stream() as $chunk ) {
+            $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                : $chunk;
+        }
 
         // the tool is announced (done=false), then completed (done=true) before the final text delta
         $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );

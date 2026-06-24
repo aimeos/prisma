@@ -13,10 +13,10 @@ class Ollama extends Base
 
     public function __construct( array $config )
     {
-        if( $key = $this->cfg( $config, 'api_key' ) ) {
+        if( $key = $this->config( $config, 'api_key' ) ) {
             $this->header( 'Authorization', 'Bearer ' . $key );
         }
 
-        $this->baseUrl( $this->cfg( $config, 'url', 'http://localhost:11434' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'http://localhost:11434' ) );
     }
 }

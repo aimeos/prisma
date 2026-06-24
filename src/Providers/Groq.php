@@ -11,7 +11,7 @@ class Groq extends Base
 {
     use CallsTools;
     use OpenaiApi {
-        parseToolCalls as openaiParseToolCalls;
+        toolCalls as openaiToolCalls;
         toolsParam as openaiToolsParam;
     }
 
@@ -21,8 +21,8 @@ class Groq extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.groq.com' ) );
+        $this->header( 'authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.groq.com' ) );
     }
 
 
@@ -32,9 +32,9 @@ class Groq extends Base
      * @param array<string, mixed> $result API response data
      * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
      */
-    protected function parseToolCalls( array $result ) : array
+    protected function toolCalls( array $result ) : array
     {
-        $toolCalls = $this->openaiParseToolCalls( $result );
+        $toolCalls = $this->openaiToolCalls( $result );
 
         foreach( $toolCalls as &$call )
         {
@@ -92,7 +92,7 @@ class Groq extends Base
     {
         return match( $this->toolChoice() ) {
             self::AUTO => 'auto',
-            self::REQ => 'required',
+            self::REQUIRED => 'required',
             default => null,
         };
     }

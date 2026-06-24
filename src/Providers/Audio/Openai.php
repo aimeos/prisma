@@ -85,7 +85,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
             $allowed['language'] = $lang;
         }
 
-        $request = $this->request( ['model' => $model] + $allowed, ['file' => $audio] );
+        $request = $this->payload( ['model' => $model] + $allowed, ['file' => $audio] );
         $response = $this->client()->post( 'v1/audio/transcriptions', ['multipart' => $request] );
 
         $this->validate( $response );

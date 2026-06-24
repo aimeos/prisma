@@ -20,8 +20,8 @@ class Modelslab extends Base implements Imagine
             throw new PrismaException( 'No API key' );
         }
 
-        $this->apiKey = $this->cfg( $config, 'api_key' );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://modelslab.com' ) );
+        $this->apiKey = $this->config( $config, 'api_key' );
+        $this->baseUrl( $this->config( $config, 'url', 'https://modelslab.com' ) );
     }
 
 

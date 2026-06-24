@@ -30,8 +30,8 @@ class Openrouter extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://openrouter.ai' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://openrouter.ai' ) );
     }
 
 

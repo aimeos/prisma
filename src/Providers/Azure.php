@@ -26,9 +26,9 @@ class Azure extends Base
             throw new PrismaException( 'No Azure resource name or URL' );
         }
 
-        $this->header( 'api-key', $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url' ) ?: 'https://' . $this->cfg( $config, 'resource' ) . '.openai.azure.com' );
-        $this->apiVersion = $this->cfg( $config, 'api_version', '2024-10-21' );
+        $this->header( 'api-key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url' ) ?: 'https://' . $this->config( $config, 'resource' ) . '.openai.azure.com' );
+        $this->apiVersion = $this->config( $config, 'api_version', '2024-10-21' );
     }
 
 

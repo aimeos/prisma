@@ -15,11 +15,13 @@ class AzureTest extends TestCase
 
         $response = $this->provider()
             ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
+            ->stream( 'What is the capital of France? Reply with only the city name.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                $deltas[] = $chunk;
+            }
+        }
 
         $this->assertNotEmpty( $deltas );
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
@@ -60,7 +62,7 @@ class AzureTest extends TestCase
 
         $response = $this->provider()
             ->withTools( [$next, $ahead] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

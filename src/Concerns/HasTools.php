@@ -15,7 +15,7 @@ trait HasTools
     const AUTO = 'auto';
 
     /** The model must use a tool. */
-    const REQ = 'required';
+    const REQUIRED = 'required';
 
     /** The model cannot use tools. */
     const NONE = 'none';
@@ -81,7 +81,7 @@ trait HasTools
     /**
      * Sets the tool choice strategy.
      *
-     * @param string $choice Tool choice (use AUTO, REQ, NONE constants)
+     * @param string $choice Tool choice (use AUTO, REQUIRED, NONE constants)
      * @return self
      */
     public function withToolChoice( string $choice ) : self

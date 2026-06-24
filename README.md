@@ -17,6 +17,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
     <li><a href="#withclientoptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withclientretry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
+    <li><a href="#withmaxresponsesize">withMaxResponseSize</a><span>: Set the maximum bytes read for a single provider response</span></li>
     <li><a href="#withsystemprompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#withmessages">withMessages</a><span>: Add prior conversation turns for multi-turn chat</span></li>
     <li><a href="#withmaxtokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
@@ -68,7 +69,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
-    <li><a href="#stream">stream</a><span>: Stream a response token by token via a callback</span></li>
+    <li><a href="#stream">stream</a><span>: Stream a response token by token by iterating the response</span></li>
     <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
     <li><a href="#vectorize-1">vectorize</a><span>: Creates embedding vectors from texts</span></li>
@@ -327,6 +328,30 @@ By default, retries on status codes 429, 500, 502, 503, 504 and connection excep
 \Aimeos\Prisma\Prisma::text()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->withClientRetry( 3, 100, fn( $response, $attempt ) => $response->getStatusCode() === 429 );
+```
+
+### withMaxResponseSize
+
+Set the maximum number of bytes read for a single provider response.
+
+Bounds the bytes consumed from one response - streamed or not - so a runaway or hostile
+endpoint cannot grow the read buffer or the assembled result (text, reasoning, tool-call
+arguments) without limit. Defaults to 64 MB and applies per request, so each tool-loop turn
+is bounded independently rather than spanning a whole multi-turn conversation.
+
+```php
+public function withMaxResponseSize( int `$bytes` ) : self
+```
+
+* @param **int** `$bytes` Maximum bytes per response (minimum 1)
+* @return **self** Provider interface
+
+**Example:**
+
+```php
+\Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'])
+    ->withMaxResponseSize( 16 * 1024 * 1024 ); // cap responses at 16 MB
 ```
 
 ### withSystemPrompt
@@ -1610,24 +1635,25 @@ $vectors = $vectorResponse->vectors();
 
 ### stream
 
-Generate text from the given prompt and stream it token by token. Each text delta is passed to the callback as a string as soon as it arrives, while the fully assembled response is returned as a regular `TextResponse` once the stream finished. Streaming uses the same endpoint the provider's [write()](#write) method uses, so tools, system prompts, [conversation history](#withmessages) and options work identically.
+Generate text from the given prompt and stream it token by token. The returned `TextResponse` is backed by a live stream: iterate `TextResponse::stream()` to consume each chunk as it arrives. The text accessors (`text()`, `texts()`, `first()`, `output()`) and iterating the response drain the stream for you, so you can also ignore the live chunks and use the response like a non-streamed one. Streaming uses the same endpoint the provider's [write()](#write) method uses, so tools, system prompts, [conversation history](#withmessages) and options work identically.
+
+> **Consume the stream before reading body metadata.** `usage()`, `steps()`, `meta()`, `citations()`, `reason()` and `structured()` are only populated **after** the stream has been consumed - either iterate `stream()` to completion or call one of the text accessors first (e.g. `text()`/`output()`). Read before the stream is drained, they return empty/default values. `rateLimit()` is the exception: it comes from the response headers and is available immediately, as are HTTP/auth errors, which surface from the `stream()` call itself rather than during iteration.
 
 ```php
-public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
 ```
 
 * @param **string** `$prompt` Input prompt for text generation
 * @param **array&#60;int, File&#62;** `$files` Files for multimodal input (images, audio, documents)
 * @param **array&#60;string, mixed&#62;** `$options` Provider specific options
-* @param **callable&#124;null** `$callback` Stream consumer: `fn( string|Step $chunk ): void`
-* @return **TextResponse** Response text
+* @return **TextResponse** Streamed response text
 
-The callback receives:
+Iterating `$response->stream()` yields:
 
 * a **string** for every streamed text delta, and
 * a **Step** for every executed tool call - once before it runs (`done() === false`) and once after it completed (`done() === true`). A tool that hit its call limit is not executed and is reported once (completed).
 
-> The same `Step` instance is reused for both notifications, so read `done()` / `result()` **inside** the callback (a stored reference reflects the final state).
+> The stream is single-pass and the same `Step` instance is reused for both notifications, so read `done()` / `result()` **inside** the loop (a stored reference reflects the final state).
 
 **Supported providers:**
 
@@ -1651,9 +1677,11 @@ use Aimeos\Prisma\Prisma;
 $textResponse = Prisma::text()
     ->using( 'openai', ['api_key' => 'xxx'] )
     ->ensure( 'stream' )
-    ->stream( 'Summarize the benefits of renewable energy', [], [], function( string $delta ) {
-        echo $delta; // print each token as it arrives
-    } );
+    ->stream( 'Summarize the benefits of renewable energy' );
+
+foreach( $textResponse->stream() as $delta ) {
+    echo $delta; // print each token as it arrives
+}
 
 $full = $textResponse->text();  // the complete answer
 $usage = $textResponse->usage(); // token usage
@@ -1673,9 +1701,11 @@ $textResponse = Prisma::text()
         ['role' => 'assistant', 'content' => 'Sure - what is your budget?'],
     ] )
     ->ensure( 'stream' )
-    ->stream( 'Around $1500', [], [], function( string $delta ) {
-        echo $delta;
-    } );
+    ->stream( 'Around $1500' );
+
+foreach( $textResponse->stream() as $delta ) {
+    echo $delta;
+}
 ```
 
 **Streaming with tools:**
@@ -1688,66 +1718,45 @@ $textResponse = Prisma::text()
     ->using( 'anthropic', ['api_key' => 'xxx'] )
     ->withTools( [$weatherTool] )
     ->ensure( 'stream' )
-    ->stream( 'What is the weather in Berlin?', [], [], function( string|Step $chunk ) {
-        if( !$chunk instanceof Step ) {
-            echo $chunk;                                                        // text delta
-        } elseif( $chunk->done() ) {
-            printf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() );       // tool result
-        } else {
-            printf( "\n[calling %s(%s)]\n", $chunk->name(), json_encode( $chunk->arguments() ) ); // tool call
-        }
-    } );
+    ->stream( 'What is the weather in Berlin?' );
+
+foreach( $textResponse->stream() as $chunk ) {
+    if( !$chunk instanceof Step ) {
+        echo $chunk;                                                        // text delta
+    } elseif( $chunk->done() ) {
+        printf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() );       // tool result
+    } else {
+        printf( "\n[calling %s(%s)]\n", $chunk->name(), json_encode( $chunk->arguments() ) ); // tool call
+    }
+}
 
 $steps = $textResponse->steps(); // executed tool steps, same as write()
 ```
 
-> **Performance:** the callback runs once per token, synchronously in the read loop. For high-frequency sinks (broadcast, WebSocket, database), coalesce deltas - buffer them and flush every ~50ms or every N characters - instead of doing a round trip per token.
+> **Performance:** the loop body runs once per token, synchronously in the read loop. For high-frequency sinks (broadcast, WebSocket, database), coalesce deltas - buffer them and flush every ~50ms or every N characters - instead of doing a round trip per token.
 
-**GraphQL subscriptions:**
+**Laravel SSE (`response()->eventStream()`):**
 
-Streaming over GraphQL means subscriptions - a query or mutation returns one document and cannot emit tokens incrementally. Run `stream()` in a mutation (or queued job) and publish each delta to a subscription topic; the subscription fans them out. Example using [Lighthouse](https://lighthouse-php.com/):
-
-```graphql
-type Mutation {
-  chat(conversationId: ID!, prompt: String!): Boolean!
-    @field(resolver: "App\\GraphQL\\Chat")
-}
-
-type Subscription {
-  chatStream(conversationId: ID!): String!
-}
-```
+Because `stream()` returns an iterable response, it plugs straight into Laravel's native SSE helper - just delegate to its generator:
 
 ```php
-namespace App\GraphQL;
-
 use Aimeos\Prisma\Prisma;
-use Aimeos\Prisma\Tools\Step;
 
-final class Chat
-{
-    public function __invoke( mixed $root, array $args ) : bool
-    {
-        $id = $args['conversationId'];
+Route::get( '/chat', function () {
+    $response = Prisma::text()
+        ->using( 'openai', config( 'services.openai' ) )
+        ->ensure( 'stream' )
+        ->stream( 'Summarize the benefits of renewable energy' );
 
-        Prisma::text()->using( 'openai', config( 'services.openai' ) )
-            ->withTools( [ /* your Contracts\Tool instances */ ] )
-            ->stream( $args['prompt'], [], [], function( string|Step $chunk ) use ( $id ) {
-                $text = match( true ) {
-                    !$chunk instanceof Step => $chunk,
-                    $chunk->done()          => sprintf( "\n[%s -> %s]\n", $chunk->name(), $chunk->result() ),
-                    default                 => sprintf( "\n[calling %s(%s)]\n", $chunk->name(), json_encode( $chunk->arguments() ) ),
-                };
-
-                \Subscription::broadcast( 'chatStream', ['conversationId' => $id, 'text' => $text] );
-            } );
-
-        return true;
-    }
-}
+    return response()->eventStream( function () use ( $response ) {
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                yield $chunk;
+            }
+        }
+    } );
+} );
 ```
-
-The subscription resolver filters by `conversationId` and returns `$event['text']`. Subscriptions need a driver (Pusher, Laravel Reverb or graphql-sse); for long answers, dispatch the `stream()` call from a queued job so the mutation returns immediately.
 
 ### structure
 

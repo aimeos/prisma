@@ -86,11 +86,13 @@ class GeminiTest extends TestCase
         $response = Prisma::text()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
             ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
+            ->stream( 'What is the capital of France? Reply with only the city name.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                $deltas[] = $chunk;
+            }
+        }
 
         $this->assertNotEmpty( $deltas );
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
@@ -119,16 +121,18 @@ class GeminiTest extends TestCase
         $response = Prisma::text()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
             ->withTools( [$next, $ahead] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'stream' )
-            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
-                if( $chunk instanceof \Aimeos\Prisma\Tools\Step ) {
-                    $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
-                } else {
-                    $text .= $chunk;
-                }
-            } );
+            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( $chunk instanceof \Aimeos\Prisma\Tools\Step ) {
+                $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
+            } else {
+                $text .= $chunk;
+            }
+        }
 
         // each executed tool is announced (start) and completed (done) over the stream
         $this->assertContains( 'get_next_passphrase:start', $steps );
@@ -178,7 +182,7 @@ class GeminiTest extends TestCase
         $response = Prisma::text()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']] )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

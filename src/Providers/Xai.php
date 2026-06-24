@@ -27,8 +27,8 @@ class Xai extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.x.ai' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.x.ai' ) );
     }
 
 
@@ -43,7 +43,7 @@ class Xai extends Base
     {
         return match( $this->toolChoice() ) {
             self::AUTO => 'auto',
-            self::REQ => 'required',
+            self::REQUIRED => 'required',
             default => null,
         };
     }

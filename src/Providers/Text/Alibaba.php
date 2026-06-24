@@ -14,7 +14,7 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Alibaba extends Base implements Stream, Structure, Vectorize, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
@@ -22,11 +22,9 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
             $options['enable_search'] = true;
         }
 
-        return $this->completions(
-            'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
+
+        return $this->streamCompletions( 'compatible-mode/v1/chat/completions', 'qwen-vl-plus', $messages, $options );
     }
 
 

@@ -2,53 +2,100 @@
 
 namespace Aimeos\Prisma\Concerns;
 
-use GuzzleHttp\Psr7\Utils;
-
 
 /**
  * Server-Sent Events (SSE) streaming for providers.
  */
 trait HasHttpStream
 {
-    protected ?\Aimeos\Prisma\Values\RateLimit $streamRateLimit = null;
-
-
     /**
-     * Streams a POST request and yields each decoded SSE event.
+     * Opens a streaming POST request and returns its already-validated body.
      *
-     * Opens the request with Guzzle's streaming body, no total timeout but a per-read
-     * inactivity timeout, then reads the response line by line. Consecutive "data:"
-     * lines of one event are joined per the SSE spec and JSON decoded on the blank-line
-     * boundary; comment, "event:" and "[DONE]" lines are skipped. A streamed error event
-     * (top-level "error" object) is raised as an exception so it surfaces like a non-200
-     * response does. The response body is always closed, even if the consumer aborts.
+     * Validates the response and captures the rate limit eagerly, so HTTP, auth and rate-limit
+     * errors surface at the call site instead of later when the unread body is consumed.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $params Request payload
-     * @return \Generator<int, array<string, mixed>> Decoded SSE events
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Updated with this response's rate limit, left unchanged when the response carries none
+     * @return \Psr\Http\Message\StreamInterface Validated, unread response body
      */
-    protected function streamData( string $endpoint, array $params ) : \Generator
+    protected function openStream( string $endpoint, array $params, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : \Psr\Http\Message\StreamInterface
     {
-        $response = $this->client()->post( $endpoint, [
+        $response = $this->streamClient()->post( $endpoint, [
             'json' => $params,
             'stream' => true,
-            'timeout' => 0,         // no total cap: streamed responses are long-lived
-            'read_timeout' => 120,  // but fail fast if no data arrives for 120s so a stalled stream cannot pin the process
+            'timeout' => 600,       // bound the total stream to 10 min so a slow-drip stream cannot pin the process indefinitely
+            'read_timeout' => 120,  // and fail fast if no data arrives for 120s within that window
         ] );
 
         $this->validate( $response );
 
-        $this->streamRateLimit = $this->getRateLimit( $response );
-        $body = $response->getBody();
+        // keep the previous turn's rate limit if this response omits the headers
+        $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
 
+        return $response->getBody();
+    }
+
+
+    /**
+     * Sends a non-streaming POST request and returns its decoded, validated body.
+     *
+     * @param string $endpoint API endpoint path
+     * @param array<string, mixed> $params Request payload
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Updated with this response's rate limit, left unchanged when the response carries none
+     * @return array<string, mixed> Decoded response body
+     */
+    protected function post( string $endpoint, array $params, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : array
+    {
+        $response = $this->client()->post( $endpoint, ['json' => $params] );
+
+        $this->validate( $response );
+
+        $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
+
+        return $this->fromJson( $response );
+    }
+
+
+    /**
+     * Opens a streaming request eagerly and wraps the tool loop as a lazy TextResponse.
+     *
+     * Opens and validates the first request up front (so HTTP, auth and rate-limit errors
+     * surface at the call site), then hands the open body to the provider's turn loop, which
+     * runs lazily inside the returned response.
+     *
+     * @param string $endpoint API endpoint path
+     * @param array<string, mixed> $firstParams Request payload for the eagerly opened first turn
+     * @param \Closure(\Aimeos\Prisma\Responses\TextResponse, \Psr\Http\Message\StreamInterface): \Generator<int, mixed> $loop Turn loop receiving the response and the open first-turn body
+     * @return \Aimeos\Prisma\Responses\TextResponse Lazy streaming text response
+     */
+    protected function streamResponse( string $endpoint, array $firstParams, \Closure $loop ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $body = $this->openStream( $endpoint, $firstParams, $rateLimit );
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromStream(
+            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $loop( $res, $body )
+        )->withRateLimit( $rateLimit );
+    }
+
+
+    /**
+     * Decodes an open SSE body stream and yields each decoded event.
+     *
+     * Joins consecutive "data:" lines of one event and JSON decodes them on the blank-line
+     * boundary. The body is always closed, even if the consumer aborts.
+     *
+     * @param \Psr\Http\Message\StreamInterface $body Open response body, e.g. from openStream()
+     * @return \Generator<int, array<string, mixed>> Decoded SSE events
+     */
+    protected function streamData( \Psr\Http\Message\StreamInterface $body ) : \Generator
+    {
         try
         {
             $lines = [];
 
-            while( !$body->eof() )
+            foreach( $this->readLines( $body ) as $line )
             {
-                $line = rtrim( Utils::readLine( $body ), "\r\n" );
-
                 if( $line !== '' )
                 {
                     if( str_starts_with( $line, 'data:' ) )
@@ -75,6 +122,67 @@ trait HasHttpStream
         finally
         {
             $body->close();
+        }
+    }
+
+
+    /**
+     * Reads the stream in chunks and yields each complete line without its newline.
+     *
+     * Buffers reads (a chunk can end mid-line), carries the trailing partial line into the
+     * next read, drops the flushed prefix so a long line is scanned once overall, and strips
+     * a trailing "\r" from CRLF endings.
+     *
+     * @param \Psr\Http\Message\StreamInterface $body Response body stream
+     * @return \Generator<int, string> Complete lines
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException When the stream stalls before end of data
+     */
+    private function readLines( \Psr\Http\Message\StreamInterface $body ) : \Generator
+    {
+        $buffer = '';
+        $start = 0; // first byte not yet flushed as a line
+        $scan = 0;  // next byte to search for a newline
+        $total = 0; // bytes read so far for this stream
+
+        while( !$body->eof() )
+        {
+            $chunk = $body->read( 8192 );
+
+            if( $chunk === '' ) {
+                break; // end of stream or a stalled read - distinguished after the loop
+            }
+
+            // bound the whole stream so a runaway or hostile response cannot grow unboundedly
+            if( ( $total += strlen( $chunk ) ) > $this->maxResponseSize ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Stream exceeds the maximum allowed size of ' . $this->maxResponseSize . ' bytes' );
+            }
+
+            $buffer .= $chunk;
+
+            while( ( $pos = strpos( $buffer, "\n", $scan ) ) !== false )
+            {
+                yield rtrim( substr( $buffer, $start, $pos - $start ), "\r" );
+                $start = $scan = $pos + 1;
+            }
+
+            $scan = strlen( $buffer );
+
+            if( $start > 0 ) // drop the flushed prefix so the buffer stays bounded to the current line
+            {
+                $buffer = substr( $buffer, $start );
+                $scan -= $start;
+                $start = 0;
+            }
+        }
+
+        // An empty read before EOF is only a stall when the per-read inactivity timeout
+        // actually elapsed; any other empty read is treated as a clean end.
+        if( !$body->eof() && ( $body->getMetadata( 'timed_out' ) ?? false ) ) {
+            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Stream stalled: no data received within the read timeout' );
+        }
+
+        if( $buffer !== '' ) {
+            yield rtrim( $buffer, "\r" );
         }
     }
 
@@ -115,5 +223,22 @@ trait HasHttpStream
         }
 
         return $decoded;
+    }
+
+
+    /**
+     * Validates a server-supplied slot index used as a streaming accumulator key.
+     *
+     * Anything outside 0..$count (an existing slot or the next new one) falls back to $default,
+     * so a malformed or hostile index cannot inflate the accumulator with a huge or sparse key.
+     *
+     * @param mixed $index Raw index from the event
+     * @param int $count Number of slots allocated so far
+     * @param int $default Slot to use when the index is invalid
+     * @return int Validated slot index
+     */
+    protected function streamSlot( mixed $index, int $count, int $default ) : int
+    {
+        return ( is_int( $index ) && $index >= 0 && $index <= $count ) ? $index : $default;
     }
 }

@@ -24,8 +24,8 @@ class Stabilityai extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.stability.ai' ) );
+        $this->header( 'authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.stability.ai' ) );
     }
 
 
@@ -34,7 +34,7 @@ class Stabilityai extends Base
         $allowed = $this->allowed( $options, ['grow_mask', 'seed', 'output_format'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
-        $request = $this->request( $allowed, ['image' => $image, 'mask' => $mask] );
+        $request = $this->payload( $allowed, ['image' => $image, 'mask' => $mask] );
         $response = $this->client()->post( 'v2beta/stable-image/edit/erase', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -67,7 +67,7 @@ class Stabilityai extends Base
             }
         }
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, $files );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, $files );
         $response = $this->client()->post( 'v2beta/stable-image/generate/' . $model, ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -79,7 +79,7 @@ class Stabilityai extends Base
         $allowed = $this->allowed( $options, ['negative_prompt', 'seed', 'output_format', 'style_preset'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] );
         $response = $this->client()->post( 'v2beta/stable-image/edit/inpaint', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -91,7 +91,7 @@ class Stabilityai extends Base
         $allowed = $this->allowed( $options, ['output_format'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
-        $request = $this->request( $allowed, ['image' => $image] );
+        $request = $this->payload( $allowed, ['image' => $image] );
         $response = $this->client()->post( 'v2beta/stable-image/edit/remove-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -110,7 +110,7 @@ class Stabilityai extends Base
         $allowed = $this->allowed( $options, ['creativity', 'output_format', 'prompt', 'seed', 'style_preset'] );
         $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
-        $request = $this->request( $data + $allowed, ['image' => $image] );
+        $request = $this->payload( $data + $allowed, ['image' => $image] );
         $response = $this->client()->post( 'v2beta/stable-image/edit/outpaint', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -131,7 +131,7 @@ class Stabilityai extends Base
             $allowed['prompt'] = ' ';
         }
 
-        $request = $this->request( $allowed, ['image' => $image] );
+        $request = $this->payload( $allowed, ['image' => $image] );
         $response = $this->client()->post( 'v2beta/stable-image/upscale/' . $model, ['multipart' => $request] );
 
         return $this->toFileResponse( $response );

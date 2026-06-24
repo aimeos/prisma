@@ -166,7 +166,7 @@ class DeepseekTest extends TestCase
             ] );
 
         $response->withTools( [$tool] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->ensure( 'write' )
             ->write( 'Ping the tool' );
 

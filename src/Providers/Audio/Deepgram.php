@@ -21,8 +21,8 @@ class Deepgram extends Base implements Speak, Transcribe
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Token ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.deepgram.com' ) );
+        $this->header( 'Authorization', 'Token ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.deepgram.com' ) );
     }
 
 

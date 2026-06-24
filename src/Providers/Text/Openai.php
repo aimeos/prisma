@@ -14,7 +14,7 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Openai extends Base implements Stream, Structure, Vectorize, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'store', 'reasoning'] );
 
@@ -22,11 +22,9 @@ class Openai extends Base implements Stream, Structure, Vectorize, Write
             $options['reasoning'] = ['budget_tokens' => $budget];
         }
 
-        return $this->responses(
-            'v1/responses', 'gpt-5.5',
-            $this->responsesInput( $prompt, $files ),
-            $options, $callback
-        );
+        $input = $this->responsesInput( $prompt, $files );
+
+        return $this->streamResponses( 'v1/responses', 'gpt-5.5', $input, $options );
     }
 
 

@@ -78,7 +78,7 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
      * @param array<string, mixed> $result API response data
      * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
      */
-    protected function parseToolCalls( array $result ) : array
+    protected function toolCalls( array $result ) : array
     {
         $toolCalls = [];
 
@@ -260,7 +260,7 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
                 // Converse only supports forcing tool use via "any"; auto/none are left to
                 // the default. Force it only on the first step so the model can produce a
                 // final text answer after calling the tools.
-                if( $step === 1 && $this->toolChoice() === self::REQ ) {
+                if( $step === 1 && $this->toolChoice() === self::REQUIRED ) {
                     $request['toolConfig']['toolChoice'] = ['any' => (object) []];
                 }
             }
@@ -291,7 +291,7 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
             // when maxSteps is reached) doesn't discard the model's partial answer.
             $texts = $stepTexts ?: $texts;
 
-            $toolCalls = $this->parseToolCalls( $result );
+            $toolCalls = $this->toolCalls( $result );
 
             if( !$toolCalls ) {
                 break;

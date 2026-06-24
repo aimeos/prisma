@@ -70,7 +70,7 @@ class Mistral extends Base implements Describe, Transcribe
             $files['file'] = $audio;
         }
 
-        $request = $this->request( $request, $files );
+        $request = $this->payload( $request, $files );
         $response = $this->client()->post( 'v1/audio/transcriptions', ['multipart' => $request] );
 
         return $this->toTextResponse( $response );

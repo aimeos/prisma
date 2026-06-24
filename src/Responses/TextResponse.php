@@ -9,6 +9,7 @@ use Aimeos\Prisma\Concerns\HasRateLimit;
 use Aimeos\Prisma\Concerns\HasReason;
 use Aimeos\Prisma\Concerns\HasToolSteps;
 use Aimeos\Prisma\Concerns\HasUsage;
+use Aimeos\Prisma\Concerns\Stream;
 
 
 /**
@@ -18,7 +19,7 @@ use Aimeos\Prisma\Concerns\HasUsage;
  */
 class TextResponse implements \IteratorAggregate
 {
-    use Async, HasCitations, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage;
+    use Async, HasCitations, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage, Stream;
 
 
     /** @var array<string|int, mixed> */
@@ -39,6 +40,21 @@ class TextResponse implements \IteratorAggregate
     }
 
 
+    /**
+     * Adds multiple text values, preserving their keys.
+     *
+     * @param array<string|int, string|null> $texts Response texts
+     */
+    public function addAll( array $texts ) : self
+    {
+        foreach( $texts as $key => $text ) {
+            $this->add( $text, $key );
+        }
+
+        return $this;
+    }
+
+
     public function empty() : bool
     {
         return empty( $this->list );
@@ -48,7 +64,7 @@ class TextResponse implements \IteratorAggregate
     public function first() : ?string
     {
         if( empty( $this->list ) ) {
-            $this->wait();
+            $this->ensure();
         }
 
         $text = reset( $this->list );
@@ -82,7 +98,7 @@ class TextResponse implements \IteratorAggregate
     public function getIterator(): \Traversable
     {
         if( empty( $this->list ) ) {
-            $this->wait();
+            $this->ensure();
         }
 
         return new \ArrayIterator( $this->list );
@@ -118,7 +134,7 @@ class TextResponse implements \IteratorAggregate
     public function text() : ?string
     {
         if( empty( $this->list ) ) {
-            $this->wait();
+            $this->ensure();
         }
 
         $text = current( $this->list );
@@ -134,7 +150,7 @@ class TextResponse implements \IteratorAggregate
     public function texts() : array
     {
         if( empty( $this->list ) ) {
-            $this->wait();
+            $this->ensure();
         }
 
         return $this->list;
@@ -150,6 +166,19 @@ class TextResponse implements \IteratorAggregate
     {
         $this->structured = $structured;
         return $this;
+    }
+
+
+    /**
+     * Populates the response from whichever resolution mode backs it.
+     *
+     * Drains the stream (chat) and polls the async job (transcription); each is a no-op unless
+     * its mode is active, so the single call covers stream-backed, poll-backed and eager responses.
+     */
+    private function ensure() : void
+    {
+        $this->resolve();
+        $this->wait();
     }
 
 

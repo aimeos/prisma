@@ -12,15 +12,12 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Openrouter extends Base implements Stream, Structure, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->completions(
-            'api/v1/chat/completions', 'openai/gpt-5.5',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        return $this->streamCompletions( 'api/v1/chat/completions', 'openai/gpt-5.5', $messages, $options );
     }
 
 

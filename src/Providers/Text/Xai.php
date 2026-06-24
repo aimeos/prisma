@@ -12,26 +12,20 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Xai extends Base implements Stream, Structure, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         if( $this->providerTools() )
         {
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
+            $input = $this->responsesInput( $prompt, $files );
 
-            return $this->responses(
-                'v1/responses', 'grok-4.3',
-                $this->responsesInput( $prompt, $files ),
-                $options, $callback
-            );
+            return $this->streamResponses( 'v1/responses', 'grok-4.3', $input, $options );
         }
 
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->completions(
-            'v1/chat/completions', 'grok-4.3',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        return $this->streamCompletions( 'v1/chat/completions', 'grok-4.3', $messages, $options );
     }
 
 
