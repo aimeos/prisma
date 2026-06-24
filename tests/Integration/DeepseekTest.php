@@ -16,11 +16,13 @@ class DeepseekTest extends TestCase
         $response = Prisma::text()
             ->using( 'deepseek', ['api_key' => $_ENV['DEEPSEEK_API_KEY']] )
             ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
+            ->stream( 'What is the capital of France? Reply with only the city name.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                $deltas[] = $chunk;
+            }
+        }
 
         $this->assertNotEmpty( $deltas );
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );

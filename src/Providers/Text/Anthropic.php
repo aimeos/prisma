@@ -12,14 +12,12 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Anthropic extends Base implements Stream, Structure, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['citations', 'temperature', 'top_p', 'top_k', 'thinking', 'effort'] );
+        $messages = array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] );
 
-        return $this->generate(
-            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $prompt, $files )]] ),
-            $options, $callback
-        );
+        return $this->streamGenerate( $messages, $options );
     }
 
 
@@ -124,71 +122,140 @@ class Anthropic extends Base implements Stream, Structure, Write
 
 
     /**
-     * Runs the tool loop for the Anthropic Messages API.
+     * Runs the Anthropic Messages tool loop, drained eagerly into a TextResponse.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
-     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      */
-    private function generate( array $messages, array $options, ?callable $callback = null ) : TextResponse
+    private function generate( array $messages, array $options ) : TextResponse
+    {
+        return TextResponse::fromStream( fn( TextResponse $res ) => $this->runGenerate( $res, $messages, $options, false, $this->toolsParam() ) )->resolve();
+    }
+
+
+    /**
+     * Streams the Anthropic Messages tool loop as a lazy TextResponse.
+     *
+     * Lazy dual of generate(): iterate the returned response to consume answer text deltas
+     * and tool steps live; any accessor drains the stream and assembles the final response.
+     *
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Pre-filtered request options
+     */
+    private function streamGenerate( array $messages, array $options ) : TextResponse
+    {
+        $toolsParam = $this->toolsParam();
+        $params = $this->messageParams( $messages, $options, 1, true, $toolsParam );
+
+        return $this->streamResponse( 'v1/messages', $params, fn( $res, $body, $rateLimit ) =>
+            $this->runGenerate( $res, $messages, $options, true, $toolsParam, $body, $rateLimit )
+        );
+    }
+
+
+    /**
+     * Builds the request payload for one Anthropic Messages turn.
+     *
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Provider specific options
+     * @param int $step Current step in the tool loop (1-based)
+     * @param bool $stream Whether to enable SSE streaming
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload (hoisted out of the per-turn loop)
+     * @return array<string, mixed> Request payload
+     */
+    private function messageParams( array $messages, array $options, int $step, bool $stream, array $toolsParam ) : array
+    {
+        $params = [
+            'model' => $this->modelName( 'claude-opus-4-8' ),
+            'messages' => $messages,
+            'max_tokens' => $this->maxTokens() ?? 4096,
+        ] + ( $stream ? ['stream' => true] : [] ) + $options;
+
+        // Claude 4.6+ supports adaptive thinking via the "thinking"/"effort" options
+        // (e.g. ['thinking' => ['type' => 'adaptive'], 'effort' => 'high']). An explicit
+        // thinking option wins; otherwise withThinkingBudget() enables a fixed budget.
+        if( !isset( $params['thinking'] ) && ( $thinkingBudget = $this->thinkingBudget() ) ) {
+            $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
+        }
+
+        if( $system = $this->systemPrompt() ) {
+            $params['system'] = $system;
+        }
+
+        if( $toolsParam ) {
+            $params['tools'] = $toolsParam;
+
+            // Apply the configured tool choice only on the first step so the
+            // model can produce a final text answer after calling the tools.
+            $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
+                self::REQ => ['type' => 'any'],
+                self::AUTO => ['type' => 'auto'],
+                default => null,
+            } : ['type' => 'auto'];
+
+            if( $toolChoice ) {
+                $params['tool_choice'] = $toolChoice;
+            }
+        }
+
+        return $params;
+    }
+
+
+    /**
+     * Runs the Anthropic Messages tool loop, optionally streaming.
+     *
+     * Single loop shared by write() (drained eagerly via generate()) and stream() (iterated
+     * lazily via fromStream()). The only per-mode difference is the transport: streaming uses
+     * the SSE endpoint and yields each answer text delta as it arrives, non-streaming POSTs
+     * once per turn. Tool calls always run through execStream(), so each
+     * \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when drained).
+     * Includes pause_turn resumption for long-running server-side tools. The assembled result
+     * is folded into the given response when the loop ends. When streaming, the first turn
+     * reuses the eagerly opened body so HTTP/auth errors surface at the stream() call.
+     *
+     * @param TextResponse $res Response to populate when the loop ends
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @param bool $stream Whether to stream the generation over SSE
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload, built once by the caller
+     * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn
+     * @param \Aimeos\Prisma\Values\RateLimit|null $firstRateLimit Rate limit captured from the eagerly opened first turn
+     * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
+     */
+    private function runGenerate( TextResponse $res, array $messages, array $options, bool $stream, array $toolsParam, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\Aimeos\Prisma\Values\RateLimit $firstRateLimit = null ) : \Generator
     {
         $allSteps = [];
         $calls = [];
-        $citations = [];
-        $thinking = null;
-        $rateLimit = null;
+        $rateLimit = $firstRateLimit;
         $texts = [];
+        /** @var array<string, mixed> $result */
         $result = [];
-        $tools = $this->toolsParam();
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $params = [
-                'model' => $this->modelName( 'claude-opus-4-8' ),
-                'messages' => $messages,
-                'max_tokens' => $this->maxTokens() ?? 4096,
-            ] + $options;
-
-            // Claude 4.6+ supports adaptive thinking via the "thinking"/"effort" options
-            // (e.g. ['thinking' => ['type' => 'adaptive'], 'effort' => 'high']). An explicit
-            // thinking option wins; otherwise withThinkingBudget() enables a fixed budget.
-            if( !isset( $params['thinking'] ) && ( $thinkingBudget = $this->thinkingBudget() ) ) {
-                $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
-            }
-
-            if( $system = $this->systemPrompt() ) {
-                $params['system'] = $system;
-            }
-
-            if( $tools ) {
-                $params['tools'] = $tools;
-
-                // Apply the configured tool choice only on the first step so the
-                // model can produce a final text answer after calling the tools.
-                $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
-                    self::REQ => ['type' => 'any'],
-                    self::AUTO => ['type' => 'auto'],
-                    default => null,
-                } : ['type' => 'auto'];
-
-                if( $toolChoice ) {
-                    $params['tool_choice'] = $toolChoice;
-                }
-            }
-
-            if( $callback !== null )
+            if( $stream )
             {
-                $params['stream'] = true;
-                $result = $this->streamMessage( $params, $callback );
-                $rateLimit = $this->streamRateLimit;
+                if( $firstBody !== null ) {
+                    $body = $firstBody;     // first turn reuses the eagerly opened body and its rate limit
+                    $firstBody = null;
+                } else {
+                    $params = $this->messageParams( $messages, $options, $step, true, $toolsParam );
+                    $body = $this->openStream( 'v1/messages', $params, $rateLimit );
+                }
+
+                $turn = $this->streamTurnMessage( $body );
+                yield from $turn;                       // answer text deltas
+                $result = $turn->getReturn();
             }
             else
             {
+                $params = $this->messageParams( $messages, $options, $step, false, $toolsParam );
                 $response = $this->client()->post( 'v1/messages', ['json' => $params] );
 
                 $this->validate( $response );
 
-                $rateLimit = $this->getRateLimit( $response );
+                $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
                 $result = $this->fromJson( $response );
             }
 
@@ -201,16 +268,6 @@ class Anthropic extends Base implements Stream, Structure, Write
             {
                 if( ( $block['type'] ?? null ) === 'text' && isset( $block['text'] ) ) {
                     $stepTexts[] = $block['text'];
-                } elseif( ( $block['type'] ?? null ) === 'thinking' && isset( $block['thinking'] ) ) {
-                    $thinking = $block['thinking'];
-                }
-
-                foreach( $block['citations'] ?? [] as $cit )
-                {
-                    $citations[] = new \Aimeos\Prisma\Values\Citation(
-                        title: $cit['document_title'] ?? null,
-                        source: $cit['cited_text'] ?? null,
-                    );
                 }
             }
 
@@ -233,26 +290,33 @@ class Anthropic extends Base implements Stream, Structure, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
+            $exec = $this->execStream( $toolCalls, $calls );
+            yield from $exec;                       // tool steps before and after execution
+            $toolResults = $exec->getReturn();
+
             array_push( $allSteps, ...$toolResults );
             $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        return $this->result( $result, $allSteps, $texts, $rateLimit );
+        $this->applyMessage( $res, $result, $allSteps, $texts, $rateLimit );
     }
 
 
     /**
-     * Builds the TextResponse from an Anthropic API result.
+     * Populates a TextResponse from an Anthropic API result.
      *
+     * Shared by the non-streaming and streaming paths: the streaming loop folds its
+     * already-created response so text, usage, meta, citations and steps surface on the
+     * same instance the caller holds once the stream is drained.
+     *
+     * @param TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
-     * @return TextResponse Text response
      */
-    private function result( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    private function applyMessage( TextResponse $res, array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {
         $thinking = null;
         $citations = [];
@@ -285,8 +349,9 @@ class Anthropic extends Base implements Stream, Structure, Write
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
-        return TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
+        $res->addAll( $texts );
+
+        $res->withSteps( $allSteps )
             ->withCitations( $citations )
             ->withReason( match( $result['stop_reason'] ?? null ) {
                 'end_turn', 'stop_sequence' => TextResponse::STOP,
@@ -306,18 +371,17 @@ class Anthropic extends Base implements Stream, Structure, Write
 
 
     /**
-     * Streams an Anthropic Messages request and rebuilds the non-streaming result.
+     * Streams an Anthropic Messages request, yielding each text delta and returning the result.
      *
-     * Forwards each text delta to the callback while reassembling the content blocks
-     * (text, thinking and tool_use with their accumulated JSON input), then returns a
-     * result array shaped like a regular Messages response so the shared tool loop and
-     * result builder can reuse it.
+     * Yields each answer text delta as it arrives while reassembling the content blocks
+     * (text, thinking and tool_use with their accumulated JSON input), then returns a result
+     * array shaped like a regular Messages response (via the generator return value) so the
+     * shared tool loop and result builder can reuse it.
      *
-     * @param array<string, mixed> $params Request payload with streaming enabled
-     * @param callable $callback Text delta consumer
-     * @return array<string, mixed> Reassembled API result
+     * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
+     * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
      */
-    private function streamMessage( array $params, callable $callback ) : array
+    private function streamTurnMessage( \Psr\Http\Message\StreamInterface $body ) : \Generator
     {
         /** @var array<string, mixed> $message */
         $message = [];
@@ -329,9 +393,11 @@ class Anthropic extends Base implements Stream, Structure, Write
         /** @var array<string, mixed> $usage */
         $usage = [];
 
-        foreach( $this->streamData( 'v1/messages', $params ) as $event )
+        foreach( $this->streamData( $body ) as $event )
         {
-            $idx = $event['index'] ?? 0;
+            // the block index comes from the server; validate it so a malformed/hostile stream
+            // cannot inflate the block map with a huge or sparse key
+            $idx = $this->streamSlot( $event['index'] ?? 0, count( $blocks ), 0 );
 
             switch( $event['type'] ?? '' )
             {
@@ -361,7 +427,7 @@ class Anthropic extends Base implements Stream, Structure, Write
                             $blocks[$idx]['text'] = ( $blocks[$idx]['text'] ?? '' ) . $text;
 
                             if( $text !== '' ) {
-                                $callback( $text );
+                                yield $text;
                             }
                             break;
 

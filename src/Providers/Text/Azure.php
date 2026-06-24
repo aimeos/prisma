@@ -14,16 +14,14 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Azure extends Base implements Stream, Structure, Vectorize, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
         $model = (string) $this->modelName( 'gpt-4o' );
+        $endpoint = $this->endpoint( $model, 'chat/completions' );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->completions(
-            $this->endpoint( $model, 'chat/completions' ), $model,
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        return $this->streamCompletions( $endpoint, $model, $messages, $options );
     }
 
 

@@ -4,67 +4,78 @@ namespace Aimeos\Prisma\Concerns;
 
 
 /**
- * Asynchronous response polling.
+ * Deferred response resolution by polling an async job.
  */
 trait Async
 {
-    private ?\Closure $async = null;
-    private int $retry = 5;
-
-
-    /**
-     * Returns whether the response is empty.
-     *
-     * @return bool True if empty
-     */
-    abstract public function empty() : bool;
+    private ?\Closure $asyncPoll = null;
+    private bool $asyncDone = true;
+    private int $asyncRetry = 5;
 
 
     /**
      * Creates a new instance with an async polling closure.
      *
-     * @param \Closure $closure Polling closure that populates the response
+     * @param \Closure $closure Polling closure that populates the response and returns true when done
      * @param int $retry Seconds between polling attempts
      * @return static New instance
      */
     public static function fromAsync( \Closure $closure, int $retry = 5 ) : static
     {
         $instance = new static;
-        $instance->async = $closure;
-        $instance->retry = $retry;
+        $instance->asyncPoll = $closure;
+        $instance->asyncRetry = $retry;
+        $instance->asyncDone = false;
 
         return $instance;
     }
 
 
     /**
-     * Returns whether the async response is ready.
+     * Returns whether the polled job has completed.
      *
-     * @return bool True if ready or not async
+     * Performs a single non-blocking poll; an eagerly built response is ready immediately.
+     *
+     * This reflects the async/poll lifecycle only. A response backed by a live stream (see
+     * the Stream trait) leaves the poll flag untouched, so ready() returns true for it
+     * regardless of how much of the stream has been consumed - drain the stream (iterate
+     * stream() or read a text accessor) to assemble a streamed response, do not gate on
+     * ready().
+     *
+     * @return bool True if the async job has completed
      */
     public function ready() : bool
     {
-        if( !$this->async ) {
+        if( $this->asyncDone ) {
             return true;
         }
 
-        $closure = $this->async;
+        $closure = $this->asyncPoll;
 
-        return (bool) $closure( $this );
+        if( $closure && $closure( $this ) ) {
+            $this->asyncDone = true;
+        }
+
+        return $this->asyncDone;
     }
 
 
     /**
-     * Blocks until the async response is ready.
+     * Blocks by polling until the response is populated.
      */
     protected function wait() : void
     {
-        if( !$this->empty() || !( $closure = $this->async ) ) {
+        if( $this->asyncDone ) {
             return;
         }
 
-        while( !$closure( $this ) ) {
-            sleep( $this->retry );
+        if( $closure = $this->asyncPoll )
+        {
+            while( !$closure( $this ) ) {
+                sleep( $this->asyncRetry );
+            }
+
+            $this->asyncDone = true;
         }
     }
 }

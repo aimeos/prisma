@@ -16,9 +16,11 @@ class OllamaTest extends TestCase
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
             ->ensure( 'stream' )
-            ->stream( 'Reply with just the word "hello" in lowercase, nothing else.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) { $deltas[] = $chunk; }
-            } );
+            ->stream( 'Reply with just the word "hello" in lowercase, nothing else.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) { $deltas[] = $chunk; }
+        }
 
         $this->assertNotEmpty( $deltas );
         $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
@@ -50,13 +52,15 @@ class OllamaTest extends TestCase
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
             ->withMaxSteps( 5 )
             ->ensure( 'stream' )
-            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$steps, &$text ) {
-                if( is_string( $chunk ) ) {
-                    $text .= $chunk;
-                } else {
-                    $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
-                }
-            } );
+            ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                $text .= $chunk;
+            } else {
+                $steps[] = $chunk->name() . ':' . ( $chunk->done() ? 'done' : 'start' );
+            }
+        }
 
         $this->assertContains( 'get_next_passphrase:start', $steps );
         $this->assertContains( 'get_next_passphrase:done', $steps );

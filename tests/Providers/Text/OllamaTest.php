@@ -25,9 +25,11 @@ class OllamaTest extends TestCase
         $response = $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'Say hello' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'http://localhost:11434/v1/chat/completions', (string) $request->getUri() );
@@ -50,10 +52,12 @@ class OllamaTest extends TestCase
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
             . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
 
-        $this->prisma( 'text', 'ollama', [] )
+        $response = $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {}
     }
 
 
@@ -69,9 +73,11 @@ class OllamaTest extends TestCase
         $response = $this->prisma( 'text', 'ollama', [] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         // reasoning is not streamed to the callback but is kept on the response meta
         $this->assertSame( ['Answer'], $deltas );
@@ -101,13 +107,15 @@ class OllamaTest extends TestCase
 
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
-            ->stream( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
-                // Read Step state inside the callback: the same instance is reused for
-                // both the started and completed notifications.
-                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
-                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
-                    : $chunk;
-            } );
+            ->stream( 'Ping the tool' );
+
+        foreach( $response->stream() as $chunk ) {
+            // Read Step state inside the loop: the same instance is reused for
+            // both the started and completed notifications.
+            $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                : $chunk;
+        }
 
         // call started (no result), call completed (result), then the final text delta
         $this->assertSame( 'ping', $chunks[0]['name'] );

@@ -285,6 +285,94 @@ class MistralTest extends TestCase
     }
 
 
+    public function testStreamWithProviderToolsIterable() : void
+    {
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] );
+
+        $this->response( ['id' => 'agent_123'] );
+        $this->response( [
+            'choices' => [['message' => ['content' => 'Search result'], 'finish_reason' => 'stop']],
+            'usage' => ['total_tokens' => 10]
+        ] );
+
+        $response = $this->provider()->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'stream' )
+            ->stream( 'Search for something' );
+
+        $chunks = [];
+
+        foreach( $response->stream() as $chunk ) {
+            $chunks[] = $chunk;
+        }
+
+        // the non-streamable Agents path still delivers its answer through stream()
+        $this->assertSame( ['Search result'], $chunks );
+        $this->assertEquals( 'Search result', $response->text() );
+        $this->assertEquals( 10, $response->usage()['used'] );
+    }
+
+
+    public function testStreamWithProviderToolsErrorIsEager() : void
+    {
+        // the Agents API is not streamable, but an HTTP/auth error must still surface at the
+        // stream() call (like every other provider), not later when the response is iterated
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( ['error' => ['message' => 'Invalid API key']], [], 401 )
+            ->ensure( 'stream' );
+
+        $this->provider()->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->stream( 'Search for something' );
+    }
+
+
+    public function testStreamWithProviderToolsKeepsFalsyContent() : void
+    {
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] );
+
+        $this->response( ['id' => 'agent_123'] );
+        $this->response( [
+            'choices' => [['message' => ['content' => '0'], 'finish_reason' => 'stop']],
+            'usage' => ['total_tokens' => 1]
+        ] );
+
+        $response = $this->provider()->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'stream' )
+            ->stream( 'Answer with just zero' );
+
+        $chunks = [];
+
+        foreach( $response->stream() as $chunk ) {
+            $chunks[] = $chunk;
+        }
+
+        // "0" is a valid answer and must not be dropped by a truthiness check
+        $this->assertSame( ['0'], $chunks );
+        $this->assertSame( '0', $response->text() );
+    }
+
+
+    public function testStreamWithProviderToolsSurfacesRateLimit() : void
+    {
+        $this->prisma( 'text', 'mistral', ['api_key' => 'test'] );
+
+        $this->response( ['id' => 'agent_123'] );
+        $this->response( [
+            'choices' => [['message' => ['content' => 'Search result'], 'finish_reason' => 'stop']],
+            'usage' => ['total_tokens' => 10]
+        ], ['x-ratelimit-remaining' => '42'] );
+
+        $response = $this->provider()->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'stream' )
+            ->stream( 'Search for something' );
+
+        // the Agents API runs eagerly, so the rate limit from its response is surfaced before the
+        // stream is drained - like every SSE streaming path, not dropped as it was previously
+        $this->assertSame( 42, $response->rateLimit()?->remaining() );
+    }
+
+
     public function testWriteWithProviderTools() : void
     {
         $this->prisma( 'text', 'mistral', ['api_key' => 'test'] );

@@ -14,14 +14,12 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Gemini extends Base implements Stream, Structure, Vectorize, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
+        $contents = array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] );
 
-        return $this->generate(
-            array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
-            $options, $callback
-        );
+        return $this->streamGenerate( $contents, $options );
     }
 
 
@@ -204,19 +202,70 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
 
     /**
-     * Runs the tool loop for the Gemini API.
+     * Runs the Gemini tool loop, drained eagerly into a TextResponse.
      *
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Pre-filtered request options
-     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      */
-    private function generate( array $contents, array $options, ?callable $callback = null ) : TextResponse
+    private function generate( array $contents, array $options ) : TextResponse
+    {
+        return TextResponse::fromStream( fn( TextResponse $res ) => $this->runGenerate( $res, $contents, $options, false, $this->toolsParam() ) )->resolve();
+    }
+
+
+    /**
+     * Streams the Gemini tool loop as a lazy TextResponse.
+     *
+     * Lazy dual of generate(): iterate the returned response to consume answer text deltas
+     * and tool steps live; any accessor drains the stream and assembles the final response.
+     *
+     * @param array<int, array<string, mixed>> $contents Chat contents
+     * @param array<string, mixed> $options Pre-filtered request options
+     */
+    private function streamGenerate( array $contents, array $options ) : TextResponse
+    {
+        $model = $this->modelName( 'gemini-3.5-flash' );
+        $toolsParam = $this->toolsParam();
+        $system = ( $prompt = $this->systemPrompt() ) ? [
+            'systemInstruction' => ['parts' => [['text' => $prompt]]]
+        ] : [];
+
+        $params = $this->generateRequest( $system, $contents, $options, 1, $toolsParam );
+
+        return $this->streamResponse( $this->streamEndpoint( $model ), $params, fn( $res, $body, $rateLimit ) =>
+            $this->runGenerate( $res, $contents, $options, true, $toolsParam, $body, $rateLimit )
+        );
+    }
+
+
+    /**
+     * Runs the Gemini tool loop, optionally streaming.
+     *
+     * Single loop shared by write() (drained eagerly via generate()) and stream() (iterated
+     * lazily via fromStream()). The only per-mode difference is the transport: streaming uses
+     * the SSE endpoint and yields each answer text delta as it arrives, non-streaming POSTs
+     * once per turn. Tool calls always run through execStream(), so each
+     * \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when drained).
+     * Includes the MALFORMED_FUNCTION_CALL force-retry. The assembled result is folded into
+     * the given response when the loop ends.
+     *
+     * @param TextResponse $res Response to populate when the loop ends
+     * @param array<int, array<string, mixed>> $contents Chat contents
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @param bool $stream Whether to stream the generation over SSE
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload, built once by the caller
+     * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn
+     * @param \Aimeos\Prisma\Values\RateLimit|null $firstRateLimit Rate limit captured from the eagerly opened first turn
+     * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
+     */
+    private function runGenerate( TextResponse $res, array $contents, array $options, bool $stream, array $toolsParam, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\Aimeos\Prisma\Values\RateLimit $firstRateLimit = null ) : \Generator
     {
         $model = $this->modelName( 'gemini-3.5-flash' );
         $allSteps = [];
         $calls = [];
-        $rateLimit = null;
+        $rateLimit = $firstRateLimit;
         $texts = [];
+        /** @var array<string, mixed> $data */
         $data = [];
 
         $system = ( $prompt = $this->systemPrompt() ) ? [
@@ -230,28 +279,30 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
             do
             {
-                $request = $this->generateRequest( $system, $contents, $options, $step );
-
-                // Gemini 2.5 can return MALFORMED_FUNCTION_CALL with empty parts when it tries
-                // to emit a large or complex tool call in AUTO mode. Forcing a function call
-                // (mode ANY) on a single retry makes it produce a well-formed call instead of
-                // silently ending the tool loop with no result.
-                if( $force ) {
-                    $request['toolConfig'] = ['functionCallingConfig' => ['mode' => 'ANY']];
-                }
-
-                if( $callback !== null )
+                // Gemini 2.5 can return MALFORMED_FUNCTION_CALL with empty parts when it tries to
+                // emit a large or complex tool call in AUTO mode; $force makes generateRequest()
+                // request a function call (mode ANY) on a single retry so it produces a well-formed
+                // call instead of silently ending the tool loop with no result.
+                if( $stream )
                 {
-                    $data = $this->streamGenerate( $model, $request, $callback );
-                    $rateLimit = $this->streamRateLimit;
+                    // The first streamed turn reuses the eagerly opened body (the wrapper already
+                    // built and sent that request); later turns build and open their own.
+                    if( $firstBody !== null ) {
+                        $body = $firstBody;
+                        $firstBody = null;
+                    } else {
+                        $body = $this->openStream( $this->streamEndpoint( $model ), $this->generateRequest( $system, $contents, $options, $step, $toolsParam, $force ), $rateLimit );
+                    }
+
+                    $turn = $this->streamTurnGenerate( $body );
+                    yield from $turn;                       // answer text deltas
+                    $data = $turn->getReturn();
                 }
                 else
                 {
-                    $response = $this->client()->post( $this->generateEndpoint( $model ), ['json' => $request] );
-
+                    $response = $this->client()->post( $this->generateEndpoint( $model ), ['json' => $this->generateRequest( $system, $contents, $options, $step, $toolsParam, $force )] );
                     $this->validate( $response );
-
-                    $rateLimit = $this->getRateLimit( $response );
+                    $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
                     $data = $this->fromJson( $response );
                 }
 
@@ -274,7 +325,10 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                 break;
             }
 
-            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
+            $exec = $this->execStream( $toolCalls, $calls );
+            yield from $exec;                       // tool steps before and after execution
+            $toolResults = $exec->getReturn();
+
             array_push( $allSteps, ...$toolResults );
 
             $first = current( $candidates );
@@ -285,7 +339,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             $contents = array_merge( $contents, $this->toolResults( $toolResults ) );
         }
 
-        return $this->result( $data, $allSteps, $texts, $rateLimit );
+        $this->applyGemini( $res, $data, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -296,9 +350,11 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Request options
      * @param int $step Current step in the tool loop (1-based)
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload (hoisted out of the per-turn loop)
+     * @param bool $force Force a function call (mode ANY) for the MALFORMED_FUNCTION_CALL retry
      * @return array<string, mixed> Request payload
      */
-    private function generateRequest( array $system, array $contents, array $options, int $step ) : array
+    private function generateRequest( array $system, array $contents, array $options, int $step, array $toolsParam, bool $force = false ) : array
     {
         // service_tier (Flex Inference) is a top-level request field, not a generationConfig
         // entry, so it is pulled out before the remaining options are merged into the config.
@@ -328,8 +384,8 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             $request['service_tier'] = $serviceTier;
         }
 
-        if( $tools = $this->toolsParam() ) {
-            $request['tools'] = $tools;
+        if( $toolsParam ) {
+            $request['tools'] = $toolsParam;
 
             // Apply the configured tool choice only on the first step so the
             // model can produce a final text answer after calling the tools.
@@ -351,6 +407,12 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             if( $toolConfig ) {
                 $request['toolConfig'] = $toolConfig;
             }
+        }
+
+        // A MALFORMED_FUNCTION_CALL retry forces a function call (mode ANY) so the model emits a
+        // well-formed call instead of silently ending the tool loop with no result.
+        if( $force ) {
+            $request['toolConfig'] = ['functionCallingConfig' => ['mode' => 'ANY']];
         }
 
         return $request;
@@ -406,15 +468,19 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
 
     /**
-     * Builds the TextResponse from a Gemini API result.
+     * Populates a TextResponse from a Gemini API result.
      *
+     * Shared by the non-streaming and streaming paths: the streaming loop folds its
+     * already-created response so text, usage, meta, citations and steps surface on the
+     * same instance the caller holds once the stream is drained.
+     *
+     * @param TextResponse $res Response to populate
      * @param array<string, mixed> $data API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
-     * @return TextResponse Text response
      */
-    private function result( array $data, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : TextResponse
+    private function applyGemini( TextResponse $res, array $data, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {
         /** @var array<int, array<string, mixed>> $candidates */
         $candidates = $data['candidates'] ?? [];
@@ -444,8 +510,9 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
         /** @var array<string, mixed> $usage */
         $usage = $data['usageMetadata'] ?? [];
 
-        return TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
+        $res->addAll( $texts );
+
+        $res->withSteps( $allSteps )
             ->withCitations( $citations )
             ->withReason( match( $first['finishReason'] ?? null ) {
                 'STOP' => TextResponse::STOP,
@@ -463,19 +530,17 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
 
     /**
-     * Streams a Gemini generateContent request and rebuilds the non-streaming result.
+     * Streams a Gemini generateContent request, yielding deltas and returning the result.
      *
-     * Forwards each answer-text delta to the callback while accumulating the streamed
-     * parts (answer text, thinking and the complete functionCall parts), then returns a
-     * result array shaped like a regular generateContent response so the shared tool
-     * loop and result builder can reuse it.
+     * Yields each answer-text delta as it arrives while accumulating the streamed parts
+     * (answer text, thinking and the complete functionCall parts), then returns a result
+     * array shaped like a regular generateContent response (via the generator return value)
+     * so the shared tool loop and result builder can reuse it.
      *
-     * @param string|null $model Model name
-     * @param array<string, mixed> $request Request payload
-     * @param callable $callback Text delta consumer
-     * @return array<string, mixed> Reassembled API result
+     * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
+     * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
      */
-    private function streamGenerate( ?string $model, array $request, callable $callback ) : array
+    private function streamTurnGenerate( \Psr\Http\Message\StreamInterface $body ) : \Generator
     {
         $text = '';
         $thinking = '';
@@ -488,11 +553,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
         /** @var array<string, mixed> $usage */
         $usage = [];
 
-        // The "alt=sse" query switches the streaming endpoint to Server-Sent Events;
-        // without it Gemini returns one large JSON array instead of one event per chunk.
-        $endpoint = $this->streamEndpoint( $model );
-
-        foreach( $this->streamData( $endpoint, $request ) as $event )
+        foreach( $this->streamData( $body ) as $event )
         {
             /** @var array<int, array<string, mixed>> $candidates */
             $candidates = $event['candidates'] ?? [];
@@ -510,7 +571,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                     $thinking .= $part['text'] ?? '';
                 } elseif( ( $chunk = $part['text'] ?? '' ) !== '' ) {
                     $text .= $chunk;
-                    $callback( $chunk );
+                    yield $chunk;
                 }
 
                 // Gemini 3 thinking emits a thoughtSignature only once per turn; capture

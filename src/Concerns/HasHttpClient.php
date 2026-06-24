@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Concerns;
 use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Handler\StreamHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use Psr\Http\Message\ResponseInterface;
@@ -16,10 +17,13 @@ use Psr\Http\Message\ResponseInterface;
 trait HasHttpClient
 {
     private Client $client;
+    private Client $streamClient;
     private ?HandlerStack $clientHandler = null;
 
     /** @var callable|null */
     private $retryMiddleware = null;
+
+    private bool $retryApplied = false;
 
     /** @var array<string, mixed> */
     private array $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
@@ -107,20 +111,68 @@ trait HasHttpClient
      */
     protected function client() : Client
     {
-        if( !isset( $this->client ) )
-        {
-            $handler = $this->clientHandler;
-
-            if( $this->retryMiddleware )
-            {
-                $handler = $handler ?? HandlerStack::create();
-                $handler->push( $this->retryMiddleware );
-            }
-
-            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $handler] );
+        if( !isset( $this->client ) ) {
+            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->handler( null )] );
         }
 
         return $this->client;
+    }
+
+
+    /**
+     * Returns the HTTP client used for streaming requests, creating it on first use.
+     *
+     * Streaming uses Guzzle's StreamHandler rather than the default cURL handler: only the
+     * StreamHandler honors the per-read inactivity timeout (read_timeout) and exposes the
+     * "timed_out" stream metadata that readLines() relies on to detect a stalled stream - cURL
+     * ignores read_timeout, so a stalled stream could otherwise pin the process. A handler set
+     * explicitly via withClientHandler() (e.g. a test mock) is respected unchanged and shared with
+     * the non-streaming client. Configured retry behaviour applies to both clients alike.
+     *
+     * @return Client Guzzle HTTP client for streaming
+     */
+    protected function streamClient() : Client
+    {
+        if( !isset( $this->streamClient ) ) {
+            $this->streamClient = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->handler( new StreamHandler() )] );
+        }
+
+        return $this->streamClient;
+    }
+
+
+    /**
+     * Builds a handler stack for a client, adding the retry middleware when configured.
+     *
+     * A handler set explicitly via withClientHandler() backs both the streaming and non-streaming
+     * client; it is augmented with the retry middleware only once so the shared stack is never
+     * wrapped twice. Otherwise a fresh stack is created around the given base handler - the default
+     * (cURL) handler for normal requests, the StreamHandler for streaming - and the retry middleware
+     * is pushed onto each so streamed and non-streamed requests retry identically.
+     *
+     * @param callable|null $base Base handler for a self-created stack, or null for Guzzle's default
+     * @return HandlerStack Configured handler stack
+     */
+    private function handler( ?callable $base ) : HandlerStack
+    {
+        if( isset( $this->clientHandler ) )
+        {
+            if( $this->retryMiddleware && !$this->retryApplied )
+            {
+                $this->clientHandler->push( $this->retryMiddleware );
+                $this->retryApplied = true;
+            }
+
+            return $this->clientHandler;
+        }
+
+        $handler = $base ? HandlerStack::create( $base ) : HandlerStack::create();
+
+        if( $this->retryMiddleware ) {
+            $handler->push( $this->retryMiddleware );
+        }
+
+        return $handler;
     }
 
 

@@ -15,65 +15,142 @@ trait OpenaiApi
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
-     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options, ?callable $callback = null ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function completions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        return \Aimeos\Prisma\Responses\TextResponse::fromStream(
+            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $this->runCompletions( $res, $endpoint, $defaultModel, $messages, $options, false, $this->toolsParam(), $this->toolChoiceParam() )
+        )->resolve();
+    }
+
+
+    /**
+     * Streams the chat completions tool loop as a lazy TextResponse for OpenAI-compatible APIs.
+     *
+     * Lazy dual of completions(): iterate the returned response to consume answer text deltas
+     * and tool steps live; any accessor drains the stream and assembles the final response.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Lazy streaming text response
+     */
+    protected function streamCompletions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $toolsParam = $this->toolsParam();
+        $toolChoice = $this->toolChoiceParam();
+        $params = $this->completionParams( $defaultModel, $messages, $options, 1, true, $toolsParam, $toolChoice );
+
+        return $this->streamResponse( $endpoint, $params, fn( $res, $body, $rateLimit ) =>
+            $this->runCompletions( $res, $endpoint, $defaultModel, $messages, $options, true, $toolsParam, $toolChoice, $body, $rateLimit )
+        );
+    }
+
+
+    /**
+     * Builds the request payload for one chat completions turn.
+     *
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Provider specific options
+     * @param int $step Current step in the tool loop (1-based)
+     * @param bool $stream Whether to enable SSE streaming
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload (hoisted out of the per-turn loop)
+     * @param string|null $toolChoice Pre-built tool choice applied on the first step
+     * @return array<string, mixed> Request payload
+     */
+    protected function completionParams( string $defaultModel, array $messages, array $options, int $step, bool $stream, array $toolsParam, ?string $toolChoice ) : array
+    {
+        $params = [
+            'model' => $this->modelName( $defaultModel ),
+            'messages' => $messages,
+        ] + ( $stream ? ['stream' => true, 'stream_options' => ['include_usage' => true]] : [] ) + $options;
+
+        if( $this->maxTokens() ) {
+            $params['max_tokens'] = $this->maxTokens();
+        }
+
+        if( $thinkingBudget = $this->thinkingBudget() ) {
+            $params['reasoning_effort'] = match( true ) {
+                $thinkingBudget <= 1024 => 'low',
+                $thinkingBudget <= 8192 => 'medium',
+                default => 'high',
+            };
+        }
+
+        if( $toolsParam ) {
+            $params['tools'] = $toolsParam;
+
+            // Apply the configured tool choice only on the first step so the
+            // model can produce a final text answer after calling the tools.
+            $choice = $step === 1 ? $toolChoice : 'auto';
+
+            if( $choice !== null ) {
+                $params['tool_choice'] = $choice;
+            }
+        }
+
+        return $params;
+    }
+
+
+    /**
+     * Runs the chat completions tool loop, optionally streaming.
+     *
+     * Single loop shared by write() (drained eagerly via completions()) and stream()
+     * (iterated lazily via fromStream()). The only per-mode difference is the transport:
+     * streaming uses the SSE endpoint and yields each answer text delta as it arrives,
+     * non-streaming POSTs once per turn. Tool calls are always run through execStream(), so
+     * each \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when
+     * drained). The assembled result is folded into the given response when the loop ends.
+     *
+     * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate when the loop ends
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Provider specific options
+     * @param bool $stream Whether to stream the generation over SSE
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload, built once by the caller
+     * @param string|null $toolChoice Pre-built tool choice applied on the first step
+     * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn
+     * @param \Aimeos\Prisma\Values\RateLimit|null $firstRateLimit Rate limit captured from the eagerly opened first turn
+     * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
+     */
+    protected function runCompletions( \Aimeos\Prisma\Responses\TextResponse $res, string $endpoint, string $defaultModel, array $messages, array $options, bool $stream, array $toolsParam, ?string $toolChoice, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\Aimeos\Prisma\Values\RateLimit $firstRateLimit = null ) : \Generator
     {
         $allSteps = [];
         $calls = [];
         $texts = [];
+        /** @var array<string, mixed> $result */
         $result = [];
-        $rateLimit = null;
-        $toolsParam = $this->toolsParam();
-        $toolChoiceParam = $this->toolChoiceParam();
+        $rateLimit = $firstRateLimit;
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $params = [
-                'model' => $this->modelName( $defaultModel ),
-                'messages' => $messages,
-            ] + $options;
-
-            if( $this->maxTokens() ) {
-                $params['max_tokens'] = $this->maxTokens();
-            }
-
-            if( $thinkingBudget = $this->thinkingBudget() ) {
-                $params['reasoning_effort'] = match( true ) {
-                    $thinkingBudget <= 1024 => 'low',
-                    $thinkingBudget <= 8192 => 'medium',
-                    default => 'high',
-                };
-            }
-
-            if( $toolsParam ) {
-                $params['tools'] = $toolsParam;
-
-                // Apply the configured tool choice only on the first step so the
-                // model can produce a final text answer after calling the tools.
-                $choice = $step === 1 ? $toolChoiceParam : 'auto';
-
-                if( $choice !== null ) {
-                    $params['tool_choice'] = $choice;
-                }
-            }
-
-            if( $callback !== null )
+            if( $stream )
             {
-                $params['stream'] = true;
-                $params['stream_options'] = ['include_usage' => true];
+                if( $firstBody !== null ) {
+                    $body = $firstBody;     // first turn reuses the eagerly opened body and its rate limit
+                    $firstBody = null;
+                } else {
+                    $params = $this->completionParams( $defaultModel, $messages, $options, $step, true, $toolsParam, $toolChoice );
+                    $body = $this->openStream( $endpoint, $params, $rateLimit );
+                }
 
-                $result = $this->streamCompletion( $endpoint, $params, $callback );
-                $rateLimit = $this->streamRateLimit;
+                $turn = $this->streamTurnCompletion( $body );
+                yield from $turn;                       // answer text deltas
+                $result = $turn->getReturn();
             }
             else
             {
+                $params = $this->completionParams( $defaultModel, $messages, $options, $step, false, $toolsParam, $toolChoice );
                 $response = $this->client()->post( $endpoint, ['json' => $params] );
 
                 $this->validate( $response );
 
-                $rateLimit = $this->getRateLimit( $response );
+                $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
                 $result = $this->fromJson( $response );
             }
 
@@ -88,13 +165,16 @@ trait OpenaiApi
 
             /** @var array<int, array<string, mixed>> $choices */
             $choices = $result['choices'] ?? [];
-            $toolResults = $this->execTools( $toolCalls, $calls, $callback );
+            $exec = $this->execStream( $toolCalls, $calls );
+            yield from $exec;                       // tool steps before and after execution
+            $toolResults = $exec->getReturn();
+
             array_push( $allSteps, ...$toolResults );
             $messages[] = $choices[0]['message'] ?? ['role' => 'assistant', 'content' => null];
             $messages = array_merge( $messages, $this->toolResults( $toolResults ) );
         }
 
-        return $this->completionResult( $result, $allSteps, $texts, $rateLimit );
+        $this->applyCompletion( $res, $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -255,65 +335,144 @@ trait OpenaiApi
 
 
     /**
-     * Runs the Responses API tool loop (used by OpenAI and xAI).
+     * Runs the Responses API tool loop, drained eagerly into a TextResponse (used by OpenAI and xAI).
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
-     * @param callable|null $callback Stream consumer enabling SSE streaming when set
      * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options, ?callable $callback = null ) : \Aimeos\Prisma\Responses\TextResponse
+    protected function responses( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        return \Aimeos\Prisma\Responses\TextResponse::fromStream(
+            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $this->runResponses( $res, $endpoint, $defaultModel, $messages, $options, false, $this->toolsParam(), $this->toolChoiceParam() )
+        )->resolve();
+    }
+
+
+    /**
+     * Streams the Responses API tool loop as a lazy TextResponse (used by OpenAI and xAI).
+     *
+     * Lazy dual of responses(): iterate the returned response to consume answer text deltas
+     * and tool steps live; any accessor drains the stream and assembles the final response.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Input items
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Lazy streaming text response
+     */
+    protected function streamResponses( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $toolsParam = $this->toolsParam();
+        $toolChoice = $this->toolChoiceParam();
+        $params = $this->responseParams( $defaultModel, $messages, $options, 1, true, $toolsParam, $toolChoice );
+
+        return $this->streamResponse( $endpoint, $params, fn( $res, $body, $rateLimit ) =>
+            $this->runResponses( $res, $endpoint, $defaultModel, $messages, $options, true, $toolsParam, $toolChoice, $body, $rateLimit )
+        );
+    }
+
+
+    /**
+     * Builds the request payload for one Responses API turn.
+     *
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Input items
+     * @param array<string, mixed> $options Provider specific options
+     * @param int $step Current step in the tool loop (1-based)
+     * @param bool $stream Whether to enable SSE streaming
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload (hoisted out of the per-turn loop)
+     * @param string|null $toolChoice Pre-built tool choice applied on the first step
+     * @return array<string, mixed> Request payload
+     */
+    protected function responseParams( string $defaultModel, array $messages, array $options, int $step, bool $stream, array $toolsParam, ?string $toolChoice ) : array
+    {
+        $params = [
+            'model' => $this->modelName( $defaultModel ),
+            'input' => $messages,
+        ] + ( $stream ? ['stream' => true] : [] ) + $options;
+
+        if( $this->maxTokens() ) {
+            $params['max_output_tokens'] = $this->maxTokens();
+        }
+
+        if( $prompt = $this->systemPrompt() ) {
+            $params['instructions'] = $prompt;
+        }
+
+        if( $toolsParam ) {
+            $params['tools'] = $toolsParam;
+
+            // Apply the configured tool choice only on the first step so the
+            // model can produce a final text answer after calling the tools.
+            $choice = $step === 1 ? $toolChoice : 'auto';
+
+            if( $choice !== null ) {
+                $params['tool_choice'] = $choice;
+            }
+        }
+
+        return $params;
+    }
+
+
+    /**
+     * Runs the Responses API tool loop, optionally streaming.
+     *
+     * Single loop shared by write() (drained eagerly via responses()) and stream() (iterated
+     * lazily via fromStream()). The only per-mode difference is the transport: streaming uses
+     * the SSE endpoint and yields each answer text delta as it arrives, non-streaming POSTs
+     * once per turn. Tool calls always run through execStream(), so each
+     * \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when drained).
+     * The assembled result is folded into the given response when the loop ends.
+     *
+     * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate when the loop ends
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Input items
+     * @param array<string, mixed> $options Provider specific options
+     * @param bool $stream Whether to stream the generation over SSE
+     * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload, built once by the caller
+     * @param string|null $toolChoice Pre-built tool choice applied on the first step
+     * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn
+     * @param \Aimeos\Prisma\Values\RateLimit|null $firstRateLimit Rate limit captured from the eagerly opened first turn
+     * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
+     */
+    protected function runResponses( \Aimeos\Prisma\Responses\TextResponse $res, string $endpoint, string $defaultModel, array $messages, array $options, bool $stream, array $toolsParam, ?string $toolChoice, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\Aimeos\Prisma\Values\RateLimit $firstRateLimit = null ) : \Generator
     {
         $allSteps = [];
         $calls = [];
         $texts = [];
+        /** @var array<string, mixed> $result */
         $result = [];
-        $rateLimit = null;
-        $tools = $this->toolsParam();
-        $toolChoice = $this->toolChoiceParam();
+        $rateLimit = $firstRateLimit;
 
         for( $step = 1; $step <= $this->maxSteps(); $step++ )
         {
-            $params = [
-                'model' => $this->modelName( $defaultModel ),
-                'input' => $messages,
-            ] + $options;
-
-            if( $this->maxTokens() ) {
-                $params['max_output_tokens'] = $this->maxTokens();
-            }
-
-            if( $prompt = $this->systemPrompt() ) {
-                $params['instructions'] = $prompt;
-            }
-
-            if( $tools ) {
-                $params['tools'] = $tools;
-
-                // Apply the configured tool choice only on the first step so the
-                // model can produce a final text answer after calling the tools.
-                $choice = $step === 1 ? $toolChoice : 'auto';
-
-                if( $choice !== null ) {
-                    $params['tool_choice'] = $choice;
-                }
-            }
-
-            if( $callback !== null )
+            if( $stream )
             {
-                $params['stream'] = true;
-                $result = $this->streamResponse( $endpoint, $params, $callback );
-                $rateLimit = $this->streamRateLimit;
+                if( $firstBody !== null ) {
+                    $body = $firstBody;     // first turn reuses the eagerly opened body and its rate limit
+                    $firstBody = null;
+                } else {
+                    $params = $this->responseParams( $defaultModel, $messages, $options, $step, true, $toolsParam, $toolChoice );
+                    $body = $this->openStream( $endpoint, $params, $rateLimit );
+                }
+
+                $turn = $this->streamTurn( $body );
+                yield from $turn;                       // answer text deltas
+                $result = $turn->getReturn();
             }
             else
             {
+                $params = $this->responseParams( $defaultModel, $messages, $options, $step, false, $toolsParam, $toolChoice );
                 $response = $this->client()->post( $endpoint, ['json' => $params] );
 
                 $this->validate( $response );
 
-                $rateLimit = $this->getRateLimit( $response );
+                $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
                 $result = $this->fromJson( $response );
             }
 
@@ -328,14 +487,17 @@ trait OpenaiApi
                 break;
             }
 
-            $toolResults = $this->execTools( $parsed['toolCalls'], $calls, $callback );
+            $exec = $this->execStream( $parsed['toolCalls'], $calls );
+            yield from $exec;                       // tool steps before and after execution
+            $toolResults = $exec->getReturn();
+
             array_push( $allSteps, ...$toolResults );
             // Responses API expects the output items (function_call, message, reasoning)
             // appended verbatim as top-level input items, not wrapped in an assistant message.
             $messages = array_merge( $messages, $output, $this->responseSteps( $toolResults ) );
         }
 
-        return $this->responseResult( $result, $allSteps, $texts, $rateLimit );
+        $this->applyResult( $res, $result, $allSteps, $texts, $rateLimit );
     }
 
 
@@ -566,15 +728,19 @@ trait OpenaiApi
 
 
     /**
-     * Builds the TextResponse from a chat completions API result.
+     * Populates a TextResponse from a chat completions API result.
      *
+     * Shared by the non-streaming and streaming paths: the streaming loop folds its
+     * already-created response so text, usage, meta, citations and steps surface on the
+     * same instance the caller holds once the stream is drained.
+     *
+     * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
-     * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    private function completionResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    private function applyCompletion( \Aimeos\Prisma\Responses\TextResponse $res, array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {
         /** @var array<int, array<string, mixed>> $choices */
         $choices = $result['choices'] ?? [];
@@ -608,8 +774,9 @@ trait OpenaiApi
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
-        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
+        $res->addAll( $texts );
+
+        $res->withSteps( $allSteps )
             ->withCitations( $citations )
             ->withReason( match( $choices[0]['finish_reason'] ?? null ) {
                 'stop' => \Aimeos\Prisma\Responses\TextResponse::STOP,
@@ -784,15 +951,19 @@ trait OpenaiApi
 
 
     /**
-     * Builds the TextResponse from a Responses API result.
+     * Populates a TextResponse from a Responses API result.
      *
+     * Shared by the non-streaming and streaming paths: the streaming loop folds its
+     * already-created response so usage, meta, citations and steps surface on the same
+     * instance the caller holds once the stream is drained.
+     *
+     * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
-     * @return \Aimeos\Prisma\Responses\TextResponse Text response
      */
-    private function responseResult( array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : \Aimeos\Prisma\Responses\TextResponse
+    private function applyResult( \Aimeos\Prisma\Responses\TextResponse $res, array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {
         $parsed = $this->responseOutput( $result['output'] ?? [], $texts );
 
@@ -806,8 +977,9 @@ trait OpenaiApi
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];
 
-        return \Aimeos\Prisma\Responses\TextResponse::fromTexts( $texts )
-            ->withSteps( $allSteps )
+        $res->addAll( $texts );
+
+        $res->withSteps( $allSteps )
             ->withCitations( $parsed['citations'] )
             ->withReason( match( $result['status'] ?? null ) {
                 'completed' => \Aimeos\Prisma\Responses\TextResponse::STOP,
@@ -848,19 +1020,17 @@ trait OpenaiApi
 
 
     /**
-     * Streams a chat completions request and rebuilds the non-streaming result.
+     * Streams a chat completions request, yielding each text delta and returning the result.
      *
-     * Forwards each text delta to the callback while accumulating the assistant
-     * content, reasoning, citations and tool call argument fragments, then returns a
-     * result array shaped like a regular chat completions response so the shared tool
-     * loop and result builder can reuse it.
+     * Yields each assistant content delta as it arrives while accumulating the content,
+     * reasoning, citations and tool call argument fragments, then returns a result array
+     * shaped like a regular chat completions response (via the generator return value) so
+     * the shared tool loop and result builder can reuse it.
      *
-     * @param string $endpoint API endpoint path
-     * @param array<string, mixed> $params Request payload with streaming enabled
-     * @param callable $callback Text delta consumer
-     * @return array<string, mixed> Reassembled API result
+     * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
+     * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
      */
-    private function streamCompletion( string $endpoint, array $params, callable $callback ) : array
+    private function streamTurnCompletion( \Psr\Http\Message\StreamInterface $body ) : \Generator
     {
         $content = '';
         $reasoning = '';
@@ -875,10 +1045,11 @@ trait OpenaiApi
         $tools = [];
         $current = 0;
 
-        foreach( $this->streamData( $endpoint, $params ) as $event )
+        foreach( $this->streamData( $body ) as $event )
         {
-            // Keep the envelope fields (id, model, created, ...) so meta() matches the non-streaming
-            // response; later chunks win per key so the final resolved values are reported.
+            // Accumulate the envelope fields (id, model, created, ...) so meta() matches the
+            // non-streaming response; later chunks win per key. The transient choices/usage/
+            // citations are dropped here rather than copied on every chunk and re-added below.
             $meta = array_diff_key( $event, ['choices' => true, 'usage' => true, 'citations' => true] ) + $meta;
 
             if( isset( $event['usage'] ) && is_array( $event['usage'] ) ) {
@@ -902,7 +1073,7 @@ trait OpenaiApi
             if( isset( $delta['content'] ) && is_string( $delta['content'] ) && $delta['content'] !== '' )
             {
                 $content .= $delta['content'];
-                $callback( $delta['content'] );
+                yield $delta['content'];
             }
 
             // DeepSeek/Groq stream "reasoning_content", OpenRouter streams "reasoning"
@@ -917,9 +1088,10 @@ trait OpenaiApi
 
             foreach( $calls as $call )
             {
-                // Prefer the provider index; fall back to a fresh slot for a new call
-                // (it carries an id) or the current slot for an argument-only fragment.
-                $i = $call['index'] ?? ( isset( $call['id'] ) ? count( $tools ) : $current );
+                // Correlate each fragment to its call by the provider-supplied index, which is
+                // present on every streamed tool-call delta (including argument-only fragments);
+                // fall back to the current slot when a provider omits it or sends an invalid index.
+                $i = $this->streamSlot( $call['index'] ?? $current, count( $tools ), $current );
                 $current = $i;
                 $tools[$i] ??= ['id' => null, 'type' => 'function', 'function' => ['name' => '', 'arguments' => '']];
 
@@ -949,6 +1121,11 @@ trait OpenaiApi
             $message['tool_calls'] = array_values( $tools );
         }
 
+        // Report the same "object" the non-streamed response does, not the per-chunk variant.
+        if( ( $meta['object'] ?? null ) === 'chat.completion.chunk' ) {
+            $meta['object'] = 'chat.completion';
+        }
+
         /** @var array<string, mixed> $result */
         $result = $meta + [
             'choices' => [['message' => $message, 'finish_reason' => $finish]],
@@ -964,30 +1141,28 @@ trait OpenaiApi
 
 
     /**
-     * Streams a Responses API request and returns the final response object.
+     * Streams a Responses API request, yielding each text delta and returning the result.
      *
-     * Forwards each output text delta to the callback. The terminal events
-     * (response.completed/incomplete/failed) carry the full response object, which
-     * is returned as-is so the shared Responses tool loop can reuse it.
+     * Yields each answer text delta as it arrives and captures the final response envelope
+     * (output, usage, status, ...) which is returned via the generator return value so the
+     * shared result builder can reuse it.
      *
-     * @param string $endpoint API endpoint path
-     * @param array<string, mixed> $params Request payload with streaming enabled
-     * @param callable $callback Text delta consumer
-     * @return array<string, mixed> Final response object
+     * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
+     * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
      */
-    private function streamResponse( string $endpoint, array $params, callable $callback ) : array
+    private function streamTurn( \Psr\Http\Message\StreamInterface $body ) : \Generator
     {
         /** @var array<string, mixed> $result */
         $result = [];
 
-        foreach( $this->streamData( $endpoint, $params ) as $event )
+        foreach( $this->streamData( $body ) as $event )
         {
             if( ( $event['type'] ?? '' ) === 'response.output_text.delta' )
             {
                 $delta = $event['delta'] ?? '';
 
                 if( is_string( $delta ) && $delta !== '' ) {
-                    $callback( $delta );
+                    yield $delta;
                 }
             }
             elseif( isset( $event['response'] ) && is_array( $event['response'] ) )

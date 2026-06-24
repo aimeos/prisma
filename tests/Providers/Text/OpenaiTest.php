@@ -29,14 +29,17 @@ class OpenaiTest extends TestCase
             . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
             . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
 
-        $deltas = [];
-
+        // consume the response as a pull generator (e.g. Laravel eventStream)
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'Say hello' );
+
+        $deltas = [];
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
@@ -47,6 +50,123 @@ class OpenaiTest extends TestCase
         $this->assertSame( ['Hello', ' world'], $deltas );
         $this->assertEquals( 'Hello world', $response->text() );
         $this->assertEquals( 9, $response->usage()['used'] );
+    }
+
+
+    public function testStreamLazyDrain() : void
+    {
+        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello world\"}\n\n"
+            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
+
+        // neither a callback nor stream() iteration: the accessor must drain the stream
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'Say hello' );
+
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 9, $response->usage()['used'] );
+    }
+
+
+    public function testStreamErrorIsEager() : void
+    {
+        // an HTTP/auth error must surface at the stream() call, before the body is iterated
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['error' => ['message' => 'Invalid API key']], [], 401 )
+            ->ensure( 'stream' )
+            ->stream( 'Say hello' );
+    }
+
+
+    public function testStreamMidStreamErrorThenAccessorDoesNotCrash() : void
+    {
+        // first delta arrives, then a streamed error event aborts the producer mid-stream
+        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
+            . "data: {\"error\":{\"message\":\"mid-stream boom\"}}\n\n";
+
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'Say hello' );
+
+        try {
+            foreach( $response->stream() as $chunk ) {}
+            $this->fail( 'expected a mid-stream error' );
+        } catch ( PrismaException $e ) {
+            $this->assertStringContainsString( 'mid-stream boom', $e->getMessage() );
+        }
+
+        // a later accessor must not re-enter the aborted generator (no secondary fatal)
+        $this->assertNull( $response->text() );
+        $this->assertTrue( $response->ready() );
+    }
+
+
+    public function testStreamEarlyBreakResumes() : void
+    {
+        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
+            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
+            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
+
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->stream( 'Say hello' );
+
+        // stop consuming after the first delta
+        foreach( $response->stream() as $chunk ) {
+            break;
+        }
+
+        // an accessor resumes the same stream and assembles the full result
+        $this->assertEquals( 'Hello world', $response->text() );
+        $this->assertEquals( 9, $response->usage()['used'] );
+    }
+
+
+    public function testStreamWithTools() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $turn1 = "data: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\n"
+            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"call_id\":\"call_1\",\"name\":\"ping\",\"arguments\":\"{}\"}],\"usage\":{\"total_tokens\":3}}}\n\n";
+
+        $turn2 = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"pong!\"}\n\n"
+            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"pong!\"}]}],\"usage\":{\"total_tokens\":12}}}\n\n";
+
+        $provider = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'stream' )
+            ->stream( 'Ping the tool' );
+
+        $chunks = [];
+
+        foreach( $response->stream() as $chunk ) {
+            // Snapshot Step state inside the loop: the same instance is reused for
+            // both the started and completed notifications.
+            $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                : $chunk;
+        }
+
+        // call started (no result), call completed (result), then the final text delta
+        $this->assertSame( 'ping', $chunks[0]['name'] );
+        $this->assertFalse( $chunks[0]['done'] );
+        $this->assertSame( 'ping', $chunks[1]['name'] );
+        $this->assertTrue( $chunks[1]['done'] );
+        $this->assertSame( 'pong', $chunks[1]['result'] );
+        $this->assertSame( 'pong!', $chunks[2] );
+
+        $this->assertEquals( 'pong!', $response->text() );
+        $this->assertCount( 1, $response->steps() );
+        $this->assertEquals( 'pong', $response->steps()[0]->result() );
+        $this->assertCount( 2, $this->requests() );
     }
 
 
