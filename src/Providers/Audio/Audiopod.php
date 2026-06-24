@@ -23,8 +23,8 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'X-API-Key', $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.audiopod.ai' ) );
+        $this->header( 'X-API-Key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.audiopod.ai' ) );
     }
 
 
@@ -54,9 +54,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
         }
 
         if( $audio->url() ) {
-            $request = $this->request( ['url' => $audio->url()] + $params );
+            $request = $this->payload( ['url' => $audio->url()] + $params );
         } else {
-            $request = $this->request( $params, ['file' => $audio] );
+            $request = $this->payload( $params, ['file' => $audio] );
         }
 
         $response = $this->client()->post( "api/v1/stem-extraction/api/extract", ['multipart' => $request] );
@@ -75,9 +75,9 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
         $allowed = $this->allowed( $options, ['quality_mode'] ) + ['quality_mode' => 'balanced'];
 
         if( $audio->url() ) {
-            $request = ['json' => $this->request( ['url' => $audio->url()] + $allowed )];
+            $request = ['json' => $this->payload( ['url' => $audio->url()] + $allowed )];
         } else {
-            $request = ['multipart' => $this->request( $allowed, ['file' => $audio] )];
+            $request = ['multipart' => $this->payload( $allowed, ['file' => $audio] )];
         }
 
         $response = $this->client()->post( "api/v1/denoiser/denoise", $request );
@@ -93,7 +93,7 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        $request = $this->request( ['voice_uuid' => $voice], ['file' => $audio] );
+        $request = $this->payload( ['voice_uuid' => $voice], ['file' => $audio] );
         $response = $this->client()->post( 'api/v1/voice/voice-convert', ['multipart' => $request] );
 
         $this->validate( $response );
@@ -110,7 +110,7 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
         $allowed = $this->allowed( $options, ['audio_format', 'language', 'speed'] );
         $selected = $voice ?: 'b76f1226-8170-4902-9482-36bb4fc98085'; // fallback: aura
 
-        $request = $this->request( ['input_text' => $text] + $allowed + ['audio_format' => 'mp3'] );
+        $request = $this->payload( ['input_text' => $text] + $allowed + ['audio_format' => 'mp3'] );
         $response = $this->client()->post( "api/v1/voice/voices/{$selected}/generate", ['multipart' => $request] );
 
         $this->validate( $response );
@@ -145,7 +145,7 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
             $files = ['files' => $audio];
         }
 
-        $request = $this->request( $request, $files );
+        $request = $this->payload( $request, $files );
         $response = $this->client()->post( $url, ['multipart' => $request] );
 
         $this->validate( $response );

@@ -28,13 +28,13 @@ class Vertexai extends Gemini
             throw new PrismaException( 'No Google project ID' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'access_token' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'access_token' ) );
 
-        $region = $this->cfg( $config, 'region' );
+        $region = $this->config( $config, 'region' );
         $this->baseUrl( 'https://' . ( $region !== '' ? $region . '-' : '' ) . 'aiplatform.googleapis.com' );
 
         $this->region = $region !== '' ? $region : 'global';
-        $this->projectid = $this->cfg( $config, 'project_id' );
+        $this->projectid = $this->config( $config, 'project_id' );
     }
 
 

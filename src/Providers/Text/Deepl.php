@@ -17,8 +17,8 @@ class Deepl extends Base implements Translate
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'DeepL-Auth-Key ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api-free.deepl.com' ) );
+        $this->header( 'Authorization', 'DeepL-Auth-Key ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api-free.deepl.com' ) );
     }
 
 

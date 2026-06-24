@@ -86,7 +86,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         $params = $this->params( $prompt, $options, 'gpt-image-1' );
-        $request = $this->request( $params, ['image' => $image, 'mask' => $this->mask( $mask )] );
+        $request = $this->payload( $params, ['image' => $image, 'mask' => $this->mask( $mask )] );
         $response = $this->client()->post( 'v1/images/edits', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );

@@ -12,15 +12,12 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Perplexity extends Base implements Stream, Structure, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->completions(
-            'chat/completions', 'sonar',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        return $this->streamCompletions( 'chat/completions', 'sonar', $messages, $options );
     }
 
 

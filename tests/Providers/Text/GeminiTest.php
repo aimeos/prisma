@@ -59,9 +59,11 @@ class GeminiTest extends TestCase
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'Say hello' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
@@ -91,9 +93,11 @@ class GeminiTest extends TestCase
             ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
         $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
 
-        $provider->withTools( [$ping, $pong] )
+        $response = $provider->withTools( [$ping, $pong] )
             ->ensure( 'stream' )
-            ->stream( 'do both', [], [], function( $chunk ) {} );
+            ->stream( 'do both' );
+
+        foreach( $response->stream() as $chunk ) {}
 
         $requests = $this->requests();
         $this->assertCount( 2, $requests );
@@ -119,10 +123,12 @@ class GeminiTest extends TestCase
 
         $sse = "data: {\"error\":{\"message\":\"boom\"}}\n\n";
 
-        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+        $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {}
     }
 
 
@@ -136,9 +142,11 @@ class GeminiTest extends TestCase
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'think', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'think' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         // thinking stays out of the stream but is kept on the response meta
         $this->assertSame( ['Answer'], $deltas );
@@ -162,11 +170,13 @@ class GeminiTest extends TestCase
         $chunks = [];
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
-            ->stream( 'ping it', [], [], function( $chunk ) use ( &$chunks ) {
-                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
-                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
-                    : $chunk;
-            } );
+            ->stream( 'ping it' );
+
+        foreach( $response->stream() as $chunk ) {
+            $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                : $chunk;
+        }
 
         // the tool is announced (done=false), then completed (done=true) before the final text delta
         $this->assertSame( ['name' => 'ping', 'done' => false, 'result' => ''], $chunks[0] );

@@ -19,7 +19,7 @@ class Voyageai extends Base implements Vectorize
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseurl( 'https://api.voyageai.com' );
     }
 

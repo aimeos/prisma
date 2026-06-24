@@ -21,8 +21,8 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'xi-api-key', $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.elevenlabs.io' ) );
+        $this->header( 'xi-api-key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.elevenlabs.io' ) );
     }
 
 
@@ -34,7 +34,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
             'voice_settings', 'seed', 'remove_background_noise', 'file_format'
         ] );
 
-        $request = $this->request( ['model_id' => $model] + $allowed, ['audio' => $audio] );
+        $request = $this->payload( ['model_id' => $model] + $allowed, ['audio' => $audio] );
         $response = $this->client()->post( '/v1/speech-to-speech/' . $voice, ['multipart' => $request] );
 
         $this->validate( $response );
@@ -87,7 +87,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
             $files = ['file' => $audio];
         }
 
-        $request = $this->request( $request, $files );
+        $request = $this->payload( $request, $files );
         $response = $this->client()->post( 'v1/speech-to-text', ['multipart' => $request] );
 
         $this->validate( $response );

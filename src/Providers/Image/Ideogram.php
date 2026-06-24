@@ -26,7 +26,7 @@ class Ideogram
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Api-Key', $this->cfg( $config, 'api_key' ) );
+        $this->header( 'Api-Key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( 'https://api.ideogram.ai' );
     }
 
@@ -41,7 +41,7 @@ class Ideogram
 
         $files = $this->toFiles( $options, ['style_reference_images'] );
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/replace-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -52,7 +52,7 @@ class Ideogram
     {
         $allowed = $this->allowed( $options, ['describe_model_version'] );
 
-        $request = $this->request( $allowed, ['image_file' => $image] );
+        $request = $this->payload( $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'describe', ['multipart' => $request] );
 
         $this->validate( $response );
@@ -87,7 +87,7 @@ class Ideogram
         $allowed = $this->sanitize( $allowed, $this->options() );
         $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask'] );
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, ['style_reference_images' => $images] + $files );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, ['style_reference_images' => $images] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/generate', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -104,7 +104,7 @@ class Ideogram
         $allowed = $this->sanitize( $allowed, $this->options() );
         $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask', 'style_reference_images'] );
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/edit', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -121,7 +121,7 @@ class Ideogram
         $allowed = $this->sanitize( $allowed, $this->options() );
         $files = $this->toFiles( $options, ['character_reference_images', 'character_reference_images_mask', 'style_reference_images'] );
 
-        $request = $this->request( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
+        $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/remix', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -133,7 +133,7 @@ class Ideogram
         $allowed = $this->allowed( $options, ['detail', 'magic_prompt_option', 'prompt', 'resemblance', 'seed'] );
         $allowed = $this->sanitize( $allowed, $this->options() );
 
-        $request = $this->request( ['image_request' => json_encode( $allowed )], ['image_file' => $image] );
+        $request = $this->payload( ['image_request' => json_encode( $allowed )], ['image_file' => $image] );
         $response = $this->client()->post( 'upscale', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );

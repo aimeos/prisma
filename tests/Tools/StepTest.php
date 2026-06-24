@@ -29,6 +29,30 @@ class StepTest extends TestCase
     }
 
 
+    public function testJsonSerialize() : void
+    {
+        $step = new Step( 'call_1', 'ping', ['x' => 1] );
+        $step->complete( 'pong' );
+
+        $this->assertSame(
+            ['id' => 'call_1', 'name' => 'ping', 'arguments' => ['x' => 1], 'result' => 'pong', 'done' => true],
+            $step->jsonSerialize()
+        );
+        $this->assertSame( '{"id":"call_1","name":"ping","arguments":{"x":1},"result":"pong","done":true}', json_encode( $step ) );
+    }
+
+
+    public function testJsonSerializePending() : void
+    {
+        $step = new Step( null, 'ping', [] );
+
+        $this->assertSame(
+            ['id' => null, 'name' => 'ping', 'arguments' => [], 'result' => '', 'done' => false],
+            $step->jsonSerialize()
+        );
+    }
+
+
     public function testRateLimit() : void
     {
         $response = TextResponse::fromText( 'hello' )
@@ -98,6 +122,17 @@ class StepTest extends TestCase
         $this->assertInstanceOf( Step::class, $response->steps()[0] );
         $this->assertEquals( 'search', $response->steps()[0]->name() );
         $this->assertEquals( 'fetch', $response->steps()[1]->name() );
+    }
+
+
+    public function testToString() : void
+    {
+        $step = new Step( 'call_1', 'ping', ['x' => 1] );
+        $step->complete( 'pong' );
+
+        $this->assertSame( '{"id":"call_1","name":"ping","arguments":{"x":1},"result":"pong","done":true}', (string) $step );
+        // string concatenation (e.g. Laravel's eventStream "data: ".$step) now yields JSON
+        $this->assertSame( 'data: {"id":"call_1","name":"ping","arguments":{"x":1},"result":"pong","done":true}', 'data: ' . $step );
     }
 
 

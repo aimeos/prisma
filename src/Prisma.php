@@ -115,6 +115,14 @@ class Prisma
             throw new PrismaException( 'No provider name given' );
         }
 
+        // Restrict the type and name to a safe character set before interpolating them into a
+        // class name, so neither can smuggle a backslash to reach a class outside the intended
+        // Providers\{Type} namespace or probe the autoloader with attacker-controlled input. The
+        // rejected value is deliberately not echoed back into the message.
+        if( !preg_match( '/^[A-Za-z0-9_]+$/', $this->type ) || !preg_match( '/^[A-Za-z0-9_]+$/', $name ) ) {
+            throw new NotImplementedException( 'Provider type or name contains invalid characters' );
+        }
+
         $classname = '\\Aimeos\\Prisma\\Providers\\' . ucfirst( $this->type ) . '\\' . ucfirst( $name );
 
         if( !class_exists( $classname ) ) {

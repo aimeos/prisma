@@ -14,8 +14,32 @@ trait CallsTools
     /**
      * Executes tool calls and collects results.
      *
-     * Filters out unknown, provider, and exhausted tools, then delegates
-     * valid calls to the configured Concurrency strategy for execution.
+     * Thin wrapper around execStream() for the non-streaming tool loop: drains the
+     * generator and returns the completed steps in the model's call order.
+     *
+     * @param array<int, array<string, mixed>> $toolCalls Tool calls from the model
+     * @param array<string, int> $calls Remaining calls per tool name (by reference)
+     * @return array<int, Step> Tool execution results
+     */
+    protected function execTools( array $toolCalls, array &$calls ) : array
+    {
+        $steps = $this->execStream( $toolCalls, $calls );
+
+        foreach( $steps as $step ) {} // drain to execute the tools
+
+        return $steps->getReturn();
+    }
+
+
+    /**
+     * Executes tool calls and yields each step before and after execution.
+     *
+     * Filters out unknown, provider, and exhausted tools, then delegates valid calls to
+     * the configured Concurrency strategy for execution. Each step that runs is yielded
+     * once before execution (done() === false) and once after (done() === true); steps
+     * that exhausted their limit or failed validation are already complete and yielded
+     * only once. The completed steps are returned in the model's call order via the
+     * generator return value so order-correlated providers (e.g. Gemini) can rely on it.
      *
      * The call budget tracks the remaining calls per tool name for the current
      * generation. It is passed by reference so the budget survives across the
@@ -24,10 +48,9 @@ trait CallsTools
      *
      * @param array<int, array<string, mixed>> $toolCalls Tool calls from the model
      * @param array<string, int> $calls Remaining calls per tool name (by reference)
-     * @param callable|null $callback Step notifier invoked before execution (done() === false) and after (done() === true)
-     * @return array<int, Step> Tool execution results
+     * @return \Generator<int, Step, mixed, array<int, Step>> Steps before and after execution
      */
-    protected function execTools( array $toolCalls, array &$calls, ?callable $callback = null ) : array
+    protected function execStream( array $toolCalls, array &$calls ) : \Generator
     {
         $toolMap = [];
 
@@ -90,23 +113,24 @@ trait CallsTools
             }
         }
 
-        if( $callback )
+        // Order by the model's call position up front so the before- and after-execution
+        // notifications are emitted in the same order even for out-of-order call indices.
+        ksort( $steps );
+
+        // Notify each step before it runs; steps that exhausted their call limit
+        // are already complete and only get the post-execution notification below.
+        foreach( $steps as $step )
         {
-            // Notify each step before it runs; steps that exhausted their call limit
-            // are already complete and only get the post-execution notification below.
-            foreach( $steps as $step ) {
-                if( !$step->done() ) { $callback( $step ); }
-            }
+            if( !$step->done() ) { yield $step; }
         }
 
         $this->concurrency()->run( $concurrent );
         ( new \Aimeos\Prisma\Tools\Concurrency\Sequential() )->run( $sequential );
 
-        ksort( $steps );
         $steps = array_values( $steps );
 
-        if( $callback ) {
-            foreach( $steps as $step ) { $callback( $step ); }
+        foreach( $steps as $step ) {
+            yield $step;
         }
 
         return $steps;

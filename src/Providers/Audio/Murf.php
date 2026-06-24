@@ -19,8 +19,8 @@ class Murf extends Base implements Revoice, Speak
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'api-key', $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.murf.ai' ) );
+        $this->header( 'api-key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.murf.ai' ) );
     }
 
 
@@ -28,7 +28,7 @@ class Murf extends Base implements Revoice, Speak
     {
         $allowed = $this->allowed( $options, ['channel_type', 'format', 'pitch', 'rate', 'sample_rate'] );
 
-        $request = $this->request( ['voice_id' => $voice] + $allowed + ['format' => 'mp3'], ['file' => $audio] );
+        $request = $this->payload( ['voice_id' => $voice] + $allowed + ['format' => 'mp3'], ['file' => $audio] );
         $response = $this->client()->post( '/v1/voice-changer/convert', ['multipart' => $request] );
 
         $this->validate( $response );

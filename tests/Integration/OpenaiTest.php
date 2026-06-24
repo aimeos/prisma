@@ -86,11 +86,13 @@ class OpenaiTest extends TestCase
         $response = Prisma::text()
             ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
             ->ensure( 'stream' )
-            ->stream( 'What is the capital of France? Reply with only the city name.', [], [], function( string|\Aimeos\Prisma\Tools\Step $chunk ) use ( &$deltas ) {
-                if( is_string( $chunk ) ) {
-                    $deltas[] = $chunk;
-                }
-            } );
+            ->stream( 'What is the capital of France? Reply with only the city name.' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( is_string( $chunk ) ) {
+                $deltas[] = $chunk;
+            }
+        }
 
         $this->assertNotEmpty( $deltas );
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
@@ -134,7 +136,7 @@ class OpenaiTest extends TestCase
         $response = Prisma::text()
             ->using( 'openai', ['api_key' => $_ENV['OPENAI_API_KEY']] )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

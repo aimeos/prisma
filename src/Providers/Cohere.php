@@ -20,8 +20,8 @@ class Cohere extends Base
         }
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.cohere.ai' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.cohere.ai' ) );
     }
 
 

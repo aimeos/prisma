@@ -19,9 +19,9 @@ class Google extends Base implements Translate
             throw new PrismaException( 'No API key' );
         }
 
-        $this->apiKey = $this->cfg( $config, 'api_key' );
+        $this->apiKey = $this->config( $config, 'api_key' );
         $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://translation.googleapis.com' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://translation.googleapis.com' ) );
     }
 
 

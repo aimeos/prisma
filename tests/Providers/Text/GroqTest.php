@@ -34,9 +34,11 @@ class GroqTest extends TestCase
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'Say hello', [], [], function( $chunk ) use ( &$deltas ) {
-                $deltas[] = $chunk;
-            } );
+            ->stream( 'Say hello' );
+
+        foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
+        }
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.groq.com/openai/v1/chat/completions', (string) $request->getUri() );
@@ -51,6 +53,118 @@ class GroqTest extends TestCase
     }
 
 
+    public function testStreamRateLimitNotSharedAcrossInterleavedStreams() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":1}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] );
+
+        // two lazy streams are opened on the SAME provider instance, each carrying its own
+        // rate-limit header; opening the second must not overwrite the first's rate limit
+        $this->response( $sse, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '111'] );
+        $this->response( $sse, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '222'] );
+
+        $first = $this->provider()->ensure( 'stream' )->stream( 'a' );
+        $second = $this->provider()->ensure( 'stream' )->stream( 'b' );
+
+        // draining the first (after the second was opened) must still report the first
+        // request's rate limit, not the second request's
+        $first->text();
+
+        $this->assertSame( 111, $first->rateLimit()?->remaining() );
+        $this->assertSame( 222, $second->rateLimit()?->remaining() );
+    }
+
+
+    public function testStreamRetriesTransientFailure() : void
+    {
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"recovered\"},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":1}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] );
+
+        // a transient 503 on the streaming request must be retried like the non-streaming path,
+        // not surfaced immediately at the stream() call
+        $this->response( ['error' => ['message' => 'overloaded']], [], 503 );
+        $this->response( $sse, ['Content-Type' => 'text/event-stream'] );
+
+        $response = $this->provider()
+            ->withClientRetry( 3, 0 )
+            ->ensure( 'stream' )
+            ->stream( 'hi' );
+
+        $this->assertSame( 'recovered', $response->text() );
+    }
+
+
+    public function testStreamRejectsOversizedResponse() : void
+    {
+        // a stream whose total size exceeds the configured cap must abort instead of buffering and
+        // assembling without bound, so a runaway or hostile response cannot exhaust memory
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'maximum allowed size' );
+
+        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"this response is far larger than the tiny cap\"}}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->ensure( 'stream' )
+            ->withMaxResponseSize( 16 )
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {}
+    }
+
+
+    public function testStreamValidatesHostileToolIndex() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        // the two fragments of one tool call carry different out-of-range indices; without validation
+        // they would land in separate sparse slots and break the call, so they must fall back to the
+        // current slot and still merge into a single coherent tool call
+        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":999999999,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":\"evil\",\"function\":{\"arguments\":\"{}\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
+            . "data: [DONE]\n\n";
+
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $response = $provider->withTools( [$tool] )
+            ->ensure( 'stream' )
+            ->stream( 'Ping the tool' );
+
+        $response->text();
+
+        $this->assertCount( 1, $response->steps() );
+        $this->assertSame( 'ping', $response->steps()[0]->name() );
+        $this->assertSame( 'pong', $response->steps()[0]->result() );
+    }
+
+
+    public function testWriteRejectsOversizedResponse() : void
+    {
+        // the same byte ceiling bounds the non-streamed JSON body, so a runaway or hostile response
+        // cannot be pulled into an unbounded string and exhaust memory
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'maximum allowed size' );
+
+        $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'a normal answer that still exceeds the tiny cap']]]] )
+            ->ensure( 'write' )
+            ->withMaxResponseSize( 16 )
+            ->write( 'hi' );
+    }
+
+
     public function testStreamError() : void
     {
         $this->expectException( PrismaException::class );
@@ -58,10 +172,12 @@ class GroqTest extends TestCase
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
             . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
 
-        $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+        $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
+
+        foreach( $response->stream() as $chunk ) {}
     }
 
 
@@ -74,7 +190,7 @@ class GroqTest extends TestCase
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
 
         $this->assertEquals( 'Hi', $response->text() );
         $this->assertEquals( 'chatcmpl-1', $response->meta()['id'] );
@@ -92,7 +208,7 @@ class GroqTest extends TestCase
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
 
         $this->assertEquals( 'Answer', $response->text() );
         $this->assertEquals( 'thinking...', $response->meta()['thinking'] );
@@ -124,11 +240,13 @@ class GroqTest extends TestCase
 
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
-            ->stream( 'weather?', [], [], function( $chunk ) use ( &$results ) {
-                if( $chunk instanceof \Aimeos\Prisma\Tools\Step && $chunk->done() ) {
-                    $results[] = $chunk->result();
-                }
-            } );
+            ->stream( 'weather?' );
+
+        foreach( $response->stream() as $chunk ) {
+            if( $chunk instanceof \Aimeos\Prisma\Tools\Step && $chunk->done() ) {
+                $results[] = $chunk->result();
+            }
+        }
 
         // the handler must not run when the arguments fail schema validation
         $this->assertFalse( $called );
@@ -160,13 +278,15 @@ class GroqTest extends TestCase
 
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
-            ->stream( 'Ping the tool', [], [], function( $chunk ) use ( &$chunks ) {
-                // Read Step state inside the callback: the same instance is reused for
-                // both the started and completed notifications.
-                $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
-                    ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
-                    : $chunk;
-            } );
+            ->stream( 'Ping the tool' );
+
+        foreach( $response->stream() as $chunk ) {
+            // Read Step state inside the loop: the same instance is reused for
+            // both the started and completed notifications.
+            $chunks[] = $chunk instanceof \Aimeos\Prisma\Tools\Step
+                ? ['name' => $chunk->name(), 'done' => $chunk->done(), 'result' => $chunk->result()]
+                : $chunk;
+        }
 
         // call started (no result), call completed (result), then the final text delta
         $this->assertSame( 'ping', $chunks[0]['name'] );
@@ -183,6 +303,32 @@ class GroqTest extends TestCase
     }
 
 
+    public function testStreamToolLoopPreservesRateLimitFromEarlierTurn() : void
+    {
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"{}\"}}]}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
+            . "data: [DONE]\n\n";
+
+        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
+            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
+            . "data: [DONE]\n\n";
+
+        // turn 1 carries the rate limit; the post-tool turn 2 omits the headers
+        $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
+            ->response( $turn1, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '50'] );
+        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+
+        $response = $provider->withTools( [$tool] )->ensure( 'stream' )->stream( 'Ping the tool' );
+
+        foreach( $response->stream() as $chunk ) {}
+
+        // the second turn lacked rate-limit headers, so the earlier turn's value must be kept
+        $this->assertSame( 50, $response->rateLimit()?->remaining() );
+    }
+
+
     public function testStreamZeroContent() : void
     {
         $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"0\"}}]}\n\n"
@@ -192,7 +338,7 @@ class GroqTest extends TestCase
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
             ->response( $sse, ['Content-Type' => 'text/event-stream'] )
             ->ensure( 'stream' )
-            ->stream( 'hi', [], [], function( $chunk ) {} );
+            ->stream( 'hi' );
 
         $this->assertEquals( '0', $response->text() );
     }
@@ -535,7 +681,7 @@ class GroqTest extends TestCase
             ] );
 
         $response->withTools( [$tool] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->ensure( 'write' )
             ->write( 'Ping the tool' );
 

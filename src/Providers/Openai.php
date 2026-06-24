@@ -30,8 +30,8 @@ class Openai extends Base
 
         $this->header( 'OpenAI-Organization', $config['organization'] ?? null );
         $this->header( 'OpenAI-Project', $config['project'] ?? null );
-        $this->header( 'authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.openai.com' ) );
+        $this->header( 'authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.openai.com' ) );
     }
 
 

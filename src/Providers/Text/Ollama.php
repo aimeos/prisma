@@ -14,15 +14,12 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Ollama extends Base implements Stream, Structure, Vectorize, Write
 {
-    public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->completions(
-            'v1/chat/completions', 'llama4',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options, $callback
-        );
+        return $this->streamCompletions( 'v1/chat/completions', 'llama4', $messages, $options );
     }
 
 
