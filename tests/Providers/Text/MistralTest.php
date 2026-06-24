@@ -361,4 +361,31 @@ class MistralTest extends TestCase
             $this->assertEquals( 'Always respond in French', $body['messages'][0]['content'] );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'mistral', ['api_key' => 'test'] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'model' => 'mistral-embed',
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 512 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.mistral.ai/v1/embeddings', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'mistral-embed', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+            $this->assertEquals( 512, $body['output_dimension'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 5, $response->usage()['used'] );
+    }
 }

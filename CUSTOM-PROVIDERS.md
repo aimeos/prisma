@@ -132,6 +132,7 @@ only needs to implement the ones it supports.
 |----------|--------|---------|
 | Structure | `structure( string $prompt, Schema $schema, array $files = [], array $options = [] )` | TextResponse |
 | Translate | `translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] )` | TextResponse |
+| Vectorize | `vectorize( array $texts, ?int $size = null, array $options = [] )` | VectorResponse |
 | Write | `write( string $prompt, array $files = [], array $options = [] )` | TextResponse |
 
 #### Video

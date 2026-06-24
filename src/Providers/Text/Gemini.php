@@ -4,13 +4,15 @@ namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Gemini extends Base implements Stream, Structure, Write
+class Gemini extends Base implements Stream, Structure, Vectorize, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
@@ -25,17 +27,50 @@ class Gemini extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
         $options['responseMimeType'] = 'application/json';
-        $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
+
+        if( $this->isJsonMode( $mode ) ) {
+            // JSON mode: keep responseMimeType but embed the schema in the prompt and
+            // parse it from the response text instead of a native responseSchema.
+            $prompt = $this->schemaPrompt( $prompt, $schema );
+        } else {
+            $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
+        }
 
         $response = $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
             $options
         );
-        $structured = json_decode( $response->text() ?? '', true ) ?: [];
 
-        return $response->withStructured( $structured );
+        return $response->withStructured( $this->parseJson( $response->text() ) );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $model = $this->modelName( 'gemini-embedding-001' );
+        $allowed = $this->allowed( $options, ['taskType', 'title'] );
+
+        $requests = array_map( fn( string $text ) => [
+            'model' => 'models/' . $model,
+            'content' => ['parts' => [['text' => $text]]],
+        ] + ( $size ? ['outputDimensionality' => $size] : [] ) + $allowed, array_values( $texts ) );
+
+        $response = $this->client()->post( 'v1beta/models/' . $model . ':batchEmbedContents', ['json' => ['requests' => $requests]] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+
+        /** @var array<int, array<string, mixed>> $embeddings */
+        $embeddings = $data['embeddings'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $item ) => $item['values'] ?? null, $embeddings );
+
+        return VectorResponse::fromVectors( $vectors );
     }
 
 

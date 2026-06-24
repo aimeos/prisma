@@ -398,4 +398,29 @@ class BedrockTest extends TestCase
             $this->assertEquals( 'Always respond in French', $body['system'][0]['text'] );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
+                'embedding' => [0.1, 0.2, 0.3],
+                'inputTextTokenCount' => 4,
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 512 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-embed-text-v2:0/invoke',
+                (string) $request->getUri()
+            );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'Hello world', $body['inputText'] );
+            $this->assertEquals( 512, $body['dimensions'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( 4, $response->usage()['used'] );
+    }
 }

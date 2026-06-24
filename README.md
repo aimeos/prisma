@@ -71,6 +71,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#stream">stream</a><span>: Stream a response token by token via a callback</span></li>
     <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
+    <li><a href="#vectorize-1">vectorize</a><span>: Creates embedding vectors from texts</span></li>
     <li><a href="#write">write</a><span>: Generate text from the given prompt</span></li>
 </ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
@@ -147,25 +148,25 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | stream | structure | translate | write | citations | custom tools | provider tools | system prompt | thinking budget |
-| :---                  | :---: | :---:      | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
-| **Alibaba**           | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Anthropic**         | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Azure**             | beta  | beta       |           | beta  | -         | yes          |                | yes           | -               |
-| **Bedrock**           | -     | yes        |           | yes   | -         | yes          |                | yes           | yes             |
-| **Cohere**            | -     | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **Deepseek**          | yes   | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **DeepL**             |       |            | yes       |       |           |              |                |               |                 |
-| **Gemini**            | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Google**            |       |            | yes       |       |           |              |                |               |                 |
-| **Groq**              | yes   | yes        |           | yes   | -         | yes          |                | yes           | -               |
-| **Mistral**           | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Ollama**            | beta  | beta       |           | beta  | -         | yes          |                | yes           | -               |
-| **OpenAI**            | yes   | yes        |           | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Openrouter**        | yes   | yes        |           | yes   | -         | yes          | yes            | yes           | -               |
-| **Perplexity**        | beta  | beta       |           | beta  | yes       | yes          |                | yes           | -               |
-| **Vertexai**          | beta  | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
-| **xAI**               | beta  | beta       |           | beta  | yes       | yes          | yes            | yes           | yes             |
+|                       | stream | structure | translate | vectorize | write | citations | custom tools | provider tools | system prompt | thinking budget |
+| :---                  | :---: | :---:      | :---:     | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
+| **Alibaba**           | yes   | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | -               |
+| **Anthropic**         | yes   | yes        |           | -         | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Azure**             | beta  | beta       |           | beta      | beta  | -         | yes          |                | yes           | -               |
+| **Bedrock**           | -     | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
+| **Cohere**            | -     | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
+| **Deepseek**          | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | -               |
+| **DeepL**             |       |            | yes       |           |       |           |              |                |               |                 |
+| **Gemini**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google**            |       |            | yes       |           |       |           |              |                |               |                 |
+| **Groq**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | -               |
+| **Mistral**           | yes   | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | -               |
+| **Ollama**            | beta  | beta       |           | beta      | beta  | -         | yes          |                | yes           | -               |
+| **OpenAI**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Openrouter**        | yes   | yes        |           | -         | yes   | -         | yes          | yes            | yes           | -               |
+| **Perplexity**        | beta  | beta       |           | -         | beta  | yes       | yes          |                | yes           | -               |
+| **Vertexai**          | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
+| **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -471,8 +472,8 @@ foreach( $response as $text ) {
 **VectorResponse** objects:
 
 ```php
-$vector = $response->first(); // first embedding vector if only one file has been passed
-$vectors = $response->vectors(); // embedding vectors for the passed files in the same order
+$vector = $response->first(); // first embedding vector if only one input has been passed
+$vectors = $response->vectors(); // embedding vectors for the passed inputs in the same order
 
 // loop over all available vectors
 foreach( $response as $vector ) {
@@ -1800,6 +1801,30 @@ $data = $textResponse->structured(); // ['name' => 'John', 'age' => 30]
 $json = $textResponse->text(); // '{"name":"John","age":30}'
 ```
 
+**Output mode:**
+
+By default the schema is enforced by the provider's native structured-output API (strict mode). Pass `['mode' => 'json']` to instead embed the schema in the prompt and parse the JSON from the response — useful when a schema is too large or deeply nested for a provider's strict-mode limits. `['mode' => 'structured']` selects native mode explicitly; any other value throws a `BadRequestException`. Providers without a native strict mode (Bedrock, Cohere, Deepseek, Ollama) always use JSON mode and ignore the option.
+
+```php
+$textResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'] )
+    ->ensure( 'structure' )
+    ->structure( 'Extract the person', $schema, [], ['mode' => 'json'] );
+```
+
+> **Warning:** `structured()` is the model's output parsed as-is — always treat it as untrusted. Guard two separate things:
+>
+> * **Shape** — it is not validated against your schema. Native strict mode is provider-enforced, but JSON mode (`['mode' => 'json']`, and the JSON-only providers above) gives no guarantee the result matches the schema. Check it with `$schema->validate( $data )` (returns `[]` when valid).
+> * **Values** — even a schema-conformant result contains model-generated text. `validate()` verifies types and constraints, not safety, so never drop a value straight into SQL, a shell command, a file path, or markup. Use bound parameters, escaping, or allow-lists, exactly as you would for any user input.
+>
+> ```php
+> $data = $textResponse->structured();
+> $errors = $schema->validate( $data ); // [] when valid
+> if( $errors ) {
+>     // reject, retry, or handle the mismatch
+> }
+> ```
+
 ### translate
 
 Translate one or more texts from one language to another.
@@ -1831,6 +1856,43 @@ $textResponse = Prisma::text()
     ->translate( ['Hello', 'World'], 'de', 'en' );
 
 $texts = $textResponse->texts(); // ['Hallo', 'Welt']
+```
+
+### vectorize
+
+Creates embedding vectors of the texts' content.
+
+```php
+public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+```
+
+* @param **array&#60;int, string&#62;** `$texts` List of input texts
+* @param **int&#124;null** `$size` Size of the resulting vector or null for provider default
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **VectorResponse** Response vector object
+
+**Supported options:**
+
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/embedding-api-details)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#embeddings)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html)
+* [Cohere](https://docs.cohere.com/reference/embed)
+* [Gemini](https://ai.google.dev/api/embeddings)
+* [Mistral](https://docs.mistral.ai/api/#tag/embeddings)
+* [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
+* [OpenAI](https://platform.openai.com/docs/api-reference/embeddings/create)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$vectorResponse = Prisma::text()
+    ->using( 'openai', ['api_key' => 'xxx'])
+    ->ensure( 'vectorize' )
+    ->vectorize( ['The quick brown fox', 'jumps over the lazy dog'], 256 );
+
+$vectors = $vectorResponse->vectors(); // one embedding vector per input text
 ```
 
 ### write

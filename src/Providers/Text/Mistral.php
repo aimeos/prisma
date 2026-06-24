@@ -4,13 +4,15 @@ namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Mistral as Base;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Mistral extends Base implements Stream, Structure, Write
+class Mistral extends Base implements Stream, Structure, Vectorize, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [], ?callable $callback = null ) : TextResponse
     {
@@ -32,6 +34,7 @@ class Mistral extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning_effort'] );
 
         // Mistral rejects "response_format" together with "tools" in a single request. With
@@ -39,25 +42,27 @@ class Mistral extends Base implements Stream, Structure, Write
         // loop, then parse the JSON from the final text instead of native structured output.
         if( $this->tools() )
         {
-            $prompt .= "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $schema->toString();
-
             $response = $this->completions(
                 'v1/chat/completions', 'mistral-large-latest',
-                $this->messages( $this->content( $prompt, $files ) ),
+                $this->messages( $this->content( $this->schemaPrompt( $prompt, $schema ), $files ) ),
                 $options
             );
 
-            $text = trim( $response->text() ?? '' );
-            $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
-
-            return $response->withStructured( json_decode( $text, true ) ?: [] );
+            return $response->withStructured( $this->parseJson( $response->text() ) );
         }
 
         return $this->structuredCompletions(
             'v1/chat/completions', 'mistral-large-latest',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $schema, $options
+            $prompt, $files, $schema, $options, $mode
         );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $options = $this->allowed( $options, ['output_dtype'] );
+
+        return $this->embeddings( 'v1/embeddings', 'mistral-embed', $texts, $size, $options, 'output_dimension' );
     }
 
 

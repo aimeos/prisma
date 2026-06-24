@@ -129,6 +129,18 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testVectorizeText() : void
+    {
+        $response = Prisma::text()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['The quick brown fox', 'jumps over the lazy dog'], 512 );
+
+        $this->assertCount( 2, $response->vectors() );
+        $this->assertCount( 512, $response->first() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();

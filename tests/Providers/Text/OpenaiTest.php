@@ -94,6 +94,75 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testStructuredModeJsonOverridesNative() : void
+    {
+        // A shallow schema would use native strict mode automatically; mode=json forces JSON mode.
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [['content' => [['type' => 'output_text', 'text' => '{"name":"Jane"}']]]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'json'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'json_object', $body['text']['format']['type'] );
+            $this->assertArrayNotHasKey( 'schema', $body['text']['format'] );
+            // "mode" is not leaked into the request payload.
+            $this->assertArrayNotHasKey( 'mode', $body );
+            $last = end( $body['input'] );
+            $block = end( $last['content'] );
+            $this->assertStringContainsString( 'matching this JSON schema', $block['text'] );
+        } );
+
+        $this->assertEquals( ['name' => 'Jane'], $response->structured() );
+    }
+
+
+    public function testStructuredModeStructured() : void
+    {
+        // mode=structured selects native strict mode regardless of schema depth.
+        $schema = Schema::for( 'deep', [
+            'a' => Schema::object( ['b' => Schema::object( ['c' => Schema::object( [
+                'd' => Schema::object( ['e' => Schema::object( ['f' => Schema::string()] )] ),
+            ] )] )] ),
+        ] );
+
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [['content' => [['type' => 'output_text', 'text' => '{"a":{"b":{"c":{"d":{"e":{"f":"x"}}}}}}']]]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'structured'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            // Native strict mode selected by mode=structured.
+            $this->assertEquals( 'json_schema', $body['text']['format']['type'] );
+            $this->assertArrayHasKey( 'schema', $body['text']['format'] );
+            $this->assertArrayNotHasKey( 'mode', $body );
+        } );
+
+        $this->assertEquals( ['a' => ['b' => ['c' => ['d' => ['e' => ['f' => 'x']]]]]], $response->structured() );
+    }
+
+
+    public function testStructuredInvalidModeThrows() : void
+    {
+        $this->expectException( \Aimeos\Prisma\Exceptions\BadRequestException::class );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )->provider()
+            ->ensure( 'structure' )
+            ->structure( 'Extract', Schema::for( 'p', ['name' => Schema::string()] ), [], ['mode' => 'bogus'] );
+    }
+
+
     public function testStructuredNullableEnum() : void
     {
         $schema = Schema::for( 'block', [
@@ -602,5 +671,34 @@ class OpenaiTest extends TestCase
             ->write( 'Say hello' );
 
         $this->assertEmpty( $response->citations() );
+    }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'object' => 'list',
+                'data' => [
+                    ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
+                ],
+                'model' => 'text-embedding-3-small',
+                'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 256 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'https://api.openai.com/v1/embeddings', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'text-embedding-3-small', $body['model'] );
+            $this->assertEquals( ['Hello world'], $body['input'] );
+            $this->assertEquals( 256, $body['dimensions'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertEquals( [0.1, 0.2, 0.3], $response->first() );
+        $this->assertEquals( 5, $response->usage()['used'] );
     }
 }

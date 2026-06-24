@@ -3,29 +3,61 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Bedrock as BedrockBase;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Bedrock extends BedrockBase implements Structure, Write
+class Bedrock extends BedrockBase implements Structure, Vectorize, Write
 {
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'topP'] );
-        $schemaPrompt = $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this schema:\n" . $schema->toString();
 
         $response = $this->generate(
-            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schemaPrompt, $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $this->schemaPrompt( $prompt, $schema ), $files )]] ),
             $options
         );
 
-        $text = trim( $response->text() ?? '' );
-        $text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
-        $structured = json_decode( $text, true ) ?: [];
+        return $response->withStructured( $this->parseJson( $response->text() ) );
+    }
 
-        return $response->withStructured( $structured );
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $promises = $vectors = [];
+        $model = $this->modelName( 'amazon.titan-embed-text-v2:0' );
+        $allowed = $this->allowed( $options, ['normalize', 'embeddingTypes'] );
+
+        foreach( array_values( $texts ) as $index => $text )
+        {
+            $promises[$index] = $this->client()->postAsync( $this->baseUrl . '/model/' . $model . '/invoke', [
+                'json' => ['inputText' => $text] + ( $size ? ['dimensions' => $size] : [] ) + $allowed,
+            ] );
+        }
+
+        $used = 0;
+
+        foreach( $promises as $index => $promise )
+        {
+            /** @var \Psr\Http\Message\ResponseInterface $response */
+            $response = $promise->wait();
+            $this->validate( $response );
+
+            /** @var array<string, mixed> $data */
+            $data = $this->fromJson( $response );
+
+            /** @var array<int, float> $embedding */
+            $embedding = $data['embedding'] ?? [];
+            $vectors[$index] = $embedding;
+            $used += is_numeric( $data['inputTextTokenCount'] ?? null ) ? (float) $data['inputTextTokenCount'] : 0;
+        }
+
+        /** @var array<int, array<int, float>|null> $vectors */
+        return VectorResponse::fromVectors( $vectors )->withUsage( $used );
     }
 
 
