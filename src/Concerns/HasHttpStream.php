@@ -44,17 +44,40 @@ trait HasHttpStream
 
 
     /**
+     * Sends a non-streaming POST request and returns its decoded, validated body.
+     *
+     * Non-streaming counterpart to openStream() for one turn of a tool loop: POSTs the payload,
+     * validates the status and captures the rate limit through the by-reference argument (kept
+     * unchanged when the response omits the headers), then returns the decoded body.
+     *
+     * @param string $endpoint API endpoint path
+     * @param array<string, mixed> $params Request payload
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Updated with this response's rate limit, left unchanged when the response carries none
+     * @return array<string, mixed> Decoded response body
+     */
+    protected function post( string $endpoint, array $params, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : array
+    {
+        $response = $this->client()->post( $endpoint, ['json' => $params] );
+
+        $this->validate( $response );
+
+        $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
+
+        return $this->fromJson( $response );
+    }
+
+
+    /**
      * Opens a streaming request eagerly and wraps the tool loop as a lazy TextResponse.
      *
      * Shared backbone for every provider's stream*() method: it opens and validates the first
-     * request up front (so HTTP, auth and rate-limit errors surface at the call site), captures
-     * this request's rate limit into a local that an interleaved stream cannot overwrite, and
-     * hands the open body plus that rate limit to the provider's turn loop. The loop runs lazily
-     * inside the returned response, so iterating it consumes the stream live.
+     * request up front (so HTTP, auth and rate-limit errors surface at the call site), sets this
+     * request's rate limit on the response and hands the open body to the provider's turn loop.
+     * The loop runs lazily inside the returned response, so iterating it consumes the stream live.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $firstParams Request payload for the eagerly opened first turn
-     * @param \Closure(\Aimeos\Prisma\Responses\TextResponse, \Psr\Http\Message\StreamInterface, ?\Aimeos\Prisma\Values\RateLimit): \Generator<int, mixed> $loop Turn loop receiving the response, open first-turn body and its rate limit
+     * @param \Closure(\Aimeos\Prisma\Responses\TextResponse, \Psr\Http\Message\StreamInterface): \Generator<int, mixed> $loop Turn loop receiving the response and the open first-turn body
      * @return \Aimeos\Prisma\Responses\TextResponse Lazy streaming text response
      */
     protected function streamResponse( string $endpoint, array $firstParams, \Closure $loop ) : \Aimeos\Prisma\Responses\TextResponse
@@ -62,7 +85,7 @@ trait HasHttpStream
         $body = $this->openStream( $endpoint, $firstParams, $rateLimit );
 
         return \Aimeos\Prisma\Responses\TextResponse::fromStream(
-            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $loop( $res, $body, $rateLimit )
+            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $loop( $res, $body )
         )->withRateLimit( $rateLimit );
     }
 

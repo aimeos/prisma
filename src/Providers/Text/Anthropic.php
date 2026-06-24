@@ -147,8 +147,8 @@ class Anthropic extends Base implements Stream, Structure, Write
         $toolsParam = $this->toolsParam();
         $params = $this->messageParams( $messages, $options, 1, true, $toolsParam );
 
-        return $this->streamResponse( 'v1/messages', $params, fn( $res, $body, $rateLimit ) =>
-            $this->runGenerate( $res, $messages, $options, true, $toolsParam, $body, $rateLimit )
+        return $this->streamResponse( 'v1/messages', $params, fn( $res, $body ) =>
+            $this->runGenerate( $res, $messages, $options, true, $toolsParam, $body )
         );
     }
 
@@ -188,7 +188,7 @@ class Anthropic extends Base implements Stream, Structure, Write
             // Apply the configured tool choice only on the first step so the
             // model can produce a final text answer after calling the tools.
             $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
-                self::REQ => ['type' => 'any'],
+                self::REQUIRED => ['type' => 'any'],
                 self::AUTO => ['type' => 'auto'],
                 default => null,
             } : ['type' => 'auto'];
@@ -220,14 +220,13 @@ class Anthropic extends Base implements Stream, Structure, Write
      * @param bool $stream Whether to stream the generation over SSE
      * @param array<int, array<string, mixed>> $toolsParam Pre-built tools payload, built once by the caller
      * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn
-     * @param \Aimeos\Prisma\Values\RateLimit|null $firstRateLimit Rate limit captured from the eagerly opened first turn
      * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
      */
-    private function runGenerate( TextResponse $res, array $messages, array $options, bool $stream, array $toolsParam, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\Aimeos\Prisma\Values\RateLimit $firstRateLimit = null ) : \Generator
+    private function runGenerate( TextResponse $res, array $messages, array $options, bool $stream, array $toolsParam, ?\Psr\Http\Message\StreamInterface $firstBody = null ) : \Generator
     {
         $allSteps = [];
         $calls = [];
-        $rateLimit = $firstRateLimit;
+        $rateLimit = null;
         $texts = [];
         /** @var array<string, mixed> $result */
         $result = [];
@@ -237,7 +236,7 @@ class Anthropic extends Base implements Stream, Structure, Write
             if( $stream )
             {
                 if( $firstBody !== null ) {
-                    $body = $firstBody;     // first turn reuses the eagerly opened body and its rate limit
+                    $body = $firstBody;     // first turn reuses the eagerly opened body
                     $firstBody = null;
                 } else {
                     $params = $this->messageParams( $messages, $options, $step, true, $toolsParam );
@@ -251,12 +250,7 @@ class Anthropic extends Base implements Stream, Structure, Write
             else
             {
                 $params = $this->messageParams( $messages, $options, $step, false, $toolsParam );
-                $response = $this->client()->post( 'v1/messages', ['json' => $params] );
-
-                $this->validate( $response );
-
-                $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
-                $result = $this->fromJson( $response );
+                $result = $this->post( 'v1/messages', $params, $rateLimit );
             }
 
             $stepTexts = [];
@@ -275,7 +269,7 @@ class Anthropic extends Base implements Stream, Structure, Write
             // maxSteps is reached) doesn't discard the model's partial answer.
             $texts = $stepTexts ?: $texts;
 
-            $toolCalls = $this->parseToolCalls( $result );
+            $toolCalls = $this->toolCalls( $result );
 
             if( !$toolCalls )
             {

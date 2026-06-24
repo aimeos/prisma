@@ -109,7 +109,7 @@ abstract class Base implements Provider
      * @param string $default Default value
      * @return string Configuration value as string
      */
-    protected function cfg( array $config, string $key, string $default = '' ) : string
+    protected function config( array $config, string $key, string $default = '' ) : string
     {
         return isset( $config[$key] ) && is_string( $config[$key] ) ? $config[$key] : $default;
     }
@@ -172,7 +172,7 @@ abstract class Base implements Provider
      * @param array<string, mixed> $files Files to upload
      * @return array<int, array<string, mixed>> Multipart form data
      */
-    protected function request( array $options, array $files = [] ) : array
+    protected function payload( array $options, array $files = [] ) : array
     {
         $data = [];
 

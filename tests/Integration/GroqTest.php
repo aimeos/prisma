@@ -107,7 +107,7 @@ class GroqTest extends TestCase
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
             ->model( 'llama-3.3-70b-versatile' )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

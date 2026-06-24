@@ -131,7 +131,7 @@ interface Provider
      *
      * Controls whether the model must use tools, can use tools, or cannot use tools.
      *
-     * @param string $choice Tool choice (use AUTO, REQ, NONE constants)
+     * @param string $choice Tool choice (use AUTO, REQUIRED, NONE constants)
      * @return self Provider interface
      */
     public function withToolChoice( string $choice ) : self;

@@ -9,8 +9,6 @@ namespace Aimeos\Prisma\Concerns;
 trait Stream
 {
     private ?\Closure $streamProducer = null;
-    private ?\Generator $streamGen = null;
-    private bool $streamDone = true;
 
 
     /**
@@ -28,7 +26,6 @@ trait Stream
     {
         $instance = new static;
         $instance->streamProducer = $producer;
-        $instance->streamDone = false;
 
         return $instance;
     }
@@ -39,7 +36,8 @@ trait Stream
      *
      * Eager counterpart to consuming the stream live: runs the producer generator to the end so
      * the response is fully assembled, e.g. for the non-streaming write() path that shares the
-     * same generator loop as stream(). A no-op for a response that is not stream-backed.
+     * same generator loop as stream(). A no-op for a response that is not stream-backed or whose
+     * stream was already consumed.
      *
      * @return static Fully resolved response
      */
@@ -54,53 +52,23 @@ trait Stream
     /**
      * Streams the response chunks live while populating the response.
      *
-     * Yields each chunk (text delta as string or \Aimeos\Prisma\Tools\Step for tool calls) as
-     * it arrives. The producer generator is created once and memoized, so a consumer that stops
-     * early can be resumed later (by resolve() or a second stream() call) and pick up the unread
-     * remainder; the response is only marked done once the generator completes. Yields nothing
-     * for a response that is not stream-backed.
+     * Yields each chunk (text delta as string or \Aimeos\Prisma\Tools\Step for tool calls) as it
+     * arrives. The producer is consumed once: drain it fully - iterate to the end or let an
+     * accessor call resolve() - to assemble the response. A consumer that stops early leaves the
+     * response unassembled and the producer is not restarted, so a later stream() or accessor
+     * yields nothing. Yields nothing for a response that is not stream-backed.
      *
      * @return \Generator<int, mixed> Streamed chunks
      */
     public function stream() : \Generator
     {
-        if( $this->streamDone ) {
+        if( $this->streamProducer === null ) {
             return;
         }
 
-        $gen = $this->streamGen;
+        $producer = $this->streamProducer;
+        $this->streamProducer = null; // consume once: a later stream() or accessor yields nothing
 
-        if( $gen === null )
-        {
-            if( $this->streamProducer === null ) {
-                return;
-            }
-
-            $producer = $this->streamProducer;
-            $this->streamProducer = null; // release the captured scope once the generator exists
-
-            /** @var \Generator<int, mixed> $gen */
-            $gen = $producer( $this );
-            $this->streamGen = $gen;
-        }
-
-        try
-        {
-            yield from $gen;
-        }
-        catch( \Throwable $e )
-        {
-            // The producer failed mid-stream: mark done and drop the aborted generator so a later
-            // accessor does not re-enter it (which would raise a confusing secondary error).
-            $this->streamGen = null;
-            $this->streamDone = true;
-
-            throw $e;
-        }
-
-        // Reached only when the generator ran to completion. A consumer that stops early instead
-        // suspends here without finishing, leaving the generator resumable by resolve()/stream().
-        $this->streamGen = null;
-        $this->streamDone = true;
+        yield from $producer( $this );
     }
 }

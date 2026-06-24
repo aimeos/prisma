@@ -18,8 +18,8 @@ class Gemini extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'x-goog-api-key', $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://generativelanguage.googleapis.com' ) );
+        $this->header( 'x-goog-api-key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://generativelanguage.googleapis.com' ) );
     }
 
 
@@ -151,7 +151,7 @@ class Gemini extends Base
      * @param array<string, mixed> $result API response data
      * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
      */
-    protected function parseToolCalls( array $result ) : array
+    protected function toolCalls( array $result ) : array
     {
         $toolCalls = [];
         $counts = [];

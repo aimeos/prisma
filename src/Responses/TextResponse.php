@@ -19,9 +19,7 @@ use Aimeos\Prisma\Concerns\Stream;
  */
 class TextResponse implements \IteratorAggregate
 {
-    use Async;
-    use Stream;
-    use HasCitations, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage;
+    use Async, HasCitations, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage, Stream;
 
 
     /** @var array<string|int, mixed> */

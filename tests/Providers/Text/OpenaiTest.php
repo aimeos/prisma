@@ -105,7 +105,7 @@ class OpenaiTest extends TestCase
     }
 
 
-    public function testStreamEarlyBreakResumes() : void
+    public function testStreamEarlyBreakIsTerminal() : void
     {
         $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
             . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
@@ -116,14 +116,18 @@ class OpenaiTest extends TestCase
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
+        $deltas = [];
+
         // stop consuming after the first delta
         foreach( $response->stream() as $chunk ) {
+            $deltas[] = $chunk;
             break;
         }
 
-        // an accessor resumes the same stream and assembles the full result
-        $this->assertEquals( 'Hello world', $response->text() );
-        $this->assertEquals( 9, $response->usage()['used'] );
+        // the stream is consumed once: stopping early leaves the response unassembled and a
+        // later accessor neither restarts nor resumes it
+        $this->assertSame( ['Hello'], $deltas );
+        $this->assertNull( $response->text() );
     }
 
 

@@ -19,7 +19,7 @@ class Removebg extends Base implements Isolate, Relocate
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'X-API-Key', $this->cfg( $config, 'api_key' ) );
+        $this->header( 'X-API-Key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( 'https://api.remove.bg' );
     }
 
@@ -32,7 +32,7 @@ class Removebg extends Base implements Isolate, Relocate
         ] );
         $allowed = $this->sanitize( $allowed, $this->options() );
 
-        $request = $this->request( $allowed, ['image_file' => $image] );
+        $request = $this->payload( $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -47,7 +47,7 @@ class Removebg extends Base implements Isolate, Relocate
         ] );
         $allowed = $this->sanitize( $allowed, $this->options() );
 
-        $request = $this->request( $allowed, ['image_file' => $image, 'bg_image_file' => $bgimage] );
+        $request = $this->payload( $allowed, ['image_file' => $image, 'bg_image_file' => $bgimage] );
         $response = $this->client()->post( 'v1.0/removebg', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );

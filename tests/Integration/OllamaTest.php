@@ -49,7 +49,7 @@ class OllamaTest extends TestCase
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
             ->withTools( [$next, $ahead] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'stream' )
             ->stream( 'Give me the next passphrase and the passphrase for 2 days from now.' );
@@ -107,7 +107,7 @@ class OllamaTest extends TestCase
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

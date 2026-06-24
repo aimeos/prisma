@@ -286,11 +286,11 @@ class Myprovider extends Base implements Describe
 
 ### Configuration
 
-The *cfg()* method safely extracts string values from the config array. It returns
+The *config()* method safely extracts string values from the config array. It returns
 the default value if the key is missing or not a string:
 
 ```php
-protected function cfg( array $config, string $key, string $default = '' ) : string
+protected function config( array $config, string $key, string $default = '' ) : string
 ```
 
 Use it in constructors to support custom API URLs (for self-hosted or proxy setups):
@@ -302,8 +302,8 @@ public function __construct( array $config )
         throw new PrismaException( 'No API key' );
     }
 
-    $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-    $this->baseUrl( $this->cfg( $config, 'url', 'https://api.default.com' ) );
+    $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+    $this->baseUrl( $this->config( $config, 'url', 'https://api.default.com' ) );
 }
 ```
 
@@ -390,14 +390,14 @@ The *modelName()* method returns the user's model choice or the given default:
 $model = $this->modelName( 'gemini-2.5-flash' );
 ```
 
-The *request()* method formats parameters and files for form or multipart
+The *payload()* method formats parameters and files for form or multipart
 requests. Build JSON payloads directly:
 
 ```php
 // Form data request
-$data = $this->request( $params );
+$data = $this->payload( $params );
 // Multipart request
-$data = ['multipart' => $this->request( $params, ['image_key' => $image->binary()] )];
+$data = ['multipart' => $this->payload( $params, ['image_key' => $image->binary()] )];
 // JSON request
 $data = ['json' => ['image_key' => array_map( fn( $image ) => $image->base64(), $images )] + $params];
 ```
@@ -422,7 +422,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
     $allowed = $this->allowed( $options, ['version'] );
 
     $params = ['language' => $lang] + $allowed;
-    $data = ['multipart' => $this->request( $params, ['file' => $image->binary()] )];
+    $data = ['multipart' => $this->payload( $params, ['file' => $image->binary()] )];
     $response = $this->client()->post( 'relative/api/path', $data );
 
     $this->validate( $response );
@@ -786,7 +786,7 @@ mid-level base class.
 | `execTools( array $toolCalls )` | Execute tool calls, returns array of `Step` results |
 | `tools()` | Returns user-provided tool adapters |
 | `providerTools()` | Returns built-in provider tool adapters |
-| `toolChoice()` | Returns tool choice setting (`self::AUTO`, `self::REQ`, `self::NONE`) |
+| `toolChoice()` | Returns tool choice setting (`self::AUTO`, `self::REQUIRED`, `self::NONE`) |
 | `maxSteps()` | Returns max tool loop iterations |
 | `concurrency()` | Returns concurrency strategy for parallel tool execution |
 
@@ -813,7 +813,7 @@ protected function toolsParam() : array
 
 
 // Extract tool calls from API response
-protected function parseToolCalls( array $result ) : array
+protected function toolCalls( array $result ) : array
 {
     $toolCalls = [];
 
@@ -872,7 +872,7 @@ private function generate( array $messages, array $options ) : TextResponse
         $this->validate( $response );
         $result = $this->fromJson( $response );
 
-        $toolCalls = $this->parseToolCalls( $result );
+        $toolCalls = $this->toolCalls( $result );
 
         if( !$toolCalls ) {
             break;
@@ -1008,7 +1008,7 @@ handling the full request/response cycle including tool loops:
 | `content()` | Build content blocks from prompt and files |
 | `messages()` | Build messages array with optional system prompt |
 | `toolsParam()` | Format tools in OpenAI function calling format |
-| `parseToolCalls()` | Extract tool calls from completions response |
+| `toolCalls()` | Extract tool calls from completions response |
 
 Use both `CallsTools` and `OpenaiApi` traits in the mid-level base:
 
@@ -1033,8 +1033,8 @@ class Myprovider extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.myprovider.com' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.myprovider.com' ) );
     }
 }
 ```
@@ -1110,8 +1110,8 @@ class Myprovider extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.myprovider.com' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.myprovider.com' ) );
     }
 
 
@@ -1205,7 +1205,7 @@ class Myprovider extends Base implements Describe
         $model = $this->modelName( 'flash' );
 
         $params = ['language' => $lang, 'model' => $model] + $allowed;
-        $data = ['multipart' => $this->request( $params, ['file' => $image->binary()] )];
+        $data = ['multipart' => $this->payload( $params, ['file' => $image->binary()] )];
         $response = $this->client()->post( 'relative/api/path', $data );
 
         $this->validate( $response );

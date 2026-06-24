@@ -94,7 +94,7 @@ class AlibabaTest extends TestCase
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->model( 'qwen-plus' )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
-            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQ )
+            ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
             ->ensure( 'write' )
             ->write( 'Give me the next passphrase and the passphrase for 2 days from now.' );

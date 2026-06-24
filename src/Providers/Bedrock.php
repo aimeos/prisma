@@ -21,10 +21,10 @@ class Bedrock extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->baseUrl = $this->cfg( $config, 'url', 'https://bedrock-runtime.us-east-1.amazonaws.com' );
+        $this->baseUrl = $this->config( $config, 'url', 'https://bedrock-runtime.us-east-1.amazonaws.com' );
 
         $this->header( 'Content-Type', 'application/json' );
-        $this->header( 'Authorization', 'Bearer ' . $this->cfg( $config, 'api_key' ) );
+        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->baseUrl );
     }
 

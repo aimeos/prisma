@@ -26,9 +26,9 @@ class Anthropic extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'x-api-key', $this->cfg( $config, 'api_key' ) );
+        $this->header( 'x-api-key', $this->config( $config, 'api_key' ) );
         $this->header( 'anthropic-version', '2023-06-01' );
-        $this->baseUrl( $this->cfg( $config, 'url', 'https://api.anthropic.com' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://api.anthropic.com' ) );
     }
 
 
@@ -131,7 +131,7 @@ class Anthropic extends Base
      * @param array<string, mixed> $result API response data
      * @return array<int, array{id: string|null, name: string, arguments: array<string, mixed>}> Parsed tool calls
      */
-    protected function parseToolCalls( array $result ) : array
+    protected function toolCalls( array $result ) : array
     {
         $toolCalls = [];
 

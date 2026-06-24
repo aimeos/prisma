@@ -25,14 +25,14 @@ class Clipdrop extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $this->header( 'x-api-key', $this->cfg( $config, 'api_key' ) );
+        $this->header( 'x-api-key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( 'https://clipdrop-api.co' );
     }
 
 
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        $request = $this->request( ['prompt' => $prompt], ['image_file' => $image] );
+        $request = $this->payload( ['prompt' => $prompt], ['image_file' => $image] );
         $response = $this->client()->post( 'replace-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -41,7 +41,7 @@ class Clipdrop extends Base
 
     public function detext( Image $image, array $options = [] ) : FileResponse
     {
-        $request = $this->request( $options, ['image_file' => $image] );
+        $request = $this->payload( $options, ['image_file' => $image] );
         $response = $this->client()->post( 'remove-text/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -51,7 +51,7 @@ class Clipdrop extends Base
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['mode'] );
-        $request = $this->request( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
+        $request = $this->payload( $allowed, ['image_file' => $image, 'mask_file' => $mask] );
         $response = $this->client()->post( 'cleanup/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -60,7 +60,7 @@ class Clipdrop extends Base
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $request = $this->request( ['prompt' => $prompt] );
+        $request = $this->payload( ['prompt' => $prompt] );
         $response = $this->client()->post( 'text-to-image/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -70,7 +70,7 @@ class Clipdrop extends Base
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, ['transparency_handling'] );
-        $request = $this->request( $allowed, ['image_file' => $image] );
+        $request = $this->payload( $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'remove-background/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -87,7 +87,7 @@ class Clipdrop extends Base
         ];
 
         $allowed = $this->allowed( $options, ['seed'] );
-        $request = $this->request( $data + $allowed, ['image_file' => $image] );
+        $request = $this->payload( $data + $allowed, ['image_file' => $image] );
         $response = $this->client()->post( 'uncrop/v1', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
@@ -105,7 +105,7 @@ class Clipdrop extends Base
             'target_height' => min( $size[1] * $factor, 4096 ),
         ];
 
-        $request = $this->request( $data, ['image_file' => $image] );
+        $request = $this->payload( $data, ['image_file' => $image] );
         $response = $this->client()->post( 'image-upscaling/v1/upscale', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
