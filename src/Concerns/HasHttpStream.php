@@ -11,13 +11,8 @@ trait HasHttpStream
     /**
      * Opens a streaming POST request and returns its already-validated body.
      *
-     * Sends the request with Guzzle's streaming body (no total timeout but a per-read
-     * inactivity timeout), validates the response status and captures the rate limit from
-     * the headers - all eagerly, so HTTP, auth and rate-limit errors surface at the call
-     * site instead of later when the body is consumed. The rate limit is returned through
-     * the by-reference argument (per call, not shared instance state, so interleaved streams
-     * cannot overwrite each other), while the body itself is returned unread for streamData()
-     * to decode lazily.
+     * Validates the response and captures the rate limit eagerly, so HTTP, auth and rate-limit
+     * errors surface at the call site instead of later when the unread body is consumed.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $params Request payload
@@ -35,8 +30,7 @@ trait HasHttpStream
 
         $this->validate( $response );
 
-        // Keep the previous turn's rate limit if this response omits the headers, so a later
-        // turn without them does not wipe the value an earlier turn reported.
+        // keep the previous turn's rate limit if this response omits the headers
         $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;
 
         return $response->getBody();
@@ -45,10 +39,6 @@ trait HasHttpStream
 
     /**
      * Sends a non-streaming POST request and returns its decoded, validated body.
-     *
-     * Non-streaming counterpart to openStream() for one turn of a tool loop: POSTs the payload,
-     * validates the status and captures the rate limit through the by-reference argument (kept
-     * unchanged when the response omits the headers), then returns the decoded body.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $params Request payload
@@ -70,10 +60,9 @@ trait HasHttpStream
     /**
      * Opens a streaming request eagerly and wraps the tool loop as a lazy TextResponse.
      *
-     * Shared backbone for every provider's stream*() method: it opens and validates the first
-     * request up front (so HTTP, auth and rate-limit errors surface at the call site), sets this
-     * request's rate limit on the response and hands the open body to the provider's turn loop.
-     * The loop runs lazily inside the returned response, so iterating it consumes the stream live.
+     * Opens and validates the first request up front (so HTTP, auth and rate-limit errors
+     * surface at the call site), then hands the open body to the provider's turn loop, which
+     * runs lazily inside the returned response.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $firstParams Request payload for the eagerly opened first turn
@@ -93,11 +82,8 @@ trait HasHttpStream
     /**
      * Decodes an open SSE body stream and yields each decoded event.
      *
-     * Reads the body line by line. Consecutive "data:" lines of one event are joined per
-     * the SSE spec and JSON decoded on the blank-line boundary; comment, "event:" and
-     * "[DONE]" lines are skipped. A streamed error event (top-level "error" object) is
-     * raised as an exception so it surfaces like a non-200 response does. The body is
-     * always closed, even if the consumer aborts.
+     * Joins consecutive "data:" lines of one event and JSON decodes them on the blank-line
+     * boundary. The body is always closed, even if the consumer aborts.
      *
      * @param \Psr\Http\Message\StreamInterface $body Open response body, e.g. from openStream()
      * @return \Generator<int, array<string, mixed>> Decoded SSE events
@@ -144,12 +130,8 @@ trait HasHttpStream
      * Reads the stream in chunks and yields each complete line without its newline.
      *
      * Buffers reads (a chunk can end mid-line), carries the trailing partial line into the
-     * next read and flushes the final line at end of stream. Newlines are located from a
-     * moving scan offset and the flushed prefix is dropped after each read, so a single line
-     * spanning many reads is scanned once overall rather than re-scanned per read. A trailing
-     * "\r" from CRLF endings is stripped. An empty read whose inactivity timeout actually
-     * elapsed (per the stream's "timed_out" metadata) is raised as a stall rather than
-     * silently truncated; an empty read for any other reason is treated as a clean end.
+     * next read, drops the flushed prefix so a long line is scanned once overall, and strips
+     * a trailing "\r" from CRLF endings.
      *
      * @param \Psr\Http\Message\StreamInterface $body Response body stream
      * @return \Generator<int, string> Complete lines
@@ -170,8 +152,7 @@ trait HasHttpStream
                 break; // end of stream or a stalled read - distinguished after the loop
             }
 
-            // bound the whole stream so a runaway or hostile response cannot grow the read buffer
-            // or the assembled result (content, tool-call arguments, ...) without limit
+            // bound the whole stream so a runaway or hostile response cannot grow unboundedly
             if( ( $total += strlen( $chunk ) ) > $this->maxResponseSize ) {
                 throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Stream exceeds the maximum allowed size of ' . $this->maxResponseSize . ' bytes' );
             }
@@ -194,11 +175,8 @@ trait HasHttpStream
             }
         }
 
-        // A clean end leaves the stream at EOF. An empty read before EOF is only a stall when
-        // the per-read inactivity timeout actually elapsed; a stream that returned empty for
-        // another reason (e.g. the server kept the connection open after the final event, or
-        // closed it without flipping the EOF flag) is treated as a clean end so a fully
-        // received response is not turned into an error.
+        // An empty read before EOF is only a stall when the per-read inactivity timeout
+        // actually elapsed; any other empty read is treated as a clean end.
         if( !$body->eof() && ( $body->getMetadata( 'timed_out' ) ?? false ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Stream stalled: no data received within the read timeout' );
         }
@@ -251,10 +229,8 @@ trait HasHttpStream
     /**
      * Validates a server-supplied slot index used as a streaming accumulator key.
      *
-     * Streamed deltas reference their slot by a 0-based index; a malformed or hostile stream could
-     * send a non-integer, negative or far-out-of-range value that would inflate the accumulator
-     * with a huge or sparse key. Anything outside 0..$count (an existing slot or the next new one)
-     * falls back to $default.
+     * Anything outside 0..$count (an existing slot or the next new one) falls back to $default,
+     * so a malformed or hostile index cannot inflate the accumulator with a huge or sparse key.
      *
      * @param mixed $index Raw index from the event
      * @param int $count Number of slots allocated so far

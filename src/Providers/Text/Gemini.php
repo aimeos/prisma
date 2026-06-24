@@ -121,10 +121,8 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                 $node['type'] = current( array_filter( $node['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';
             }
 
-            // The OpenAPI subset has no null enum members and rejects empty-string members
-            // ("enum[0]: cannot be empty"); nullability is carried by "nullable" instead and
-            // an empty value can't be expressed as a literal, so drop both. If nothing
-            // remains, drop the enum and leave a free-form value.
+            // the OpenAPI subset rejects null and empty-string enum members; drop them, and
+            // drop a now-empty enum to leave a free-form value
             if( isset( $node['enum'] ) && is_array( $node['enum'] ) )
             {
                 $node['enum'] = array_values( array_filter( $node['enum'], fn( $v ) => $v !== null && $v !== '' ) );
@@ -218,8 +216,8 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     /**
      * Streams the Gemini tool loop as a lazy TextResponse.
      *
-     * Lazy dual of generate(): iterate the returned response to consume answer text deltas
-     * and tool steps live; any accessor drains the stream and assembles the final response.
+     * Lazy dual of generate(): iterate the returned response for live deltas and tool steps,
+     * or call any accessor to drain and assemble the final response.
      *
      * @param array<int, array<string, mixed>> $contents Chat contents
      * @param array<string, mixed> $options Pre-filtered request options
@@ -243,13 +241,10 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     /**
      * Runs the Gemini tool loop, optionally streaming.
      *
-     * Single loop shared by write() (drained eagerly via generate()) and stream() (iterated
-     * lazily via fromStream()). The only per-mode difference is the transport: streaming uses
-     * the SSE endpoint and yields each answer text delta as it arrives, non-streaming POSTs
-     * once per turn. Tool calls always run through execStream(), so each
-     * \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when drained).
-     * Includes the MALFORMED_FUNCTION_CALL force-retry. The assembled result is folded into
-     * the given response when the loop ends.
+     * Single loop shared by write() (drained via generate()) and stream() (iterated lazily).
+     * The $stream flag selects the transport; tool calls always run through execStream(),
+     * the MALFORMED_FUNCTION_CALL force-retry is applied and the assembled result is folded
+     * into the response when the loop ends.
      *
      * @param TextResponse $res Response to populate when the loop ends
      * @param string $endpoint API endpoint path for this mode (built once by the caller)
@@ -280,16 +275,10 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
             do
             {
-                // Gemini 2.5 can return MALFORMED_FUNCTION_CALL with empty parts when it tries to
-                // emit a large or complex tool call in AUTO mode; $force makes generateRequest()
-                // request a function call (mode ANY) on a single retry so it produces a well-formed
-                // call instead of silently ending the tool loop with no result.
                 if( $stream )
                 {
-                    // The first streamed turn reuses the eagerly opened body (the wrapper already
-                    // built and sent that request); later turns build and open their own.
                     if( $firstBody !== null ) {
-                        $body = $firstBody;
+                        $body = $firstBody;     // first turn reuses the eagerly opened body
                         $firstBody = null;
                     } else {
                         $body = $this->openStream( $endpoint, $this->generateRequest( $system, $contents, $options, $step, $toolsParam, $force ), $rateLimit );
@@ -307,12 +296,13 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                 /** @var array<int, array<string, mixed>> $candidates */
                 $candidates = $data['candidates'] ?? [];
 
-                // Keep the last step that produced text so a tool-only final step (e.g.
-                // when maxSteps is reached) doesn't discard the model's partial answer.
+                // keep the last step that produced text so a tool-only final step doesn't discard it
                 $texts = $this->candidateTexts( $candidates ) ?: $texts;
 
                 $toolCalls = $this->toolCalls( $data );
 
+                // Gemini 2.5 can return MALFORMED_FUNCTION_CALL with empty parts; retry once with
+                // $force so generateRequest() requests a function call (mode ANY) and gets one
                 $retry = !$force && !$toolCalls && $this->tools()
                     && ( $candidates[0]['finishReason'] ?? null ) === 'MALFORMED_FUNCTION_CALL';
                 $force = true;
@@ -354,8 +344,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      */
     private function generateRequest( array $system, array $contents, array $options, int $step, array $toolsParam, bool $force = false ) : array
     {
-        // service_tier (Flex Inference) is a top-level request field, not a generationConfig
-        // entry, so it is pulled out before the remaining options are merged into the config.
+        // service_tier (Flex Inference) is a top-level request field, not a generationConfig entry
         $serviceTier = $options['serviceTier'] ?? null;
         unset( $options['serviceTier'] );
 
@@ -367,8 +356,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             $genConfig['maxOutputTokens'] = $this->maxTokens();
         }
 
-        // A positive budget caps thinking, withThinkingBudget(0) disables it explicitly
-        // (Gemini turns thinking off for thinkingBudget=0), null leaves the model default.
+        // a positive budget caps thinking, 0 disables it explicitly, null leaves the model default
         if( $this->thinkingBudget() !== null ) {
             $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
         }
@@ -385,8 +373,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
         if( $toolsParam ) {
             $request['tools'] = $toolsParam;
 
-            // Apply the configured tool choice only on the first step so the
-            // model can produce a final text answer after calling the tools.
+            // apply the configured tool choice only on the first step, so the model can answer after
             $mode = $step === 1 ? match( $this->toolChoice() ) {
                 self::AUTO => 'AUTO',
                 self::REQUIRED => 'ANY',
@@ -396,8 +383,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
             $toolConfig = $mode ? ['functionCallingConfig' => ['mode' => $mode]] : [];
 
-            // Gemini runs server-side provider tools (e.g. google_search) in the same turn
-            // as custom function tools only when this flag is set.
+            // run server-side provider tools in the same turn as custom function tools
             if( $this->tools() && $this->providerTools() ) {
                 $toolConfig['includeServerSideToolInvocations'] = true;
             }
@@ -407,8 +393,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             }
         }
 
-        // A MALFORMED_FUNCTION_CALL retry forces a function call (mode ANY) so the model emits a
-        // well-formed call instead of silently ending the tool loop with no result.
+        // the MALFORMED_FUNCTION_CALL retry forces a function call (mode ANY)
         if( $force ) {
             $request['toolConfig'] = ['functionCallingConfig' => ['mode' => 'ANY']];
         }
@@ -468,9 +453,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     /**
      * Populates a TextResponse from a Gemini API result.
      *
-     * Shared by the non-streaming and streaming paths: the streaming loop folds its
-     * already-created response so text, usage, meta, citations and steps surface on the
-     * same instance the caller holds once the stream is drained.
+     * Shared by the non-streaming and streaming paths so both assemble the same final response.
      *
      * @param TextResponse $res Response to populate
      * @param array<string, mixed> $data API response data
@@ -530,10 +513,8 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     /**
      * Streams a Gemini generateContent request, yielding deltas and returning the result.
      *
-     * Yields each answer-text delta as it arrives while accumulating the streamed parts
-     * (answer text, thinking and the complete functionCall parts), then returns a result
-     * array shaped like a regular generateContent response (via the generator return value)
-     * so the shared tool loop and result builder can reuse it.
+     * Accumulates the streamed parts (answer text, thinking and functionCall parts) into a
+     * result shaped like a regular generateContent response, returned via the generator value.
      *
      * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
      * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
@@ -572,8 +553,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                     yield $chunk;
                 }
 
-                // Gemini 3 thinking emits a thoughtSignature only once per turn; capture
-                // the first one so it can be backfilled onto the other function calls.
+                // Gemini 3 emits a thoughtSignature once per turn; capture the first to backfill below
                 if( !empty( $part['thoughtSignature'] ) ) {
                     $signature ??= $part['thoughtSignature'];
                 }
@@ -583,8 +563,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
                 $finishReason = $candidate['finishReason'];
             }
 
-            // Grounding metadata and usage arrive complete in a later chunk, so the
-            // latest non-empty value wins instead of being concatenated.
+            // grounding metadata and usage arrive complete in a later chunk, so the latest wins
             if( !empty( $candidate['groundingMetadata'] ) && is_array( $candidate['groundingMetadata'] ) ) {
                 $grounding = $candidate['groundingMetadata'];
             }
@@ -594,8 +573,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             }
         }
 
-        // Rebuild the candidate parts in the non-streaming order (thinking, answer, tool
-        // calls) so candidateTexts(), toolCalls() and result() read the same shape.
+        // rebuild the parts in the non-streaming order (thinking, answer, tool calls)
         $parts = [];
 
         if( $thinking !== '' ) {
@@ -606,8 +584,8 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             $parts[] = ['text' => $text];
         }
 
-        // Each replayed functionCall part must carry a thoughtSignature or Gemini 3 rejects
-        // the follow-up turn; backfill the captured signature onto the calls missing it.
+        // Gemini 3 rejects the follow-up turn unless each replayed functionCall carries a
+        // thoughtSignature; backfill the captured one onto the calls missing it
         if( $signature !== null )
         {
             foreach( $functionCalls as &$call )

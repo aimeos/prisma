@@ -69,9 +69,8 @@ class Anthropic extends Base implements Stream, Structure, Write
         return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) {
             $type = $node['type'] ?? null;
 
-            // Anthropic rejects a nullable enum expressed as a "type" array combined with
-            // "enum" (e.g. {"type":["string","null"],"enum":[...]}). Rewrite it to the
-            // supported anyOf form with a dedicated null branch.
+            // Anthropic rejects a nullable enum as a "type" array plus "enum"; rewrite it to
+            // the supported anyOf form with a dedicated null branch
             if( isset( $node['enum'] ) && is_array( $type ) && in_array( 'null', $type, true ) )
             {
                 $enum = array_values( array_filter( $node['enum'], fn( $v ) => $v !== null ) );
@@ -80,9 +79,8 @@ class Anthropic extends Base implements Stream, Structure, Write
                 return $head + ['anyOf' => [['enum' => $enum], ['type' => 'null']]];
             }
 
-            // Anthropic's strict schema rejects numeric, length and item-count
-            // constraints; "minItems" only supports 0 or 1. Drop the unsupported
-            // keywords and clamp "minItems" to a supported value.
+            // Anthropic's strict schema rejects numeric, length and item-count constraints
+            // and supports only minItems 0 or 1; drop the rest and clamp minItems below
             unset(
                 $node['minimum'], $node['maximum'], $node['exclusiveMinimum'],
                 $node['exclusiveMaximum'], $node['multipleOf'],
@@ -136,8 +134,8 @@ class Anthropic extends Base implements Stream, Structure, Write
     /**
      * Streams the Anthropic Messages tool loop as a lazy TextResponse.
      *
-     * Lazy dual of generate(): iterate the returned response to consume answer text deltas
-     * and tool steps live; any accessor drains the stream and assembles the final response.
+     * Lazy dual of generate(): iterate the returned response for live deltas and tool steps,
+     * or call any accessor to drain and assemble the final response.
      *
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Pre-filtered request options
@@ -171,9 +169,7 @@ class Anthropic extends Base implements Stream, Structure, Write
             'max_tokens' => $this->maxTokens() ?? 4096,
         ] + ( $stream ? ['stream' => true] : [] ) + $options;
 
-        // Claude 4.6+ supports adaptive thinking via the "thinking"/"effort" options
-        // (e.g. ['thinking' => ['type' => 'adaptive'], 'effort' => 'high']). An explicit
-        // thinking option wins; otherwise withThinkingBudget() enables a fixed budget.
+        // an explicit "thinking" option wins; otherwise withThinkingBudget() enables a fixed budget
         if( !isset( $params['thinking'] ) && ( $thinkingBudget = $this->thinkingBudget() ) ) {
             $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
         }
@@ -185,8 +181,7 @@ class Anthropic extends Base implements Stream, Structure, Write
         if( $toolsParam ) {
             $params['tools'] = $toolsParam;
 
-            // Apply the configured tool choice only on the first step so the
-            // model can produce a final text answer after calling the tools.
+            // apply the configured tool choice only on the first step, so the model can answer after
             $toolChoice = $step === 1 ? match( $this->toolChoice() ) {
                 self::REQUIRED => ['type' => 'any'],
                 self::AUTO => ['type' => 'auto'],
@@ -205,14 +200,10 @@ class Anthropic extends Base implements Stream, Structure, Write
     /**
      * Runs the Anthropic Messages tool loop, optionally streaming.
      *
-     * Single loop shared by write() (drained eagerly via generate()) and stream() (iterated
-     * lazily via fromStream()). The only per-mode difference is the transport: streaming uses
-     * the SSE endpoint and yields each answer text delta as it arrives, non-streaming POSTs
-     * once per turn. Tool calls always run through execStream(), so each
-     * \Aimeos\Prisma\Tools\Step is yielded before and after execution (ignored when drained).
-     * Includes pause_turn resumption for long-running server-side tools. The assembled result
-     * is folded into the given response when the loop ends. When streaming, the first turn
-     * reuses the eagerly opened body so HTTP/auth errors surface at the stream() call.
+     * Single loop shared by write() (drained via generate()) and stream() (iterated lazily).
+     * The $stream flag selects the transport; tool calls always run through execStream(),
+     * pause_turn resumption is handled and the assembled result is folded into the response
+     * when the loop ends.
      *
      * @param TextResponse $res Response to populate when the loop ends
      * @param array<int, array<string, mixed>> $messages Chat messages
@@ -265,17 +256,15 @@ class Anthropic extends Base implements Stream, Structure, Write
                 }
             }
 
-            // Keep the last step that produced text so a tool-only final step (e.g. when
-            // maxSteps is reached) doesn't discard the model's partial answer.
+            // keep the last step that produced text so a tool-only final step doesn't discard it
             $texts = $stepTexts ?: $texts;
 
             $toolCalls = $this->toolCalls( $result );
 
             if( !$toolCalls )
             {
-                // Anthropic returns stop_reason "pause_turn" when a long-running server-side
-                // tool (e.g. web_search) needs another turn to finish; resend the accumulated
-                // assistant content to resume instead of ending with a partial answer.
+                // stop_reason "pause_turn" means a long-running server-side tool needs another
+                // turn; resend the accumulated assistant content to resume instead of ending
                 if( ( $result['stop_reason'] ?? null ) === 'pause_turn' && $step < $this->maxSteps() ) {
                     $messages[] = ['role' => 'assistant', 'content' => $this->assistantContent( $result['content'] ?? [] )];
                     continue;
@@ -300,9 +289,7 @@ class Anthropic extends Base implements Stream, Structure, Write
     /**
      * Populates a TextResponse from an Anthropic API result.
      *
-     * Shared by the non-streaming and streaming paths: the streaming loop folds its
-     * already-created response so text, usage, meta, citations and steps surface on the
-     * same instance the caller holds once the stream is drained.
+     * Shared by the non-streaming and streaming paths so both assemble the same final response.
      *
      * @param TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
@@ -367,10 +354,8 @@ class Anthropic extends Base implements Stream, Structure, Write
     /**
      * Streams an Anthropic Messages request, yielding each text delta and returning the result.
      *
-     * Yields each answer text delta as it arrives while reassembling the content blocks
-     * (text, thinking and tool_use with their accumulated JSON input), then returns a result
-     * array shaped like a regular Messages response (via the generator return value) so the
-     * shared tool loop and result builder can reuse it.
+     * Reassembles the content blocks (text, thinking and tool_use with their accumulated JSON
+     * input) into a result shaped like a regular Messages response, returned via the generator value.
      *
      * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
      * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
@@ -389,15 +374,13 @@ class Anthropic extends Base implements Stream, Structure, Write
 
         foreach( $this->streamData( $body ) as $event )
         {
-            // the block index comes from the server; validate it so a malformed/hostile stream
-            // cannot inflate the block map with a huge or sparse key
+            // validate the server-supplied block index against inflating the block map
             $idx = $this->streamSlot( $event['index'] ?? 0, count( $blocks ), 0 );
 
             switch( $event['type'] ?? '' )
             {
                 case 'message_start':
-                    // Seed the result with the message envelope (id, model, role, ...) so
-                    // meta() carries the same fields the non-streaming response does.
+                    // seed the result with the message envelope (id, model, role, ...) for meta()
                     /** @var array<string, mixed> $message */
                     $message = $event['message'] ?? [];
                     /** @var array<string, mixed> $startUsage */

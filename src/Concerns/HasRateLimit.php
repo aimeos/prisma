@@ -30,8 +30,7 @@ trait HasRateLimit
      */
     public function withRateLimit( ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : static
     {
-        // A null update keeps any rate limit already captured (e.g. from an eagerly opened
-        // stream), so a later turn that omits the rate-limit headers does not wipe it.
+        // a null update keeps any rate limit already captured (e.g. from an eagerly opened stream)
         if( $rateLimit !== null ) {
             $this->rateLimit = $rateLimit;
         }

@@ -14,12 +14,7 @@ trait Stream
     /**
      * Creates a new instance backed by a streaming producer.
      *
-     * The producer receives the response instance and returns a generator that yields each
-     * chunk (text delta or \Aimeos\Prisma\Tools\Step) as it arrives while populating the
-     * response. Iterate stream() to consume the chunks live; resolve() (or any draining
-     * accessor) blocks until the stream is fully drained.
-     *
-     * @param \Closure $producer Stream producer: fn(static $response): \Generator
+     * @param \Closure $producer Stream producer: fn(static $response): \Generator yielding chunks
      * @return static New instance
      */
     public static function fromStream( \Closure $producer ) : static
@@ -34,16 +29,13 @@ trait Stream
     /**
      * Drains the stream to completion and returns the resolved response.
      *
-     * Eager counterpart to consuming the stream live: runs the producer generator to the end so
-     * the response is fully assembled, e.g. for the non-streaming write() path that shares the
-     * same generator loop as stream(). A no-op for a response that is not stream-backed or whose
-     * stream was already consumed.
+     * No-op for a response that is not stream-backed or whose stream was already consumed.
      *
      * @return static Fully resolved response
      */
     public function resolve() : static
     {
-        foreach( $this->stream() as $chunk ) {} // drain to populate the response
+        foreach( $this->stream() as $chunk ) {}
 
         return $this;
     }
@@ -52,13 +44,10 @@ trait Stream
     /**
      * Streams the response chunks live while populating the response.
      *
-     * Yields each chunk (text delta as string or \Aimeos\Prisma\Tools\Step for tool calls) as it
-     * arrives. The producer is consumed once: drain it fully - iterate to the end or let an
-     * accessor call resolve() - to assemble the response. A consumer that stops early leaves the
-     * response unassembled and the producer is not restarted, so a later stream() or accessor
-     * yields nothing. Yields nothing for a response that is not stream-backed.
+     * Consumed once: a consumer that stops early leaves the response unassembled and a
+     * later stream() or accessor yields nothing.
      *
-     * @return \Generator<int, mixed> Streamed chunks
+     * @return \Generator<int, mixed> Streamed chunks (text deltas and tool steps)
      */
     public function stream() : \Generator
     {
@@ -67,7 +56,7 @@ trait Stream
         }
 
         $producer = $this->streamProducer;
-        $this->streamProducer = null; // consume once: a later stream() or accessor yields nothing
+        $this->streamProducer = null; // consume once
 
         yield from $producer( $this );
     }

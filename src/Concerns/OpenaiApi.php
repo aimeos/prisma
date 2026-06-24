@@ -28,8 +28,8 @@ trait OpenaiApi
     /**
      * Streams the chat completions tool loop as a lazy TextResponse for OpenAI-compatible APIs.
      *
-     * Lazy dual of completions(): iterate the returned response to consume answer text deltas
-     * and tool steps live; any accessor drains the stream and assembles the final response.
+     * Lazy dual of completions(): iterate the returned response for live deltas and tool steps,
+     * or call any accessor to drain and assemble the final response.
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
@@ -83,9 +83,8 @@ trait OpenaiApi
     /**
      * Adds the tools and step-aware tool choice to a request payload.
      *
-     * Shared by the chat completions and Responses API payload builders, which carry tools and
-     * tool_choice in the same shape. The configured tool choice is applied only on the first step
-     * so the model can produce a final text answer after calling the tools; "none" stays omitted.
+     * The configured tool choice is applied only on the first step so the model can produce a
+     * final text answer after calling the tools.
      *
      * @param array<string, mixed> $params Request payload
      * @param int $step Current step in the tool loop (1-based)
@@ -110,12 +109,9 @@ trait OpenaiApi
     /**
      * Runs the chat completions tool loop, optionally streaming.
      *
-     * Single loop shared by write() (drained eagerly via completions()) and stream() (iterated
-     * lazily via fromStream()). A primed $firstBody selects streaming: streaming uses the SSE
-     * endpoint and yields each answer text delta as it arrives, non-streaming POSTs once per
-     * turn. Tool calls are always run through execStream(), so each \Aimeos\Prisma\Tools\Step
-     * is yielded before and after execution (ignored when drained). The assembled result is
-     * folded into the given response when the loop ends.
+     * Single loop shared by write() (drained via completions()) and stream() (iterated lazily).
+     * A primed $firstBody selects the streaming transport; tool calls always run through
+     * execStream() and the assembled result is folded into the response when the loop ends.
      *
      * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate when the loop ends
      * @param string $endpoint API endpoint path
@@ -142,10 +138,9 @@ trait OpenaiApi
             $turn = $this->completionTurn( $endpoint, $params, $stream, $firstBody, $rateLimit );
             yield from $turn;                       // answer text deltas
             $result = $turn->getReturn();
-            $firstBody = null;                      // the primed body, if any, is consumed by the first turn
+            $firstBody = null;                      // consumed by the first turn
 
-            // Keep the last step that produced text so a tool-only final step (e.g.
-            // when maxSteps is reached) doesn't discard the model's partial answer.
+            // keep the last step that produced text so a tool-only final step doesn't discard it
             $texts = $this->completionTexts( $result ) ?: $texts;
             $toolCalls = $this->toolCalls( $result );
 
@@ -171,10 +166,9 @@ trait OpenaiApi
     /**
      * Runs one chat completions turn over HTTP, yielding answer deltas and returning the result.
      *
-     * The only place the chat completions loop touches the network: streaming opens (or reuses the
-     * primed first) SSE body and yields each text delta via readCompletion(), non-streaming POSTs
-     * once. Either path updates the captured rate limit and returns a result array shaped like a
-     * regular chat completions response so the shared loop and result builder can reuse it.
+     * Streaming opens (or reuses the primed first) SSE body and yields each delta via
+     * readCompletion(), non-streaming POSTs once. Both return a result shaped like a regular
+     * chat completions response so the shared loop and result builder can reuse it.
      *
      * @param string $endpoint API endpoint path
      * @param array<string, mixed> $params Request payload for this turn
@@ -373,8 +367,8 @@ trait OpenaiApi
     /**
      * Streams the Responses API tool loop as a lazy TextResponse (used by OpenAI and xAI).
      *
-     * Lazy dual of responses(): iterate the returned response to consume answer text deltas
-     * and tool steps live; any accessor drains the stream and assembles the final response.
+     * Lazy dual of responses(): iterate the returned response for live deltas and tool steps,
+     * or call any accessor to drain and assemble the final response.
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
@@ -424,12 +418,9 @@ trait OpenaiApi
     /**
      * Runs the Responses API tool loop, optionally streaming.
      *
-     * Single loop shared by write() (drained eagerly via responses()) and stream() (iterated
-     * lazily via fromStream()). A primed $firstBody selects streaming: streaming uses the SSE
-     * endpoint and yields each answer text delta as it arrives, non-streaming POSTs once per
-     * turn. Tool calls always run through execStream(), so each \Aimeos\Prisma\Tools\Step is
-     * yielded before and after execution (ignored when drained). The assembled result is folded
-     * into the given response when the loop ends.
+     * Single loop shared by write() (drained via responses()) and stream() (iterated lazily).
+     * A primed $firstBody selects the streaming transport; tool calls always run through
+     * execStream() and the assembled result is folded into the response when the loop ends.
      *
      * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate when the loop ends
      * @param string $endpoint API endpoint path
@@ -456,13 +447,12 @@ trait OpenaiApi
             $turn = $this->responseTurn( $endpoint, $params, $stream, $firstBody, $rateLimit );
             yield from $turn;                       // answer text deltas
             $result = $turn->getReturn();
-            $firstBody = null;                      // the primed body, if any, is consumed by the first turn
+            $firstBody = null;                      // consumed by the first turn
 
             /** @var array<int, array<string, mixed>> $output */
             $output = $result['output'] ?? [];
             $parsed = $this->responseData( $output );
-            // Keep the last step that produced text so a tool-only final step (e.g.
-            // when maxSteps is reached) doesn't discard the model's partial answer.
+            // keep the last step that produced text so a tool-only final step doesn't discard it
             $texts = $parsed['texts'] ?: $texts;
 
             if( !$parsed['toolCalls'] ) {
@@ -474,8 +464,7 @@ trait OpenaiApi
             $toolResults = $exec->getReturn();
 
             array_push( $allSteps, ...$toolResults );
-            // Responses API expects the output items (function_call, message, reasoning)
-            // appended verbatim as top-level input items, not wrapped in an assistant message.
+            // Responses API expects the output items appended verbatim as top-level input items
             $messages = array_merge( $messages, $output, $this->responseSteps( $toolResults ) );
         }
 
@@ -486,9 +475,8 @@ trait OpenaiApi
     /**
      * Runs one Responses API turn over HTTP, yielding answer deltas and returning the result.
      *
-     * The only place the Responses loop touches the network: streaming opens (or reuses the primed
-     * first) SSE body and yields each text delta via readResponse(), non-streaming POSTs once.
-     * Either path updates the captured rate limit and returns the final response envelope so the
+     * Streaming opens (or reuses the primed first) SSE body and yields each delta via
+     * readResponse(), non-streaming POSTs once. Both return the final response envelope so the
      * shared loop and result builder can reuse it.
      *
      * @param string $endpoint API endpoint path
@@ -562,9 +550,8 @@ trait OpenaiApi
     /**
      * Runs a structured output request using the chat completions API.
      *
-     * Native strict mode sends the schema as a json_schema response format; JSON mode
-     * embeds the schema in the prompt and parses the JSON from the response text. The
-     * "mode" option forces either path, otherwise it is chosen automatically.
+     * Native strict mode sends the schema as a json_schema response format; JSON mode embeds
+     * the schema in the prompt and parses the JSON from the response text (default: native).
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
@@ -594,9 +581,8 @@ trait OpenaiApi
     /**
      * Runs a structured output request using the Responses API.
      *
-     * Native strict mode sends the schema as a json_schema text format; JSON mode embeds
-     * the schema in the prompt and parses the JSON from the response text. The "mode"
-     * option forces either path, otherwise it is chosen automatically.
+     * Native strict mode sends the schema as a json_schema text format; JSON mode embeds the
+     * schema in the prompt and parses the JSON from the response text (default: native).
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default model name
@@ -711,9 +697,7 @@ trait OpenaiApi
     /**
      * Populates a TextResponse from a chat completions API result.
      *
-     * Shared by the non-streaming and streaming paths: the streaming loop folds its
-     * already-created response so text, usage, meta, citations and steps surface on the
-     * same instance the caller holds once the stream is drained.
+     * Shared by the non-streaming and streaming paths so both assemble the same final response.
      *
      * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
@@ -986,9 +970,7 @@ trait OpenaiApi
     /**
      * Populates a TextResponse from a Responses API result.
      *
-     * Shared by the non-streaming and streaming paths: the streaming loop folds its
-     * already-created response so usage, meta, citations and steps surface on the same
-     * instance the caller holds once the stream is drained.
+     * Shared by the non-streaming and streaming paths so both assemble the same final response.
      *
      * @param \Aimeos\Prisma\Responses\TextResponse $res Response to populate
      * @param array<string, mixed> $result API response data
@@ -1064,10 +1046,8 @@ trait OpenaiApi
     /**
      * Streams a chat completions request, yielding each text delta and returning the result.
      *
-     * Yields each assistant content delta as it arrives while accumulating the content,
-     * reasoning, citations and tool call argument fragments, then returns a result array
-     * shaped like a regular chat completions response (via the generator return value) so
-     * the shared tool loop and result builder can reuse it.
+     * Accumulates the content, reasoning, citations and tool call argument fragments into a
+     * result shaped like a regular chat completions response, returned via the generator value.
      *
      * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
      * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
@@ -1089,9 +1069,8 @@ trait OpenaiApi
 
         foreach( $this->streamData( $body ) as $event )
         {
-            // Accumulate the envelope fields (id, model, created, ...) so meta() matches the
-            // non-streaming response; later chunks win per key. The transient choices/usage/
-            // citations are dropped here rather than copied on every chunk and re-added below.
+            // accumulate the envelope fields (id, model, ...) so meta() matches the non-streaming
+            // response; the transient choices/usage/citations are re-added below instead
             $meta = array_diff_key( $event, ['choices' => true, 'usage' => true, 'citations' => true] ) + $meta;
 
             if( isset( $event['usage'] ) && is_array( $event['usage'] ) ) {
@@ -1130,9 +1109,8 @@ trait OpenaiApi
 
             foreach( $calls as $call )
             {
-                // Correlate each fragment to its call by the provider-supplied index, which is
-                // present on every streamed tool-call delta (including argument-only fragments);
-                // fall back to the current slot when a provider omits it or sends an invalid index.
+                // correlate each fragment to its call by the provider-supplied index,
+                // falling back to the current slot when it is omitted or invalid
                 $i = $this->streamSlot( $call['index'] ?? $current, count( $tools ), $current );
                 $current = $i;
                 $tools[$i] ??= ['id' => null, 'type' => 'function', 'function' => ['name' => '', 'arguments' => '']];
@@ -1185,9 +1163,8 @@ trait OpenaiApi
     /**
      * Streams a Responses API request, yielding each text delta and returning the result.
      *
-     * Yields each answer text delta as it arrives and captures the final response envelope
-     * (output, usage, status, ...) which is returned via the generator return value so the
-     * shared result builder can reuse it.
+     * Captures the final response envelope (output, usage, status, ...), returned via the
+     * generator value so the shared result builder can reuse it.
      *
      * @param \Psr\Http\Message\StreamInterface $body Open SSE body for this turn
      * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the reassembled result
