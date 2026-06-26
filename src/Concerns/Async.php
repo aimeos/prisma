@@ -9,6 +9,10 @@ namespace Aimeos\Prisma\Concerns;
 trait Async
 {
     private ?\Closure $asyncPoll = null;
+
+    /** @var \Closure|null fn(int $seconds): void */
+    private ?\Closure $asyncSleep = null;
+
     private bool $asyncDone = true;
     private int $asyncRetry = 5;
 
@@ -18,13 +22,15 @@ trait Async
      *
      * @param \Closure $closure Polling closure that populates the response and returns true when done
      * @param int $retry Seconds between polling attempts
+     * @param \Closure|null $sleep Sleep override fn(int $seconds): void; lets tests poll without real delays
      * @return static New instance
      */
-    public static function fromAsync( \Closure $closure, int $retry = 5 ) : static
+    public static function fromAsync( \Closure $closure, int $retry = 5, ?\Closure $sleep = null ) : static
     {
         $instance = new static;
         $instance->asyncPoll = $closure;
         $instance->asyncRetry = $retry;
+        $instance->asyncSleep = $sleep;
         $instance->asyncDone = false;
 
         return $instance;
@@ -71,8 +77,12 @@ trait Async
 
         if( $closure = $this->asyncPoll )
         {
+            // Pause via the injected sleep when set (so tests poll without real delays) and
+            // fall back to a real sleep() otherwise.
+            $sleep = $this->asyncSleep ?? fn( int $seconds ) => sleep( $seconds );
+
             while( !$closure( $this ) ) {
-                sleep( $this->asyncRetry );
+                $sleep( $this->asyncRetry );
             }
 
             $this->asyncDone = true;
