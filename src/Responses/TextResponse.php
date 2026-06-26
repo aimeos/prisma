@@ -17,7 +17,7 @@ use Aimeos\Prisma\Concerns\Stream;
  *
  * @implements \IteratorAggregate<int|string, string|null>
  */
-class TextResponse implements \IteratorAggregate
+class TextResponse implements \IteratorAggregate, \JsonSerializable
 {
     use Async, HasCitations, HasMeta, HasRateLimit, HasReason, HasToolSteps, HasUsage, Stream;
 
@@ -58,6 +58,28 @@ class TextResponse implements \IteratorAggregate
     public function empty() : bool
     {
         return empty( $this->list );
+    }
+
+
+    /**
+     * Creates a fake response for testing.
+     *
+     * Seeds the response with canned text and structured output so tests can stub a
+     * Prisma::fake() queue or assert against application code without calling a provider.
+     * Chain the with*() setters (withUsage(), withMeta(), withReason(), withSteps()) for
+     * any additional fields.
+     *
+     * @param string|array<int|string, string|null> $text Response text, or a list of texts
+     * @param array<int|string, mixed> $structured Structured output data
+     * @return self Fake response instance
+     */
+    public static function fake( string|array $text = '', array $structured = [] ) : self
+    {
+        $instance = new self;
+        $instance->list = is_array( $text ) ? $text : [$text];
+        $instance->structured = $structured;
+
+        return $instance;
     }
 
 
@@ -102,6 +124,29 @@ class TextResponse implements \IteratorAggregate
         }
 
         return new \ArrayIterator( $this->list );
+    }
+
+
+    /**
+     * Returns the response as a plain array for serialization.
+     *
+     * Resolves the response (draining a stream or polling an async job) and exposes every
+     * field, so it can be snapshot-tested or JSON-encoded. Nested citations and steps
+     * serialize through their own JsonSerializable implementations.
+     *
+     * @return array<string, mixed> Response data
+     */
+    public function jsonSerialize() : array
+    {
+        return [
+            'texts' => $this->texts(),
+            'structured' => $this->structured(),
+            'usage' => $this->usage(),
+            'meta' => $this->meta(),
+            'reason' => $this->reason(),
+            'citations' => $this->citations(),
+            'steps' => $this->steps(),
+        ];
     }
 
 
