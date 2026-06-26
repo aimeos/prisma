@@ -166,7 +166,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **OpenAI**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes   | yes        |           | -         | yes   | -         | yes          | yes            | yes           | -               |
 | **Perplexity**        | beta  | beta       |           | -         | beta  | yes       | yes          |                | yes           | -               |
-| **Vertexai**          | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
+| **Vertexai**          | beta  | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
 | **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
 
 ### Video

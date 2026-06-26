@@ -72,4 +72,34 @@ class VertexaiTest extends TestCase
             );
         } );
     }
+
+
+    public function testVectorize() : void
+    {
+        $response = $this->prisma( 'text', 'vertexai', ['access_token' => 'tok', 'project_id' => 'proj', 'region' => 'us-central1'] )
+            ->response( [
+                'predictions' => [
+                    ['embeddings' => ['values' => [0.1, 0.2, 0.3]]],
+                    ['embeddings' => ['values' => [0.4, 0.5, 0.6]]],
+                ],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['hello', 'world'], 3 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            // text embeddings use Vertex's publisher-model :predict endpoint, not Gemini's :batchEmbedContents
+            $this->assertEquals(
+                'https://us-central1-aiplatform.googleapis.com/v1/projects/proj/locations/us-central1/publishers/google/models/gemini-embedding-001:predict',
+                (string) $request->getUri()
+            );
+            $this->assertEquals( 'Bearer tok', $request->getHeaderLine( 'authorization' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'hello', $body['instances'][0]['content'] );
+            $this->assertEquals( 'world', $body['instances'][1]['content'] );
+            $this->assertEquals( 3, $body['parameters']['outputDimensionality'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], $response->vectors() );
+    }
 }
