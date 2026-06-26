@@ -24,5 +24,17 @@
     "psr-4": {
       "Tests\\": "tests/"
     }
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:integration": "phpunit --configuration phpunit-integration.xml",
+    "test:coverage": "phpunit --coverage-text --coverage-html coverage --coverage-clover coverage.xml",
+    "analyse": "phpstan analyse"
+  },
+  "scripts-descriptions": {
+    "test": "Run the unit test suite (mocked HTTP, no API keys needed)",
+    "test:integration": "Run the live integration tests (requires provider API keys)",
+    "test:coverage": "Run the unit suite with code coverage (requires Xdebug or PCOV)",
+    "analyse": "Run static analysis with PHPStan"
   }
 }

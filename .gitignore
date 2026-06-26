@@ -1,5 +1,8 @@
 .env
+.phpunit.cache
 .phpunit.result.cache
 composer.lock
+/coverage/
+/coverage.xml
 /tests/Integration/results/
 /vendor
