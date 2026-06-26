@@ -61,6 +61,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#imagine">imagine</a><span>: Generate an image from the prompt</span></li>
     <li><a href="#inpaint">inpaint</a><span>: Edit an image area according to a prompt</span></li>
     <li><a href="#isolate">isolate</a><span>: Remove the image background</span></li>
+    <li><a href="#recognize">recognize</a><span>: Recognize the text in an image (OCR)</span></li>
     <li><a href="#relocate">relocate</a><span>: Place the foreground object on a new background</span></li>
     <li><a href="#repaint">repaint</a><span>: Repaint an image according to the prompt</span></li>
     <li><a href="#uncrop">uncrop</a><span>: Extend/outpaint the image</span></li>
@@ -87,6 +88,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 - [Anthropic](https://docs.anthropic.com/en/api)
 - [AudioPod AI](https://audiopod.ai/)
+- [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
 - [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
 - [Clipdrop](https://clipdrop.co/apis)
@@ -100,12 +102,14 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Mistral](https://docs.mistral.ai/api)
+- [ModelsLab](https://docs.modelslab.com/)
 - [Murf](https://murf.ai/api)
 - [Ollama](https://ollama.com/)
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
 - [Perplexity](https://docs.perplexity.ai/)
 - [RemoveBG](https://www.remove.bg/api)
+- [Replicate](https://replicate.com/docs)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
