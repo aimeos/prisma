@@ -15,11 +15,11 @@ trait HasUsage
     /**
      * Returns the usage information.
      *
-     * @return array<string, mixed> Usage information
+     * @return \Aimeos\Prisma\Values\Usage Usage information with typed token accessors and array access
      */
-    public function usage() : array
+    public function usage() : \Aimeos\Prisma\Values\Usage
     {
-        return $this->usage;
+        return new \Aimeos\Prisma\Values\Usage( $this->usage );
     }
 
 

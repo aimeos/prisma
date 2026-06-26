@@ -42,7 +42,7 @@ class AlibabaTest extends TestCase
         } );
 
         $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/test.mp3', $response->url() );
-        $this->assertEquals( ['request_id' => 'req-tts-123'], $response->meta() );
+        $this->assertEquals( ['request_id' => 'req-tts-123'], $response->meta()->all() );
     }
 
 

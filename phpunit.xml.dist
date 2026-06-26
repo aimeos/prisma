@@ -18,6 +18,7 @@
             <directory suffix="Test.php">./tests/Schema/</directory>
             <directory suffix="Test.php">./tests/Testing/</directory>
             <directory suffix="Test.php">./tests/Tools/</directory>
+            <directory suffix="Test.php">./tests/Values/</directory>
         </testsuite>
     </testsuites>
     <source>

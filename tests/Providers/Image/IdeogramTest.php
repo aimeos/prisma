@@ -46,7 +46,7 @@ class IdeogramTest extends TestCase
             "url" => "https://placehold.co/10x10.png",
             "style_type" => "GENERAL",
             "created" => "2000-01-23 04:56:07+00:00"
-        ], $file->meta() );
+        ], $file->meta()->all() );
     }
 
 

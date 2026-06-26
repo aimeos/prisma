@@ -452,7 +452,7 @@ $response = \Aimeos\Prisma\Prisma::text()
     ->write( 'Solve this step by step' );
 
 // Access the model's reasoning (if returned by the provider)
-$thinking = $response->meta()['thinking'] ?? null;
+$thinking = $response->meta()->thinking();
 ```
 
 ### Response objects
@@ -510,19 +510,45 @@ Included **meta data** (optional):
 
 ```php
 $meta = $response->meta();
+
+$meta->id();               // provider response ID or NULL
+$meta->model();            // model that produced the response or NULL
+$meta->thinking();         // extended thinking/reasoning output or NULL
+$meta->reasoningDetails(); // encrypted reasoning blocks for multi-turn continuity or NULL
 ```
 
-It returns an associative array whose content totally depends on the provider.
+`meta()` returns a `Values\Meta` object with typed accessors for the fields shared across
+providers. It also behaves like the array it replaced, so provider-specific keys stay reachable
+by subscript, iteration and `json_encode()`:
+
+```php
+$created = $response->meta()['created'] ?? null; // raw provider key
+$raw = $response->meta()->all();                 // complete provider map as array
+```
 
 Included **usage data** (optional):
 
 ```php
 $usage = $response->usage();
+
+$usage->promptTokens();     // input tokens or NULL
+$usage->completionTokens(); // generated output tokens or NULL
+$usage->totalTokens();      // total tokens (falls back to prompt + completion) or NULL
+$usage->cacheReadTokens();  // cached input tokens or NULL
+$usage->cacheWriteTokens(); // tokens written to the provider cache or NULL
+$usage->thoughtTokens();    // reasoning/thinking tokens or NULL
+$usage->used();             // used units as float (tokens for text, credits/cost for media)
 ```
 
-It returns an associative array whose content depends on the provider. If the provider returns
-usage information, the `used` array key is available and contains a number. What the number
-represents depdends on the provider too.
+`usage()` returns a `Values\Usage` object whose typed accessors normalize the differing token
+keys each provider reports (e.g. `input_tokens`, `prompt_tokens`, `promptTokenCount`,
+`inputTokens` all map to `promptTokens()`). Accessors return `NULL` when a provider does not
+report that figure. Like `meta()`, it stays array-compatible for raw keys:
+
+```php
+$used = $response->usage()['used'];  // raw key, still works
+$raw = $response->usage()->all();    // complete provider map as array
+```
 
 ### Citations
 

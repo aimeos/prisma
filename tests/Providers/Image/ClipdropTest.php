@@ -27,7 +27,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -44,7 +44,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -61,7 +61,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -78,7 +78,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -95,7 +95,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -112,7 +112,7 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 
 
@@ -130,6 +130,6 @@ class ClipdropTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage() );
+        $this->assertEquals( ['used' => 1, 'x-remaining-credits' => 99], $file->usage()->all() );
     }
 }
