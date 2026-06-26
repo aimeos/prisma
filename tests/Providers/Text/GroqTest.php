@@ -24,15 +24,15 @@ class GroqTest extends TestCase
 
     public function testStream() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":10}}\n\n"
-            . "data: [DONE]\n\n";
-
         $deltas = [];
 
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['content' => 'Hello']]]]],
+                ['data' => ['choices' => [['delta' => ['content' => ' world']]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 10]]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -55,15 +55,17 @@ class GroqTest extends TestCase
 
     public function testStreamRateLimitNotSharedAcrossInterleavedStreams() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":1}}\n\n"
-            . "data: [DONE]\n\n";
+        $events = [
+            ['data' => ['choices' => [['delta' => ['content' => 'hi'], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 1]]],
+            ['data' => '[DONE]'],
+        ];
 
         $this->prisma( 'text', 'groq', ['api_key' => 'test'] );
 
         // two lazy streams are opened on the SAME provider instance, each carrying its own
         // rate-limit header; opening the second must not overwrite the first's rate limit
-        $this->response( $sse, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '111'] );
-        $this->response( $sse, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '222'] );
+        $this->streamResponse( $events, ['x-ratelimit-remaining' => '111'] );
+        $this->streamResponse( $events, ['x-ratelimit-remaining' => '222'] );
 
         $first = $this->provider()->ensure( 'stream' )->stream( 'a' );
         $second = $this->provider()->ensure( 'stream' )->stream( 'b' );
@@ -79,15 +81,15 @@ class GroqTest extends TestCase
 
     public function testStreamRetriesTransientFailure() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"recovered\"},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":1}}\n\n"
-            . "data: [DONE]\n\n";
-
         $this->prisma( 'text', 'groq', ['api_key' => 'test'] );
 
         // a transient 503 on the streaming request must be retried like the non-streaming path,
         // not surfaced immediately at the stream() call
         $this->response( ['error' => ['message' => 'overloaded']], [], 503 );
-        $this->response( $sse, ['Content-Type' => 'text/event-stream'] );
+        $this->streamResponse( [
+            ['data' => ['choices' => [['delta' => ['content' => 'recovered'], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 1]]],
+            ['data' => '[DONE]'],
+        ] );
 
         $response = $this->provider()
             ->withClientRetry( 3, 0 )
@@ -105,11 +107,11 @@ class GroqTest extends TestCase
         $this->expectException( PrismaException::class );
         $this->expectExceptionMessage( 'maximum allowed size' );
 
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"this response is far larger than the tiny cap\"}}]}\n\n"
-            . "data: [DONE]\n\n";
-
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['content' => 'this response is far larger than the tiny cap']]]]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->withMaxResponseSize( 16 )
             ->stream( 'hi' );
@@ -125,18 +127,18 @@ class GroqTest extends TestCase
         // the two fragments of one tool call carry different out-of-range indices; without validation
         // they would land in separate sparse slots and break the call, so they must fall back to the
         // current slot and still merge into a single coherent tool call
-        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":999999999,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":\"evil\",\"function\":{\"arguments\":\"{}\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
-        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
-            . "data: [DONE]\n\n";
-
         $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 999999999, 'id' => 'call_1', 'function' => ['name' => 'ping', 'arguments' => '']]]]]]]],
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 'evil', 'function' => ['arguments' => '{}']]]]]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'tool_calls']]]],
+                ['data' => '[DONE]'],
+            ] );
+        $this->streamResponse( [
+            ['data' => ['choices' => [['delta' => ['content' => 'pong!']]]]],
+            ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 12]]],
+            ['data' => '[DONE]'],
+        ] );
 
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
@@ -169,11 +171,11 @@ class GroqTest extends TestCase
     {
         $this->expectException( PrismaException::class );
 
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
-            . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
-
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['content' => 'Hel']]]]],
+                ['data' => ['error' => ['message' => 'server overloaded', 'type' => 'server_error']]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -183,12 +185,12 @@ class GroqTest extends TestCase
 
     public function testStreamMeta() : void
     {
-        $sse = "data: {\"id\":\"chatcmpl-1\",\"model\":\"openai/gpt-oss-120b\",\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":3}}\n\n"
-            . "data: [DONE]\n\n";
-
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['id' => 'chatcmpl-1', 'model' => 'openai/gpt-oss-120b', 'choices' => [['delta' => ['content' => 'Hi']]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 3]]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -200,13 +202,13 @@ class GroqTest extends TestCase
 
     public function testStreamReasoning() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":5}}\n\n"
-            . "data: [DONE]\n\n";
-
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['reasoning_content' => 'thinking...']]]]],
+                ['data' => ['choices' => [['delta' => ['content' => 'Answer']]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 5]]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -224,17 +226,17 @@ class GroqTest extends TestCase
             function( $args ) use ( &$called ) { $called = true; return 'sunny'; }
         );
 
-        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"{}\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
-        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"Which city?\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
         $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'c1', 'function' => ['name' => 'get_weather', 'arguments' => '{}']]]]]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'tool_calls']]]],
+                ['data' => '[DONE]'],
+            ] );
+        $this->streamResponse( [
+            ['data' => ['choices' => [['delta' => ['content' => 'Which city?']]]]],
+            ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']]]],
+            ['data' => '[DONE]'],
+        ] );
 
         $results = [];
 
@@ -261,18 +263,18 @@ class GroqTest extends TestCase
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{}\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
-        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
-            . "data: [DONE]\n\n";
-
         $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'ping', 'arguments' => '']]]]]]]],
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => '{}']]]]]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'tool_calls']]]],
+                ['data' => '[DONE]'],
+            ] );
+        $this->streamResponse( [
+            ['data' => ['choices' => [['delta' => ['content' => 'pong!']]]]],
+            ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 12]]],
+            ['data' => '[DONE]'],
+        ] );
 
         $chunks = [];
 
@@ -307,18 +309,18 @@ class GroqTest extends TestCase
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"{}\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
-        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
-            . "data: [DONE]\n\n";
-
         // turn 1 carries the rate limit; the post-tool turn 2 omits the headers
         $provider = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream', 'x-ratelimit-remaining' => '50'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'ping', 'arguments' => '{}']]]]]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'tool_calls']]]],
+                ['data' => '[DONE]'],
+            ], ['x-ratelimit-remaining' => '50'] );
+        $this->streamResponse( [
+            ['data' => ['choices' => [['delta' => ['content' => 'pong!']]]]],
+            ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 12]]],
+            ['data' => '[DONE]'],
+        ] );
 
         $response = $provider->withTools( [$tool] )->ensure( 'stream' )->stream( 'Ping the tool' );
 
@@ -331,12 +333,12 @@ class GroqTest extends TestCase
 
     public function testStreamZeroContent() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"0\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
         $response = $this->prisma( 'text', 'groq', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['content' => '0']]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']]]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 

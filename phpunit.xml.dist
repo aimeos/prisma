@@ -2,13 +2,21 @@
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.3/phpunit.xsd"
     bootstrap="vendor/autoload.php"
-    colors="true">
+    cacheDirectory=".phpunit.cache"
+    colors="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    displayDetailsOnTestsThatTriggerWarnings="true"
+    displayDetailsOnPhpunitDeprecations="true">
     <testsuites>
         <testsuite name="Test Suite">
             <directory suffix="Test.php">./tests/Files/</directory>
             <directory suffix="Test.php">./tests/Providers/</directory>
             <directory suffix="Test.php">./tests/Responses/</directory>
             <directory suffix="Test.php">./tests/Schema/</directory>
+            <directory suffix="Test.php">./tests/Testing/</directory>
             <directory suffix="Test.php">./tests/Tools/</directory>
         </testsuite>
     </testsuites>
