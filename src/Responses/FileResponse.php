@@ -15,7 +15,7 @@ use Aimeos\Prisma\Files\File;
  *
  * @implements \IteratorAggregate<int|string, File>
  */
-class FileResponse implements \IteratorAggregate
+class FileResponse implements \IteratorAggregate, \JsonSerializable
 {
     use Async, HasDescription, HasMeta, HasRateLimit, HasUsage;
 
@@ -227,6 +227,30 @@ class FileResponse implements \IteratorAggregate
         }
 
         return new \ArrayIterator( $this->list );
+    }
+
+
+    /**
+     * Returns the response as a plain array for serialization.
+     *
+     * Resolves the response (polling an async job if needed) and exposes file metadata only -
+     * filename, mime type and URL, never the binary content - so it stays cheap to snapshot
+     * or JSON-encode.
+     *
+     * @return array<string, mixed> Response data
+     */
+    public function jsonSerialize() : array
+    {
+        return [
+            'files' => array_map( fn( File $file ) => [
+                'filename' => $file->filename(),
+                'mimeType' => $file->mimeType(),
+                'url' => $file->url(),
+            ], $this->files() ),
+            'description' => $this->description(),
+            'usage' => $this->usage(),
+            'meta' => $this->meta(),
+        ];
     }
 
 

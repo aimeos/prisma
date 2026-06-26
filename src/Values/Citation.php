@@ -6,7 +6,7 @@ namespace Aimeos\Prisma\Values;
 /**
  * Citation from a provider response.
  */
-class Citation
+class Citation implements \JsonSerializable
 {
     private readonly ?string $title;
     private readonly ?string $url;
@@ -28,6 +28,22 @@ class Citation
         $this->url = $url;
         $this->text = $text;
         $this->source = $source;
+    }
+
+
+    /**
+     * Returns the citation as a plain array for serialization.
+     *
+     * @return array{title: string|null, url: string|null, text: string|null, source: string|null} Citation data
+     */
+    public function jsonSerialize() : array
+    {
+        return [
+            'title' => $this->title,
+            'url' => $this->url,
+            'text' => $this->text,
+            'source' => $this->source,
+        ];
     }
 
 

@@ -9,7 +9,7 @@ use Aimeos\Prisma\Concerns\HasUsage;
 /**
  * Embedding vector response.
  */
-class VectorResponse
+class VectorResponse implements \JsonSerializable
 {
     use HasMeta, HasUsage;
 
@@ -52,6 +52,21 @@ class VectorResponse
     public function getIterator(): \Traversable
     {
         return new \ArrayIterator( $this->vectors );
+    }
+
+
+    /**
+     * Returns the response as a plain array for serialization.
+     *
+     * @return array<string, mixed> Response data
+     */
+    public function jsonSerialize() : array
+    {
+        return [
+            'vectors' => $this->vectors,
+            'usage' => $this->usage(),
+            'meta' => $this->meta(),
+        ];
     }
 
 
