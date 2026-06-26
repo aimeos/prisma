@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Responses\VectorResponse;
 
 
 /**
@@ -35,6 +36,30 @@ class Vertexai extends Gemini
 
         $this->region = $region !== '' ? $region : 'global';
         $this->projectid = $this->config( $config, 'project_id' );
+    }
+
+
+    public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
+    {
+        $model = $this->modelName( 'gemini-embedding-001' );
+        $allowed = $this->allowed( $options, ['task_type', 'title'] );
+
+        $instances = array_map( fn( string $text ) => ['content' => $text] + $allowed, array_values( $texts ) );
+        $request = ['instances' => $instances] + ( $size ? ['parameters' => ['outputDimensionality' => $size]] : [] );
+
+        $response = $this->client()->post( $this->modelPath( $model ) . ':predict', ['json' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+
+        /** @var array<int, array<string, mixed>> $predictions */
+        $predictions = $data['predictions'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = array_map( fn( $entry ) => $entry['embeddings']['values'] ?? null, $predictions );
+
+        return VectorResponse::fromVectors( $vectors );
     }
 
 
