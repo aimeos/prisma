@@ -27,8 +27,8 @@ class RemovebgTest extends TestCase
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['used' => 1], $file->usage() );
-        $this->assertEquals( ['X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'], $file->meta() );
+        $this->assertEquals( ['used' => 1], $file->usage()->all() );
+        $this->assertEquals( ['X-Credits-Charged' => '1', 'X-Width' => '100', 'X-Height' => '100'], $file->meta()->all() );
     }
 
 

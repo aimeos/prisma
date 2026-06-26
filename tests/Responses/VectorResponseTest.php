@@ -23,6 +23,6 @@ class VectorResponseTest extends TestCase
 
         $this->assertSame( [[0.1, 0.2]], $data['vectors'] );
         $this->assertEquals( 3, $data['usage']['used'] );
-        $this->assertSame( [], $data['meta'] );
+        $this->assertSame( [], $data['meta']->all() );
     }
 }

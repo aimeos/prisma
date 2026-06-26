@@ -58,7 +58,7 @@ class AlibabaTest extends TestCase
                 'height' => 1024
             ],
             'request_id' => 'req-12345'
-        ], $file->meta() );
+        ], $file->meta()->all() );
     }
 
 
@@ -282,6 +282,6 @@ class AlibabaTest extends TestCase
         } );
 
         $this->assertEquals( [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], $result->vectors() );
-        $this->assertEquals( ['request_id' => 'req-vec-123'], $result->meta() );
+        $this->assertEquals( ['request_id' => 'req-vec-123'], $result->meta()->all() );
     }
 }

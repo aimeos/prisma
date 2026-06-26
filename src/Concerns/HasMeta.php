@@ -15,11 +15,11 @@ trait HasMeta
     /**
      * Returns the meta information.
      *
-     * @return array<string, mixed> Meta information
+     * @return \Aimeos\Prisma\Values\Meta Meta information with typed accessors and array access
      */
-    public function meta() : array
+    public function meta() : \Aimeos\Prisma\Values\Meta
     {
-        return $this->meta;
+        return new \Aimeos\Prisma\Values\Meta( $this->meta );
     }
 
 

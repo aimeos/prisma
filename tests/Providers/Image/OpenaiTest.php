@@ -70,7 +70,7 @@ class OpenaiTest extends TestCase
 
         $this->assertEquals( $base64, $file->base64() );
         $this->assertEquals( 'image/png', $file->mimeType() );
-        $this->assertEquals( ['created' => 1713833628], $file->meta() );
+        $this->assertEquals( ['created' => 1713833628], $file->meta()->all() );
         $this->assertEquals( [
             'used' => 100,
             "total_tokens" => 100,
@@ -80,7 +80,7 @@ class OpenaiTest extends TestCase
                 "text_tokens" => 10,
                 "image_tokens" => 40
             ]
-        ], $file->usage() );
+        ], $file->usage()->all() );
     }
 
 
