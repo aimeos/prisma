@@ -2,6 +2,8 @@
 
 namespace Aimeos\Prisma\Concerns;
 
+use Aimeos\Prisma\Values\Mode;
+
 
 /**
  * OpenAI-compatible API methods for chat completions and responses.
@@ -564,9 +566,9 @@ trait OpenaiApi
      */
     protected function structuredCompletions( string $endpoint, string $defaultModel, string $prompt, array $files, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
-        if( $this->isJsonMode( $mode ) ) {
+        if( Mode::from( $mode )->isJson() ) {
             $options['response_format'] = ['type' => 'json_object'];
-            $prompt = $this->schemaPrompt( $prompt, $schema );
+            $prompt = $schema->toPrompt( $prompt );
         } else {
             // Chat completions nest the schema under a "json_schema" key.
             $options['response_format'] = ['type' => 'json_schema', 'json_schema' => $this->structuredSchema( $schema )];
@@ -595,9 +597,9 @@ trait OpenaiApi
      */
     protected function structuredResponses( string $endpoint, string $defaultModel, string $prompt, array $files, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
-        if( $this->isJsonMode( $mode ) ) {
+        if( Mode::from( $mode )->isJson() ) {
             $options['text'] = ['format' => ['type' => 'json_object']];
-            $prompt = $this->schemaPrompt( $prompt, $schema );
+            $prompt = $schema->toPrompt( $prompt );
         } else {
             // The Responses API carries the schema fields flat inside "format".
             $options['text'] = ['format' => ['type' => 'json_schema'] + $this->structuredSchema( $schema )];

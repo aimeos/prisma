@@ -45,7 +45,7 @@ class Mistral extends Base implements Stream, Structure, Vectorize, Write
         {
             $response = $this->completions(
                 'v1/chat/completions', 'mistral-large-latest',
-                $this->messages( $this->content( $this->schemaPrompt( $prompt, $schema ), $files ) ),
+                $this->messages( $this->content( $schema->toPrompt( $prompt ), $files ) ),
                 $options
             );
 

@@ -8,6 +8,7 @@ use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Anthropic as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
+use Aimeos\Prisma\Values\Mode;
 
 
 class Anthropic extends Base implements Stream, Structure, Write
@@ -27,10 +28,10 @@ class Anthropic extends Base implements Stream, Structure, Write
         $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k', 'thinking', 'effort'] );
 
-        if( $this->isJsonMode( $mode ) )
+        if( Mode::from( $mode )->isJson() )
         {
             // JSON mode: embed the schema in the prompt and parse the JSON from the response text.
-            $messages = array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $this->schemaPrompt( $prompt, $schema ), $files )]] );
+            $messages = array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schema->toPrompt( $prompt ), $files )]] );
         }
         else
         {

@@ -10,6 +10,7 @@ use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
+use Aimeos\Prisma\Values\Mode;
 
 
 class Gemini extends Base implements Stream, Structure, Vectorize, Write
@@ -29,10 +30,10 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
         $options['responseMimeType'] = 'application/json';
 
-        if( $this->isJsonMode( $mode ) ) {
+        if( Mode::from( $mode )->isJson() ) {
             // JSON mode: keep responseMimeType but embed the schema in the prompt and
             // parse it from the response text instead of a native responseSchema.
-            $prompt = $this->schemaPrompt( $prompt, $schema );
+            $prompt = $schema->toPrompt( $prompt );
         } else {
             $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
         }
