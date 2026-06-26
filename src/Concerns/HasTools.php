@@ -124,8 +124,10 @@ trait HasTools
     /**
      * Returns the concurrency instance.
      *
-     * Defaults to sequential execution. Use withConcurrency() to opt into a
-     * different strategy (e.g. forking) explicitly.
+     * This is the single executor seam for the tool loop: every runnable step is handed to
+     * it in the model's call order. Defaults to sequential execution. Use withConcurrency()
+     * to opt into a different strategy (e.g. forking) or to inject a test double; a parallel
+     * strategy decides per step whether to run it concurrently via Step::tool()->isConcurrent().
      *
      * @return Concurrency Concurrency instance
      */

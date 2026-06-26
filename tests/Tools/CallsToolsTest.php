@@ -92,6 +92,51 @@ class CallsToolsTest extends TestCase
     }
 
 
+    public function testExecutorReceivesAllRunnableSteps() : void
+    {
+        $seq = Tools::make( 'seq', 'desc', Schema::fromArray( 'seq', ['type' => 'object'] ), fn() => 'S' );
+        $con = Tools::make( 'con', 'desc', Schema::fromArray( 'con', ['type' => 'object'] ), fn() => 'C' )->concurrent();
+
+        // A single recording executor injected via withConcurrency() now sees every runnable
+        // step - both the sequential and the concurrent one - in the model's call order.
+        $recorder = new class implements \Aimeos\Prisma\Tools\Concurrency\Concurrency {
+            /** @var array<int, string> */
+            public array $seen = [];
+
+            /**
+             * @param array<int, \Aimeos\Prisma\Tools\Step> $steps
+             * @return array<int, \Aimeos\Prisma\Tools\Step>
+             */
+            public function run( array $steps ) : array
+            {
+                foreach( $steps as $step )
+                {
+                    $this->seen[] = $step->name();
+
+                    if( $tool = $step->tool() ) {
+                        $step->complete( ( $tool )( $step->arguments() ) );
+                    }
+                }
+
+                return $steps;
+            }
+        };
+
+        $harness = $this->harness( $recorder );
+        $harness->withTools( [$seq, $con] );
+
+        $calls = [];
+        $results = $harness->exec( [
+            ['id' => '1', 'name' => 'seq', 'arguments' => []],
+            ['id' => '2', 'name' => 'con', 'arguments' => []],
+        ], $calls );
+
+        $this->assertSame( ['seq', 'con'], $recorder->seen );
+        $this->assertEquals( 'S', $results[0]->result() );
+        $this->assertEquals( 'C', $results[1]->result() );
+    }
+
+
     /**
      * @return array<int, array<string, mixed>>
      */

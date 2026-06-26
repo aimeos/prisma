@@ -34,12 +34,13 @@ trait CallsTools
     /**
      * Executes tool calls and yields each step before and after execution.
      *
-     * Filters out unknown, provider, and exhausted tools, then delegates valid calls to
-     * the configured Concurrency strategy for execution. Each step that runs is yielded
-     * once before execution (done() === false) and once after (done() === true); steps
-     * that exhausted their limit or failed validation are already complete and yielded
-     * only once. The completed steps are returned in the model's call order via the
-     * generator return value so order-correlated providers (e.g. Gemini) can rely on it.
+     * Filters out unknown, provider, and exhausted tools, then hands every runnable call to
+     * the single configured Concurrency strategy (see concurrency()) in the model's call
+     * order. Each step that runs is yielded once before execution (done() === false) and once
+     * after (done() === true); steps that exhausted their limit or failed validation are
+     * already complete and yielded only once. The completed steps are returned in the model's
+     * call order via the generator return value so order-correlated providers (e.g. Gemini)
+     * can rely on it.
      *
      * The call budget tracks the remaining calls per tool name for the current
      * generation. It is passed by reference so the budget survives across the
@@ -62,10 +63,6 @@ trait CallsTools
         // model's call order, which order-correlated providers (e.g. Gemini) rely on.
         /** @var array<int, Step> $steps */
         $steps = [];
-        /** @var array<int, Step> $concurrent */
-        $concurrent = [];
-        /** @var array<int, Step> $sequential */
-        $sequential = [];
 
         foreach( $toolCalls as $idx => $call )
         {
@@ -103,14 +100,7 @@ trait CallsTools
             // Decrement the budget before running the step so the count stays
             // authoritative regardless of the concurrency strategy used.
             $calls[$name] = $remaining - 1;
-            $step = new Step( $call['id'] ?? null, $name, $call['arguments'], $tool );
-            $steps[$idx] = $step;
-
-            if( $tool->isConcurrent() ) {
-                $concurrent[] = $step;
-            } else {
-                $sequential[] = $step;
-            }
+            $steps[$idx] = new Step( $call['id'] ?? null, $name, $call['arguments'], $tool );
         }
 
         // Order by the model's call position up front so the before- and after-execution
@@ -124,8 +114,10 @@ trait CallsTools
             if( !$step->done() ) { yield $step; }
         }
 
-        $this->concurrency()->run( $concurrent );
-        ( new \Aimeos\Prisma\Tools\Concurrency\Sequential() )->run( $sequential );
+        // Hand every runnable step to the single configured executor in the model's call order.
+        // The default Sequential runs them in order; a parallel strategy may run the steps flagged
+        // concurrent (Step::tool()->isConcurrent()) in parallel and the rest in order.
+        $this->concurrency()->run( array_values( array_filter( $steps, fn( Step $step ) => !$step->done() ) ) );
 
         $steps = array_values( $steps );
 
