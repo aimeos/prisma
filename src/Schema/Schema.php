@@ -201,6 +201,21 @@ class Schema
     }
 
 
+    /**
+     * Appends a JSON-mode instruction and this schema to the given prompt.
+     *
+     * Used for prompt-embedded structured output (JSON mode) when a provider has no
+     * native strict schema support or the caller opted into "json" mode.
+     *
+     * @param string $prompt User prompt to extend
+     * @return string Prompt instructing the model to respond with JSON matching this schema
+     */
+    public function toPrompt( string $prompt ) : string
+    {
+        return $prompt . "\n\nRespond with ONLY valid JSON (no markdown, no code blocks) matching this JSON schema:\n" . $this->toString();
+    }
+
+
     public function toString() : string
     {
         return json_encode( $this->toArray() ) ?: '';

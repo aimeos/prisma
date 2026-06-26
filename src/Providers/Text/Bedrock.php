@@ -18,7 +18,7 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
         $options = $this->allowed( $options, ['temperature', 'topP'] );
 
         $response = $this->generate(
-            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $this->schemaPrompt( $prompt, $schema ), $files )]] ),
+            array_merge( $this->mapMessages(), [['role' => 'user', 'content' => $this->content( $schema->toPrompt( $prompt ), $files )]] ),
             $options
         );
 
