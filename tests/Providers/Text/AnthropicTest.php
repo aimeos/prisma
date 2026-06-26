@@ -44,18 +44,19 @@ class AnthropicTest extends TestCase
 
     public function testStream() : void
     {
-        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
-            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" world\"}}\n\n"
-            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
-            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":7}}\n\n"
-            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
-
+        // Built from native arrays via the shipped SSE helper instead of a hand-escaped string.
         $deltas = [];
 
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['event' => 'message_start', 'data' => ['type' => 'message_start', 'message' => ['usage' => ['input_tokens' => 5, 'output_tokens' => 0]]]],
+                ['event' => 'content_block_start', 'data' => ['type' => 'content_block_start', 'index' => 0, 'content_block' => ['type' => 'text', 'text' => '']]],
+                ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'text_delta', 'text' => 'Hello']]],
+                ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'text_delta', 'text' => ' world']]],
+                ['event' => 'content_block_stop', 'data' => ['type' => 'content_block_stop', 'index' => 0]],
+                ['event' => 'message_delta', 'data' => ['type' => 'message_delta', 'delta' => ['stop_reason' => 'end_turn'], 'usage' => ['output_tokens' => 7]]],
+                ['event' => 'message_stop', 'data' => ['type' => 'message_stop']],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -77,15 +78,15 @@ class AnthropicTest extends TestCase
 
     public function testStreamCitations() : void
     {
-        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"model\":\"claude\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
-            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Paris\"}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"citations_delta\",\"citation\":{\"document_title\":\"Geo\",\"cited_text\":\"Paris is the capital\"}}}\n\n"
-            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
-            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}\n\n";
-
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['event' => 'message_start', 'data' => ['type' => 'message_start', 'message' => ['id' => 'msg_1', 'model' => 'claude', 'usage' => ['input_tokens' => 5, 'output_tokens' => 0]]]],
+                ['event' => 'content_block_start', 'data' => ['type' => 'content_block_start', 'index' => 0, 'content_block' => ['type' => 'text', 'text' => '']]],
+                ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'text_delta', 'text' => 'Paris']]],
+                ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'citations_delta', 'citation' => ['document_title' => 'Geo', 'cited_text' => 'Paris is the capital']]]],
+                ['event' => 'content_block_stop', 'data' => ['type' => 'content_block_stop', 'index' => 0]],
+                ['event' => 'message_delta', 'data' => ['type' => 'message_delta', 'delta' => ['stop_reason' => 'end_turn'], 'usage' => ['output_tokens' => 3]]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'capital of France?' );
 
@@ -99,11 +100,11 @@ class AnthropicTest extends TestCase
     {
         $this->expectException( PrismaException::class );
 
-        $sse = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5}}}\n\n"
-            . "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n";
-
         $response = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['event' => 'message_start', 'data' => ['type' => 'message_start', 'message' => ['usage' => ['input_tokens' => 5]]]],
+                ['event' => 'error', 'data' => ['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded']]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -116,23 +117,23 @@ class AnthropicTest extends TestCase
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
         // turn 1 streams a tool_use block, turn 2 streams the final text after the tool ran
-        $turn1 = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
-            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"c1\",\"name\":\"ping\",\"input\":{}}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{}\"}}\n\n"
-            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
-            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":3}}\n\n"
-            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
-
-        $turn2 = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}}\n\n"
-            . "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
-            . "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Done\"}}\n\n"
-            . "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
-            . "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":2}}\n\n"
-            . "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
-
         $provider = $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['event' => 'message_start', 'data' => ['type' => 'message_start', 'message' => ['usage' => ['input_tokens' => 5, 'output_tokens' => 0]]]],
+                ['event' => 'content_block_start', 'data' => ['type' => 'content_block_start', 'index' => 0, 'content_block' => ['type' => 'tool_use', 'id' => 'c1', 'name' => 'ping', 'input' => (object) []]]],
+                ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'input_json_delta', 'partial_json' => '{}']]],
+                ['event' => 'content_block_stop', 'data' => ['type' => 'content_block_stop', 'index' => 0]],
+                ['event' => 'message_delta', 'data' => ['type' => 'message_delta', 'delta' => ['stop_reason' => 'tool_use'], 'usage' => ['output_tokens' => 3]]],
+                ['event' => 'message_stop', 'data' => ['type' => 'message_stop']],
+            ] );
+        $this->streamResponse( [
+            ['event' => 'message_start', 'data' => ['type' => 'message_start', 'message' => ['usage' => ['input_tokens' => 5, 'output_tokens' => 0]]]],
+            ['event' => 'content_block_start', 'data' => ['type' => 'content_block_start', 'index' => 0, 'content_block' => ['type' => 'text', 'text' => '']]],
+            ['event' => 'content_block_delta', 'data' => ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'text_delta', 'text' => 'Done']]],
+            ['event' => 'content_block_stop', 'data' => ['type' => 'content_block_stop', 'index' => 0]],
+            ['event' => 'message_delta', 'data' => ['type' => 'message_delta', 'delta' => ['stop_reason' => 'end_turn'], 'usage' => ['output_tokens' => 2]]],
+            ['event' => 'message_stop', 'data' => ['type' => 'message_stop']],
+        ] );
 
         $chunks = [];
         $response = $provider->withTools( [$tool] )

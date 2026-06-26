@@ -3,3 +3,9 @@ parameters:
     paths:
         - src
     treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # Shipped test helper: used by downstream consumers' tests and our own tests/,
+        # neither of which is in the analysed src/ path, so PHPStan sees it as unused.
+        -
+            identifier: trait.unused
+            path: src/Testing/InteractsWithPrisma.php

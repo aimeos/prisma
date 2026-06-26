@@ -50,14 +50,14 @@ class GeminiTest extends TestCase
 
     public function testStream() : void
     {
-        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Hello\"}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" world\"}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":9}}\n\n";
-
         $deltas = [];
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Hello']]]]]],
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => ' world']]]]]],
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => '']]], 'finishReason' => 'STOP']], 'usageMetadata' => ['totalTokenCount' => 9]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -83,15 +83,16 @@ class GeminiTest extends TestCase
         $pong = \Aimeos\Prisma\Tools::make( 'pong', 'Returns ping', Schema::for( 'pong', [] ), fn() => 'ping' );
 
         // turn 1 streams two functionCall parts, but only the first carries a thoughtSignature
-        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":["
-            . "{\"functionCall\":{\"name\":\"ping\",\"args\":{}},\"thoughtSignature\":\"sig-abc\"},"
-            . "{\"functionCall\":{\"name\":\"pong\",\"args\":{}}}"
-            . "]},\"finishReason\":\"STOP\"}]}\n\n";
-        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
-
         $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [
+                    ['functionCall' => ['name' => 'ping', 'args' => (object) []], 'thoughtSignature' => 'sig-abc'],
+                    ['functionCall' => ['name' => 'pong', 'args' => (object) []]],
+                ]], 'finishReason' => 'STOP']]],
+            ] );
+        $this->streamResponse( [
+            ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]], 'finishReason' => 'STOP']], 'usageMetadata' => ['totalTokenCount' => 5]],
+        ] );
 
         $response = $provider->withTools( [$ping, $pong] )
             ->ensure( 'stream' )
@@ -121,10 +122,10 @@ class GeminiTest extends TestCase
     {
         $this->expectException( PrismaException::class );
 
-        $sse = "data: {\"error\":{\"message\":\"boom\"}}\n\n";
-
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['error' => ['message' => 'boom']],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -134,13 +135,13 @@ class GeminiTest extends TestCase
 
     public function testStreamThinkingNotStreamed() : void
     {
-        $sse = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"pondering\",\"thought\":true}]}}]}\n\n"
-            . "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Answer\"}]},\"finishReason\":\"STOP\"}]}\n\n";
-
         $deltas = [];
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'pondering', 'thought' => true]]]]]],
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Answer']]], 'finishReason' => 'STOP']]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'think' );
 
@@ -160,12 +161,13 @@ class GeminiTest extends TestCase
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
         // turn 1 streams a functionCall part, turn 2 streams the final text after the tool ran
-        $turn1 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"ping\",\"args\":{}}}]},\"finishReason\":\"STOP\"}]}\n\n";
-        $turn2 = "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"Done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"totalTokenCount\":5}}\n\n";
-
         $provider = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['candidates' => [['content' => ['role' => 'model', 'parts' => [['functionCall' => ['name' => 'ping', 'args' => (object) []]]]], 'finishReason' => 'STOP']]],
+            ] );
+        $this->streamResponse( [
+            ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Done']]], 'finishReason' => 'STOP']], 'usageMetadata' => ['totalTokenCount' => 5]],
+        ] );
 
         $chunks = [];
         $response = $provider->withTools( [$tool] )

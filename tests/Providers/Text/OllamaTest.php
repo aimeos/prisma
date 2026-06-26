@@ -15,15 +15,15 @@ class OllamaTest extends TestCase
 
     public function testStream() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":10}}\n\n"
-            . "data: [DONE]\n\n";
-
         $deltas = [];
 
         $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['choices' => [['delta' => ['content' => 'Hello']]]],
+                ['choices' => [['delta' => ['content' => ' world']]]],
+                ['choices' => [['delta' => (object) [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 10]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -49,11 +49,11 @@ class OllamaTest extends TestCase
     {
         $this->expectException( \Aimeos\Prisma\Exceptions\PrismaException::class );
 
-        $sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
-            . "data: {\"error\":{\"message\":\"server overloaded\",\"type\":\"server_error\"}}\n\n";
-
         $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['choices' => [['delta' => ['content' => 'Hel']]]],
+                ['error' => ['message' => 'server overloaded', 'type' => 'server_error']],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -63,15 +63,15 @@ class OllamaTest extends TestCase
 
     public function testStreamReasoning() : void
     {
-        $sse = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"thinking...\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"content\":\"Answer\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":5}}\n\n"
-            . "data: [DONE]\n\n";
-
         $deltas = [];
 
         $response = $this->prisma( 'text', 'ollama', [] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['choices' => [['delta' => ['reasoning_content' => 'thinking...']]]],
+                ['choices' => [['delta' => ['content' => 'Answer']]]],
+                ['choices' => [['delta' => (object) [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 5]],
+                ['data' => '[DONE]'],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'hi' );
 
@@ -90,18 +90,18 @@ class OllamaTest extends TestCase
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $turn1 = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"ping\",\"arguments\":\"\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{}\"}}]}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\n"
-            . "data: [DONE]\n\n";
-
-        $turn2 = "data: {\"choices\":[{\"delta\":{\"content\":\"pong!\"}}]}\n\n"
-            . "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"total_tokens\":12}}\n\n"
-            . "data: [DONE]\n\n";
-
         $provider = $this->prisma( 'text', 'ollama', [] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'ping', 'arguments' => '']]]]]]],
+                ['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => '{}']]]]]]],
+                ['choices' => [['delta' => (object) [], 'finish_reason' => 'tool_calls']]],
+                ['data' => '[DONE]'],
+            ] );
+        $this->streamResponse( [
+            ['choices' => [['delta' => ['content' => 'pong!']]]],
+            ['choices' => [['delta' => (object) [], 'finish_reason' => 'stop']], 'usage' => ['total_tokens' => 12]],
+            ['data' => '[DONE]'],
+        ] );
 
         $chunks = [];
 

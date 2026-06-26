@@ -24,14 +24,14 @@ class OpenaiTest extends TestCase
 
     public function testStream() : void
     {
-        $sse = "data: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\n"
-            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
-            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
-            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
-
         // consume the response as a pull generator (e.g. Laravel eventStream)
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['type' => 'response.created', 'response' => ['status' => 'in_progress']]],
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => 'Hello']],
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => ' world']],
+                ['data' => ['type' => 'response.completed', 'response' => ['status' => 'completed', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Hello world']]]], 'usage' => ['total_tokens' => 9]]]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -55,12 +55,12 @@ class OpenaiTest extends TestCase
 
     public function testStreamLazyDrain() : void
     {
-        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello world\"}\n\n"
-            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
-
         // neither a callback nor stream() iteration: the accessor must drain the stream
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => 'Hello world']],
+                ['data' => ['type' => 'response.completed', 'response' => ['status' => 'completed', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Hello world']]]], 'usage' => ['total_tokens' => 9]]]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -84,11 +84,11 @@ class OpenaiTest extends TestCase
     public function testStreamMidStreamErrorThenAccessorDoesNotCrash() : void
     {
         // first delta arrives, then a streamed error event aborts the producer mid-stream
-        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
-            . "data: {\"error\":{\"message\":\"mid-stream boom\"}}\n\n";
-
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => 'Hello']],
+                ['data' => ['error' => ['message' => 'mid-stream boom']]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -107,12 +107,12 @@ class OpenaiTest extends TestCase
 
     public function testStreamEarlyBreakIsTerminal() : void
     {
-        $sse = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n"
-            . "data: {\"type\":\"response.output_text.delta\",\"delta\":\" world\"}\n\n"
-            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello world\"}]}],\"usage\":{\"total_tokens\":9}}}\n\n";
-
         $response = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( $sse, ['Content-Type' => 'text/event-stream'] )
+            ->streamResponse( [
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => 'Hello']],
+                ['data' => ['type' => 'response.output_text.delta', 'delta' => ' world']],
+                ['data' => ['type' => 'response.completed', 'response' => ['status' => 'completed', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Hello world']]]], 'usage' => ['total_tokens' => 9]]]],
+            ] )
             ->ensure( 'stream' )
             ->stream( 'Say hello' );
 
@@ -135,15 +135,15 @@ class OpenaiTest extends TestCase
     {
         $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
 
-        $turn1 = "data: {\"type\":\"response.created\",\"response\":{\"status\":\"in_progress\"}}\n\n"
-            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"call_id\":\"call_1\",\"name\":\"ping\",\"arguments\":\"{}\"}],\"usage\":{\"total_tokens\":3}}}\n\n";
-
-        $turn2 = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"pong!\"}\n\n"
-            . "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"pong!\"}]}],\"usage\":{\"total_tokens\":12}}}\n\n";
-
         $provider = $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
-            ->response( $turn1, ['Content-Type' => 'text/event-stream'] );
-        $this->response( $turn2, ['Content-Type' => 'text/event-stream'] );
+            ->streamResponse( [
+                ['data' => ['type' => 'response.created', 'response' => ['status' => 'in_progress']]],
+                ['data' => ['type' => 'response.completed', 'response' => ['status' => 'completed', 'output' => [['type' => 'function_call', 'call_id' => 'call_1', 'name' => 'ping', 'arguments' => '{}']], 'usage' => ['total_tokens' => 3]]]],
+            ] );
+        $this->streamResponse( [
+            ['data' => ['type' => 'response.output_text.delta', 'delta' => 'pong!']],
+            ['data' => ['type' => 'response.completed', 'response' => ['status' => 'completed', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'pong!']]]], 'usage' => ['total_tokens' => 12]]]],
+        ] );
 
         $response = $provider->withTools( [$tool] )
             ->ensure( 'stream' )
