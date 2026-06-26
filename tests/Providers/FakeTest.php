@@ -3,13 +3,67 @@
 namespace Tests\Providers;
 
 use Aimeos\Prisma\Providers\Fake;
+use Aimeos\Prisma\Providers\Image\Gemini;
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use PHPUnit\Framework\TestCase;
 
 
 class FakeTest extends TestCase
 {
+    public function testAssertCalledMatchesArguments() : void
+    {
+        $fake = new Fake( ['ok'] );
+        $fake->use( new Gemini( ['api_key' => 'test'] ) );
+
+        $fake->imagine( 'a cat' );
+
+        // passes for a matching argument matcher, throws for a non-matching one
+        $fake->assertCalled( 'imagine', fn( $args ) => $args[0] === 'a cat' );
+
+        $this->expectException( PrismaException::class );
+        $fake->assertCalled( 'imagine', fn( $args ) => $args[0] === 'a dog' );
+    }
+
+
+    public function testAssertCalledThrowsWhenNotCalled() : void
+    {
+        $fake = new Fake( ['ok'] );
+        $fake->use( new Gemini( ['api_key' => 'test'] ) );
+
+        $this->expectException( PrismaException::class );
+        $fake->assertCalled( 'imagine' );
+    }
+
+
+    public function testCallRecordsInvocations() : void
+    {
+        $fake = new Fake( ['a', 'b'] );
+        $fake->use( new Gemini( ['api_key' => 'test'] ) );
+
+        $fake->imagine();
+        $fake->imagine();
+
+        $this->assertTrue( $fake->called( 'imagine' ) );
+        $this->assertFalse( $fake->called( 'speak' ) );
+        $this->assertCount( 2, $fake->calls() );
+        $this->assertEquals( 'imagine', $fake->calls()[0]['method'] );
+    }
+
+
+    public function testCallThrowsQueuedThrowable() : void
+    {
+        // a queued Throwable simulates a provider error for that call
+        $fake = new Fake( [new \RuntimeException( 'boom' )] );
+        $fake->use( new Gemini( ['api_key' => 'test'] ) );
+
+        $this->expectException( \RuntimeException::class );
+        $this->expectExceptionMessage( 'boom' );
+        $fake->imagine();
+    }
+
+
     public function testCallReturnsResponsesInOrder() : void
     {
         $responses = ['first', 'second', 'third'];

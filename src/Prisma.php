@@ -39,11 +39,17 @@ class Prisma
     /**
      * Sets up a fake provider for testing.
      *
-     * @param array<int, mixed> $responses Fake responses to return
+     * Each call made through using() returns the next queued response in order; a queued
+     * Throwable is thrown to simulate a provider error. The returned Fake records the calls
+     * it received, so tests can assert against them (assertCalled(), calls()). The fake is
+     * process-global state - call reset() in tearDown() so it does not leak into other tests.
+     *
+     * @param array<int, mixed> $responses Fake responses to return, in call order
+     * @return Fake Fake provider recording the calls it receives
      */
-    public static function fake( array $responses = [] ) : void
+    public static function fake( array $responses = [] ) : Fake
     {
-        self::$fake = new Fake( $responses );
+        return self::$fake = new Fake( $responses );
     }
 
 
@@ -55,6 +61,17 @@ class Prisma
     public static function image() : self
     {
         return new self( 'image' );
+    }
+
+
+    /**
+     * Clears the fake provider set up by fake().
+     *
+     * Call this in tearDown() so the process-global fake does not leak into later tests.
+     */
+    public static function reset() : void
+    {
+        self::$fake = null;
     }
 
 
