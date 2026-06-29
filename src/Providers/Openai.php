@@ -5,7 +5,6 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Openai extends Base
@@ -14,9 +13,8 @@ class Openai extends Base
     use OpenaiApi;
 
 
-    /** @var array<string, array<string, mixed>> */
-    private static array $providerToolMap = [
-        'web_search' => ['type' => 'web_search', 'options' => ['allowed_domains', 'search_context_size', 'user_location']],
+    protected const PROVIDER_TOOL_MAP = [
+        'web_search' => ['type' => 'web_search', 'options' => ['allowed_domains', 'search_context_size', 'user_location'], 'except' => [self::STRUCT]],
         'code_execution' => ['type' => 'code_interpreter', 'container' => ['type' => 'auto'], 'options' => ['container']],
         'file_search' => ['type' => 'file_search', 'options' => ['vector_store_ids', 'max_num_results']],
     ];
@@ -32,29 +30,5 @@ class Openai extends Base
         $this->header( 'OpenAI-Project', $config['project'] ?? null );
         $this->header( 'authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.openai.com' ) );
-    }
-
-
-    /**
-     * Builds the tools parameter in OpenAI format.
-     *
-     * @return array<int, array<string, mixed>> Formatted tools definition
-     */
-    protected function toolsParam() : array
-    {
-        $tools = [];
-
-        foreach( $this->tools() as $tool )
-        {
-            $tools[] = [
-                'type' => 'function',
-                'name' => $tool->name(),
-                'description' => $tool->description(),
-                'parameters' => $this->toolParameters( $tool->schema() ),
-                'strict' => $tool->schema()->isStrict(),
-            ];
-        }
-
-        return array_merge( $tools, $this->mapProviderTools( self::$providerToolMap ) );
     }
 }

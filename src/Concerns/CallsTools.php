@@ -133,9 +133,10 @@ trait CallsTools
      * Builds mapped provider tools from a provider tool map.
      *
      * @param array<string, array<string, mixed>> $map Provider tool map
+     * @param string $op Request operation
      * @return array<int, array<string, mixed>> Formatted provider tools
      */
-    protected function mapProviderTools( array $map ) : array
+    protected function mapProviderTools( array $map, string $op = self::GEN ) : array
     {
         $tools = [];
 
@@ -145,7 +146,14 @@ trait CallsTools
             {
                 $entry = $map[$tool->name()];
                 $optionsSpec = $entry['options'] ?? [];
-                unset( $entry['options'] );
+                $denied = $entry['except'] ?? [];
+                $denied = is_array( $denied ) ? $denied : [$denied];
+
+                if( in_array( $op, $denied, true ) ) {
+                    continue;
+                }
+
+                unset( $entry['except'], $entry['options'] );
 
                 $allowed = [];
                 $renames = [];

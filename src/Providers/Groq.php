@@ -12,7 +12,7 @@ class Groq extends Base
     use CallsTools;
     use OpenaiApi {
         toolCalls as openaiToolCalls;
-        toolsParam as openaiToolsParam;
+        toolParameters as openaiToolParameters;
     }
 
     public function __construct( array $config )
@@ -99,21 +99,19 @@ class Groq extends Base
 
 
     /**
-     * Builds the tools parameter, relaxing scalar parameter types for Groq.
+     * Returns a Groq-compatible tool parameter schema.
      *
-     * @return array<int, array<string, mixed>> Formatted tools definition
+     * @param \Aimeos\Prisma\Schema\Schema $schema Tool parameter schema
+     * @return array<string, mixed> Tool parameter definition
      */
-    protected function toolsParam() : array
+    protected function toolParameters( \Aimeos\Prisma\Schema\Schema $schema ) : array
     {
-        $tools = $this->openaiToolsParam();
+        $params = $this->openaiToolParameters( $schema );
 
-        foreach( $tools as &$tool )
-        {
-            if( isset( $tool['function']['parameters']['properties'] ) && is_array( $tool['function']['parameters']['properties'] ) ) {
-                $tool['function']['parameters']['properties'] = $this->relaxTypes( $tool['function']['parameters']['properties'] );
-            }
+        if( isset( $params['properties'] ) && is_array( $params['properties'] ) ) {
+            $params['properties'] = $this->relaxTypes( $params['properties'] );
         }
 
-        return $tools;
+        return $params;
     }
 }
