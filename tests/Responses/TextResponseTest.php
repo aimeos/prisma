@@ -72,4 +72,41 @@ class TextResponseTest extends TestCase
         $this->assertSame( [], $data['citations'] );
         $this->assertSame( [], $data['steps'] );
     }
+
+
+    public function testOnCompletePassesResponseAsFirstArgument() : void
+    {
+        $seen = null;
+        $response = TextResponse::fromStream( function( TextResponse $res ) {
+            $res->withUsage( 5 );
+            yield 'hi';
+        } )->onComplete( function( TextResponse $res, ?\Throwable $error ) use ( &$seen ) {
+            $seen = [$res, $error, $res->usage()->all()];
+        } );
+
+        $this->assertSame( ['hi'], iterator_to_array( $response->stream() ) );
+        $this->assertSame( [$response, null, ['used' => 5.0]], $seen );
+    }
+
+
+    public function testOnCompleteReceivesStreamFailure() : void
+    {
+        $seen = null;
+        $failure = new \RuntimeException( 'Stream failed' );
+        $response = TextResponse::fromStream( function() use ( $failure ) {
+            yield 'hi';
+            throw $failure;
+        } )->onComplete( function( TextResponse $res, ?\Throwable $error ) use ( &$seen ) {
+            $seen = [$res, $error];
+        } );
+
+        try {
+            iterator_to_array( $response->stream() );
+            $this->fail( 'The stream exception was not thrown' );
+        } catch( \RuntimeException $e ) {
+            $this->assertSame( $failure, $e );
+        }
+
+        $this->assertSame( [$response, $failure], $seen );
+    }
 }
