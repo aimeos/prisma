@@ -11,11 +11,10 @@ use Psr\Http\Message\ResponseInterface;
 class Openrouter extends Base
 {
     use CallsTools;
-    use OpenaiApi { toolsParam as openaiToolsParam; }
+    use OpenaiApi;
 
 
-    /** @var array<string, array<string, mixed>> */
-    private static array $providerToolMap = [
+    protected const PROVIDER_TOOL_MAP = [
         'web_search' => ['type' => 'openrouter:web_search', 'options' => [
             'allowed_domains' => 'include_domains',
             'blocked_domains' => 'exclude_domains',
@@ -48,13 +47,4 @@ class Openrouter extends Base
     }
 
 
-    /**
-     * Builds the tools parameter in OpenRouter format.
-     *
-     * @return array<int, array<string, mixed>> Formatted tools definition
-     */
-    protected function toolsParam() : array
-    {
-        return array_merge( $this->openaiToolsParam(), $this->mapProviderTools( self::$providerToolMap ) );
-    }
 }

@@ -94,7 +94,7 @@ trait OpenaiApi
      */
     private function applyTools( array $params, int $step ) : array
     {
-        if( $tools = $this->toolsParam() )
+        if( $tools = $this->toolsParam( $params ) )
         {
             $params['tools'] = $tools;
             $choice = $step === 1 ? $this->toolChoiceParam() : 'auto';
@@ -574,7 +574,11 @@ trait OpenaiApi
             $options['response_format'] = ['type' => 'json_schema', 'json_schema' => $this->structuredSchema( $schema )];
         }
 
-        $response = $this->completions( $endpoint, $defaultModel, $this->messages( $this->content( $prompt, $files ) ), $options );
+        $response = $this->completions(
+            $endpoint, $defaultModel,
+            $this->messages( $this->content( $prompt, $files ) ),
+            $options
+        );
 
         return $response->withStructured( $this->parseJson( $response->text() ) );
     }
@@ -605,7 +609,11 @@ trait OpenaiApi
             $options['text'] = ['format' => ['type' => 'json_schema'] + $this->structuredSchema( $schema )];
         }
 
-        $response = $this->responses( $endpoint, $defaultModel, $this->responsesInput( $prompt, $files ), $options );
+        $response = $this->responses(
+            $endpoint, $defaultModel,
+            $this->responsesInput( $prompt, $files ),
+            $options
+        );
 
         return $response->withStructured( $this->parseJson( $response->text() ) );
     }
@@ -674,25 +682,29 @@ trait OpenaiApi
     /**
      * Builds the tools parameter for the API request.
      *
+     * @param array<string, mixed> $params Request payload
      * @return array<int, array<string, mixed>> Formatted tools definition
      */
-    protected function toolsParam() : array
+    protected function toolsParam( array $params = [] ) : array
     {
         $tools = [];
+        $op = isset( $params['response_format'] ) || isset( $params['text']['format'] ) ? self::STRUCT : self::GEN;
+        $responses = isset( $params['input'] );
 
         foreach( $this->tools() as $tool )
         {
-            $tools[] = [
-                'type' => 'function',
-                'function' => [
-                    'name' => $tool->name(),
-                    'description' => $tool->description(),
-                    'parameters' => $this->toolParameters( $tool->schema() ),
-                ],
+            $function = [
+                'name' => $tool->name(),
+                'description' => $tool->description(),
+                'parameters' => $this->toolParameters( $tool->schema() ),
             ];
+
+            $tools[] = $responses
+                ? ['type' => 'function'] + $function + ['strict' => $tool->schema()->isStrict()]
+                : ['type' => 'function', 'function' => $function];
         }
 
-        return $tools;
+        return array_merge( $tools, $this->mapProviderTools( static::PROVIDER_TOOL_MAP, $op ) );
     }
 
 

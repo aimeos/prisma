@@ -36,6 +36,14 @@ abstract class Base implements Provider
     use HasTools;
 
 
+    protected const GEN = 'generation';
+    protected const STRUCT = 'structured';
+
+
+    /** @var array<string, array<string, mixed>> */
+    protected const PROVIDER_TOOL_MAP = [];
+
+
     /**
      * Handles calls to undefined methods.
      *
@@ -242,6 +250,4 @@ abstract class Base implements Provider
 
         return $options;
     }
-
-
 }

@@ -102,11 +102,12 @@ class Anthropic extends Base
 
     /**
      * @param array<string, array<string, mixed>> $map
+     * @param string $op Request operation
      * @return array<int, array<string, mixed>>
      */
-    protected function mapProviderTools( array $map ) : array
+    protected function mapProviderTools( array $map, string $op = self::GEN ) : array
     {
-        $tools = $this->baseMapProviderTools( $map );
+        $tools = $this->baseMapProviderTools( $map, $op );
 
         foreach( $this->providerTools() as $tool )
         {

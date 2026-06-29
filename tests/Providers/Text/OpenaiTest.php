@@ -247,6 +247,29 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testStructuredSkipsWebSearchProviderTool() : void
+    {
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( [
+                'output' => [['content' => [['type' => 'output_text', 'text' => '{"name":"Jane"}']]]],
+                'status' => 'completed',
+                'usage' => ['total_tokens' => 5]
+            ] )
+            ->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'structure' )
+            ->structure( 'Extract', $schema, [], ['mode' => 'json'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertArrayNotHasKey( 'tools', $body );
+            $this->assertArrayNotHasKey( 'tool_choice', $body );
+        } );
+    }
+
+
     public function testStructuredModeStructured() : void
     {
         // mode=structured selects native strict mode regardless of schema depth.
@@ -567,6 +590,23 @@ class OpenaiTest extends TestCase
             $this->assertTrue( $body['tools'][0]['strict'] );
             $this->assertFalse( $params['additionalProperties'] );
             $this->assertEquals( ['city'], $params['required'] );
+        } );
+    }
+
+
+    public function testWriteWithWebSearchProviderTool() : void
+    {
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['output' => [['content' => [['type' => 'output_text', 'text' => 'ok']]]], 'status' => 'completed'] )
+            ->withTools( [\Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->ensure( 'write' )
+            ->write( 'search?' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertSame( 'web_search', $body['tools'][0]['type'] ?? null );
+            $this->assertSame( 'auto', $body['tool_choice'] ?? null );
         } );
     }
 
