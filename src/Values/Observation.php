@@ -9,12 +9,6 @@ namespace Aimeos\Prisma\Values;
 class Observation implements \JsonSerializable
 {
     /**
-     * Provider failure message.
-     */
-    public readonly ?string $errorMessage;
-
-
-    /**
      * Initializes the observation.
      *
      * @param string $operation Provider operation name
@@ -36,7 +30,6 @@ class Observation implements \JsonSerializable
         public readonly ?Usage $usage = null,
         public readonly ?Meta $meta = null
     ) {
-        $this->errorMessage = $error?->getMessage();
     }
 
 
@@ -82,7 +75,7 @@ class Observation implements \JsonSerializable
             'provider' => $this->provider,
             'model' => $this->model,
             'durationMs' => $this->durationMs,
-            'error' => $this->errorMessage,
+            'error' => $this->error?->getMessage(),
             'usage' => $this->usage?->all(),
             'meta' => $this->meta?->all(),
         ];

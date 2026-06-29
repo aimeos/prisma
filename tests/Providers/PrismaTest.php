@@ -100,7 +100,8 @@ class PrismaTest extends TestCase
         $this->assertCount( 1, $records );
         $this->assertSame( 'write', $records[0]->operation );
         $this->assertInstanceOf( \RuntimeException::class, $records[0]->error );
-        $this->assertSame( 'Provider failed', $records[0]->errorMessage );
+        $this->assertSame( 'Provider failed', $records[0]->error->getMessage() );
+        $this->assertSame( 'Provider failed', $records[0]->toArray()['error'] );
         $this->assertNull( $records[0]->usage );
         $this->assertNull( $records[0]->meta );
         $this->assertNull( $records[0]->toArray()['usage'] );
