@@ -4,6 +4,9 @@ namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Tools\Concurrency\Concurrency;
+use Aimeos\Prisma\Values\Observation;
+use Aimeos\Prisma\Values\Usage;
+use Aimeos\Prisma\Values\Meta;
 use GuzzleHttp\HandlerStack;
 
 
@@ -18,7 +21,7 @@ class Observer implements Provider
     private string $type;
     private string $name;
 
-    /** @var array<int, \Closure(array<string, mixed>): void> */
+    /** @var array<int, \Closure(Observation): void> */
     private array $observers;
 
 
@@ -28,7 +31,7 @@ class Observer implements Provider
      * @param Provider $provider Wrapped provider
      * @param string $type Provider media type (text, image, audio, video)
      * @param string $name Provider name
-     * @param array<int, \Closure(array<string, mixed>): void> $observers Observer callbacks
+     * @param array<int, \Closure(Observation): void> $observers Observer callbacks
      */
     public function __construct(
         private Provider $provider,
@@ -67,18 +70,18 @@ class Observer implements Provider
             {
                 return $response->onComplete(
                     function( object $response, ?\Throwable $error ) use ( $method, $start ) {
-                        $meta = method_exists( $response, 'meta' ) ? $response->meta()->all() : [];
-                        $usage = method_exists( $response, 'usage' ) ? $response->usage()->all() : [];
-
-                        $this->emit( $method, $start, $error, $meta, $usage );
+                        $this->emit( $method, $start, $error,
+                            method_exists( $response, 'meta' ) ? $response->meta() : null,
+                            method_exists( $response, 'usage' ) ? $response->usage() : null
+                        );
                     }
                 );
             }
 
-            $meta = method_exists( $response, 'meta' ) ? $response->meta()->all() : [];
-            $usage = method_exists( $response, 'usage' ) ? $response->usage()->all() : [];
-
-            $this->emit( $method, $start, null, $meta, $usage );
+            $this->emit( $method, $start, null,
+                method_exists( $response, 'meta' ) ? $response->meta() : null,
+                method_exists( $response, 'usage' ) ? $response->usage() : null
+            );
         }
         catch( \Throwable $e )
         {
@@ -322,26 +325,26 @@ class Observer implements Provider
      * @param string $operation Provider operation name
      * @param int $start hrtime(true) timestamp captured before the provider call
      * @param \Throwable|null $error Provider failure, or null when the operation completed successfully
-     * @param array<string, mixed> $meta Response metadata
-     * @param array<string, mixed> $usage Response usage data
+     * @param Meta|null $meta Response metadata, or null if unavailable
+     * @param Usage|null $usage Response usage data, or null if unavailable
      */
-    private function emit( string $operation, int $start, ?\Throwable $error, array $meta = [], array $usage = [] ) : void
+    private function emit( string $operation, int $start, ?\Throwable $error, ?Meta $meta = null, ?Usage $usage = null ) : void
     {
-        $record = [
-            'operation' => $operation,
-            'type' => $this->type,
-            'provider' => $this->name,
-            'model' => $meta['model'] ?? $this->model,
-            'durationMs' => ( hrtime( true ) - $start ) / 1e6,
-            'error' => $error?->getMessage(),
-            'usage' => $usage,
-            'meta' => $meta,
-        ];
+        $observation = new Observation(
+            operation: $operation,
+            type: $this->type,
+            provider: $this->name,
+            model: $meta?->model() ?? $this->model,
+            durationMs: ( hrtime( true ) - $start ) / 1e6,
+            error: $error,
+            usage: $usage,
+            meta: $meta
+        );
 
         foreach( $this->observers as $observer )
         {
             try {
-                $observer( $record );
+                $observer( $observation );
             } catch( \Throwable $e ) {
                 error_log( 'prisma observer: ' . $e->getMessage() );
             }
