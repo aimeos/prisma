@@ -8,6 +8,10 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait Stream
 {
+    /** @var array<int, \Closure(static, ?\Throwable): void> Completion callbacks run after full stream consumption */
+    private array $streamComplete = [];
+
+    /** @var \Closure(static): \Generator<int, mixed>|null Stream producer consumed by stream() */
     private ?\Closure $streamProducer = null;
 
 
@@ -23,6 +27,19 @@ trait Stream
         $instance->streamProducer = $producer;
 
         return $instance;
+    }
+
+
+    /**
+     * Runs the callback after the stream is fully consumed or fails.
+     *
+     * @param \Closure $callback Completion callback: fn(static $response, ?\Throwable $error): void
+     * @return static Same response instance
+     */
+    public function onComplete( \Closure $callback ) : static
+    {
+        $this->streamComplete[] = $callback;
+        return $this;
     }
 
 
@@ -58,6 +75,31 @@ trait Stream
         $producer = $this->streamProducer;
         $this->streamProducer = null; // consume once
 
-        yield from $producer( $this );
+        try
+        {
+            yield from $producer( $this );
+            $this->complete();
+        }
+        catch( \Throwable $e )
+        {
+            $this->complete( $e );
+            throw $e;
+        }
+    }
+
+
+    /**
+     * Notifies registered stream completion callbacks once.
+     *
+     * @param \Throwable|null $error Stream failure, or null when the stream completed successfully
+     */
+    private function complete( ?\Throwable $error = null ) : void
+    {
+        $callbacks = $this->streamComplete;
+        $this->streamComplete = [];
+
+        foreach( $callbacks as $callback ) {
+            $callback( $this, $error );
+        }
     }
 }

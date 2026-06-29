@@ -45,6 +45,14 @@ abstract class Base implements Provider
 
 
     /**
+     * Create a new provider instance with the given configuration.
+     *
+     * @param array<string, mixed> $config Provider configuration
+     */
+    abstract public function __construct( array $config );
+
+
+    /**
      * Handles calls to undefined methods.
      *
      * @param array<int, mixed> $arguments Method arguments

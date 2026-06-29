@@ -8,14 +8,6 @@ use Aimeos\Prisma\Tools\Concurrency\Concurrency;
 interface Provider
 {
     /**
-     * Create a new provider instance with the given configuration.
-     *
-     * @param array<string, mixed> $config Configuration options for the provider.
-     */
-    public function __construct( array $config );
-
-
-    /**
      * Ensures that the provider has implemented the method.
      *
      * @param string $method Method name
@@ -76,6 +68,24 @@ interface Provider
 
 
     /**
+     * Sets prior conversation turns for text providers.
+     *
+     * @param array<int, array<string, mixed>> $messages Conversation turns
+     * @return self Provider interface
+     */
+    public function withMessages( array $messages ) : self;
+
+
+    /**
+     * Sets the maximum number of bytes read for a single provider response.
+     *
+     * @param int $bytes Maximum bytes per response
+     * @return self Provider interface
+     */
+    public function withMaxResponseSize( int $bytes ) : self;
+
+
+    /**
      * Sets the concurrency strategy for tool execution.
      *
      * @param Concurrency $concurrency Concurrency strategy
@@ -124,6 +134,15 @@ interface Provider
      * @return self Provider interface
      */
     public function withThinkingBudget( ?int $budget ) : self;
+
+
+    /**
+     * Sets the human-in-the-loop approval callback for tools that require it.
+     *
+     * @param callable|null $callback Approval resolver: fn(string $name, array<string, mixed> $arguments): bool
+     * @return self Provider interface
+     */
+    public function withToolApproval( ?callable $callback ) : self;
 
 
     /**

@@ -5,6 +5,7 @@ namespace Tests\Providers;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Providers\Fake;
+use Aimeos\Prisma\Responses\TextResponse;
 use PHPUnit\Framework\TestCase;
 
 
@@ -39,6 +40,180 @@ class PrismaTest extends TestCase
         $provider = Prisma::text()->using( 'openai', ['api_key' => 'test'] );
         $this->assertInstanceOf( Fake::class, $provider );
         $this->assertEquals( 'hello', $provider->write( 'hi' ) );
+    }
+
+
+    public function testObserveRecordsProviderOperation() : void
+    {
+        $records = [];
+        $fake = Prisma::fake( [
+            TextResponse::fake( 'hello' )
+                ->withUsage( 8, ['total_tokens' => 8] )
+                ->withMeta( ['id' => 'resp_123', 'model' => 'gpt-test'] ),
+        ] );
+
+        $response = Prisma::text()
+            ->observe( function( array $record ) use ( &$records ) {
+                $records[] = $record;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->ensure( 'write' )
+            ->write( 'prompt' );
+
+        $this->assertInstanceOf( TextResponse::class, $response );
+        $this->assertTrue( $fake->called( 'write' ) );
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'write', $records[0]['operation'] );
+        $this->assertSame( 'text', $records[0]['type'] );
+        $this->assertSame( 'openai', $records[0]['provider'] );
+        $this->assertSame( 'gpt-test', $records[0]['model'] );
+        $this->assertNull( $records[0]['error'] );
+        $this->assertSame( ['used' => 8.0, 'total_tokens' => 8], $records[0]['usage'] );
+        $this->assertSame( ['id' => 'resp_123', 'model' => 'gpt-test'], $records[0]['meta'] );
+        $this->assertGreaterThanOrEqual( 0, $records[0]['durationMs'] );
+    }
+
+
+    public function testObserveRecordsProviderOperationFailure() : void
+    {
+        $records = [];
+        Prisma::fake( [new \RuntimeException( 'Provider failed' )] );
+
+        try {
+            Prisma::text()
+                ->observe( function( array $record ) use ( &$records ) {
+                    $records[] = $record;
+                } )
+                ->using( 'openai', ['api_key' => 'test'] )
+                ->write( 'prompt' );
+
+            $this->fail( 'The provider exception was not thrown' );
+        } catch( \RuntimeException $e ) {
+            $this->assertSame( 'Provider failed', $e->getMessage() );
+        }
+
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'write', $records[0]['operation'] );
+        $this->assertSame( 'Provider failed', $records[0]['error'] );
+        $this->assertSame( [], $records[0]['usage'] );
+        $this->assertSame( [], $records[0]['meta'] );
+    }
+
+
+    public function testObserveIsInstanceScoped() : void
+    {
+        $records = [];
+        Prisma::fake( [
+            TextResponse::fake( 'observed' ),
+            TextResponse::fake( 'plain' ),
+            TextResponse::fake( 'unobserved' ),
+        ] );
+
+        $prisma = Prisma::text();
+
+        $prisma
+            ->observe( function( array $record ) use ( &$records ) {
+                $records[] = $record;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->write( 'observed' );
+
+        $prisma
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->write( 'plain' );
+
+        Prisma::text()
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->write( 'plain' );
+
+        $this->assertCount( 2, $records );
+        $this->assertSame( 'write', $records[0]['operation'] );
+        $this->assertSame( 'write', $records[1]['operation'] );
+    }
+
+
+    public function testObserverPreservesFluentProviderConfiguration() : void
+    {
+        $records = [];
+        Prisma::fake( [TextResponse::fake( 'hello' )] );
+
+        Prisma::text()
+            ->observe( function( array $record ) use ( &$records ) {
+                $records[] = $record;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->model( 'gpt-custom' )
+            ->withMessages( [['role' => 'user', 'content' => 'previous']] )
+            ->withMaxResponseSize( 1024 )
+            ->withMaxTokens( 32 )
+            ->withToolApproval( fn() => true )
+            ->write( 'prompt' );
+
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'write', $records[0]['operation'] );
+        $this->assertSame( 'gpt-custom', $records[0]['model'] );
+    }
+
+
+    public function testObserverRecordsStreamWhenDrained() : void
+    {
+        $records = [];
+        Prisma::fake( [
+            TextResponse::fromStream( function( TextResponse $response ) {
+                $response
+                    ->withUsage( 4, ['total_tokens' => 4] )
+                    ->withMeta( ['id' => 'resp_stream', 'model' => 'gpt-stream'] );
+
+                yield 'hello';
+            } ),
+        ] );
+
+        $response = Prisma::text()
+            ->observe( function( array $record ) use ( &$records ) {
+                $records[] = $record;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->ensure( 'stream' )
+            ->stream( 'prompt' );
+
+        $this->assertSame( [], $records );
+        $this->assertSame( ['hello'], iterator_to_array( $response->stream() ) );
+
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'stream', $records[0]['operation'] );
+        $this->assertSame( 'gpt-stream', $records[0]['model'] );
+        $this->assertNull( $records[0]['error'] );
+        $this->assertSame( ['used' => 4.0, 'total_tokens' => 4], $records[0]['usage'] );
+        $this->assertSame( ['id' => 'resp_stream', 'model' => 'gpt-stream'], $records[0]['meta'] );
+    }
+
+
+    public function testObserverExceptionsDoNotBreakProviderOperation() : void
+    {
+        Prisma::fake( [TextResponse::fake( 'hello' )] );
+        $log = tempnam( sys_get_temp_dir(), 'prisma-observer-' );
+        $previous = ini_get( 'error_log' );
+
+        if( $log !== false ) {
+            ini_set( 'error_log', $log );
+        }
+
+        try {
+            $response = Prisma::text()
+                ->observe( function() {
+                    throw new \RuntimeException( 'Observer failed' );
+                } )
+                ->using( 'openai', ['api_key' => 'test'] )
+                ->write( 'prompt' );
+
+            $this->assertSame( 'hello', $response->text() );
+        } finally {
+            ini_set( 'error_log', $previous === false ? '' : $previous );
+
+            if( $log !== false ) {
+                @unlink( $log );
+            }
+        }
     }
 
 

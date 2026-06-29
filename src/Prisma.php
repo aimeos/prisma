@@ -6,11 +6,16 @@ use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Fake;
+use Aimeos\Prisma\Providers\Observer;
 
 
 class Prisma
 {
     private static ?Fake $fake = null;
+
+    /** @var array<int, \Closure(array<string, mixed>): void> */
+    private array $observers = [];
+
     private string $type;
 
 
@@ -61,6 +66,29 @@ class Prisma
     public static function image() : self
     {
         return new self( 'image' );
+    }
+
+
+    /**
+     * Adds a request-scoped observer for provider operations.
+     *
+     * @param callable $callback Observer callback: fn(array{
+     *     operation: string,
+     *     type: string,
+     *     provider: string,
+     *     model: string|null,
+     *     durationMs: float,
+     *     error: string|null,
+     *     usage: array<string, mixed>,
+     *     meta: array<string, mixed>
+     * }): void
+     * @return self Same Prisma instance with the observer attached
+     */
+    public function observe( callable $callback ) : self
+    {
+        $this->observers[] = \Closure::fromCallable( $callback );
+
+        return $this;
     }
 
 
@@ -152,7 +180,9 @@ class Prisma
             throw new NotImplementedException( sprintf( 'Provider "%1$s" does not implement "%2$s"', $classname, Provider::class ) );
         }
 
-        return self::$fake ? self::$fake->use( $provider ) : $provider;
+        $provider = self::$fake ? self::$fake->use( $provider ) : $provider;
+
+        return $this->observers ? new Observer( $provider, $this->type, $name, $this->observers ) : $provider;
     }
 
 
