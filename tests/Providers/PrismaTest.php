@@ -6,6 +6,9 @@ use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Providers\Fake;
 use Aimeos\Prisma\Responses\TextResponse;
+use Aimeos\Prisma\Values\Meta;
+use Aimeos\Prisma\Values\Observation;
+use Aimeos\Prisma\Values\Usage;
 use PHPUnit\Framework\TestCase;
 
 
@@ -53,8 +56,8 @@ class PrismaTest extends TestCase
         ] );
 
         $response = Prisma::text()
-            ->observe( function( array $record ) use ( &$records ) {
-                $records[] = $record;
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
             } )
             ->using( 'openai', ['api_key' => 'test'] )
             ->ensure( 'write' )
@@ -63,14 +66,16 @@ class PrismaTest extends TestCase
         $this->assertInstanceOf( TextResponse::class, $response );
         $this->assertTrue( $fake->called( 'write' ) );
         $this->assertCount( 1, $records );
-        $this->assertSame( 'write', $records[0]['operation'] );
-        $this->assertSame( 'text', $records[0]['type'] );
-        $this->assertSame( 'openai', $records[0]['provider'] );
-        $this->assertSame( 'gpt-test', $records[0]['model'] );
-        $this->assertNull( $records[0]['error'] );
-        $this->assertSame( ['used' => 8.0, 'total_tokens' => 8], $records[0]['usage'] );
-        $this->assertSame( ['id' => 'resp_123', 'model' => 'gpt-test'], $records[0]['meta'] );
-        $this->assertGreaterThanOrEqual( 0, $records[0]['durationMs'] );
+        $this->assertSame( 'write', $records[0]->operation );
+        $this->assertSame( 'text', $records[0]->type );
+        $this->assertSame( 'openai', $records[0]->provider );
+        $this->assertSame( 'gpt-test', $records[0]->model );
+        $this->assertNull( $records[0]->error );
+        $this->assertInstanceOf( Usage::class, $records[0]->usage );
+        $this->assertInstanceOf( Meta::class, $records[0]->meta );
+        $this->assertSame( ['used' => 8.0, 'total_tokens' => 8], $records[0]->usage->all() );
+        $this->assertSame( ['id' => 'resp_123', 'model' => 'gpt-test'], $records[0]->meta->all() );
+        $this->assertGreaterThanOrEqual( 0, $records[0]->durationMs );
     }
 
 
@@ -81,8 +86,8 @@ class PrismaTest extends TestCase
 
         try {
             Prisma::text()
-                ->observe( function( array $record ) use ( &$records ) {
-                    $records[] = $record;
+                ->observe( function( Observation $observation ) use ( &$records ) {
+                    $records[] = $observation;
                 } )
                 ->using( 'openai', ['api_key' => 'test'] )
                 ->write( 'prompt' );
@@ -93,10 +98,39 @@ class PrismaTest extends TestCase
         }
 
         $this->assertCount( 1, $records );
-        $this->assertSame( 'write', $records[0]['operation'] );
-        $this->assertSame( 'Provider failed', $records[0]['error'] );
-        $this->assertSame( [], $records[0]['usage'] );
-        $this->assertSame( [], $records[0]['meta'] );
+        $this->assertSame( 'write', $records[0]->operation );
+        $this->assertInstanceOf( \RuntimeException::class, $records[0]->error );
+        $this->assertSame( 'Provider failed', $records[0]->errorMessage );
+        $this->assertNull( $records[0]->usage );
+        $this->assertNull( $records[0]->meta );
+        $this->assertNull( $records[0]->toArray()['usage'] );
+        $this->assertNull( $records[0]->toArray()['meta'] );
+    }
+
+
+    public function testObserveAllowsMissingResponseMetaAndUsage() : void
+    {
+        $records = [];
+        $result = new class {
+        };
+
+        Prisma::fake( [$result] );
+
+        $response = Prisma::text()
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->ensure( 'write' )
+            ->write( 'prompt' );
+
+        $this->assertSame( $result, $response );
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'write', $records[0]->operation );
+        $this->assertNull( $records[0]->usage );
+        $this->assertNull( $records[0]->meta );
+        $this->assertNull( $records[0]->toArray()['usage'] );
+        $this->assertNull( $records[0]->toArray()['meta'] );
     }
 
 
@@ -112,8 +146,8 @@ class PrismaTest extends TestCase
         $prisma = Prisma::text();
 
         $prisma
-            ->observe( function( array $record ) use ( &$records ) {
-                $records[] = $record;
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
             } )
             ->using( 'openai', ['api_key' => 'test'] )
             ->write( 'observed' );
@@ -127,8 +161,8 @@ class PrismaTest extends TestCase
             ->write( 'plain' );
 
         $this->assertCount( 2, $records );
-        $this->assertSame( 'write', $records[0]['operation'] );
-        $this->assertSame( 'write', $records[1]['operation'] );
+        $this->assertSame( 'write', $records[0]->operation );
+        $this->assertSame( 'write', $records[1]->operation );
     }
 
 
@@ -138,8 +172,8 @@ class PrismaTest extends TestCase
         Prisma::fake( [TextResponse::fake( 'hello' )] );
 
         Prisma::text()
-            ->observe( function( array $record ) use ( &$records ) {
-                $records[] = $record;
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
             } )
             ->using( 'openai', ['api_key' => 'test'] )
             ->model( 'gpt-custom' )
@@ -150,8 +184,8 @@ class PrismaTest extends TestCase
             ->write( 'prompt' );
 
         $this->assertCount( 1, $records );
-        $this->assertSame( 'write', $records[0]['operation'] );
-        $this->assertSame( 'gpt-custom', $records[0]['model'] );
+        $this->assertSame( 'write', $records[0]->operation );
+        $this->assertSame( 'gpt-custom', $records[0]->model );
     }
 
 
@@ -169,8 +203,8 @@ class PrismaTest extends TestCase
         ] );
 
         $response = Prisma::text()
-            ->observe( function( array $record ) use ( &$records ) {
-                $records[] = $record;
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
             } )
             ->using( 'openai', ['api_key' => 'test'] )
             ->ensure( 'stream' )
@@ -180,11 +214,13 @@ class PrismaTest extends TestCase
         $this->assertSame( ['hello'], iterator_to_array( $response->stream() ) );
 
         $this->assertCount( 1, $records );
-        $this->assertSame( 'stream', $records[0]['operation'] );
-        $this->assertSame( 'gpt-stream', $records[0]['model'] );
-        $this->assertNull( $records[0]['error'] );
-        $this->assertSame( ['used' => 4.0, 'total_tokens' => 4], $records[0]['usage'] );
-        $this->assertSame( ['id' => 'resp_stream', 'model' => 'gpt-stream'], $records[0]['meta'] );
+        $this->assertSame( 'stream', $records[0]->operation );
+        $this->assertSame( 'gpt-stream', $records[0]->model );
+        $this->assertNull( $records[0]->error );
+        $this->assertInstanceOf( Usage::class, $records[0]->usage );
+        $this->assertInstanceOf( Meta::class, $records[0]->meta );
+        $this->assertSame( ['used' => 4.0, 'total_tokens' => 4], $records[0]->usage->all() );
+        $this->assertSame( ['id' => 'resp_stream', 'model' => 'gpt-stream'], $records[0]->meta->all() );
     }
 
 

@@ -7,13 +7,14 @@ use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Fake;
 use Aimeos\Prisma\Providers\Observer;
+use Aimeos\Prisma\Values\Observation;
 
 
 class Prisma
 {
     private static ?Fake $fake = null;
 
-    /** @var array<int, \Closure(array<string, mixed>): void> */
+    /** @var array<int, \Closure(Observation): void> */
     private array $observers = [];
 
     private string $type;
@@ -72,16 +73,7 @@ class Prisma
     /**
      * Adds a request-scoped observer for provider operations.
      *
-     * @param callable $callback Observer callback: fn(array{
-     *     operation: string,
-     *     type: string,
-     *     provider: string,
-     *     model: string|null,
-     *     durationMs: float,
-     *     error: string|null,
-     *     usage: array<string, mixed>,
-     *     meta: array<string, mixed>
-     * }): void
+     * @param callable $callback Observer callback: fn(Observation $observation): void
      * @return self Same Prisma instance with the observer attached
      */
     public function observe( callable $callback ) : self
