@@ -167,6 +167,22 @@ class BaseTest extends TestCase
     }
 
 
+    public function testHasProviderTool() : void
+    {
+        $provider = $this->provider();
+        $tool = Tools::make( 'web_search', 'Search', Schema::fromArray( 'web_search', ['type' => 'object'] ), fn() => '' );
+
+        $this->assertFalse( $provider->hasProviderToolNamed( 'web_search' ) );
+
+        $provider->withTools( [$tool] );
+        $this->assertFalse( $provider->hasProviderToolNamed( 'web_search' ) );
+
+        $provider->withTools( [Tools::provider( 'web_search' )] );
+        $this->assertTrue( $provider->hasProviderToolNamed( 'web_search' ) );
+        $this->assertFalse( $provider->hasProviderToolNamed( 'code_execution' ) );
+    }
+
+
     private function provider() : Base
     {
         return new class( [] ) extends Base {
@@ -175,6 +191,7 @@ class BaseTest extends TestCase
             public function getSystemPrompt() : ?string { return $this->systemPrompt(); }
             public function getTools() : array { return $this->tools(); }
             public function getModelName( ?string $default = null ) : ?string { return $this->modelName( $default ); }
+            public function hasProviderToolNamed( string $name ) : bool { return $this->hasProviderTool( $name ); }
         };
     }
 }

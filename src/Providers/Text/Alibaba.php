@@ -18,7 +18,7 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
-        if( $this->mapProviderTools( ['web_search' => ['options' => []]] ) ) {
+        if( $this->hasProviderTool( 'web_search' ) ) {
             $options['enable_search'] = true;
         }
 
@@ -53,7 +53,7 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
-        if( $this->mapProviderTools( ['web_search' => ['options' => []]] ) ) {
+        if( $this->hasProviderTool( 'web_search' ) ) {
             $options['enable_search'] = true;
         }
 

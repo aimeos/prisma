@@ -165,6 +165,25 @@ trait HasTools
 
 
     /**
+     * Returns true if a built-in provider tool with the given name is configured.
+     *
+     * @param string $name Provider tool name
+     * @return bool True if the provider tool is configured
+     */
+    protected function hasProviderTool( string $name ) : bool
+    {
+        foreach( $this->providerTools as $tool )
+        {
+            if( $tool->name() === $name ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    /**
      * Returns the configured human-in-the-loop approval callback.
      *
      * @return \Closure|null Approval resolver or null when none is set
