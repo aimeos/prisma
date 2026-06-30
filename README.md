@@ -1689,6 +1689,7 @@ Iterating `$response->stream()` yields:
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 * [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
@@ -1808,6 +1809,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/developer-reference/api-details)
 * [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/structured-output)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
@@ -1996,4 +1998,3 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 **Supported options:**
 
 * Gemini
-

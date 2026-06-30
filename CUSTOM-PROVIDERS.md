@@ -28,6 +28,7 @@
 <ul class="method-list">
     <li><a href="#file-response">File response</a></li>
     <li><a href="#text-response">Text response</a></li>
+    <li><a href="#streaming-text-response">Streaming text response</a></li>
     <li><a href="#vector-response">Vector response</a></li>
     <li><a href="#meta-data">Meta data</a></li>
     <li><a href="#finish-reason">Finish reason</a></li>
@@ -130,6 +131,7 @@ only needs to implement the ones it supports.
 
 | Contract | Method | Returns |
 |----------|--------|---------|
+| Stream | `stream( string $prompt, array $files = [], array $options = [] )` | TextResponse |
 | Structure | `structure( string $prompt, Schema $schema, array $files = [], array $options = [] )` | TextResponse |
 | Translate | `translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] )` | TextResponse |
 | Vectorize | `vectorize( array $texts, ?int $size = null, array $options = [] )` | VectorResponse |
@@ -522,6 +524,40 @@ $response->add( '...' ); // add more texts
 ```
 
 Also supports *fromAsync()* — see [Async operations](#async-operations).
+
+#### Streaming text response
+
+Text providers implementing `Text\Stream` return a `TextResponse` backed by
+`TextResponse::fromStream()`. The generator should yield live text deltas (and
+tool `Step` objects when applicable), then populate the response before it
+finishes:
+
+```php
+use Aimeos\Prisma\Responses\TextResponse;
+
+return TextResponse::fromStream( function( TextResponse $response ) use ( $body ) {
+    $chunks = [];
+    $usage = [];
+    $meta = [];
+
+    foreach( $this->streamData( $body ) as $event ) {
+        $delta = $event['delta'] ?? '';
+
+        if( is_string( $delta ) && $delta !== '' ) {
+            $chunks[] = $delta;
+            yield $delta;
+        }
+    }
+
+    $response->add( implode( '', $chunks ) )
+        ->withUsage( $usage['total_tokens'] ?? null, $usage )
+        ->withMeta( $meta );
+} );
+```
+
+The inherited `streamData()` helper parses Server-Sent Events. If your provider
+does not use SSE, read from the PSR-7 stream directly and keep the same
+`fromStream()` response shape.
 
 #### Vector response
 
@@ -1002,7 +1038,9 @@ handling the full request/response cycle including tool loops:
 | Method | Purpose |
 |--------|---------|
 | `completions()` | Chat completions with tool loop |
+| `streamCompletions()` | Streaming chat completions with tool loop |
 | `responses()` | OpenAI Responses API with tool loop |
+| `streamResponses()` | Streaming Responses API with tool loop |
 | `structuredCompletions()` | Completions with JSON schema response format |
 | `structuredResponses()` | Responses API with JSON schema format |
 | `content()` | Build content blocks from prompt and files |
@@ -1046,6 +1084,7 @@ The text provider becomes minimal:
 
 namespace Aimeos\Prisma\Providers\Text;
 
+use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Write;
 use Aimeos\Prisma\Providers\Myprovider as Base;
@@ -1053,16 +1092,25 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Myprovider extends Base implements Structure, Write
+class Myprovider extends Base implements Stream, Structure, Write
 {
+    public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'top_p'] );
+        $messages = $this->messages( $this->content( $prompt, $files ) );
+
+        return $this->streamCompletions( 'v1/chat/completions', 'default-model', $messages, $options );
+    }
+
+
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
+        $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p'] );
 
         return $this->structuredCompletions(
             'v1/chat/completions', 'default-model',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $schema, $options
+            $prompt, $files, $schema, $options, $mode
         );
     }
 
