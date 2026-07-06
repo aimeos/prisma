@@ -114,6 +114,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
 - [xAI](https://docs.x.ai/)
+- [Z.AI](https://docs.z.ai/api-reference)
 
 ### Audio
 
@@ -173,6 +174,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Perplexity**        | beta  | beta       |           | -         | beta  | yes       | yes          |                | yes           | -               |
 | **Vertexai**          | beta  | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
 | **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
+| **Z.AI**             | yes   | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
 
 ### Video
 
@@ -1703,6 +1705,7 @@ Iterating `$response->stream()` yields:
 * [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
+* [Z.AI](https://docs.z.ai/api-reference/llm/chat-completion)
 
 **Example:**
 
@@ -1825,6 +1828,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
+* [Z.AI](https://docs.z.ai/api-reference/llm/chat-completion)
 
 **Example:**
 
