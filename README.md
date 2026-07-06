@@ -128,6 +128,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Mistral**           | -     | -       | yes      | -       | -     | yes        |
 | **Murf**              | -     | -       | -        | yes     | yes   | -          |
 | **OpenAI**            | -     | -       | yes      | -       | yes   | yes        |
+| **Z.AI**              | -     | -       | -        | -       | -     | yes        |
 
 ### Image
 
@@ -1170,6 +1171,9 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * Groq
 * [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+* [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
+
+*Note: Z.AI audio transcriptions currently support only mono (single-channel) input files.*
 
 ## Image API
 
