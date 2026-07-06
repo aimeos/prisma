@@ -19,6 +19,20 @@ class ZTest extends TestCase
         }
     }
 
+    public function testImagine() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'z', ['api_key' => $_ENV['Z_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'a cartoon dog', [$image] );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/z_imagine.png', $response->binary() );
+    }
+
+
     public function testStream() : void
     {
         $deltas = [];
@@ -47,5 +61,17 @@ class ZTest extends TestCase
             ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
 
         $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'z', ['api_key' => $_ENV['Z_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
     }
 }
