@@ -152,6 +152,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
+| **Z.AI**             | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 
 ### Text
 
@@ -1359,15 +1360,16 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
-* [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
-* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
+* [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
+* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
 * [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations)
+* [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
 
 **Example:**
 

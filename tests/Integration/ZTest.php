@@ -48,4 +48,16 @@ class ZTest extends TestCase
 
         $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
     }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'z', ['api_key' => $_ENV['Z_API_KEY']])
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
+    }
 }
