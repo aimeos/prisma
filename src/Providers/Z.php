@@ -12,6 +12,10 @@ class Z extends Base
     use CallsTools;
     use OpenaiApi;
 
+    protected const PROVIDER_TOOL_MAP = [
+        'web_search' => ['type' => 'web_search'],
+    ];
+
 
     public function __construct( array $config )
     {

@@ -881,7 +881,7 @@ $response = Prisma::text()
 
 | Tool name | Providers |
 | :--- | :--- |
-| `web_search` | Anthropic, OpenAI, Gemini, Mistral, xAI, OpenRouter, Alibaba |
+| `web_search` | Anthropic, OpenAI, Gemini, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
 | `web_search_premium` | Mistral |
 | `code_execution` | Anthropic, OpenAI, Gemini, Mistral, xAI |
 | `web_fetch` | Anthropic |
@@ -1707,8 +1707,6 @@ Iterating `$response->stream()` yields:
 * [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
-* [Z.AI](https://docs.z.ai/api-reference/llm/chat-completion)
-
 **Example:**
 
 ```php
