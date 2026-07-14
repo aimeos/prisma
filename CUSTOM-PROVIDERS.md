@@ -357,16 +357,26 @@ $file = Image::fromBase64( $base64Data, 'image/png' );
 $file = Image::fromUrl( 'https://example.com/photo.jpg', 'image/jpeg' );
 $file = Image::fromLocalPath( '/path/to/photo.jpg' );
 $file = Image::fromStoragePath( 'photos/image.jpg', 'public', 'image/jpeg' );
+$file = Image::fromStream( $stream, 'image/png' );
 ```
 
 The mime type parameter is optional but recommended. If omitted, it will be
 guessed from the content when accessed.
+
+`fromStream()` retains the supplied resource without reading it. Keep the
+resource open while the file object uses it. Conversion is deferred until another
+representation or automatic mime detection is requested. Streams are treated as
+forward-only: `stream()` returns the retained resource at its current position,
+and conversion consumes and caches its remaining bytes. When no retained input
+stream remains, every `stream()` call returns a fresh resource that the caller is
+responsible for closing.
 
 #### Accessors
 
 ```php
 $file->binary();    // raw binary content (fetches from URL if needed)
 $file->base64();    // base64-encoded content
+$file->stream();    // retained input stream, or a fresh readable stream
 $file->url();       // original URL (if created from URL)
 $file->mimeType();  // mime type string
 $file->filename();  // filename (if available)
@@ -493,15 +503,18 @@ Three response types are available: `FileResponse`, `TextResponse` and
 
 #### File response
 
-A FileResponse contains one or more files as binary, base64 or URL. The mime
-type is optional but prevents guessing later:
+A FileResponse contains one or more file objects. The mime type is optional but
+prevents guessing later:
 
 ```php
 use Aimeos\Prisma\Responses\FileResponse;
 
 $response = FileResponse::fromBinary( '...', 'image/png' );
 $response = FileResponse::fromBase64( '...', 'image/png' );
+$response = FileResponse::fromStream( $stream, 'image/png' );
 $response = FileResponse::fromUrl( '...', 'image/png' );
+
+$stream = $response->stream(); // close the returned resource after use
 ```
 
 Add multiple files with *add()*:

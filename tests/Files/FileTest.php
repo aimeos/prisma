@@ -89,6 +89,58 @@ class FileTest extends TestCase
     }
 
 
+    public function testFromStreamSupportsNonSeekableResources() : void
+    {
+        $streams = stream_socket_pair( STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP );
+        $this->assertIsArray( $streams );
+
+        [$stream, $writer] = $streams;
+        fwrite( $writer, 'hello world' );
+        fclose( $writer );
+
+        $file = File::fromStream( $stream, 'text/plain' );
+
+        try
+        {
+            $this->assertSame( $stream, $file->stream() );
+            $this->assertSame( 'hello ', fread( $stream, 6 ) );
+            $this->assertSame( 'world', $file->binary() );
+            $this->assertSame( 'text/plain', $file->mimeType() );
+
+            $converted = $file->stream();
+            $this->assertNotSame( $stream, $converted );
+            $this->assertSame( 'world', stream_get_contents( $converted ) );
+            fclose( $converted );
+        }
+        finally
+        {
+            fclose( $stream );
+        }
+    }
+
+
+    public function testFromStreamRejectsInvalidResource() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        File::fromStream( 'not a stream' );
+    }
+
+
+    public function testFromStreamRejectsUnreadableStream() : void
+    {
+        $stream = fopen( $this->tempFile( '' ), 'wb' );
+        $this->assertIsResource( $stream );
+
+        try {
+            $this->expectException( PrismaException::class );
+            File::fromStream( $stream );
+        } finally {
+            fclose( $stream );
+        }
+    }
+
+
     public function testMaxSizeCapEnforced() : void
     {
         $this->expectException( PrismaException::class );
@@ -98,6 +150,25 @@ class FileTest extends TestCase
             ->withClientHandler( $this->handler( new Response( 200, [], 'hello world' ) ) )
             ->maxSize( 4 )
             ->binary();
+    }
+
+
+    public function testStreamReturnsReadableStream() : void
+    {
+        $file = File::fromBinary( 'hello world' );
+        $first = $file->stream();
+
+        $this->assertIsResource( $first );
+        $this->assertSame( 'hello world', stream_get_contents( $first ) );
+
+        $second = $file->stream();
+
+        $this->assertIsResource( $second );
+        $this->assertNotSame( $first, $second );
+        $this->assertSame( 'hello world', stream_get_contents( $second ) );
+
+        fclose( $first );
+        fclose( $second );
     }
 
 

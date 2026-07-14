@@ -203,6 +203,19 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
 
 
     /**
+     * Create a file instance from a stream.
+     *
+     * @param resource $stream Readable stream resource
+     * @param string|null $mimeType Optional mime type
+     * @return static FileResponse instance
+     */
+    public static function fromStream( mixed $stream, ?string $mimeType = null ) : static
+    {
+        return (new static)->add( File::fromStream( $stream, $mimeType ) );
+    }
+
+
+    /**
      * Create a file instance from a URL.
      *
      * @param string $url File URL
@@ -262,6 +275,17 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
     public function mimeType() : ?string
     {
         return $this->first()?->mimeType();
+    }
+
+
+    /**
+     * Returns the first file's content as a stream.
+     *
+     * @return resource|null Retained input stream, a new readable stream or null
+     */
+    public function stream() : mixed
+    {
+        return $this->first()?->stream();
     }
 
 

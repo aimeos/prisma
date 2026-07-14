@@ -8,6 +8,19 @@ use PHPUnit\Framework\TestCase;
 
 class FileResponseTest extends TestCase
 {
+    public function testFromStream() : void
+    {
+        $stream = tmpfile();
+        $this->assertIsResource( $stream );
+
+        try {
+            $this->assertSame( $stream, FileResponse::fromStream( $stream )->stream() );
+        } finally {
+            fclose( $stream );
+        }
+    }
+
+
     public function testJsonSerializeExposesFileMetadataOnly() : void
     {
         $data = FileResponse::fromBinary( 'binarydata', 'image/png' )
