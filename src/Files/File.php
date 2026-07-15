@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\FetchesUrls;
 use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use GuzzleHttp\Psr7\Utils;
 
 
 /**
@@ -19,6 +20,8 @@ class File
     protected ?string $url = null;
     protected ?string $base64 = null;
     protected ?string $binary = null;
+    /** @var resource|null */
+    protected mixed $stream = null;
     protected ?string $filename = null;
     protected ?string $mimeType = null;
     protected int $maxBytes = 67108864;
@@ -44,7 +47,7 @@ class File
      */
     public function base64() : ?string
     {
-        if( !$this->base64 ) {
+        if( $this->base64 === null ) {
             $this->base64 = base64_encode( (string) $this->binary() );
         }
 
@@ -59,12 +62,25 @@ class File
      */
     public function binary() : ?string
     {
-        if( $this->binary ) {
+        if( $this->binary !== null ) {
             return $this->binary;
         }
 
-        if( $this->base64 ) {
+        if( $this->base64 !== null ) {
             return $this->binary = base64_decode( (string) $this->base64 );
+        }
+
+        if( $this->stream !== null )
+        {
+            $stream = self::resource( $this->stream );
+            $content = stream_get_contents( $stream );
+
+            if( $content === false ) {
+                throw new PrismaException( 'Unable to read from stream' );
+            }
+
+            $this->stream = null;
+            return $this->binary = $content;
         }
 
         if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), true ) ?: null ) ) {
@@ -184,6 +200,23 @@ class File
 
 
     /**
+     * Create a file instance backed by a stream.
+     *
+     * @param resource $stream Readable stream resource
+     * @param string|null $mimeType Optional mime type
+     * @return static File instance
+     */
+    public static function fromStream( mixed $stream, ?string $mimeType = null ) : static
+    {
+        $instance = new static;
+        $instance->stream = self::resource( $stream );
+        $instance->setMimeType( $mimeType );
+
+        return $instance;
+    }
+
+
+    /**
      * Create a file instance from a URL.
      *
      * @param string $url File URL
@@ -222,7 +255,7 @@ class File
     {
         if( !$this->mimeType )
         {
-            if( $this->binary || $this->base64 ) {
+            if( $this->binary !== null || $this->base64 !== null || $this->stream !== null ) {
                 $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
             } elseif( $this->url ) {
                 // best-effort probe of the first bytes; an unsafe or unreachable URL stays null
@@ -268,6 +301,21 @@ class File
 
 
     /**
+     * Returns the file content as a stream.
+     *
+     * @return resource Retained input stream or a new readable stream
+     */
+    public function stream() : mixed
+    {
+        if( $this->stream !== null ) {
+            return self::resource( $this->stream );
+        }
+
+        return self::resource( Utils::streamFor( (string) $this->binary() )->detach() );
+    }
+
+
+    /**
      * Returns the file URL.
      *
      * @return string|null File URL
@@ -291,5 +339,27 @@ class File
     protected function mimePrefix() : string
     {
         return '';
+    }
+
+
+    /**
+     * Validates and returns a readable stream resource.
+     *
+     * @param mixed $stream Potential stream resource
+     * @return resource Readable stream resource
+     */
+    private static function resource( mixed $stream ) : mixed
+    {
+        if( !is_resource( $stream ) || get_resource_type( $stream ) !== 'stream' ) {
+            throw new PrismaException( 'Invalid stream resource' );
+        }
+
+        $mode = stream_get_meta_data( $stream )['mode'];
+
+        if( !str_contains( $mode, 'r' ) && !str_contains( $mode, '+' ) ) {
+            throw new PrismaException( 'Stream resource is not readable' );
+        }
+
+        return $stream;
     }
 }

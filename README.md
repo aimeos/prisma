@@ -471,8 +471,9 @@ contains the returned data with optional meta/usage/description information.
 **FileResponse** objects:
 
 ```php
-$base64 = $response->base64(); // first base64 data, from binary, base64 and URL, waits for async requests
-$file = $response->binary(); // first binary data, from binary, base64 and URL, waits for async requests
+$base64 = $response->base64(); // first file as base64 data, waits for async requests
+$file = $response->binary(); // first file as binary data, waits for async requests
+$stream = $response->stream(); // first file as a readable PHP stream; close it after use
 $url = $response->url(); // first URL, only if URLs are returned, otherwise NULL
 $mime = $response->mimeType(); // image mime type, waits for async requests
 $text = $response->description(); // image description if returned by provider
@@ -486,8 +487,7 @@ foreach( $response as $name => $file ) {
 }
 ```
 
-URLs are automatically converted to binary and base64 data if requested and conversion between
-binary and base64 data is done on request too.
+File content is loaded and converted lazily when the requested representation is accessed.
 
 **TextResponse** objects:
 
@@ -1190,10 +1190,14 @@ $image = Image::fromUrl( 'https://example.com/image.php', 'image/png' );
 $image = Image::fromLocalPath( 'path/to/image.png', 'image/png' );
 $image = Image::fromBinary( 'PNG...', 'image/png' );
 $image = Image::fromBase64( 'UE5H...', 'image/png' );
+$image = Image::fromStream( $stream, 'image/png' );
 
 // Laravel only:
 $image = Image::fromStoragePath( 'path/to/image.png', 'public', 'image/png' );
 ```
+
+`fromStream()` retains a forward-only resource until conversion is needed. See
+the [custom provider guide](CUSTOM-PROVIDERS.md#file-types) for ownership details.
 
 The last parameter of all methods (mime type) is optional. If it's not passed, the file
 content will be retrieved to determine the mime type if reqested.
