@@ -19,6 +19,9 @@ trait FetchesUrls
 {
     private ?HandlerStack $fetchHandler = null;
 
+    /** @var array<int, string>|null */
+    private ?array $fetchHosts = null;
+
     private const FETCH_TIMEOUT = 30;
     private const FETCH_REDIRECTS = 2;
 
@@ -32,6 +35,23 @@ trait FetchesUrls
     public function withClientHandler( HandlerStack $stack ) : self
     {
         $this->fetchHandler = $stack;
+        return $this;
+    }
+
+
+    /**
+     * Restricts remote fetches to HTTPS URLs on the given hosts and their subdomains.
+     *
+     * @param array<int, string> $hosts Allowed host names
+     * @return self File instance
+     */
+    public function restrictHosts( array $hosts ) : self
+    {
+        $this->fetchHosts = array_values( array_unique( array_filter( array_map(
+            fn( string $host ) => strtolower( trim( $host, ". \t\n\r\0\x0B" ) ),
+            $hosts
+        ) ) ) );
+
         return $this;
     }
 
@@ -58,7 +78,10 @@ trait FetchesUrls
                 'http_errors' => true,
                 'connect_timeout' => 10,
                 'read_timeout' => self::FETCH_TIMEOUT,
-                'allow_redirects' => ['max' => self::FETCH_REDIRECTS, 'strict' => true, 'protocols' => ['http', 'https']],
+            // A host-restricted provider URL must not escape its allowlist via redirects.
+            'allow_redirects' => $this->fetchHosts === null
+                ? ['max' => self::FETCH_REDIRECTS, 'strict' => true, 'protocols' => ['http', 'https']]
+                : false,
             ] );
         } catch( GuzzleException $e ) {
             throw new PrismaException( sprintf( 'Unable to fetch URL from %s: %s', $url, $e->getMessage() ) );
@@ -116,6 +139,27 @@ trait FetchesUrls
             return false;
         }
 
-        return !empty( $parsed['host'] ) && (bool) filter_var( $parsed['host'], FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME );
+        if( empty( $parsed['host'] ) || !filter_var( $parsed['host'], FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME ) ) {
+            return false;
+        }
+
+        if( $this->fetchHosts === null ) {
+            return true;
+        }
+
+        if( $parsed['scheme'] !== 'https' ) {
+            return false;
+        }
+
+        $host = strtolower( (string) $parsed['host'] );
+
+        foreach( $this->fetchHosts as $allowed )
+        {
+            if( $host === $allowed || str_ends_with( $host, '.' . $allowed ) ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

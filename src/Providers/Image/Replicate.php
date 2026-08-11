@@ -11,11 +11,22 @@ use Aimeos\Prisma\Responses\FileResponse;
 
 class Replicate extends Base implements Imagine
 {
+    private const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
+
+    /** @var array<int, string> */
+    private array $downloadHosts;
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( 'No API key' );
         }
+
+        $hosts = $config['download_hosts'] ?? ['replicate.delivery'];
+        $this->downloadHosts = is_array( $hosts )
+            ? array_values( array_filter( $hosts, 'is_string' ) )
+            : ['replicate.delivery'];
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.replicate.com' ) );
@@ -88,7 +99,7 @@ class Replicate extends Base implements Imagine
             }
 
             foreach( $this->outputs( $data ) as $url ) {
-                $fr->add( Image::fromUrl( $url ) );
+                $fr->add( $this->image( $url ) );
             }
 
             return true;
@@ -122,7 +133,7 @@ class Replicate extends Base implements Imagine
             return FileResponse::fromAsync( $this->poll( $url ), 3 );
         }
 
-        $files = array_map( fn( string $url ) => Image::fromUrl( $url ), $this->outputs( $data ) );
+        $files = array_map( $this->image(...), $this->outputs( $data ) );
 
         if( empty( $files ) ) {
             throw new PrismaException( 'No image data found in response' );
@@ -132,5 +143,18 @@ class Replicate extends Base implements Imagine
         unset( $meta['output'] );
 
         return FileResponse::fromFiles( $files )->withMeta( $meta );
+    }
+
+
+    /**
+     * Builds a lazy image whose eventual download stays on Replicate's HTTPS CDN.
+     */
+    private function image( string $url ) : Image
+    {
+        $image = Image::fromUrl( $url );
+        $image->restrictHosts( $this->downloadHosts );
+        $image->maxSize( self::MAX_DOWNLOAD_BYTES );
+
+        return $image;
     }
 }

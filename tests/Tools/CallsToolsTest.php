@@ -92,6 +92,31 @@ class CallsToolsTest extends TestCase
     }
 
 
+    public function testApprovalRequiredToolFailsClosedWithoutCallback() : void
+    {
+        $executions = 0;
+        $tool = Tools::make(
+            'sensitive',
+            'desc',
+            Schema::fromArray( 'sensitive', ['type' => 'object'] ),
+            function() use ( &$executions ) {
+                $executions++;
+                return 'executed';
+            }
+        )->with( ['needs_approval' => true] );
+
+        $harness = $this->harness( new Sequential() );
+        $harness->withTools( [$tool] );
+
+        $calls = [];
+        $results = $harness->exec( $this->calls( 'sensitive' ), $calls );
+
+        $this->assertEquals( 0, $executions );
+        $this->assertStringContainsString( 'denied', $results[0]->result() );
+        $this->assertArrayNotHasKey( 'sensitive', $calls );
+    }
+
+
     public function testExecutorReceivesAllRunnableSteps() : void
     {
         $seq = Tools::make( 'seq', 'desc', Schema::fromArray( 'seq', ['type' => 'object'] ), fn() => 'S' );

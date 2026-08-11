@@ -88,11 +88,10 @@ trait CallsTools
                 continue;
             }
 
-            // Human-in-the-loop: a tool flagged with the "needs_approval" option is only
-            // executed when the configured approval callback allows it; a denied call
-            // returns an error to the model so it can choose a different action.
-            if( ( $tool->options()['needs_approval'] ?? false ) && ( $approve = $this->toolApproval() )
-                && !$approve( $name, $call['arguments'] ) ) {
+            // Human-in-the-loop: approval-required tools fail closed. Missing callbacks
+            // and explicit denials both return an error instead of executing the handler.
+            if( ( $tool->options()['needs_approval'] ?? false ) && ( !( $approve = $this->toolApproval() )
+                || !$approve( $name, $call['arguments'] ) ) ) {
                 $steps[$idx] = $this->errorStep( $call, sprintf( 'Error: call to tool "%s" was denied', $name ) );
                 continue;
             }
