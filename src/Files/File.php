@@ -17,14 +17,15 @@ class File
     use FetchesUrls;
 
 
+    /** @var resource|null */
+    protected mixed $stream = null;
     protected ?string $url = null;
     protected ?string $base64 = null;
     protected ?string $binary = null;
-    /** @var resource|null */
-    protected mixed $stream = null;
     protected ?string $filename = null;
     protected ?string $mimeType = null;
     protected int $maxBytes = 67108864;
+    protected bool $strict = true;
 
 
     /**
@@ -83,7 +84,7 @@ class File
             return $this->binary = $content;
         }
 
-        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), true ) ?: null ) ) {
+        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), $this->strict ) ?: null ) ) {
             throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
         }
 
@@ -221,12 +222,14 @@ class File
      *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
+     * @param bool $strict TRUE to use strict URL checks, FALSE otherwise
      * @return static File instance
      */
-    public static function fromUrl( string $url, ?string $mimeType = null ) : static
+    public static function fromUrl( string $url, ?string $mimeType = null, bool $strict = true ) : static
     {
         $instance = new static;
         $instance->url = $url;
+        $instance->strict = $strict;
         $instance->setMimeType( $mimeType );
 
         return $instance;
@@ -255,29 +258,28 @@ class File
     {
         if( !$this->mimeType )
         {
-            if( $this->binary !== null || $this->base64 !== null || $this->stream !== null ) {
-                $this->mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
-            } elseif( $this->url ) {
-                // best-effort probe of the first bytes; an unsafe or unreachable URL stays null
-                try {
-                    $content = $this->fetch( $this->url, 255, false );
-                    $this->mimeType = $content !== '' ? ( (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null ) : null;
-                } catch( PrismaException $e ) {
-                    $this->mimeType = null;
-                }
+            $mimeType = null;
+
+            if( $this->binary !== null || $this->base64 !== null || $this->stream !== null )
+            {
+                $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
             }
+            elseif( $this->url )
+            {
+                try
+                {
+                    // best-effort probe of the first bytes; an unsafe or unreachable URL stays null
+                    $content = $this->fetch( $this->url, -255, $this->strict );
+                    $mimeType = $content !== '' ? ( (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null ) : null;
+                }
+                catch( PrismaException ) {}
+            }
+
+            $this->setMimeType( $mimeType );
         }
 
-        // finfo reports several non-canonical WAV types; normalize them to "audio/wav" so
-        // providers that only accept the canonical type (e.g. Gemini, Anthropic) work.
-        $this->mimeType = match( $this->mimeType ) {
-            'audio/x-wav', 'audio/wave', 'audio/x-pn-wav', 'audio/vnd.wave' => 'audio/wav',
-            default => $this->mimeType,
-        };
-
         if( !$this->acceptsMimeType( $this->mimeType ) ) {
-            $prefix = $this->mimePrefix();
-            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $this->mimeType ) );
+            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $this->mimePrefix(), $this->mimeType ) );
         }
 
         return $this->mimeType;
@@ -292,9 +294,15 @@ class File
      */
     public function setMimeType( ?string $mimeType ) : static
     {
+        // finfo reports several non-canonical WAV types; normalize them to "audio/wav" so
+        // providers that only accept the canonical type (e.g. Gemini, Anthropic) work.
+        $mimeType = match( $mimeType ) {
+            'audio/x-wav', 'audio/wave', 'audio/x-pn-wav', 'audio/vnd.wave' => 'audio/wav',
+            default => $mimeType,
+        };
+
         if( $mimeType && !$this->acceptsMimeType( $mimeType ) ) {
-            $prefix = $this->mimePrefix();
-            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $mimeType ) );
+            throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $this->mimePrefix(), $mimeType ) );
         }
 
         $this->mimeType = $mimeType;

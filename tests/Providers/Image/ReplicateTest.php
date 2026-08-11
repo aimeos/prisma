@@ -114,10 +114,13 @@ class ReplicateTest extends TestCase
     }
 
 
-    public function testGeneratedImageAllowsHttpsSubdomain() : void
+    public function testGeneratedImageAllowsResolvableHost() : void
     {
-        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
-            ->response( ['status' => 'succeeded', 'output' => 'https://cdn.replicate.delivery/image.png'] )
+        $response = $this->prisma( 'image', 'replicate', [
+            'api_key' => 'test',
+            'download_hosts' => ['localhost'],
+        ] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://localhost/image.png'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
 
@@ -132,9 +135,9 @@ class ReplicateTest extends TestCase
     {
         $response = $this->prisma( 'image', 'replicate', [
             'api_key' => 'test',
-            'download_hosts' => ['images.example.com'],
+            'download_hosts' => ['10.0.0.5'],
         ] )
-            ->response( ['status' => 'succeeded', 'output' => 'https://images.example.com/image.png'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://10.0.0.5/image.png'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
 
