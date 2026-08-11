@@ -102,6 +102,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
+- [Kimi](https://platform.kimi.ai/docs/overview)
 - [Mistral](https://docs.mistral.ai/api)
 - [ModelsLab](https://docs.modelslab.com/)
 - [Murf](https://murf.ai/api)
@@ -170,6 +171,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Gemini**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |       |            | yes       |           |       |           |              |                |               |                 |
 | **Groq**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | -               |
+| **Kimi**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
 | **Mistral**           | yes   | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | -               |
 | **Ollama**            | beta  | beta       |           | beta      | beta  | -         | yes          |                | yes           | -               |
 | **OpenAI**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
@@ -467,6 +469,7 @@ Set the thinking/reasoning budget in tokens for models that support extended
 thinking. The budget is mapped to each provider's native format automatically:
 token counts for Anthropic, OpenAI, Gemini and Bedrock; effort levels for other
 OpenAI-API providers (&#8804; 1024 → low, &#8804; 8192 → medium, > 8192 → high).
+Kimi uses its native low/high/max levels for those same three ranges.
 
 ```php
 public function withThinkingBudget( ?int $budget ) : self
@@ -1730,6 +1733,7 @@ Iterating `$response->stream()` yields:
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
+* [Kimi](https://platform.kimi.ai/docs/guide/utilize-the-streaming-output-feature-of-kimi-api)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
@@ -1737,6 +1741,7 @@ Iterating `$response->stream()` yields:
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [Requesty](https://docs.requesty.ai/features/streaming)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
+
 **Example:**
 
 ```php
@@ -1852,6 +1857,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
+* [Kimi](https://platform.kimi.ai/docs/guide/kimi-k3-quickstart#structured-output)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
@@ -2000,6 +2006,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
+* [Kimi](https://platform.kimi.ai/docs/api/chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
