@@ -96,7 +96,7 @@ class AzureTest extends TestCase
             $config['api_version'] = $_ENV['AZURE_API_VERSION'];
         }
 
-        return Prisma::text()->using( 'azure', $config )->model( $_ENV['AZURE_DEPLOYMENT'] ?? 'gpt-4o' );
+        return Prisma::text()->using( 'azure', $config )->model( $_ENV['AZURE_DEPLOYMENT'] ?? 'gpt-5.6-sol' );
     }
 
 

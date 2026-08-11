@@ -17,7 +17,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
-        $model = (string) $this->modelName( 'gpt-4o' );
+        $model = (string) $this->modelName( 'gpt-5.6-sol' );
         $endpoint = $this->endpoint( $model, 'chat/completions' );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
@@ -30,7 +30,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
     {
         $mode = $options['mode'] ?? null;
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
-        $model = (string) $this->modelName( 'gpt-4o' );
+        $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->structuredCompletions(
             $this->endpoint( $model, 'chat/completions' ), $model,
@@ -51,7 +51,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
-        $model = (string) $this->modelName( 'gpt-4o' );
+        $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->completions(
             $this->endpoint( $model, 'chat/completions' ), $model,

@@ -59,13 +59,13 @@ class AzureTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
-                'https://myres.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21',
+                'https://myres.openai.azure.com/openai/deployments/gpt-5.6-sol/chat/completions?api-version=2024-10-21',
                 (string) $request->getUri()
             );
             $this->assertEquals( 'test', $request->getHeaderLine( 'api-key' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'gpt-4o', $body['model'] );
+            $this->assertEquals( 'gpt-5.6-sol', $body['model'] );
         } );
 
         $this->assertEquals( 'Hello', $response->text() );
