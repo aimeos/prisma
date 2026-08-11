@@ -152,6 +152,20 @@ class PerplexityTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabled() : void
+    {
+        $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'ok']]]] )
+            ->withReasoning( false )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'low', $body['reasoning_effort'] );
+        } );
+    }
+
+
     public function testWriteWithCitations() : void
     {
         $response = $this->prisma( 'text', 'perplexity', ['api_key' => 'test'] )

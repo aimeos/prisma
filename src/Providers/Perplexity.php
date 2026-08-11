@@ -22,4 +22,11 @@ class Perplexity extends Base
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.perplexity.ai' ) );
     }
+
+
+    /** @return array<string, mixed> */
+    protected function reasoningParams() : array
+    {
+        return $this->reasoningEnabled() === false ? ['reasoning_effort' => 'low'] : [];
+    }
 }

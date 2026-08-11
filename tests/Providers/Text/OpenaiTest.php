@@ -546,6 +546,34 @@ class OpenaiTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabled() : void
+    {
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['output' => [], 'usage' => ['total_tokens' => 1]] )
+            ->withReasoning( false )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( ['effort' => 'minimal'], $body['reasoning'] );
+        } );
+    }
+
+
+    public function testWriteExplicitReasoningWins() : void
+    {
+        $this->prisma( 'text', 'openai', ['api_key' => 'test'] )
+            ->response( ['output' => [], 'usage' => ['total_tokens' => 1]] )
+            ->withReasoning( false )
+            ->write( 'prompt', [], ['reasoning' => ['effort' => 'high']] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( ['effort' => 'high'], $body['reasoning'] );
+        } );
+    }
+
+
     public function testWriteNonStrictToolKeepsParameters() : void
     {
         $tool = \Aimeos\Prisma\Tools::make(

@@ -152,6 +152,20 @@ class OpenrouterTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabled() : void
+    {
+        $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'ok']]]] )
+            ->withReasoning( false )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( ['exclude' => true], $body['reasoning'] );
+        } );
+    }
+
+
     public function testWriteNormalizesObjectContent() : void
     {
         $response = $this->prisma( 'text', 'openrouter', ['api_key' => 'test'] )

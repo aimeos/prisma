@@ -78,6 +78,8 @@ trait OpenaiApi
             };
         }
 
+        $params += $this->reasoningParams();
+
         return $this->applyTools( $params, $step );
     }
 
@@ -412,6 +414,8 @@ trait OpenaiApi
         if( $prompt = $this->systemPrompt() ) {
             $params['instructions'] = $prompt;
         }
+
+        $params += $this->reasoningParams();
 
         return $this->applyTools( $params, $step );
     }

@@ -608,6 +608,25 @@ class AnthropicTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabledOmitsBudgetFallback() : void
+    {
+        $this->prisma( 'text', 'anthropic', ['api_key' => 'test'] )
+            ->response( [
+                'content' => [['type' => 'text', 'text' => 'ok']],
+                'stop_reason' => 'end_turn',
+                'usage' => ['input_tokens' => 5, 'output_tokens' => 3],
+            ] )
+            ->withThinkingBudget( 2048 )
+            ->withReasoning( false )
+            ->write( 'answer briefly' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertArrayNotHasKey( 'thinking', $body );
+        } );
+    }
+
+
 
 
     public function testWriteWithCitations() : void

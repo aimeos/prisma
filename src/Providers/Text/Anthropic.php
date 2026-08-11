@@ -171,7 +171,7 @@ class Anthropic extends Base implements Stream, Structure, Write
         ] + ( $stream ? ['stream' => true] : [] ) + $options;
 
         // an explicit "thinking" option wins; otherwise withThinkingBudget() enables a fixed budget
-        if( !isset( $params['thinking'] ) && ( $thinkingBudget = $this->thinkingBudget() ) ) {
+        if( !isset( $params['thinking'] ) && $this->reasoningEnabled() !== false && ( $thinkingBudget = $this->thinkingBudget() ) ) {
             $params['thinking'] = ['type' => 'enabled', 'budget_tokens' => $thinkingBudget];
         }
 

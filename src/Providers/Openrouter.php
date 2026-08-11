@@ -47,4 +47,11 @@ class Openrouter extends Base
     }
 
 
+    /** @return array<string, mixed> */
+    protected function reasoningParams() : array
+    {
+        return $this->reasoningEnabled() === false ? ['reasoning' => ['exclude' => true]] : [];
+    }
+
+
 }

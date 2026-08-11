@@ -14,7 +14,7 @@ class Perplexity extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         return $this->streamCompletions( 'chat/completions', 'sonar', $messages, $options );
@@ -25,7 +25,7 @@ class Perplexity extends Base implements Stream, Structure, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $mode = $options['mode'] ?? null;
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
 
         return $this->structuredCompletions(
             'chat/completions', 'sonar',
@@ -36,7 +36,7 @@ class Perplexity extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
 
         return $this->completions(
             'chat/completions', 'sonar',

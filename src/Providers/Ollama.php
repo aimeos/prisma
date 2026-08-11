@@ -19,4 +19,11 @@ class Ollama extends Base
 
         $this->baseUrl( $this->config( $config, 'url', 'http://localhost:11434' ) );
     }
+
+
+    /** @return array<string, mixed> */
+    protected function reasoningParams() : array
+    {
+        return $this->reasoningEnabled() === false ? ['think' => false] : [];
+    }
 }

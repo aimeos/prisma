@@ -116,6 +116,15 @@ interface Provider
 
 
     /**
+     * Enables or minimizes model reasoning where supported.
+     *
+     * @param bool $enabled TRUE to leave reasoning enabled, FALSE to minimize it
+     * @return self Provider interface
+     */
+    public function withReasoning( bool $enabled = true ) : self;
+
+
+    /**
      * Add a system prompt for the LLM.
      *
      * It may be used by providers supporting system prompts. Otherwise, it's

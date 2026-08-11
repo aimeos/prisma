@@ -248,6 +248,20 @@ class Observer implements Provider
 
 
     /**
+     * Enables or minimizes model reasoning where supported.
+     *
+     * @param bool $enabled TRUE to leave reasoning enabled, FALSE to minimize it
+     * @return self Provider interface
+     */
+    public function withReasoning( bool $enabled = true ) : self
+    {
+        $this->provider->withReasoning( $enabled );
+
+        return $this;
+    }
+
+
+    /**
      * Add a system prompt for the LLM.
      *
      * @param string|null $prompt System prompt

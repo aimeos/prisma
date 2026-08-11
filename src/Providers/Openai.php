@@ -31,4 +31,18 @@ class Openai extends Base
         $this->header( 'authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.openai.com' ) );
     }
+
+
+    /**
+     * Maps provider-agnostic reasoning control to the Responses API.
+     *
+     * OpenAI reasoning models cannot disable reasoning entirely; minimal is the
+     * least expensive supported effort level.
+     *
+     * @return array<string, mixed>
+     */
+    protected function reasoningParams() : array
+    {
+        return $this->reasoningEnabled() === false ? ['reasoning' => ['effort' => 'minimal']] : [];
+    }
 }

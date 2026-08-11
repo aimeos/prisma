@@ -21,6 +21,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#withsystemprompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#withmessages">withMessages</a><span>: Add prior conversation turns for multi-turn chat</span></li>
     <li><a href="#withmaxtokens">withMaxTokens</a><span>: Set the maximum number of output tokens</span></li>
+    <li><a href="#withreasoning">withReasoning</a><span>: Enable or minimize model reasoning</span></li>
     <li><a href="#withthinkingbudget">withThinkingBudget</a><span>: Set the thinking/reasoning budget in tokens</span></li>
     <li><a href="#response-objects">Response objects</a><span>: How data is returned by the API</span></li>
     <li><a href="#citations">Citations</a><span>: Source references from provider responses</span></li>
@@ -435,6 +436,28 @@ public function withMaxTokens( ?int $tokens ) : self
     ->withMaxTokens( 4096 )
     ->write( 'Tell me a story' );
 ```
+
+### withReasoning
+
+Enable reasoning or ask supported providers to minimize it. Providers map
+`false` to their closest native control; for example, Gemini and Ollama disable
+thinking, OpenRouter excludes reasoning, and OpenAI uses minimal effort. Explicit
+provider options passed to `write()`, `stream()` or `structure()` take precedence.
+
+```php
+public function withReasoning( bool $enabled = true ) : self
+```
+
+**Example:**
+
+```php
+$response = \Aimeos\Prisma\Prisma::text()
+    ->using( '<provider>', ['api_key' => 'xxx'] )
+    ->withReasoning( false )
+    ->write( 'Answer briefly' );
+```
+
+Providers without a native reasoning control ignore this setting.
 
 ### withThinkingBudget
 

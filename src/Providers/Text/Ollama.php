@@ -16,7 +16,7 @@ class Ollama extends Base implements Stream, Structure, Vectorize, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'think'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         return $this->streamCompletions( 'v1/chat/completions', 'llama4', $messages, $options );
@@ -25,7 +25,7 @@ class Ollama extends Base implements Stream, Structure, Vectorize, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'think'] );
 
         return $this->structuredCompletions( 'v1/chat/completions', 'llama4', $prompt, $files, $schema, $options, 'json' );
     }
@@ -39,7 +39,7 @@ class Ollama extends Base implements Stream, Structure, Vectorize, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'think'] );
 
         return $this->completions(
             'v1/chat/completions', 'llama4',

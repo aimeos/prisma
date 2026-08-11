@@ -17,7 +17,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier', 'thinkingConfig'] );
         $contents = array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] );
 
         return $this->streamGenerate( $contents, $options );
@@ -27,7 +27,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $mode = $options['mode'] ?? null;
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier', 'thinkingConfig'] );
         $options['responseMimeType'] = 'application/json';
 
         if( Mode::from( $mode )->isJson() ) {
@@ -75,7 +75,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier'] );
+        $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier', 'thinkingConfig'] );
 
         return $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
@@ -357,9 +357,12 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
             $genConfig['maxOutputTokens'] = $this->maxTokens();
         }
 
-        // a positive budget caps thinking, 0 disables it explicitly, null leaves the model default
-        if( $this->thinkingBudget() !== null ) {
+        // Explicit provider options win. Otherwise a budget controls thinking and the
+        // provider-agnostic reasoning switch can disable it with a zero budget.
+        if( !isset( $genConfig['thinkingConfig'] ) && $this->thinkingBudget() !== null ) {
             $genConfig['thinkingConfig'] = ['thinkingBudget' => $this->thinkingBudget()];
+        } elseif( !isset( $genConfig['thinkingConfig'] ) && $this->reasoningEnabled() === false ) {
+            $genConfig['thinkingConfig'] = ['thinkingBudget' => 0];
         }
 
         $request = $system + [

@@ -272,6 +272,20 @@ class OllamaTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabled() : void
+    {
+        $this->prisma( 'text', 'ollama', [] )
+            ->response( ['choices' => [['message' => ['content' => 'ok']]]] )
+            ->withReasoning( false )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertFalse( $body['think'] );
+        } );
+    }
+
+
     public function testWriteWithCustomUrl() : void
     {
         $response = $this->prisma( 'text', 'ollama', ['url' => 'http://gpu-server:11434'] )

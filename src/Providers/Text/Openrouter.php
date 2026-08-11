@@ -14,7 +14,7 @@ class Openrouter extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         return $this->streamCompletions( 'api/v1/chat/completions', 'openai/gpt-5.5', $messages, $options );
@@ -25,7 +25,7 @@ class Openrouter extends Base implements Stream, Structure, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $mode = $options['mode'] ?? null;
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
 
         return $this->structuredCompletions(
             'api/v1/chat/completions', 'openai/gpt-5.5',
@@ -36,7 +36,7 @@ class Openrouter extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
 
         return $this->completions(
             'api/v1/chat/completions', 'openai/gpt-5.5',

@@ -702,6 +702,40 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testWriteWithReasoningDisabled() : void
+    {
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 2],
+            ] )
+            ->withReasoning( false )
+            ->write( 'hi' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 0, $body['generationConfig']['thinkingConfig']['thinkingBudget'] );
+        } );
+    }
+
+
+    public function testWriteExplicitThinkingConfigWins() : void
+    {
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( [
+                'candidates' => [['content' => ['parts' => [['text' => 'hi']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 2],
+            ] )
+            ->withReasoning( false )
+            ->write( 'hi', [], ['thinkingConfig' => ['thinkingBudget' => 1024]] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 1024, $body['generationConfig']['thinkingConfig']['thinkingBudget'] );
+        } );
+    }
+
+
     public function testWriteToolLoopEmptyArgsIsObject() : void
     {
         $tool = \Aimeos\Prisma\Tools::make(
