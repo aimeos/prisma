@@ -13,6 +13,9 @@ use Psr\Http\Message\ResponseInterface;
 
 class Murf extends Base implements Revoice, Speak
 {
+    private string $streamUrl;
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -21,6 +24,7 @@ class Murf extends Base implements Revoice, Speak
 
         $this->header( 'api-key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.murf.ai' ) );
+        $this->streamUrl = $this->config( $config, 'stream_url', 'https://global.api.murf.ai/v1/speech/stream' );
     }
 
 
@@ -41,20 +45,18 @@ class Murf extends Base implements Revoice, Speak
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'en-US-natalie';
-        $model = $this->modelName( 'GEN2' );
+        $model = $this->modelName( 'falcon-2' );
 
         $allowed = $this->allowed( $options, [
-            'audioDuration', 'channelType', 'format', 'multiNativeLocale',
-            'pitch', 'pronunciationDictionary', 'rate', 'sampleRate',
-            'style', 'variation', 'wordDurationsAsOriginalText'
+            'channelType', 'format', 'locale', 'pitch', 'rate', 'sampleRate', 'style'
         ] );
 
-        $request = ['voiceId' => $selected, 'text' => $text, 'modelVersion' => $model] + $allowed + ['format' => 'mp3'];
-        $response = $this->client()->post( '/v1/speech/generate', ['json' => $request] );
+        $request = ['voiceId' => $selected, 'text' => $text, 'model' => $model] + $allowed + ['format' => 'MP3'];
+        $response = $this->client()->post( $this->streamUrl, ['json' => $request] );
 
         $this->validate( $response );
 
-        $url = @$this->fromJson( $response )['audioFile'] ?? '';
-        return FileResponse::fromUrl( is_string( $url ) ? $url : '' );
+        $mimetype = $response->getHeaderLine( 'Content-Type' ) ?: 'audio/mpeg';
+        return FileResponse::fromBinary( $response->getBody()->getContents(), $mimetype );
     }
 }

@@ -1177,7 +1177,7 @@ public function speak( string $text, ?string $voice = null, array $options = [] 
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
 * Groq
-* [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/generate)
+* [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/stream)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 
 ### transcribe
