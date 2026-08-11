@@ -105,7 +105,7 @@ class GroqTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
-            ->model( 'llama-3.3-70b-versatile' )
+            ->model( 'openai/gpt-oss-120b' )
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
@@ -135,7 +135,7 @@ class GroqTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::text()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
-            ->model( 'meta-llama/llama-4-scout-17b-16e-instruct' )
+            ->model( 'qwen/qwen3.6-27b' )
             ->ensure( 'write' )
             ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
 
