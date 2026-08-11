@@ -5,6 +5,7 @@ namespace Tests\Files;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\File;
+use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
@@ -47,6 +48,14 @@ class FileTest extends TestCase
             ->binary();
 
         $this->assertEquals( 'hello', $content );
+    }
+
+
+    public function testFetchClientUsesCurlHandler() : void
+    {
+        $handler = FileTestProxy::fromBinary( 'file' )->clientHandler();
+
+        $this->assertInstanceOf( CurlHandler::class, $handler );
     }
 
 
@@ -366,6 +375,15 @@ class FileTestProxy extends File
     public function fetchUrl( string $url, int $limit, bool $strict ) : string
     {
         return $this->fetch( $url, $limit, $strict );
+    }
+
+
+    public function clientHandler() : mixed
+    {
+        /** @var HandlerStack */
+        $stack = $this->fetchClient()->getConfig( 'handler' );
+
+        return (new \ReflectionProperty( HandlerStack::class, 'handler' ))->getValue( $stack );
     }
 
 

@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Concerns;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
@@ -117,7 +118,11 @@ trait FetchesUrls
      */
     protected function fetchClient() : Client
     {
-        return new Client( $this->fetchHandler ? ['handler' => $this->fetchHandler] : [] );
+        // Guzzle's default stack can route streamed responses through StreamHandler, which
+        // ignores CURLOPT_RESOLVE and would bypass the validated DNS pin.
+        $handler = $this->fetchHandler ?? HandlerStack::create( new CurlHandler );
+
+        return new Client( ['handler' => $handler] );
     }
 
 
