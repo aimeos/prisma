@@ -21,7 +21,7 @@ class Requesty extends Base implements Stream, Structure, Vectorize, Write
         ] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'chat/completions', 'openai/gpt-4o-mini', $messages, $options );
+        return $this->streamCompletions( 'chat/completions', 'openai/gpt-5.6-luna', $messages, $options );
     }
 
 
@@ -33,7 +33,7 @@ class Requesty extends Base implements Stream, Structure, Vectorize, Write
         ] );
 
         return $this->structuredCompletions(
-            'chat/completions', 'openai/gpt-4o-mini',
+            'chat/completions', 'openai/gpt-5.6-luna',
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -54,7 +54,7 @@ class Requesty extends Base implements Stream, Structure, Vectorize, Write
         ] );
 
         return $this->completions(
-            'chat/completions', 'openai/gpt-4o-mini',
+            'chat/completions', 'openai/gpt-5.6-luna',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

@@ -101,7 +101,7 @@ class RequestyTest extends TestCase
             $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
             $this->assertEquals( 'https://app.example.com', $request->getHeaderLine( 'HTTP-Referer' ) );
             $this->assertEquals( 'Example', $request->getHeaderLine( 'X-Title' ) );
-            $this->assertEquals( 'openai/gpt-4o-mini', $body['model'] );
+            $this->assertEquals( 'openai/gpt-5.6-luna', $body['model'] );
             $this->assertEquals( 0.2, $body['temperature'] );
             $this->assertArrayNotHasKey( 'unknown', $body );
         } );
