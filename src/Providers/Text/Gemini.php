@@ -49,7 +49,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
     public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
     {
-        $model = $this->modelName( 'gemini-embedding-001' );
+        $model = $this->modelName( 'gemini-embedding-2' );
         $allowed = $this->allowed( $options, ['taskType', 'title'] );
 
         $requests = array_map( fn( string $text ) => [
@@ -208,7 +208,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      */
     private function generate( array $contents, array $options ) : TextResponse
     {
-        $endpoint = $this->generateEndpoint( $this->modelName( 'gemini-3.5-flash' ) );
+        $endpoint = $this->generateEndpoint( $this->modelName( 'gemini-3.6-flash' ) );
 
         return TextResponse::fromStream( fn( TextResponse $res ) => $this->runGenerate( $res, $endpoint, $contents, $options, false, $this->toolsParam() ) )->resolve();
     }
@@ -225,7 +225,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      */
     private function streamGenerate( array $contents, array $options ) : TextResponse
     {
-        $endpoint = $this->streamEndpoint( $this->modelName( 'gemini-3.5-flash' ) );
+        $endpoint = $this->streamEndpoint( $this->modelName( 'gemini-3.6-flash' ) );
         $toolsParam = $this->toolsParam();
         $system = ( $prompt = $this->systemPrompt() ) ? [
             'systemInstruction' => ['parts' => [['text' => $prompt]]]
