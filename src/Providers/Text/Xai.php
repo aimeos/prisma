@@ -19,13 +19,13 @@ class Xai extends Base implements Stream, Structure, Write
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
             $input = $this->responsesInput( $prompt, $files );
 
-            return $this->streamResponses( 'v1/responses', 'grok-4.3', $input, $options );
+            return $this->streamResponses( 'v1/responses', 'grok-4.5', $input, $options );
         }
 
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'v1/chat/completions', 'grok-4.3', $messages, $options );
+        return $this->streamCompletions( 'v1/chat/completions', 'grok-4.5', $messages, $options );
     }
 
 
@@ -39,7 +39,7 @@ class Xai extends Base implements Stream, Structure, Write
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->structuredResponses(
-                'v1/responses', 'grok-4.3',
+                'v1/responses', 'grok-4.5',
                 $prompt, $files, $schema, $options, $mode
             );
         }
@@ -47,7 +47,7 @@ class Xai extends Base implements Stream, Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->structuredCompletions(
-            'v1/chat/completions', 'grok-4.3',
+            'v1/chat/completions', 'grok-4.5',
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -60,7 +60,7 @@ class Xai extends Base implements Stream, Structure, Write
             $options = $this->reasoning( $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
 
             return $this->responses(
-                'v1/responses', 'grok-4.3',
+                'v1/responses', 'grok-4.5',
                 $this->responsesInput( $prompt, $files ),
                 $options
             );
@@ -69,7 +69,7 @@ class Xai extends Base implements Stream, Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
 
         return $this->completions(
-            'v1/chat/completions', 'grok-4.3',
+            'v1/chat/completions', 'grok-4.5',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

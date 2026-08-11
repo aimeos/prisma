@@ -15,7 +15,7 @@ class Xai extends Base implements Imagine
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $request = [
-            'model' => $this->modelName( 'grok-2-image' ),
+            'model' => $this->modelName( 'grok-imagine-image-quality' ),
             'prompt' => $prompt,
         ] + $this->allowed( $options, ['n', 'response_format', 'user'] );
 

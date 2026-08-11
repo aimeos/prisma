@@ -45,7 +45,7 @@ class XaiTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'https://api.x.ai/v1/chat/completions', (string) $request->getUri() );
-            $this->assertEquals( 'grok-4.3', $body['model'] );
+            $this->assertEquals( 'grok-4.5', $body['model'] );
             $this->assertEquals( 'json_schema', $body['response_format']['type'] );
             $this->assertEquals( 'person', $body['response_format']['json_schema']['name'] );
         } );
@@ -162,7 +162,7 @@ class XaiTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'grok-4.3', $body['model'] );
+            $this->assertEquals( 'grok-4.5', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );

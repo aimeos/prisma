@@ -29,7 +29,7 @@ class XaiTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'grok-2-image', $body['model'] );
+            $this->assertEquals( 'grok-imagine-image-quality', $body['model'] );
             $this->assertEquals( 'a fox', $body['prompt'] );
             $this->assertEquals( 2, $body['n'] );
             $this->assertEquals( 'b64_json', $body['response_format'] );
