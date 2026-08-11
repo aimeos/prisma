@@ -86,14 +86,45 @@ class BedrockTest extends TestCase
     {
         $response = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
             ->response( json_encode( [
-                'embedding' => [0.1, 0.2, 0.3],
-                'metadata' => []
+                'embeddings' => [[
+                    'embeddingType' => 'IMAGE',
+                    'embedding' => [0.1, 0.2, 0.3],
+                ]],
             ] ) )
             ->ensure( 'vectorize' )
             ->vectorize( [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-embed-image-v1/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-2-multimodal-embeddings-v1:0/invoke', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'nova-multimodal-embed-v1', $body['schemaVersion'] );
+            $this->assertEquals( 'SINGLE_EMBEDDING', $body['taskType'] );
+            $this->assertEquals( 'GENERIC_INDEX', $body['singleEmbeddingParams']['embeddingPurpose'] );
+            $this->assertEquals( 3072, $body['singleEmbeddingParams']['embeddingDimension'] );
+            $this->assertEquals( 'STANDARD_IMAGE', $body['singleEmbeddingParams']['image']['detailLevel'] );
+            $this->assertEquals( 'png', $body['singleEmbeddingParams']['image']['format'] );
+            $this->assertEquals( base64_encode( 'PNG' ), $body['singleEmbeddingParams']['image']['source']['bytes'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+    }
+
+
+    public function testVectorizeTitan() : void
+    {
+        $response = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'embedding' => [0.1, 0.2, 0.3],
+                'metadata' => []
+            ] ) )
+            ->ensure( 'vectorize' )
+            ->model( 'amazon.titan-embed-image-v1' )
+            ->vectorize( [Image::fromBinary( 'PNG', 'image/png' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( base64_encode( 'PNG' ), $body['inputImage'] );
+            $this->assertEquals( 1024, $body['embeddingConfig']['outputEmbeddingLength'] );
         } );
 
         $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );

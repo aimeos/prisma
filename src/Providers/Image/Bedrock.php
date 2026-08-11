@@ -85,17 +85,49 @@ class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectoriz
     public function vectorize( array $images, ?int $size = null, array $options = [] ) : VectorResponse
     {
         $promises = $vectors = [];
-        $model = $this->modelName( 'amazon.titan-embed-image-v1' );
+        $model = (string) $this->modelName( 'amazon.nova-2-multimodal-embeddings-v1:0' );
+        $nova = str_contains( $model, 'nova-2-multimodal-embeddings' );
+        $allowed = $this->sanitize( $this->allowed( $options, ['embeddingPurpose', 'detailLevel'] ), [
+            'embeddingPurpose' => ['GENERIC_INDEX', 'GENERIC_RETRIEVAL', 'TEXT_RETRIEVAL', 'IMAGE_RETRIEVAL',
+                'VIDEO_RETRIEVAL', 'DOCUMENT_RETRIEVAL', 'AUDIO_RETRIEVAL', 'CLASSIFICATION', 'CLUSTERING'],
+            'detailLevel' => ['STANDARD_IMAGE', 'DOCUMENT_IMAGE'],
+        ] );
 
         foreach( $images as $index => $image )
         {
-            $promises[$index] = $this->client()->postAsync( 'model/' . $model . '/invoke', [
-                'json' => [
-                    "inputImage" => $image->base64(),
-                    "embeddingConfig" => [
-                        "outputEmbeddingLength" => $size ?? 1024
-                    ]
-                ],
+            $request = [
+                'inputImage' => $image->base64(),
+                'embeddingConfig' => [
+                    'outputEmbeddingLength' => $size ?? 1024
+                ]
+            ];
+
+            if( $nova )
+            {
+                $format = match( $image->mimeType() ) {
+                    'image/jpeg', 'image/jpg' => 'jpeg',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp',
+                    default => 'png',
+                };
+
+                $request = [
+                    'schemaVersion' => 'nova-multimodal-embed-v1',
+                    'taskType' => 'SINGLE_EMBEDDING',
+                    'singleEmbeddingParams' => [
+                        'embeddingPurpose' => $allowed['embeddingPurpose'] ?? 'GENERIC_INDEX',
+                        'embeddingDimension' => $size ?? 3072,
+                        'image' => [
+                            'detailLevel' => $allowed['detailLevel'] ?? 'STANDARD_IMAGE',
+                            'format' => $format,
+                            'source' => ['bytes' => $image->base64()],
+                        ],
+                    ],
+                ];
+            }
+
+            $promises[$index] = $this->client()->postAsync( $this->baseUrl . '/model/' . $model . '/invoke', [
+                'json' => $request,
             ] );
         }
 
@@ -105,8 +137,12 @@ class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectoriz
             $response = $promise->wait();
             $this->validate( $response );
 
+            /** @var array<string, mixed> $data */
+            $data = $this->fromJson( $response );
+            /** @var array<int, array{embedding?: array<int, float>}> $embeddings */
+            $embeddings = $data['embeddings'] ?? [];
             /** @var array<int, float> $embedding */
-            $embedding = @$this->fromJson( $response )['embedding'] ?? [];
+            $embedding = $nova ? ( $embeddings[0]['embedding'] ?? [] ) : ( $data['embedding'] ?? [] );
             $vectors[$index] = $embedding;
         }
 

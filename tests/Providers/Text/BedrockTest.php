@@ -404,17 +404,44 @@ class BedrockTest extends TestCase
     {
         $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
             ->response( [
+                'embeddings' => [[
+                    'embeddingType' => 'TEXT',
+                    'embedding' => [0.1, 0.2, 0.3],
+                ]],
+            ] )
+            ->ensure( 'vectorize' )
+            ->vectorize( ['Hello world'], 384 );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-2-multimodal-embeddings-v1:0/invoke',
+                (string) $request->getUri()
+            );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'nova-multimodal-embed-v1', $body['schemaVersion'] );
+            $this->assertEquals( 'SINGLE_EMBEDDING', $body['taskType'] );
+            $this->assertEquals( 'GENERIC_INDEX', $body['singleEmbeddingParams']['embeddingPurpose'] );
+            $this->assertEquals( 384, $body['singleEmbeddingParams']['embeddingDimension'] );
+            $this->assertEquals( 'END', $body['singleEmbeddingParams']['text']['truncationMode'] );
+            $this->assertEquals( 'Hello world', $body['singleEmbeddingParams']['text']['value'] );
+        } );
+
+        $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+    }
+
+
+    public function testVectorizeTitan() : void
+    {
+        $response = $this->prisma( 'text', 'bedrock', ['api_key' => 'test'] )
+            ->response( [
                 'embedding' => [0.1, 0.2, 0.3],
                 'inputTextTokenCount' => 4,
             ] )
             ->ensure( 'vectorize' )
+            ->model( 'amazon.titan-embed-text-v2:0' )
             ->vectorize( ['Hello world'], 512 );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals(
-                'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.titan-embed-text-v2:0/invoke',
-                (string) $request->getUri()
-            );
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'Hello world', $body['inputText'] );
             $this->assertEquals( 512, $body['dimensions'] );

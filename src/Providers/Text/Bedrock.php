@@ -29,13 +29,43 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
     public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
     {
         $promises = $vectors = [];
-        $model = $this->modelName( 'amazon.titan-embed-text-v2:0' );
-        $allowed = $this->allowed( $options, ['normalize', 'embeddingTypes'] );
+        $model = (string) $this->modelName( 'amazon.nova-2-multimodal-embeddings-v1:0' );
+        $nova = str_contains( $model, 'nova-2-multimodal-embeddings' );
+
+        if( $nova )
+        {
+            $allowed = $this->sanitize( $this->allowed( $options, ['embeddingPurpose', 'truncationMode'] ), [
+                'embeddingPurpose' => ['GENERIC_INDEX', 'GENERIC_RETRIEVAL', 'TEXT_RETRIEVAL', 'IMAGE_RETRIEVAL',
+                    'VIDEO_RETRIEVAL', 'DOCUMENT_RETRIEVAL', 'AUDIO_RETRIEVAL', 'CLASSIFICATION', 'CLUSTERING'],
+                'truncationMode' => ['START', 'END', 'NONE'],
+            ] );
+        }
+        else {
+            $allowed = $this->allowed( $options, ['normalize', 'embeddingTypes'] );
+        }
 
         foreach( array_values( $texts ) as $index => $text )
         {
+            $request = ['inputText' => $text] + ( $size ? ['dimensions' => $size] : [] ) + $allowed;
+
+            if( $nova )
+            {
+                $request = [
+                    'schemaVersion' => 'nova-multimodal-embed-v1',
+                    'taskType' => 'SINGLE_EMBEDDING',
+                    'singleEmbeddingParams' => [
+                        'embeddingPurpose' => $allowed['embeddingPurpose'] ?? 'GENERIC_INDEX',
+                        'embeddingDimension' => $size ?? 3072,
+                        'text' => [
+                            'truncationMode' => $allowed['truncationMode'] ?? 'END',
+                            'value' => $text,
+                        ],
+                    ],
+                ];
+            }
+
             $promises[$index] = $this->client()->postAsync( $this->baseUrl . '/model/' . $model . '/invoke', [
-                'json' => ['inputText' => $text] + ( $size ? ['dimensions' => $size] : [] ) + $allowed,
+                'json' => $request,
             ] );
         }
 
@@ -50,8 +80,10 @@ class Bedrock extends BedrockBase implements Structure, Vectorize, Write
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
 
+            /** @var array<int, array{embedding?: array<int, float>}> $embeddings */
+            $embeddings = $data['embeddings'] ?? [];
             /** @var array<int, float> $embedding */
-            $embedding = $data['embedding'] ?? [];
+            $embedding = $nova ? ( $embeddings[0]['embedding'] ?? [] ) : ( $data['embedding'] ?? [] );
             $vectors[$index] = $embedding;
             $used += is_numeric( $data['inputTextTokenCount'] ?? null ) ? (float) $data['inputTextTokenCount'] : 0;
         }
