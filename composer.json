@@ -5,6 +5,7 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
+    "ext-curl": "*",
     "ext-gd": "*",
     "ext-fileinfo": "*",
     "guzzlehttp/guzzle": "^7.0"

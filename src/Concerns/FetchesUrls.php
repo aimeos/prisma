@@ -6,6 +6,9 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
+use Psr\Http\Message\ResponseInterface;
 
 
 /**
@@ -27,19 +30,6 @@ trait FetchesUrls
 
 
     /**
-     * Sets the Guzzle handler stack used for URL fetches.
-     *
-     * @param HandlerStack $stack Guzzle handler stack
-     * @return self File instance
-     */
-    public function withClientHandler( HandlerStack $stack ) : self
-    {
-        $this->fetchHandler = $stack;
-        return $this;
-    }
-
-
-    /**
      * Restricts remote fetches to HTTPS URLs on the given hosts and their subdomains.
      *
      * @param array<int, string> $hosts Allowed host names
@@ -57,50 +47,65 @@ trait FetchesUrls
 
 
     /**
+     * Sets the Guzzle handler stack used for URL fetches.
+     *
+     * @param HandlerStack $stack Guzzle handler stack
+     * @return self File instance
+     */
+    public function withClientHandler( HandlerStack $stack ) : self
+    {
+        $this->fetchHandler = $stack;
+        return $this;
+    }
+
+
+    /**
      * Fetches bytes from an http(s) URL.
      *
      * @param string $url Remote URL to fetch
-     * @param int $limit Maximum number of bytes to read
-     * @param bool $strict TRUE to fail if the content exceeds the limit, FALSE to read at most the limit
+     * @param int $limit Positive maximum to enforce, or negative sample size to return without an error
+     * @param bool $strict TRUE to resolve and reject private IPs, FALSE to allow internal IPs too
      * @return string Fetched content
      * @throws PrismaException If the URL is invalid, unreachable or exceeds the limit
      */
     protected function fetch( string $url, int $limit, bool $strict ) : string
     {
-        if( !$this->validUrl( $url ) ) {
-            throw new PrismaException( sprintf( 'Invalid or unsafe URL: %s', $url ) );
+        $body = $this->fetchResponse( $url, $strict )->getBody();
+        $length = abs( $limit );
+
+        try
+        {
+            if( ( $size = $body->getSize() ) !== null )
+            {
+                if( $limit >= 0 && $size > $length ) {
+                    throw new PrismaException( sprintf( 'File from %s exceeds the maximum size of %d bytes', $url, $length ) );
+                }
+
+                if( $size <= $length ) {
+                    return $body->getContents();
+                }
+            }
+
+            $read = 0;
+            $content = '';
+            $maximum = $length + ( $limit >= 0 ? 1 : 0 );
+
+            while( !$body->eof() && $read < $maximum )
+            {
+                $content .= $chunk = $body->read( min( 65536, $maximum - $read ) );
+                $read += strlen( $chunk );
+            }
+
+            if( $limit >= 0 && $read > $length ) {
+                throw new PrismaException( sprintf( 'File from %s exceeds the maximum size of %d bytes', $url, $length ) );
+            }
+
+            return $content;
         }
-
-        try {
-            $response = $this->fetchClient()->request( 'GET', $url, [
-                'stream' => true,
-                'verify' => true,
-                'http_errors' => true,
-                'connect_timeout' => 10,
-                'read_timeout' => self::FETCH_TIMEOUT,
-            // A host-restricted provider URL must not escape its allowlist via redirects.
-            'allow_redirects' => $this->fetchHosts === null
-                ? ['max' => self::FETCH_REDIRECTS, 'strict' => true, 'protocols' => ['http', 'https']]
-                : false,
-            ] );
-        } catch( GuzzleException $e ) {
-            throw new PrismaException( sprintf( 'Unable to fetch URL from %s: %s', $url, $e->getMessage() ) );
+        finally
+        {
+            $body->close();
         }
-
-        $body = $response->getBody();
-        $content = '';
-
-        while( !$body->eof() && strlen( $content ) <= $limit ) {
-            $content .= $body->read( max( 1, min( 65536, $limit + 1 - strlen( $content ) ) ) );
-        }
-
-        $body->close();
-
-        if( $strict && strlen( $content ) > $limit ) {
-            throw new PrismaException( sprintf( 'File from %s exceeds the maximum size of %d bytes', $url, $limit ) );
-        }
-
-        return $strict ? $content : substr( $content, 0, $limit );
     }
 
 
@@ -112,6 +117,120 @@ trait FetchesUrls
     protected function fetchClient() : Client
     {
         return new Client( $this->fetchHandler ? ['handler' => $this->fetchHandler] : [] );
+    }
+
+
+    /**
+     * Requests a URL and validates strict-mode redirects.
+     */
+    protected function fetchResponse( string $url, bool $strict ) : ResponseInterface
+    {
+        if( !$this->validUrl( $url ) ) {
+            throw new PrismaException( sprintf( 'Invalid or unsafe URL: %s', $url ) );
+        }
+
+        $options = [
+            'stream' => true,
+            'verify' => true,
+            'http_errors' => true,
+            'connect_timeout' => 10,
+            'read_timeout' => self::FETCH_TIMEOUT,
+            // A host-restricted provider URL must not escape its allowlist via redirects.
+            'allow_redirects' => $this->fetchHosts === null
+                ? ['max' => self::FETCH_REDIRECTS, 'strict' => true, 'protocols' => ['http', 'https']]
+                : false,
+        ];
+
+        try
+        {
+            $client = $this->fetchClient();
+
+            for( $redirects = 0; ; $redirects++ )
+            {
+                $response = $client->request( 'GET', $url, $strict ? $this->safeHttp( $url ) + $options : $options );
+
+                if( !$strict || !in_array( $response->getStatusCode(), [301, 302, 303, 307, 308], true ) ) {
+                    return $response;
+                }
+
+                $location = trim( $response->getHeaderLine( 'Location' ) );
+                $response->getBody()->close();
+
+                if( $location === '' || $redirects >= self::FETCH_REDIRECTS ) {
+                    throw new PrismaException( sprintf( 'Too many or invalid redirects for URL: %s', $url ) );
+                }
+
+                $url = (string) UriResolver::resolve( new Uri( $url ), new Uri( $location ) );
+            }
+        } catch( GuzzleException $e ) {
+            throw new PrismaException( sprintf( 'Unable to fetch URL from %s: %s', $url, $e->getMessage() ) );
+        }
+    }
+
+
+    /**
+     * Resolves a hostname to an IP address.
+     *
+     * Private and reserved ranges are intentionally accepted. Literal IP hosts are
+     * validated directly without a DNS lookup.
+     *
+     * @param string $host Hostname or IP address to resolve
+     * @return string|null First resolved IP address, or null if none was found
+     */
+    protected function resolve( string $host ) : ?string
+    {
+        if( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+            return $host;
+        }
+
+        foreach( @dns_get_record( $host, DNS_A + DNS_AAAA ) ?: [] as $record )
+        {
+            $ip = $record['ip'] ?? $record['ipv6'] ?? null;
+
+            if( $ip && filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+                return $ip;
+            }
+        }
+
+        foreach( @gethostbynamel( $host ) ?: [] as $ip )
+        {
+            if( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+                return $ip;
+            }
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Returns Guzzle options that resolve and pin the connection for the given URL.
+     * Redirects are disabled so fetch() can validate and pin every target separately.
+     *
+     * @param string $url The http(s) URL that will be fetched
+     * @return array<string, mixed> Safe Guzzle request options
+     * @throws PrismaException If the URL is invalid or the host does not resolve
+     */
+    protected function safeHttp( string $url ) : array
+    {
+        if( !$this->validUrl( $url ) ) {
+            throw new PrismaException( sprintf( 'Invalid or unsafe URL: %s', $url ) );
+        }
+
+        $parsed = (array) parse_url( $url );
+        $host = (string) ( $parsed['host'] ?? '' );
+        $port = $parsed['port'] ?? ( ( $parsed['scheme'] ?? '' ) === 'https' ? 443 : 80 );
+
+        if( !( $ip = $this->resolve( $host ) ) ) {
+            throw new PrismaException( sprintf( 'Host "%s" does not resolve to an allowed address', $host ) );
+        }
+
+        return [
+            'verify' => true,
+            'connect_timeout' => 10,
+            'allow_redirects' => false,
+            'curl' => [CURLOPT_RESOLVE => [$host . ':' . $port . ':' . $ip]],
+        ];
     }
 
 
