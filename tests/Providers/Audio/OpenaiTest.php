@@ -30,7 +30,12 @@ class OpenaiTest extends TestCase
             ->describe( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.openai.com/v1/audio/transcriptions', (string) $request->getUri() );
+            if( (string) $request->getUri() !== 'https://api.openai.com/v1/chat/completions' ) {
+                return false;
+            }
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'gpt-5.6-luna', $body['model'] );
         } );
 
         $this->assertEquals( 'an audio description', $response->text() );

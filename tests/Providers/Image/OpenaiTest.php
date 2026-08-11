@@ -36,6 +36,9 @@ class OpenaiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'gpt-5.6', $body['model'] );
         } );
 
         $this->assertEquals( 'an image description', $response->text() );
@@ -60,12 +63,26 @@ class OpenaiTest extends TestCase
                 ]
             ] ) )
             ->ensure( 'imagine' )
-            ->imagine( 'prompt' );
+            ->imagine( 'prompt', [], [
+                'background' => 'opaque',
+                'moderation' => 'low',
+                'output_format' => 'webp',
+                'quality' => 'high',
+                'size' => '2048x1152',
+            ] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
             $this->assertEquals( 'https://api.openai.com/v1/images/generations', (string) $request->getUri() );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'gpt-image-2', $body['model'] );
+            $this->assertEquals( 'opaque', $body['background'] );
+            $this->assertEquals( 'low', $body['moderation'] );
+            $this->assertEquals( 'webp', $body['output_format'] );
+            $this->assertEquals( 'high', $body['quality'] );
+            $this->assertEquals( '2048x1152', $body['size'] );
         } );
 
         $this->assertEquals( $base64, $file->base64() );
@@ -100,6 +117,7 @@ class OpenaiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.openai.com/v1/images/edits', (string) $request->getUri() );
+            $this->assertStringContainsString( 'gpt-image-2', $request->getBody()->getContents() );
         } );
 
         $this->assertEquals( $base64, $file->base64() );
