@@ -13,18 +13,16 @@ class Groq extends Base implements Describe
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $response = $this->client()->post( 'openai/v1/chat/completions', ['json' => [
-            'model' => $this->modelName( 'meta-llama/llama-4-scout-17b-16e-instruct' ),
-            'messages' => [[
+        $response = $this->client()->post( 'openai/v1/responses', ['json' => [
+            'model' => $this->modelName( 'qwen/qwen3.6-27b' ),
+            'input' => [[
                 'role' => 'user',
                 'content' => [[
-                    'type' => 'text',
+                    'type' => 'input_text',
                     'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ($lang ?? 'en') . '".'
                 ], [
-                    'type' => 'image_url',
-                    'image_url' => [
-                        'url' => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
-                    ]
+                    'type' => 'input_image',
+                    'image_url' => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
                 ]]
             ]]
         ]] );
@@ -36,16 +34,19 @@ class Groq extends Base implements Describe
         /** @var array<string|null> $texts */
         $texts = [];
 
-        /** @var array<int, array<string, mixed>> $choices */
-        $choices = $result['choices'] ?? [];
+        /** @var array<int, array<string, mixed>> $output */
+        $output = $result['output'] ?? [];
 
-        foreach( $choices as $data )
+        foreach( $output as $data )
         {
-            /** @var array<string, mixed> $message */
-            $message = $data['message'] ?? [];
-            if( $text = $message['content'] ?? null ) {
-                /** @var string $text */
-                $texts[] = $text;
+            /** @var array<int, array<string, mixed>> $content */
+            $content = $data['content'] ?? [];
+
+            foreach( $content as $part )
+            {
+                if( is_string( $part['text'] ?? null ) ) {
+                    $texts[] = $part['text'];
+                }
             }
         }
 
@@ -54,7 +55,7 @@ class Groq extends Base implements Describe
         }
 
         $meta = $result;
-        unset( $meta['choices'], $meta['usage'] );
+        unset( $meta['output'], $meta['usage'] );
 
         /** @var array<string, mixed> $usage */
         $usage = $result['usage'] ?? [];

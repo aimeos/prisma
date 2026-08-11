@@ -14,11 +14,11 @@ class GroqTest extends TestCase
 
     public function testDescribe() : void
     {
-        $response = $this->prisma( 'image', 'openai', ['api_key' => 'test'] )
+        $response = $this->prisma( 'image', 'groq', ['api_key' => 'test'] )
             ->response( '{
                 "id": "resp_abc123",
                 "status": "completed",
-                "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+                "model": "qwen/qwen3.6-27b",
                 "output": [{
                     "type": "message",
                     "role": "assistant",
@@ -35,7 +35,10 @@ class GroqTest extends TestCase
             ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
+            $this->assertEquals( 'https://api.groq.com/openai/v1/responses', (string) $request->getUri() );
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'qwen/qwen3.6-27b', $body['model'] );
+            $this->assertEquals( 'input_image', $body['input'][0]['content'][1]['type'] );
         } );
 
         $this->assertEquals( 'an image description', $response->text() );
