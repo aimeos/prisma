@@ -122,7 +122,13 @@ class DeepseekTest extends TestCase
                         'content' => 'Hello world'
                     ]
                 ]],
-                'usage' => ['total_tokens' => 10, 'prompt_tokens' => 5, 'completion_tokens' => 5]
+                'usage' => [
+                    'total_tokens' => 10,
+                    'prompt_tokens' => 5,
+                    'completion_tokens' => 5,
+                    'prompt_cache_hit_tokens' => 3,
+                    'completion_tokens_details' => ['reasoning_tokens' => 2],
+                ]
             ] )
             ->ensure( 'write' )
             ->write( 'Say hello' );
@@ -141,6 +147,8 @@ class DeepseekTest extends TestCase
         $this->assertEquals( 'Hello world', $response->text() );
         $this->assertEquals( ['Hello world'], $response->texts() );
         $this->assertEquals( 10, $response->usage()['used'] );
+        $this->assertEquals( 3, $response->usage()->cacheReadTokens() );
+        $this->assertEquals( 2, $response->usage()->thoughtTokens() );
     }
 
 

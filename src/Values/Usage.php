@@ -35,7 +35,7 @@ class Usage implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerial
      */
     public function cacheReadTokens() : ?int
     {
-        return $this->pick( ['cache_read_input_tokens', 'cacheReadInputTokens', 'cachedContentTokenCount'] )
+        return $this->pick( ['cache_read_input_tokens', 'cacheReadInputTokens', 'cachedContentTokenCount', 'prompt_cache_hit_tokens'] )
             ?? $this->nested( ['prompt_tokens_details', 'input_tokens_details'], 'cached_tokens' );
     }
 

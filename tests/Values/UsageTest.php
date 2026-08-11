@@ -65,6 +65,24 @@ class UsageTest extends TestCase
     }
 
 
+    public function testDeepseekTokens() : void
+    {
+        $usage = new Usage( [
+            'prompt_tokens' => 220,
+            'completion_tokens' => 76,
+            'total_tokens' => 296,
+            'prompt_cache_hit_tokens' => 192,
+            'completion_tokens_details' => ['reasoning_tokens' => 40],
+        ] );
+
+        // Keep the provider-reported prompt total while exposing its cached portion
+        // separately so callers can apply DeepSeek's different cache-hit price.
+        $this->assertSame( 220, $usage->promptTokens() );
+        $this->assertSame( 192, $usage->cacheReadTokens() );
+        $this->assertSame( 40, $usage->thoughtTokens() );
+    }
+
+
     public function testBedrockTokens() : void
     {
         $usage = new Usage( [
