@@ -13,6 +13,7 @@ use Aimeos\Prisma\Concerns\HasTools;
 use Aimeos\Prisma\Contracts\Provider;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\File;
 
 
@@ -212,7 +213,7 @@ abstract class Base implements Provider
                     $data[] = [
                         'name' => $name . "[$i]",
                         'contents' => $file->binary(),
-                        'filename' => $file->filename() ?: "file-$i",
+                        'filename' => $this->payloadFilename( $file, "file-$i" ),
                         'headers'  => [
                             'Content-Type' => $file->mimeType()
                         ]
@@ -228,7 +229,7 @@ abstract class Base implements Provider
                 $data[] = [
                     'name' => $name,
                     'contents' => $entry->binary(),
-                    'filename' => $entry->filename() ?: 'file',
+                    'filename' => $this->payloadFilename( $entry, 'file' ),
                     'headers'  => [
                         'Content-Type' => $entry->mimeType()
                     ]
@@ -237,6 +238,36 @@ abstract class Base implements Provider
         }
 
         return $data;
+    }
+
+
+    /**
+     * Returns a provider-friendly upload filename when none was supplied.
+     */
+    private function payloadFilename( File $file, string $default ) : string
+    {
+        if( $name = $file->filename() ) {
+            return $name;
+        }
+
+        if( !( $file instanceof Audio ) ) {
+            return $default;
+        }
+
+        $extension = match( $file->mimeType() ) {
+            'audio/flac' => 'flac',
+            'audio/mpeg', 'audio/mp3' => 'mp3',
+            'audio/mp4', 'video/mp4' => 'mp4',
+            'audio/mpga' => 'mpga',
+            'audio/m4a', 'audio/x-m4a' => 'm4a',
+            'audio/ogg', 'video/ogg' => 'ogg',
+            'audio/opus' => 'opus',
+            'audio/wav', 'audio/wave' => 'wav',
+            'audio/webm', 'video/webm' => 'webm',
+            default => 'mp3',
+        };
+
+        return 'audio.' . $extension;
     }
 
 

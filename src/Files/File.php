@@ -275,7 +275,8 @@ class File
             default => $this->mimeType,
         };
 
-        if( ( $prefix = $this->mimePrefix() ) && !str_starts_with( (string) $this->mimeType, $prefix ) ) {
+        if( !$this->acceptsMimeType( $this->mimeType ) ) {
+            $prefix = $this->mimePrefix();
             throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $this->mimeType ) );
         }
 
@@ -291,7 +292,8 @@ class File
      */
     public function setMimeType( ?string $mimeType ) : static
     {
-        if( $mimeType && ( $prefix = $this->mimePrefix() ) && !str_starts_with( $mimeType, $prefix ) ) {
+        if( $mimeType && !$this->acceptsMimeType( $mimeType ) ) {
+            $prefix = $this->mimePrefix();
             throw new PrismaException( sprintf( 'Invalid mime type "%2$s", expected %1$s*', $prefix, $mimeType ) );
         }
 
@@ -339,6 +341,15 @@ class File
     protected function mimePrefix() : string
     {
         return '';
+    }
+
+
+    /**
+     * Tests whether a MIME type is valid for this file class.
+     */
+    protected function acceptsMimeType( ?string $mimeType ) : bool
+    {
+        return !( $prefix = $this->mimePrefix() ) || str_starts_with( (string) $mimeType, $prefix );
     }
 
 

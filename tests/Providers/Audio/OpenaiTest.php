@@ -3,6 +3,7 @@
 namespace Tests\Providers\Audio;
 
 use Aimeos\Prisma\Files\Audio;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -84,5 +85,35 @@ class OpenaiTest extends TestCase
         } );
 
         $this->assertEquals( 'Hello.', $response->text() );
+    }
+
+
+    #[DataProvider( 'browserContainerProvider' )]
+    public function testTranscribeBrowserContainerFilename( string $mimeType, string $filename ) : void
+    {
+        $this->prisma( 'audio', 'openai', ['api_key' => 'test'] )
+            ->response( '{"text":"Hello."}' )
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromBinary( 'audio data', $mimeType ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) use ( $mimeType, $filename ) {
+            $body = $request->getBody()->getContents();
+
+            $this->assertStringContainsString( 'filename="' . $filename . '"', $body );
+            $this->assertStringContainsString( 'Content-Type: ' . $mimeType, $body );
+        } );
+    }
+
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function browserContainerProvider() : array
+    {
+        return [
+            'mp4' => ['video/mp4', 'audio.mp4'],
+            'ogg' => ['video/ogg', 'audio.ogg'],
+            'webm' => ['video/webm', 'audio.webm'],
+        ];
     }
 }

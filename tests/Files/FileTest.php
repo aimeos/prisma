@@ -3,6 +3,7 @@
 namespace Tests\Files;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\File;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -178,6 +179,14 @@ class FileTest extends TestCase
         $this->assertEquals( 'audio/wav', File::fromBinary( 'RIFFdata', 'audio/x-wav' )->mimeType() );
         $this->assertEquals( 'audio/wav', File::fromBase64( base64_encode( 'RIFFdata' ), 'audio/vnd.wave' )->mimeType() );
         $this->assertEquals( 'audio/mpeg', File::fromBinary( 'data', 'audio/mpeg' )->mimeType() );
+    }
+
+
+    public function testAudioAcceptsBrowserContainerMimeTypes() : void
+    {
+        $this->assertEquals( 'video/mp4', Audio::fromBinary( 'data', 'video/mp4' )->mimeType() );
+        $this->assertEquals( 'video/ogg', Audio::fromBinary( 'data', 'video/ogg' )->mimeType() );
+        $this->assertEquals( 'video/webm', Audio::fromBinary( 'data', 'video/webm' )->mimeType() );
     }
 
 
