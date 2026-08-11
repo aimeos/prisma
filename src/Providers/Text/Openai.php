@@ -24,7 +24,7 @@ class Openai extends Base implements Stream, Structure, Vectorize, Write
 
         $input = $this->responsesInput( $prompt, $files );
 
-        return $this->streamResponses( 'v1/responses', 'gpt-5.5', $input, $options );
+        return $this->streamResponses( 'v1/responses', 'gpt-5.6', $input, $options );
     }
 
 
@@ -39,7 +39,7 @@ class Openai extends Base implements Stream, Structure, Vectorize, Write
         }
 
         return $this->structuredResponses(
-            'v1/responses', 'gpt-5.5',
+            'v1/responses', 'gpt-5.6',
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -62,7 +62,7 @@ class Openai extends Base implements Stream, Structure, Vectorize, Write
         }
 
         return $this->responses(
-            'v1/responses', 'gpt-5.5',
+            'v1/responses', 'gpt-5.6',
             $this->responsesInput( $prompt, $files ),
             $options
         );

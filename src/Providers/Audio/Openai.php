@@ -19,7 +19,7 @@ class Openai extends Base implements Describe, Speak, Transcribe
         $cmd = 'Summarize the text in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '":';
 
         $request = [
-            'model' => $this->modelName( 'gpt-4o-mini' ),
+            'model' => $this->modelName( 'gpt-5.6-luna' ),
             'messages' => [
                 ['role' => 'user', 'content' => $cmd . "\n" . $text]
             ]
