@@ -17,7 +17,7 @@ class Openrouter extends Base implements Stream, Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'api/v1/chat/completions', 'openai/gpt-5.5', $messages, $options );
+        return $this->streamCompletions( 'api/v1/chat/completions', 'openai/gpt-5.6-sol', $messages, $options );
     }
 
 
@@ -28,7 +28,7 @@ class Openrouter extends Base implements Stream, Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
 
         return $this->structuredCompletions(
-            'api/v1/chat/completions', 'openai/gpt-5.5',
+            'api/v1/chat/completions', 'openai/gpt-5.6-sol',
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -39,7 +39,7 @@ class Openrouter extends Base implements Stream, Structure, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
 
         return $this->completions(
-            'api/v1/chat/completions', 'openai/gpt-5.5',
+            'api/v1/chat/completions', 'openai/gpt-5.6-sol',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );
