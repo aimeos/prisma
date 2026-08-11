@@ -35,4 +35,15 @@ class Deepseek extends Base
     {
         return $this->toolChoice() === self::AUTO ? 'auto' : null;
     }
+
+
+    /**
+     * Maps provider-agnostic reasoning control to DeepSeek's thinking option.
+     *
+     * @return array<string, mixed>
+     */
+    protected function reasoningParams() : array
+    {
+        return $this->reasoningEnabled() === false ? ['thinking' => ['type' => 'disabled']] : [];
+    }
 }

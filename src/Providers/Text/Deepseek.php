@@ -14,7 +14,10 @@ class Deepseek extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, [
+            'temperature', 'top_p', 'frequency_penalty', 'presence_penalty',
+            'thinking', 'reasoning_effort', 'stop'
+        ] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
         return $this->streamCompletions( 'v1/chat/completions', 'deepseek-v4-flash', $messages, $options );
@@ -24,7 +27,10 @@ class Deepseek extends Base implements Stream, Structure, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, [
+            'temperature', 'top_p', 'frequency_penalty', 'presence_penalty',
+            'thinking', 'reasoning_effort', 'stop'
+        ] );
 
         return $this->structuredCompletions( 'v1/chat/completions', 'deepseek-v4-flash', $prompt, $files, $schema, $options, 'json' );
     }
@@ -32,7 +38,10 @@ class Deepseek extends Base implements Stream, Structure, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
+        $options = $this->allowed( $options, [
+            'temperature', 'top_p', 'frequency_penalty', 'presence_penalty',
+            'thinking', 'reasoning_effort', 'stop'
+        ] );
 
         return $this->completions(
             'v1/chat/completions', 'deepseek-v4-flash',

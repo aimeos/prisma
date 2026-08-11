@@ -235,6 +235,90 @@ class DeepseekTest extends TestCase
     }
 
 
+    public function testWriteForwardsDeepseekOptions() : void
+    {
+        $this->prisma( 'text', 'deepseek', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'result']]]] )
+            ->write( 'prompt', [], [
+                'thinking' => ['type' => 'disabled'],
+                'reasoning_effort' => 'low',
+                'frequency_penalty' => 0.1,
+                'presence_penalty' => 0.2,
+                'stop' => ['END'],
+                'unknown' => 'ignored',
+            ] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertEquals( ['type' => 'disabled'], $body['thinking'] );
+            $this->assertEquals( 'low', $body['reasoning_effort'] );
+            $this->assertEquals( 0.1, $body['frequency_penalty'] );
+            $this->assertEquals( 0.2, $body['presence_penalty'] );
+            $this->assertEquals( ['END'], $body['stop'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testStreamForwardsDeepseekOptions() : void
+    {
+        $response = $this->prisma( 'text', 'deepseek', ['api_key' => 'test'] )
+            ->streamResponse( [
+                ['data' => ['choices' => [['delta' => ['content' => 'result']]]]],
+                ['data' => ['choices' => [['delta' => [], 'finish_reason' => 'stop']]]],
+                ['data' => '[DONE]'],
+            ] )
+            ->stream( 'prompt', [], ['thinking' => ['type' => 'disabled'], 'reasoning_effort' => 'low', 'stop' => 'END'] );
+
+        $this->assertEquals( 'result', $response->text() );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertEquals( ['type' => 'disabled'], $body['thinking'] );
+            $this->assertEquals( 'low', $body['reasoning_effort'] );
+            $this->assertEquals( 'END', $body['stop'] );
+        } );
+    }
+
+
+    public function testStructureForwardsDeepseekOptions() : void
+    {
+        $schema = Schema::for( 'result', ['value' => Schema::string()] );
+
+        $this->prisma( 'text', 'deepseek', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => '{"value":"ok"}']]]] )
+            ->structure( 'prompt', $schema, [], [
+                'thinking' => ['type' => 'disabled'], 'reasoning_effort' => 'low', 'stop' => 'END'
+            ] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertEquals( ['type' => 'disabled'], $body['thinking'] );
+            $this->assertEquals( 'low', $body['reasoning_effort'] );
+            $this->assertEquals( 'END', $body['stop'] );
+            $this->assertEquals( 'json_object', $body['response_format']['type'] );
+        } );
+    }
+
+
+    public function testWithReasoningDisabledMapsToThinkingOption() : void
+    {
+        $this->prisma( 'text', 'deepseek', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'result']]]] )
+            ->withReasoning( false )
+            ->write( 'prompt' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+
+            $this->assertEquals( ['type' => 'disabled'], $body['thinking'] );
+        } );
+    }
+
+
     public function testWriteWithSystemPrompt() : void
     {
         $response = $this->prisma( 'text', 'deepseek', ['api_key' => 'test'] )
