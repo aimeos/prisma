@@ -110,11 +110,14 @@ class Symfony extends Base
             $paramType = $param->getType();
             $typeName = $paramType instanceof \ReflectionNamedType ? $paramType->getName() : 'string';
 
-            if( !isset( $typeMap[$typeName] ) && enum_exists( $typeName ) )
+            if( !isset( $typeMap[$typeName] ) && is_subclass_of( $typeName, \BackedEnum::class ) )
             {
+                /** @var class-string<\BackedEnum> $typeName */
+                $values = array_column( $typeName::cases(), 'value' );
+
                 $properties[$param->getName()] = array_filter( [
-                    'type' => 'string',
-                    'enum' => array_column( $typeName::cases(), 'value' ),
+                    'type' => is_int( $values[0] ?? null ) ? 'integer' : 'string',
+                    'enum' => $values,
                     'description' => $descriptions[$param->getName()] ?? null,
                 ], fn( $v ) => $v !== null );
             }
@@ -160,6 +163,31 @@ class Symfony extends Base
 
     protected function execute( array $arguments ) : mixed
     {
+        $method = new \ReflectionMethod( $this->instance, $this->method );
+
+        foreach( $method->getParameters() as $index => $parameter )
+        {
+            $type = $parameter->getType();
+
+            if( !( $type instanceof \ReflectionNamedType ) || !is_subclass_of( $type->getName(), \BackedEnum::class ) ) {
+                continue;
+            }
+
+            $key = array_key_exists( $parameter->getName(), $arguments ) ? $parameter->getName() : $index;
+
+            if( !array_key_exists( $key, $arguments ) || $arguments[$key] === null || $arguments[$key] instanceof \BackedEnum ) {
+                continue;
+            }
+
+            if( !is_string( $arguments[$key] ) && !is_int( $arguments[$key] ) ) {
+                throw new \TypeError( sprintf( 'Argument "%s" must be a valid backed enum value', $parameter->getName() ) );
+            }
+
+            /** @var class-string<\BackedEnum> $enum */
+            $enum = $type->getName();
+            $arguments[$key] = $enum::from( $arguments[$key] );
+        }
+
         return $this->instance->{$this->method}( ...$arguments );
     }
 }

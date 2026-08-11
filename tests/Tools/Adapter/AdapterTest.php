@@ -227,6 +227,27 @@ class AdapterTest extends TestCase
     }
 
 
+    public function testSymfonyBackedEnumSchemaAndInvocation() : void
+    {
+        $tool = Tools::symfony( SymfonyEnumToolFixture::class );
+        $schema = $tool->schema()->toArray();
+
+        $this->assertEquals( 'string', $schema['properties']['scope']['type'] );
+        $this->assertEquals( ['web', 'news'], $schema['properties']['scope']['enum'] );
+        $this->assertEquals( 'integer', $schema['properties']['priority']['type'] );
+        $this->assertEquals( [1, 2], $schema['properties']['priority']['enum'] );
+        $this->assertEquals( 'news:2', $tool( ['scope' => 'news', 'priority' => 2] ) );
+    }
+
+
+    public function testSymfonyBackedEnumRejectsInvalidValue() : void
+    {
+        $tool = Tools::symfony( SymfonyEnumToolFixture::class );
+
+        $this->assertStringStartsWith( 'Error:', $tool( ['scope' => 'invalid', 'priority' => 1] ) );
+    }
+
+
     public function testSymfonyNamed() : void
     {
         $tool = Tools::symfony( SymfonyMultiToolFixture::class, 'fetch' );
@@ -295,5 +316,29 @@ class SymfonyMultiToolFixture
     public function fetch( int $id ) : string
     {
         return "fetched: $id";
+    }
+}
+
+
+enum SymfonySearchScope : string
+{
+    case Web = 'web';
+    case News = 'news';
+}
+
+
+enum SymfonyPriority : int
+{
+    case Normal = 1;
+    case High = 2;
+}
+
+
+#[AsTool( name: 'enum-tool', description: 'A backed enum tool' )]
+class SymfonyEnumToolFixture
+{
+    public function __invoke( SymfonySearchScope $scope, SymfonyPriority $priority ) : string
+    {
+        return $scope->value . ':' . $priority->value;
     }
 }
