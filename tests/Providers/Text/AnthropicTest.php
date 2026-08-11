@@ -179,7 +179,7 @@ class AnthropicTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'https://api.anthropic.com/v1/messages', (string) $request->getUri() );
-            $this->assertEquals( 'claude-opus-4-8', $body['model'] );
+            $this->assertEquals( 'claude-opus-5', $body['model'] );
             $this->assertEquals( 'json_schema', $body['output_config']['format']['type'] );
             $this->assertArrayHasKey( 'schema', $body['output_config']['format'] );
             $this->assertFalse( $body['output_config']['format']['schema']['additionalProperties'] );
@@ -377,7 +377,7 @@ class AnthropicTest extends TestCase
             $this->assertEquals( '2023-06-01', $request->getHeaderLine( 'anthropic-version' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'claude-opus-4-8', $body['model'] );
+            $this->assertEquals( 'claude-opus-5', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertEquals( 4096, $body['max_tokens'] );
             $this->assertArrayNotHasKey( 'system', $body );

@@ -165,7 +165,7 @@ class Anthropic extends Base implements Stream, Structure, Write
     private function messageParams( array $messages, array $options, int $step, bool $stream, array $toolsParam ) : array
     {
         $params = [
-            'model' => $this->modelName( 'claude-opus-4-8' ),
+            'model' => $this->modelName( 'claude-opus-5' ),
             'messages' => $messages,
             'max_tokens' => $this->maxTokens() ?? 4096,
         ] + ( $stream ? ['stream' => true] : [] ) + $options;
