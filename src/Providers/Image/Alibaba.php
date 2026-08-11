@@ -28,21 +28,29 @@ class Alibaba extends Base implements Imagine, Vectorize
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'qwen-image-2.0-pro' );
+        $model = $this->modelName( 'wan2.7-image-pro' );
 
         $wan = str_starts_with( (string) $model, 'wan' );
+        $wan27 = str_starts_with( (string) $model, 'wan2.7-image' );
         $zimg = str_starts_with( (string) $model, 'z-image' );
         $qimg2 = str_starts_with( (string) $model, 'qwen-image-2.0' );
 
-        $names = ['prompt_extend', 'seed', 'size'];
+        $names = ['seed', 'size'];
 
-        if( !$zimg ) {
-            $names = array_merge( $names, ['negative_prompt', 'n', 'watermark'] );
+        if( $wan27 ) {
+            $names = array_merge( $names, ['bbox_list', 'color_palette', 'enable_sequential', 'n', 'thinking_mode', 'watermark'] );
+        } else {
+            $names[] = 'prompt_extend';
+
+            if( !$zimg ) {
+                $names = array_merge( $names, ['negative_prompt', 'n', 'watermark'] );
+            }
         }
 
         $allowed = $this->allowed( $options, $names );
+        $sequential = $wan27 && ( $allowed['enable_sequential'] ?? false ) === true;
         $allowed = $this->sanitize( $allowed, [
-            'n' => $qimg2 ? [1, 2, 3, 4, 5, 6] : ( $wan ? [1, 2, 3, 4] : [1] ),
+            'n' => $qimg2 ? range( 1, 6 ) : ( $sequential ? range( 1, 12 ) : ( $wan ? range( 1, 4 ) : [1] ) ),
             'size' => $qimg2 || $wan || $zimg ? null : ['1664*928', '1472*1104', '1328*1328', '1104*1472', '928*1664'],
         ] );
 

@@ -35,7 +35,7 @@ class AlibabaTest extends TestCase
                 "request_id": "req-12345"
             }' )
             ->ensure( 'imagine' )
-            ->imagine( 'a cartoon cat', [], ['size' => '1024*1024', 'negative_prompt' => 'blurry', 'seed' => 42] );
+            ->imagine( 'a cartoon cat', [], ['size' => '1024*1024', 'seed' => 42, 'thinking_mode' => true] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
@@ -43,11 +43,11 @@ class AlibabaTest extends TestCase
             $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', (string) $request->getUri() );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'qwen-image-2.0-pro', $body['model'] );
+            $this->assertEquals( 'wan2.7-image-pro', $body['model'] );
             $this->assertEquals( 'a cartoon cat', $body['input']['messages'][0]['content'][0]['text'] );
             $this->assertEquals( '1024*1024', $body['parameters']['size'] );
-            $this->assertEquals( 'blurry', $body['parameters']['negative_prompt'] );
             $this->assertEquals( 42, $body['parameters']['seed'] );
+            $this->assertTrue( $body['parameters']['thinking_mode'] );
         } );
 
         $this->assertEquals( 'https://dashscope-result.oss-cn-beijing.aliyuncs.com/test.png', $file->url() );
