@@ -24,7 +24,7 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
 
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'compatible-mode/v1/chat/completions', 'qwen-vl-plus', $messages, $options );
+        return $this->streamCompletions( 'compatible-mode/v1/chat/completions', 'qwen3.7-plus', $messages, $options );
     }
 
 
@@ -35,7 +35,7 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'top_k'] );
 
         return $this->structuredCompletions(
-            'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
+            'compatible-mode/v1/chat/completions', 'qwen3.7-plus',
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -58,7 +58,7 @@ class Alibaba extends Base implements Stream, Structure, Vectorize, Write
         }
 
         return $this->completions(
-            'compatible-mode/v1/chat/completions', 'qwen-vl-plus',
+            'compatible-mode/v1/chat/completions', 'qwen3.7-plus',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

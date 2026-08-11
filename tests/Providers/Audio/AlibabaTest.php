@@ -36,7 +36,7 @@ class AlibabaTest extends TestCase
             $this->assertEquals( 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', (string) $request->getUri() );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'qwen3-tts-flash', $body['model'] );
+            $this->assertEquals( 'qwen3-tts-instruct-flash', $body['model'] );
             $this->assertEquals( 'This is a test.', $body['input']['text'] );
             $this->assertEquals( 'Cherry', $body['input']['voice'] );
         } );

@@ -26,7 +26,7 @@ class Alibaba extends Base implements Speak
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'Cherry';
-        $model = $this->modelName( 'qwen3-tts-flash' );
+        $model = $this->modelName( 'qwen3-tts-instruct-flash' );
 
         $allowed = $this->allowed( $options, [
             'language_type', 'instructions', 'optimize_instructions'
