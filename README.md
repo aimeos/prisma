@@ -152,7 +152,6 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
-| **VertexAI**          | -          | -        | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | yes     | yes       |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Z.AI**             | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
@@ -1399,7 +1398,6 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
-* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api#generate_images)
 * [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations)
 * [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
 
@@ -1437,7 +1435,6 @@ to edit.
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
-* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-api-edit#parameters)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
@@ -1644,7 +1641,6 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
-* [VertexAI](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/imagen-upscale-api#parameters)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
 **Example:**
@@ -1680,7 +1676,6 @@ public function vectorize( array $images, ?int $size = null, array $options = []
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/multimodal-embedding-api-reference)
 * Bedrock
 * [Cohere](https://docs.cohere.com/reference/embed#request)
-* VertexAI
 * [VoyageAI](https://docs.voyageai.com/reference/multimodal-embeddings-api)
 
 **Example:**

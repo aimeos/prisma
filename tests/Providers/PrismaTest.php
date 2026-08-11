@@ -282,4 +282,12 @@ class PrismaTest extends TestCase
 
         Prisma::type( 'text\\Evil' )->using( 'openai' );
     }
+
+
+    public function testVertexaiImageProviderIsNotAvailable() : void
+    {
+        $this->expectException( NotImplementedException::class );
+
+        Prisma::image()->using( 'vertexai' );
+    }
 }
