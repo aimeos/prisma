@@ -28,9 +28,9 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = (string) $this->modelName( 'flux-2-pro' );
+        $model = (string) $this->modelName( 'flux-2-pro-preview' );
         $names = match( $model ) {
-            'flux-2-pro' => ['seed', 'width', 'height', 'safety_tolerance', 'output_format', 'webhook_url', 'webhook_secret'],
+            'flux-2-pro', 'flux-2-pro-preview' => ['seed', 'width', 'height', 'safety_tolerance', 'output_format', 'webhook_url', 'webhook_secret'],
             'flux-2-flex' => ['prompt_upsampling', 'input_image_blob_path', 'seed', 'width', 'height', 'guidance', 'steps', 'safety_tolerance', 'output_format', 'webhook_url', 'webhook_secret'],
             'flux-kontext-pro', 'flux-kontext-max' => ['seed', 'aspect_ratio', 'output_format', 'webhook_url', 'webhook_secret', 'prompt_upsampling', 'safety_tolerance'],
             'flux-pro-1.1-ultra' => ['prompt_upsampling', 'seed', 'aspect_ratio', 'safety_tolerance', 'output_format', 'raw', 'image_prompt', 'image_prompt_strength', 'webhook_url', 'webhook_secret'],

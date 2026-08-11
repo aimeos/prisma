@@ -35,7 +35,7 @@ class BlackforestlabsTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'test', $request->getHeaderLine( 'x-key' ) );
-            $this->assertEquals( 'https://api.bfl.ai/v1/flux-2-pro', (string) $request->getUri() );
+            $this->assertEquals( 'https://api.bfl.ai/v1/flux-2-pro-preview', (string) $request->getUri() );
         } );
 
         $this->assertFalse( $file->ready() );
