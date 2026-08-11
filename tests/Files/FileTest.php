@@ -21,12 +21,22 @@ class FileTest extends TestCase
 
     public function testBinaryAllowsPrivateIp() : void
     {
-        // private and reserved addresses are intentionally permitted
-        $content = File::fromUrl( 'http://10.0.0.5/internal.png' )
+        $content = File::fromUrl( 'http://10.0.0.5/internal.png', strict: false )
             ->withClientHandler( $this->handler( new Response( 200, [], 'internal' ) ) )
             ->binary();
 
         $this->assertEquals( 'internal', $content );
+    }
+
+
+    public function testBinaryRejectsPrivateIpInStrictMode() : void
+    {
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'does not resolve to an allowed address' );
+
+        File::fromUrl( 'http://10.0.0.5/internal.png', strict: true )
+            ->withClientHandler( $this->handler( new Response( 200, [], 'internal' ) ) )
+            ->binary();
     }
 
 
@@ -46,27 +56,29 @@ class FileTest extends TestCase
         $handler = $this->handler( new Response( 200, [], 'hello' ) );
         $handler->push( Middleware::history( $history ) );
 
-        File::fromUrl( 'http://10.0.0.5:8080/file.png' )
+        FileTestProxy::fromUrl( 'http://files.example.com:8080/file.png' )
+            ->resolveTo( '8.8.8.8' )
             ->withClientHandler( $handler )
             ->binary();
 
         $this->assertFalse( $history[0]['options']['allow_redirects'] );
-        $this->assertEquals( ['10.0.0.5:8080:10.0.0.5'], $history[0]['options']['curl'][CURLOPT_RESOLVE] );
+        $this->assertEquals( ['files.example.com:8080:8.8.8.8'], $history[0]['options']['curl'][CURLOPT_RESOLVE] );
     }
 
 
-    public function testFromUrlCanDisableStrictFetching() : void
+    public function testNonStrictFetchPinsResolvedIp() : void
     {
         $history = [];
         $handler = $this->handler( new Response( 200, [], 'hello' ) );
         $handler->push( Middleware::history( $history ) );
 
-        File::fromUrl( 'http://10.0.0.5/file.png', strict: false )
+        FileTestProxy::fromUrl( 'http://files.example.com/file.png', strict: false )
+            ->resolveTo( '10.0.0.5' )
             ->withClientHandler( $handler )
             ->binary();
 
-        $this->assertArrayNotHasKey( 'curl', $history[0]['options'] );
-        $this->assertIsArray( $history[0]['options']['allow_redirects'] );
+        $this->assertFalse( $history[0]['options']['allow_redirects'] );
+        $this->assertEquals( ['files.example.com:80:10.0.0.5'], $history[0]['options']['curl'][CURLOPT_RESOLVE] );
     }
 
 
@@ -80,8 +92,8 @@ class FileTest extends TestCase
             ->withClientHandler( $handler )
             ->mimeType();
 
-        $this->assertArrayNotHasKey( 'curl', $history[0]['options'] );
-        $this->assertIsArray( $history[0]['options']['allow_redirects'] );
+        $this->assertFalse( $history[0]['options']['allow_redirects'] );
+        $this->assertEquals( ['10.0.0.5:80:10.0.0.5'], $history[0]['options']['curl'][CURLOPT_RESOLVE] );
     }
 
 
@@ -100,6 +112,7 @@ class FileTest extends TestCase
             },
         ] );
         $file = FileTestProxy::fromUrl( 'http://example.com/file.png' )
+            ->resolveTo( '8.8.8.8' )
             ->withClientHandler( $this->handler( new Response( 200, [], $body ) ) );
 
         try {
@@ -115,6 +128,7 @@ class FileTest extends TestCase
     public function testNegativeLimitReturnsBoundedSample() : void
     {
         $file = FileTestProxy::fromUrl( 'http://example.com/file.png' )
+            ->resolveTo( '8.8.8.8' )
             ->withClientHandler( $this->handler( new Response( 200, [], 'hello' ) ) );
 
         $this->assertSame( 'hell', $file->fetchUrl( 'http://example.com/file.png', -4, false ) );
@@ -155,13 +169,38 @@ class FileTest extends TestCase
         );
         $handler->push( Middleware::history( $history ) );
 
-        $content = File::fromUrl( 'http://10.0.0.5/redirect' )
+        $content = File::fromUrl( 'http://10.0.0.5/redirect', strict: false )
             ->withClientHandler( $handler )
             ->binary();
 
         $this->assertEquals( 'final', $content );
         $this->assertEquals( ['10.0.0.5:80:10.0.0.5'], $history[0]['options']['curl'][CURLOPT_RESOLVE] );
         $this->assertEquals( ['10.0.0.6:80:10.0.0.6'], $history[1]['options']['curl'][CURLOPT_RESOLVE] );
+    }
+
+
+    public function testStrictRedirectRejectsPrivateIp() : void
+    {
+        $history = [];
+        $handler = $this->handler(
+            new Response( 302, ['Location' => 'http://10.0.0.6/final.png'] ),
+            new Response( 200, [], 'final' )
+        );
+        $handler->push( Middleware::history( $history ) );
+
+        try
+        {
+            File::fromUrl( 'http://8.8.8.8/redirect', strict: true )
+                ->withClientHandler( $handler )
+                ->binary();
+
+            $this->fail( 'Expected the private redirect target to be rejected' );
+        }
+        catch( PrismaException $e )
+        {
+            $this->assertStringContainsString( 'does not resolve to an allowed address', $e->getMessage() );
+            $this->assertCount( 1, $history );
+        }
     }
 
 
@@ -315,6 +354,9 @@ class FileTest extends TestCase
 
 class FileTestProxy extends File
 {
+    private ?string $resolvedIp = null;
+
+
     public function allowsUrl( string $url ) : bool
     {
         return $this->validUrl( $url );
@@ -324,5 +366,18 @@ class FileTestProxy extends File
     public function fetchUrl( string $url, int $limit, bool $strict ) : string
     {
         return $this->fetch( $url, $limit, $strict );
+    }
+
+
+    public function resolveTo( string $ip ) : self
+    {
+        $this->resolvedIp = $ip;
+        return $this;
+    }
+
+
+    protected function resolve( string $host, bool $strict ) : ?string
+    {
+        return $this->resolvedIp ?? parent::resolve( $host, $strict );
     }
 }

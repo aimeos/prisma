@@ -222,7 +222,7 @@ class File
      *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
-     * @param bool $strict TRUE to use strict URL checks, FALSE otherwise
+     * @param bool $strict TRUE to reject private and reserved addresses, FALSE to allow them
      * @return static File instance
      */
     public static function fromUrl( string $url, ?string $mimeType = null, bool $strict = true ) : static

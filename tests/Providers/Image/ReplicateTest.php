@@ -114,7 +114,7 @@ class ReplicateTest extends TestCase
     }
 
 
-    public function testGeneratedImageAllowsResolvableHost() : void
+    public function testGeneratedImageRejectsResolvablePrivateHost() : void
     {
         $response = $this->prisma( 'image', 'replicate', [
             'api_key' => 'test',
@@ -127,17 +127,20 @@ class ReplicateTest extends TestCase
         $image = $response->first();
         $image?->withClientHandler( HandlerStack::create( new MockHandler( [new Response( 200, [], 'image' )] ) ) );
 
-        $this->assertEquals( 'image', $image?->binary() );
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'does not resolve to an allowed address' );
+
+        $image?->binary();
     }
 
 
-    public function testGeneratedImageAllowsConfiguredHost() : void
+    public function testGeneratedImageAllowsConfiguredPublicHost() : void
     {
         $response = $this->prisma( 'image', 'replicate', [
             'api_key' => 'test',
-            'download_hosts' => ['10.0.0.5'],
+            'download_hosts' => ['8.8.8.8'],
         ] )
-            ->response( ['status' => 'succeeded', 'output' => 'https://10.0.0.5/image.png'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://8.8.8.8/image.png'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
 

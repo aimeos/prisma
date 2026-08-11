@@ -16,7 +16,8 @@ use Psr\Http\Message\ResponseInterface;
  *
  * Requests are restricted to http(s) (so wrapper schemes like file:// or php:// cannot be
  * fetched), redirects are bounded and kept on http(s), TLS is verified, and the read time
- * and downloaded size are capped. Private and reserved addresses are intentionally allowed.
+ * and downloaded size are capped. DNS is resolved and pinned for every request; strict
+ * requests additionally reject private and reserved addresses.
  */
 trait FetchesUrls
 {
@@ -121,7 +122,7 @@ trait FetchesUrls
 
 
     /**
-     * Requests a URL and validates strict-mode redirects.
+     * Requests a URL and validates every redirect before following it.
      */
     protected function fetchResponse( string $url, bool $strict ) : ResponseInterface
     {
@@ -147,9 +148,9 @@ trait FetchesUrls
 
             for( $redirects = 0; ; $redirects++ )
             {
-                $response = $client->request( 'GET', $url, $strict ? $this->safeHttp( $url ) + $options : $options );
+                $response = $client->request( 'GET', $url, $this->safeHttp( $url, $strict ) + $options );
 
-                if( !$strict || !in_array( $response->getStatusCode(), [301, 302, 303, 307, 308], true ) ) {
+                if( !in_array( $response->getStatusCode(), [301, 302, 303, 307, 308], true ) ) {
                     return $response;
                 }
 
@@ -171,30 +172,31 @@ trait FetchesUrls
     /**
      * Resolves a hostname to an IP address.
      *
-     * Private and reserved ranges are intentionally accepted. Literal IP hosts are
-     * validated directly without a DNS lookup.
+     * Literal IP hosts are validated directly without a DNS lookup. In strict mode,
+     * private and reserved addresses are rejected.
      *
      * @param string $host Hostname or IP address to resolve
+     * @param bool $strict TRUE to reject private and reserved addresses
      * @return string|null First resolved IP address, or null if none was found
      */
-    protected function resolve( string $host ) : ?string
+    protected function resolve( string $host, bool $strict ) : ?string
     {
         if( filter_var( $host, FILTER_VALIDATE_IP ) ) {
-            return $host;
+            return $this->allowedIp( $host, $strict ) ? $host : null;
         }
 
         foreach( @dns_get_record( $host, DNS_A + DNS_AAAA ) ?: [] as $record )
         {
             $ip = $record['ip'] ?? $record['ipv6'] ?? null;
 
-            if( $ip && filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+            if( $ip && $this->allowedIp( $ip, $strict ) ) {
                 return $ip;
             }
         }
 
         foreach( @gethostbynamel( $host ) ?: [] as $ip )
         {
-            if( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+            if( $this->allowedIp( $ip, $strict ) ) {
                 return $ip;
             }
         }
@@ -204,14 +206,26 @@ trait FetchesUrls
 
 
     /**
+     * Checks whether an IP address is valid for the requested mode.
+     */
+    protected function allowedIp( string $ip, bool $strict ) : bool
+    {
+        $flags = $strict ? FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE : 0;
+
+        return (bool) filter_var( $ip, FILTER_VALIDATE_IP, $flags );
+    }
+
+
+    /**
      * Returns Guzzle options that resolve and pin the connection for the given URL.
      * Redirects are disabled so fetch() can validate and pin every target separately.
      *
      * @param string $url The http(s) URL that will be fetched
+     * @param bool $strict TRUE to reject private and reserved addresses
      * @return array<string, mixed> Safe Guzzle request options
      * @throws PrismaException If the URL is invalid or the host does not resolve
      */
-    protected function safeHttp( string $url ) : array
+    protected function safeHttp( string $url, bool $strict ) : array
     {
         if( !$this->validUrl( $url ) ) {
             throw new PrismaException( sprintf( 'Invalid or unsafe URL: %s', $url ) );
@@ -221,7 +235,7 @@ trait FetchesUrls
         $host = (string) ( $parsed['host'] ?? '' );
         $port = $parsed['port'] ?? ( ( $parsed['scheme'] ?? '' ) === 'https' ? 443 : 80 );
 
-        if( !( $ip = $this->resolve( $host ) ) ) {
+        if( !( $ip = $this->resolve( $host, $strict ) ) ) {
             throw new PrismaException( sprintf( 'Host "%s" does not resolve to an allowed address', $host ) );
         }
 
