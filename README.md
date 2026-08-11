@@ -109,6 +109,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
 - [Perplexity](https://docs.perplexity.ai/)
+- [Requesty](https://docs.requesty.ai/api-reference/overview)
 - [RemoveBG](https://www.remove.bg/api)
 - [Replicate](https://replicate.com/docs)
 - [StabilityAI](https://platform.stability.ai/)
@@ -174,6 +175,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **OpenAI**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes   | yes        |           | -         | yes   | -         | yes          | yes            | yes           | -               |
 | **Perplexity**        | beta  | beta       |           | -         | beta  | yes       | yes          |                | yes           | -               |
+| **Requesty**          | yes   | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Vertexai**          | beta  | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
 | **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
 | **Z.AI**             | yes   | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
@@ -1733,6 +1735,7 @@ Iterating `$response->stream()` yields:
 * [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
 * [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Requesty](https://docs.requesty.ai/features/streaming)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 **Example:**
 
@@ -1854,6 +1857,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Requesty](https://docs.requesty.ai/features/structured-outputs)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 * [Z.AI](https://docs.z.ai/api-reference/llm/chat-completion)
 
@@ -1957,6 +1961,7 @@ public function vectorize( array $texts, ?int $size = null, array $options = [] 
 * [Mistral](https://docs.mistral.ai/api/#tag/embeddings)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/embeddings/create)
+* [Requesty](https://docs.requesty.ai/api-reference/endpoint/embeddings-create)
 
 **Example:**
 
@@ -2000,6 +2005,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Requesty](https://docs.requesty.ai/api-reference/endpoint/chat-completions-create)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 
 **Example:**
