@@ -205,6 +205,7 @@ class GeminiTest extends TestCase
             'age' => Schema::integer(),
             'note' => Schema::string()->nullable(),
         ] );
+        $schema->type()->withoutAdditionalProperties();
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
@@ -223,14 +224,14 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertStringContainsString( 'gemini-3.6-flash:generateContent', (string) $request->getUri() );
-            $this->assertEquals( 'application/json', $body['generationConfig']['responseMimeType'] );
-            $this->assertArrayHasKey( 'responseSchema', $body['generationConfig'] );
-            $this->assertArrayNotHasKey( 'additionalProperties', $body['generationConfig']['responseSchema'] );
-            // nullable expressed the OpenAPI 3.0 way: scalar type + "nullable": true (not a type array)
-            $note = $body['generationConfig']['responseSchema']['properties']['note'];
-            $this->assertEquals( 'string', $note['type'] );
-            $this->assertTrue( $note['nullable'] );
+            $format = $body['generationConfig']['responseFormat']['text'];
+
+            $this->assertStringContainsString( 'gemini-3.7-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'APPLICATION_JSON', $format['mimeType'] );
+            $this->assertArrayNotHasKey( 'responseMimeType', $body['generationConfig'] );
+            $this->assertArrayNotHasKey( 'responseSchema', $body['generationConfig'] );
+            $this->assertFalse( $format['schema']['additionalProperties'] );
+            $this->assertEquals( ['string', 'null'], $format['schema']['properties']['note']['type'] );
         } );
 
         $this->assertEquals( ['name' => 'John', 'age' => 30], $response->structured() );
@@ -239,9 +240,52 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testStructuredWithMixedTools() : void
+    {
+        $schema = Schema::for( 'person', ['name' => Schema::string()] );
+        $tool = \Aimeos\Prisma\Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', ['x' => Schema::string()] ), fn() => 'pong' );
+
+        $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [['content' => ['parts' => [['text' => '{"name":"Jane"}']]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['totalTokenCount' => 5]
+            ] ) )
+            ->withTools( [
+                $tool,
+                \Aimeos\Prisma\Tools::provider( 'web_search' ),
+                \Aimeos\Prisma\Tools::provider( 'web_fetch' ),
+            ] )
+            ->ensure( 'structure' )
+            ->structure( 'Research and extract', $schema );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $format = $body['generationConfig']['responseFormat']['text'];
+
+            $this->assertEquals( 'APPLICATION_JSON', $format['mimeType'] );
+            $this->assertArrayHasKey( 'schema', $format );
+
+            $hasDeclarations = false;
+            $hasGoogleSearch = false;
+            $hasUrlContext = false;
+
+            foreach( $body['tools'] as $entry ) {
+                $hasDeclarations = $hasDeclarations || isset( $entry['functionDeclarations'] );
+                $hasGoogleSearch = $hasGoogleSearch || isset( $entry['google_search'] );
+                $hasUrlContext = $hasUrlContext || isset( $entry['url_context'] );
+            }
+
+            $this->assertTrue( $hasDeclarations );
+            $this->assertTrue( $hasGoogleSearch );
+            $this->assertTrue( $hasUrlContext );
+            $this->assertTrue( $body['toolConfig']['includeServerSideToolInvocations'] );
+        } );
+    }
+
+
     public function testStructuredModeStructured() : void
     {
-        // mode=structured selects native responseSchema regardless of schema depth.
+        // mode=structured selects native responseFormat schema enforcement regardless of schema depth.
         $schema = Schema::for( 'deep', [
             'a' => Schema::object( ['b' => Schema::object( ['c' => Schema::object( [
                 'd' => Schema::object( ['e' => Schema::object( ['f' => Schema::string()] )] ),
@@ -261,8 +305,7 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            // Native responseSchema selected by mode=structured.
-            $this->assertArrayHasKey( 'responseSchema', $body['generationConfig'] );
+            $this->assertArrayHasKey( 'schema', $body['generationConfig']['responseFormat']['text'] );
             $this->assertArrayNotHasKey( 'mode', $body['generationConfig'] );
         } );
     }
@@ -270,7 +313,7 @@ class GeminiTest extends TestCase
 
     public function testStructuredModeJsonOverridesNative() : void
     {
-        // A shallow schema would use native responseSchema automatically; mode=json forces JSON mode.
+        // A shallow schema would use native responseFormat schema enforcement; mode=json keeps it in the prompt.
         $schema = Schema::for( 'person', ['name' => Schema::string()] );
 
         $response = $this->prisma( 'text', 'gemini', ['api_key' => 'test'] )
@@ -283,9 +326,10 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            // JSON mode: responseMimeType kept, responseSchema dropped, schema embedded in the prompt.
-            $this->assertEquals( 'application/json', $body['generationConfig']['responseMimeType'] );
-            $this->assertArrayNotHasKey( 'responseSchema', $body['generationConfig'] );
+            $format = $body['generationConfig']['responseFormat']['text'];
+
+            $this->assertEquals( 'APPLICATION_JSON', $format['mimeType'] );
+            $this->assertArrayNotHasKey( 'schema', $format );
             $parts = end( $body['contents'] )['parts'];
             $this->assertStringContainsString( 'matching this JSON schema', $parts[0]['text'] );
         } );
@@ -313,17 +357,15 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $align = $body['generationConfig']['responseSchema']['properties']['align'];
+            $align = $body['generationConfig']['responseFormat']['text']['schema']['properties']['align'];
 
-            // OpenAPI 3.0 way: scalar type + "nullable": true, with no null in the enum.
-            $this->assertEquals( 'string', $align['type'] );
-            $this->assertTrue( $align['nullable'] );
-            $this->assertEquals( ['start', 'center', 'end'], $align['enum'] );
+            $this->assertEquals( ['string', 'null'], $align['type'] );
+            $this->assertEquals( ['start', 'center', 'end', null], $align['enum'] );
         } );
     }
 
 
-    public function testStructuredStripsEmptyEnumValue() : void
+    public function testStructuredKeepsEmptyEnumValue() : void
     {
         $schema = Schema::for( 'block', [
             'header' => Schema::string()->enum( ['', 'h1', 'h2', 'h3'] )->nullable(),
@@ -342,12 +384,10 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $header = $body['generationConfig']['responseSchema']['properties']['header'];
+            $header = $body['generationConfig']['responseFormat']['text']['schema']['properties']['header'];
 
-            // Gemini's OpenAPI subset rejects empty-string enum members ("enum[0]:
-            // cannot be empty"), so the empty value is dropped from the enum.
-            $this->assertEquals( ['h1', 'h2', 'h3'], $header['enum'] );
-            $this->assertTrue( $header['nullable'] );
+            $this->assertEquals( ['', 'h1', 'h2', 'h3', null], $header['enum'] );
+            $this->assertEquals( ['string', 'null'], $header['type'] );
         } );
     }
 
@@ -374,12 +414,11 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $value = $body['generationConfig']['responseSchema']['properties']['value'];
-            // anyOf is kept; branches are reduced to the OpenAPI subset (no additionalProperties)
+            $value = $body['generationConfig']['responseFormat']['text']['schema']['properties']['value'];
+
             $this->assertArrayHasKey( 'anyOf', $value );
             $this->assertEquals( 'string', $value['anyOf'][0]['type'] );
             $this->assertEquals( 'object', $value['anyOf'][1]['type'] );
-            $this->assertArrayNotHasKey( 'additionalProperties', $value['anyOf'][1] );
         } );
     }
 
@@ -461,8 +500,8 @@ class GeminiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $body = json_decode( $request->getBody()->getContents(), true );
-            $json = $body['generationConfig']['responseSchema'];
-            // $ref and $defs survive the OpenAPI-subset key filter
+            $json = $body['generationConfig']['responseFormat']['text']['schema'];
+
             $this->assertEquals( '#/$defs/Address', $json['properties']['address']['$ref'] );
             $this->assertArrayHasKey( 'Address', $json['$defs'] );
             $this->assertEquals( 'object', $json['$defs']['Address']['type'] );
@@ -656,7 +695,7 @@ class GeminiTest extends TestCase
             ->write( 'Say hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent', (string) $request->getUri() );
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'test', $request->getHeaderLine( 'x-goog-api-key' ) );
 
@@ -900,7 +939,11 @@ class GeminiTest extends TestCase
                 ]],
                 'usageMetadata' => ['totalTokenCount' => 5],
             ] )
-            ->withTools( [$tool, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
+            ->withTools( [
+                $tool,
+                \Aimeos\Prisma\Tools::provider( 'web_search' ),
+                \Aimeos\Prisma\Tools::provider( 'web_fetch' ),
+            ] )
             ->ensure( 'write' )
             ->write( 'search and ping' );
 
@@ -909,14 +952,17 @@ class GeminiTest extends TestCase
 
             $hasDeclarations = false;
             $hasGoogleSearch = false;
+            $hasUrlContext = false;
             foreach( $body['tools'] as $entry ) {
                 $hasDeclarations = $hasDeclarations || isset( $entry['functionDeclarations'] );
                 $hasGoogleSearch = $hasGoogleSearch || isset( $entry['google_search'] );
+                $hasUrlContext = $hasUrlContext || isset( $entry['url_context'] );
             }
 
             // Gemini now accepts custom function tools alongside provider tools
             $this->assertTrue( $hasDeclarations );
             $this->assertTrue( $hasGoogleSearch );
+            $this->assertTrue( $hasUrlContext );
             $this->assertTrue( $body['toolConfig']['includeServerSideToolInvocations'] );
         } );
     }

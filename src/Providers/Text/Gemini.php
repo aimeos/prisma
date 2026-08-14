@@ -26,17 +26,18 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
-        $mode = $options['mode'] ?? null;
+        $mode = Mode::from( $options['mode'] ?? null );
         $options = $this->allowed( $options, ['temperature', 'topP', 'topK', 'serviceTier', 'thinkingConfig'] );
-        $options['responseMimeType'] = 'application/json';
+        $format = ['mimeType' => 'APPLICATION_JSON'];
 
-        if( Mode::from( $mode )->isJson() ) {
-            // JSON mode: keep responseMimeType but embed the schema in the prompt and
-            // parse it from the response text instead of a native responseSchema.
+        if( $mode->isJson() ) {
+            // JSON mode keeps the schema in the prompt while responseFormat constrains the MIME type.
             $prompt = $schema->toPrompt( $prompt );
         } else {
-            $options['responseSchema'] = $this->jsonSchema( $schema->toArray() );
+            $format['schema'] = $schema->toArray();
         }
+
+        $options['responseFormat'] = ['text' => $format];
 
         $response = $this->generate(
             array_merge( $this->mapMessages(), [['role' => 'user', 'parts' => $this->content( $prompt, $files )]] ),
@@ -93,48 +94,6 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
     protected function generateEndpoint( ?string $model ) : string
     {
         return 'v1beta/models/' . $model . ':generateContent';
-    }
-
-
-    /**
-     * Returns the JSON Schema reduced to the OpenAPI subset accepted by Gemini.
-     *
-     * Gemini's "responseSchema" is an OpenAPI 3.0 subset that has no
-     * "additionalProperties" field and rejects unknown keys, so unsupported
-     * keys are dropped recursively.
-     *
-     * @param array<string, mixed> $schema JSON Schema definition
-     * @return array<string, mixed> JSON Schema definition limited to supported keys
-     */
-    protected function jsonSchema( array $schema ) : array
-    {
-        $flip = array_flip( ['type', 'description', 'enum', 'properties', 'required', 'items', 'nullable', 'anyOf', '$ref', '$defs'] );
-
-        return \Aimeos\Prisma\Schema\Schema::map( $schema, function( array $node ) use ( $flip ) {
-            $node = array_intersect_key( $node, $flip );
-
-            if( is_array( $node['type'] ?? null ) )
-            {
-                if( in_array( 'null', $node['type'], true ) ) {
-                    $node['nullable'] = true;
-                }
-
-                $node['type'] = current( array_filter( $node['type'], fn( $type ) => $type !== 'null' ) ) ?: 'string';
-            }
-
-            // the OpenAPI subset rejects null and empty-string enum members; drop them, and
-            // drop a now-empty enum to leave a free-form value
-            if( isset( $node['enum'] ) && is_array( $node['enum'] ) )
-            {
-                $node['enum'] = array_values( array_filter( $node['enum'], fn( $v ) => $v !== null && $v !== '' ) );
-
-                if( !$node['enum'] ) {
-                    unset( $node['enum'] );
-                }
-            }
-
-            return $node;
-        } );
     }
 
 
