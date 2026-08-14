@@ -14,6 +14,44 @@ class ByteplusTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testDescribe() : void
+    {
+        $response = $this->prisma( 'video', 'byteplus', ['api_key' => 'test'] )
+            ->response( [
+                'id' => 'resp-1',
+                'status' => 'completed',
+                'output' => [[
+                    'type' => 'message',
+                    'role' => 'assistant',
+                    'content' => [['type' => 'output_text', 'text' => 'a video description']],
+                ]],
+                'usage' => ['input_tokens' => 10, 'output_tokens' => 3, 'total_tokens' => 13],
+            ] )
+            ->ensure( 'describe' )
+            ->describe( Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' ), 'fr', [
+                'fps' => 0.5,
+                'temperature' => 0.2,
+                'duration' => 5,
+            ] );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $body = json_decode( (string) $request->getBody(), true );
+            $content = $body['input'][0]['content'];
+
+            $this->assertSame( 'https://ark.ap-southeast.bytepluses.com/api/v3/responses', (string) $request->getUri() );
+            $this->assertSame( 'seed-2-0-lite-260228', $body['model'] );
+            $this->assertSame( 'https://example.com/video.mp4', $content[0]['video_url'] );
+            $this->assertSame( 0.5, $content[0]['fps'] );
+            $this->assertStringContainsString( '"fr"', $content[1]['text'] );
+            $this->assertSame( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'duration', $body );
+        } );
+
+        $this->assertSame( 'a video description', $response->text() );
+        $this->assertSame( 13, $response->usage()->totalTokens() );
+    }
+
+
     public function testImagineSilentlyDropsReferencesWhenFramesAreUsed() : void
     {
         $this->prisma( 'video', 'byteplus', ['api_key' => 'test'] )

@@ -9,6 +9,18 @@ use PHPUnit\Framework\TestCase;
 
 class ByteplusTest extends TestCase
 {
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $response = Prisma::video()
+            ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+    }
+
+
     public function testImagineVideo() : void
     {
         $response = Prisma::video()
