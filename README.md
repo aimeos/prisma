@@ -190,9 +190,9 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 |                       | describe | imagine |
 | :---                  | :---:    | :---:   |
-| **Alibaba**           | -        | beta    |
-| **Bedrock Nova**      | -        | beta    |
-| **BytePlus**          | -        | beta    |
+| **Alibaba**           | yes      | beta    |
+| **Bedrock Nova**      | beta     | beta    |
+| **BytePlus**          | beta     | beta    |
 | **Gemini**            | yes      | -       |
 | **Luma**              | -        | beta    |
 | **MiniMax**           | -        | beta    |
@@ -2140,4 +2140,7 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 
 **Supported options:**
 
-* Gemini
+* [Alibaba Qwen](https://www.alibabacloud.com/help/en/model-studio/vision-model)
+* [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
+* [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
+* [Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
