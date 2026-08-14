@@ -2,7 +2,10 @@
 
 namespace Aimeos\Prisma\Providers\Video;
 
+use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Concerns\OpenaiApi;
+use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
@@ -10,11 +13,14 @@ use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Byteplus extends Base implements Imagine
+class Byteplus extends Base implements Describe, Imagine
 {
+    use CallsTools;
     use GeneratesVideo;
+    use OpenaiApi;
 
 
     public function __construct( array $config )
@@ -25,6 +31,29 @@ class Byteplus extends Base implements Imagine
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://ark.ap-southeast.bytepluses.com' ) );
+    }
+
+
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $input = [[
+            'role' => 'user',
+            'content' => [[
+                'type' => 'input_video',
+                'video_url' => $this->mediaUrl( $video ),
+            ] + $this->allowed( $options, ['fps'] ), [
+                'type' => 'input_text',
+                'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+                    . ( $lang ?? 'en' ) . '".',
+            ]],
+        ]];
+
+        return $this->responses(
+            'api/v3/responses',
+            'seed-2-0-lite-260228',
+            $input,
+            $this->allowed( $options, ['temperature', 'top_p', 'thinking'] )
+        );
     }
 
 
@@ -54,7 +83,7 @@ class Byteplus extends Base implements Imagine
      * @param string $role BytePlus media role
      * @return array<string, mixed> Content entry
      */
-    protected function content( Audio|Image|Video $file, string $role ) : array
+    protected function mediaContent( Audio|Image|Video $file, string $role ) : array
     {
         $type = match( true ) {
             $file instanceof Image => 'image_url',
@@ -84,10 +113,10 @@ class Byteplus extends Base implements Imagine
 
         if( $start instanceof Image )
         {
-            $content[] = $this->content( $start, 'first_frame' );
+            $content[] = $this->mediaContent( $start, 'first_frame' );
 
             if( ( $media['end'] ?? null ) instanceof Image ) {
-                $content[] = $this->content( $media['end'], 'last_frame' );
+                $content[] = $this->mediaContent( $media['end'], 'last_frame' );
             }
 
             return $content;
@@ -100,11 +129,11 @@ class Byteplus extends Base implements Imagine
         if( !empty( $visual ) ) {
             foreach( $references as $reference ) {
                 if( $reference instanceof Image ) {
-                    $content[] = $this->content( $reference, 'reference_image' );
+                    $content[] = $this->mediaContent( $reference, 'reference_image' );
                 } elseif( $reference instanceof Video ) {
-                    $content[] = $this->content( $reference, 'reference_video' );
+                    $content[] = $this->mediaContent( $reference, 'reference_video' );
                 } elseif( $reference instanceof Audio ) {
-                    $content[] = $this->content( $reference, 'reference_audio' );
+                    $content[] = $this->mediaContent( $reference, 'reference_audio' );
                 }
             }
         }
