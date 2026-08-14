@@ -14,6 +14,45 @@ class AlibabaTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testDescribe() : void
+    {
+        $response = $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )
+            ->response( [
+                'id' => 'chatcmpl-1',
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'a video description'],
+                    'finish_reason' => 'stop',
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 3, 'total_tokens' => 13],
+            ] )
+            ->ensure( 'describe' )
+            ->describe( Video::fromBinary( 'MP4', 'video/mp4' ), 'de', [
+                'fps' => 1,
+                'max_pixels' => 655360,
+                'temperature' => 0.2,
+                'duration' => 5,
+            ] );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $body = json_decode( (string) $request->getBody(), true );
+            $content = $body['messages'][0]['content'];
+
+            $this->assertSame( 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', (string) $request->getUri() );
+            $this->assertSame( '', $request->getHeaderLine( 'X-DashScope-Async' ) );
+            $this->assertSame( 'qwen3.7-plus', $body['model'] );
+            $this->assertSame( 'data:video/mp4;base64,' . base64_encode( 'MP4' ), $content[0]['video_url']['url'] );
+            $this->assertSame( 1, $content[0]['video_url']['fps'] );
+            $this->assertSame( 655360, $content[0]['max_pixels'] );
+            $this->assertStringContainsString( '"de"', $content[1]['text'] );
+            $this->assertSame( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'duration', $body );
+        } );
+
+        $this->assertSame( 'a video description', $response->text() );
+        $this->assertSame( 13, $response->usage()->totalTokens() );
+    }
+
+
     public function testImagineSilentlyFiltersFrameModeReferences() : void
     {
         $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )

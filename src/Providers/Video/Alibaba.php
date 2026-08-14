@@ -3,29 +3,46 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Alibaba as Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Imagine
+class Alibaba extends Base implements Describe, Imagine
 {
     use GeneratesVideo;
 
 
-    public function __construct( array $config )
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        parent::__construct( $config );
-        $this->header( 'X-DashScope-Async', 'enable' );
+        $content = [[
+            'type' => 'video_url',
+            'video_url' => ['url' => $this->mediaUrl( $video )]
+                + $this->allowed( $options, ['fps'] ),
+        ] + $this->allowed( $options, ['min_pixels', 'max_pixels', 'total_pixels'] ), [
+            'type' => 'text',
+            'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+                . ( $lang ?? 'en' ) . '".',
+        ]];
+
+        return $this->completions(
+            'compatible-mode/v1/chat/completions',
+            'qwen3.7-plus',
+            $this->messages( $content ),
+            $this->allowed( $options, ['temperature', 'top_p', 'top_k'] )
+        );
     }
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
         $response = $this->client()->post( 'api/v1/services/aigc/video-generation/video-synthesis', [
+            'headers' => ['X-DashScope-Async' => 'enable'],
             'json' => $this->request( $prompt, $media, $options ),
         ] );
         $this->validateVideoResponse( $response );

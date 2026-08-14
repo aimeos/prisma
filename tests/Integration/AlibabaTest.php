@@ -11,6 +11,18 @@ use PHPUnit\Framework\TestCase;
 
 class AlibabaTest extends TestCase
 {
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $response = Prisma::video()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+    }
+
+
     public function testImagine() : void
     {
         $response = Prisma::image()
