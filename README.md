@@ -80,6 +80,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
+    <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
 </ul>
 <div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a></div>
 </nav>
@@ -90,8 +91,9 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Anthropic](https://docs.anthropic.com/en/api)
 - [AudioPod AI](https://audiopod.ai/)
 - [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/)
-- [Bedrock Titan (AWS)](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-models.html)
+- [Bedrock (AWS)](https://docs.aws.amazon.com/bedrock/)
 - [Black Forest Labs](https://docs.bfl.ai/quick_start/introduction)
+- [BytePlus ModelArk](https://docs.byteplus.com/en/docs/ModelArk)
 - [Clipdrop](https://clipdrop.co/apis)
 - [Cohere](https://docs.cohere.com/docs/the-cohere-platform)
 - [DeepL](https://developers.deepl.com/docs)
@@ -103,6 +105,8 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
+- [Luma](https://docs.agents.lumalabs.ai/)
+- [MiniMax](https://platform.minimax.io/docs/)
 - [Mistral](https://docs.mistral.ai/api)
 - [ModelsLab](https://docs.modelslab.com/)
 - [Murf](https://murf.ai/api)
@@ -113,6 +117,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Requesty](https://docs.requesty.ai/api-reference/overview)
 - [RemoveBG](https://www.remove.bg/api)
 - [Replicate](https://replicate.com/docs)
+- [Runway](https://docs.dev.runwayml.com/)
 - [StabilityAI](https://platform.stability.ai/)
 - [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
@@ -179,13 +184,22 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Requesty**          | yes   | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Vertexai**          | beta  | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
 | **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
-| **Z.AI**             | yes   | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
+| **Z.AI**              | yes   | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
 
 ### Video
 
-|                       | describe |
-| :---                  | :---:    |
-| **Gemini**            | yes      |
+|                       | describe | imagine |
+| :---                  | :---:    | :---:   |
+| **Alibaba**           | -        | beta    |
+| **Bedrock Nova**      | -        | beta    |
+| **BytePlus**          | -        | beta    |
+| **Gemini**            | yes      | -       |
+| **Luma**              | -        | beta    |
+| **MiniMax**           | -        | beta    |
+| **Omni**              | -        | beta    |
+| **Runway**            | -        | beta    |
+| **Veo**               | -        | beta    |
+| **xAI**               | -        | beta    |
 
 ## Installation
 
@@ -2024,6 +2038,92 @@ $texts = $textResponse->texts(); // ['Renewable energy offers...']
 ```
 
 ## Video API
+
+### imagine
+
+Generate a video from a prompt and optional input media.
+
+```php
+public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
+```
+
+* @param **string** `$prompt` Description of the video to generate
+* @param **array** `$media` Semantic media roles: `start`, `end`, and `references`
+* @param **array&#60;string, mixed&#62;** `$options` Common and provider-specific options
+* @return **FileResponse** Generated video response
+
+```php
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Prisma;
+
+$video = Prisma::video()
+    ->using( 'runway', ['api_key' => 'xxx'] )
+    ->ensure( 'imagine' )
+    ->imagine(
+        'A paper boat crossing a rain-filled city street',
+        [
+            'start' => Image::fromUrl( 'https://example.com/start.png' ),
+            'end' => Image::fromUrl( 'https://example.com/end.png' ),
+            'references' => [],
+        ],
+        [
+            'duration' => 5,
+            'aspectRatio' => '16:9',
+            'resolution' => '720p',
+            'audio' => true,
+        ]
+    );
+
+$url = $video->first()?->url();
+```
+
+The common media roles are:
+
+* `start`: An `Image` used as the first frame
+* `end`: An `Image` used as the last frame
+* `references`: A list of `Audio`, `Image`, or `Video` reference files
+
+Providers have different media capabilities. Unsupported file types, orphaned end
+frames, and conflicting media combinations are omitted silently. When a provider
+cannot combine frame interpolation with references, `start`/`end` takes precedence.
+An audio-only reference set is also omitted when the provider requires an image or
+video reference.
+
+| Provider          | start | end | references |
+| :---              | :---: | :---: | :---     |
+| Alibaba Wan       | image | image | image, video, audio; frame mode may use one driving audio |
+| Bedrock Nova Reel | image | -     | -        |
+| BytePlus Seedance | image | image | image, video, audio; audio requires a visual reference |
+| Luma Ray          | image | image | -        |
+| MiniMax Hailuo    | image | image | image    |
+| Omni              | image | -     | image    |
+| Runway            | image | image | -        |
+| Veo               | image | image | image    |
+| xAI Grok Imagine  | image | -     | image    |
+
+Common options are `duration` (seconds), `aspectRatio`, `resolution`, `audio`,
+`count`, `seed`, and `loop`. A provider maps the options it supports and ignores
+the rest. Provider-native options can be supplied in the same array.
+
+Most video generation jobs are asynchronous. Accessing `first()`, `files()`,
+`binary()`, or iterating the response waits and polls until the provider finishes.
+Use `ready()` to perform one non-blocking status poll; providers returning video
+data immediately are ready without polling.
+
+**Supported options:**
+
+* [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-generation-api-reference)
+* [Amazon Nova Reel](https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html)
+* [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/1366799)
+* [Gemini Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
+* [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
+* [Runway](https://docs.dev.runwayml.com/api/)
+* [Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
+* [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
+
+Amazon Nova Reel also requires an S3 destination in the provider configuration:
+`['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`.
 
 ### describe
 
