@@ -28,7 +28,7 @@ class GeminiTest extends TestCase
             ->describe( Video::fromBinary( 'MP4', 'video/mp4' ), 'en' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'a video description', $response->text() );

@@ -40,7 +40,7 @@ class VertexaiTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
-                'https://us-central1-aiplatform.googleapis.com/v1/projects/proj/locations/us-central1/publishers/google/models/gemini-3.6-flash:generateContent',
+                'https://us-central1-aiplatform.googleapis.com/v1/projects/proj/locations/us-central1/publishers/google/models/gemini-3.7-flash:generateContent',
                 (string) $request->getUri()
             );
             $this->assertEquals( 'Bearer tok', $request->getHeaderLine( 'authorization' ) );

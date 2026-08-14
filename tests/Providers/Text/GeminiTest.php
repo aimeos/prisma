@@ -66,7 +66,7 @@ class GeminiTest extends TestCase
         }
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
         } );

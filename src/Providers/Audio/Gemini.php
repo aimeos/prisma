@@ -12,7 +12,7 @@ class Gemini extends Base implements Describe
 {
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-3.6-flash' );
+        $model = $this->modelName( 'gemini-3.7-flash' );
         $request = [
             'contents' => [[
                 'parts' => [[
