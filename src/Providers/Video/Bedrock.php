@@ -3,34 +3,51 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Bedrock as Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
+use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Imagine
+class Bedrock extends Base implements Describe, Imagine
 {
     use GeneratesVideo;
 
 
-    protected string $s3Uri;
+    protected string $s3Uri = '';
 
 
     public function __construct( array $config )
     {
         parent::__construct( $config );
+        $this->s3Uri = $this->config( $config, 's3_uri' );
+    }
 
-        if( !( $this->s3Uri = $this->config( $config, 's3_uri' ) ) ) {
-            throw new PrismaException( 'No S3 output URI' );
-        }
+
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $model = $this->modelName( 'us.amazon.nova-lite-v1:0' );
+        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', [
+            'json' => $this->describeRequest( $video, $lang, $options ),
+        ] );
+        $this->validate( $response );
+
+        return $this->textResponse( $response );
     }
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
+        if( !$this->s3Uri ) {
+            throw new PrismaException( 'No S3 output URI' );
+        }
+
         $response = $this->client()->post( $this->baseUrl . '/async-invoke', [
             'json' => $this->request( $prompt, $media, $options ),
         ] );
@@ -45,6 +62,140 @@ class Bedrock extends Base implements Imagine
         }
 
         return FileResponse::fromAsync( $this->poll( $arn ), 10 );
+    }
+
+
+    /**
+     * Builds an Amazon Nova video understanding request.
+     *
+     * @param Video $video Input video
+     * @param string|null $lang ISO language code for the description
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function describeRequest( Video $video, ?string $lang, array $options ) : array
+    {
+        $config = $this->allowed( $options, ['temperature', 'topP', 'topK'] );
+
+        if( $this->maxTokens() ) {
+            $config['maxTokens'] = $this->maxTokens();
+        }
+
+        $request = [
+            'schemaVersion' => 'messages-v1',
+            'messages' => [[
+                'role' => 'user',
+                'content' => [[
+                    'video' => [
+                        'format' => $this->videoFormat( $video ),
+                        'source' => $this->videoSource( $video, $options ),
+                    ],
+                ], [
+                    'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+                        . ( $lang ?? 'en' ) . '".',
+                ]],
+            ]],
+        ];
+
+        if( $system = $this->systemPrompt() ) {
+            $request['system'] = [['text' => $system]];
+        }
+
+        if( !empty( $config ) ) {
+            $request['inferenceConfig'] = $config;
+        }
+
+        return $request;
+    }
+
+
+    /**
+     * Returns the Amazon Nova identifier for the video's format.
+     *
+     * @param Video $video Input video
+     * @return string Video format identifier
+     */
+    protected function videoFormat( Video $video ) : string
+    {
+        return match( $video->mimeType() ) {
+            'video/x-matroska' => 'mkv',
+            'video/quicktime' => 'mov',
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/3gpp' => 'three_gp',
+            'video/x-flv' => 'flv',
+            'video/mpeg' => 'mpeg',
+            'video/mpg' => 'mpg',
+            'video/x-ms-wmv' => 'wmv',
+            default => throw new BadRequestException( 'Unsupported Amazon Nova video format' ),
+        };
+    }
+
+
+    /**
+     * Builds the Amazon Nova video source.
+     *
+     * @param Video $video Input video
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Inline bytes or S3 location
+     */
+    protected function videoSource( Video $video, array $options ) : array
+    {
+        $url = $video->url();
+
+        if( !$url || !str_starts_with( $url, 's3://' ) ) {
+            return ['bytes' => $video->base64()];
+        }
+
+        $location = ['uri' => $url];
+
+        if( is_string( $options['bucketOwner'] ?? null ) ) {
+            $location['bucketOwner'] = $options['bucketOwner'];
+        }
+
+        return ['s3Location' => $location];
+    }
+
+
+    /**
+     * Converts an Amazon Nova response into a text response.
+     *
+     * @param ResponseInterface $response Provider response
+     * @return TextResponse Text response
+     */
+    protected function textResponse( ResponseInterface $response ) : TextResponse
+    {
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+        /** @var array<string, mixed> $output */
+        $output = is_array( $data['output'] ?? null ) ? $data['output'] : [];
+        /** @var array<string, mixed> $message */
+        $message = is_array( $output['message'] ?? null ) ? $output['message'] : [];
+        $texts = [];
+
+        foreach( is_array( $message['content'] ?? null ) ? $message['content'] : [] as $content ) {
+            if( is_array( $content ) && is_string( $content['text'] ?? null ) ) {
+                $texts[] = $content['text'];
+            }
+        }
+
+        /** @var array<string, mixed> $usage */
+        $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
+        $used = ( is_numeric( $usage['inputTokens'] ?? null ) ? (float) $usage['inputTokens'] : 0 )
+            + ( is_numeric( $usage['outputTokens'] ?? null ) ? (float) $usage['outputTokens'] : 0 );
+        $meta = $data;
+        unset( $meta['output'], $meta['usage'] );
+
+        return TextResponse::fromTexts( $texts )
+            ->withReason( match( $data['stopReason'] ?? null ) {
+                'end_turn', 'stop_sequence' => TextResponse::STOP,
+                'max_tokens' => TextResponse::LENGTH,
+                'content_filtered' => TextResponse::CONTENT,
+                default => TextResponse::UNKNOWN,
+            } )
+            ->withUsage( $used, $usage )
+            ->withRateLimit( $this->getRateLimit( $response ) )
+            ->withMeta( $meta );
     }
 
 

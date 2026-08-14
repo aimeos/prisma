@@ -11,6 +11,18 @@ use PHPUnit\Framework\TestCase;
 
 class BedrockTest extends TestCase
 {
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $response = Prisma::video()
+            ->using( 'bedrock', ['api_key' => $_ENV['BEDROCK_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+    }
+
+
     public function testImagine() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
