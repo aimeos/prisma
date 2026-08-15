@@ -13,6 +13,37 @@ class XaiTest extends TestCase
     use MakesPrismaRequests;
 
 
+    public function testExtend() : void
+    {
+        $this->prisma( 'video', 'xai', ['api_key' => 'test'] )
+            ->response( ['request_id' => 'video-1'] );
+        $this->response( [
+            'status' => 'done',
+            'video' => ['url' => 'https://example.com/extended.mp4'],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'extend' )
+            ->extend( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Reveal the city skyline', [
+                'duration' => 6,
+                'storage_options' => ['filename' => 'extended.mp4'],
+                'aspectRatio' => '9:16',
+            ] );
+
+        $this->assertSame( 'https://example.com/extended.mp4', $response->first()?->url() );
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+
+        $this->assertSame( 'https://api.x.ai/v1/videos/extensions', (string) $request->getUri() );
+        $this->assertSame( 'grok-imagine-video', $body['model'] );
+        $this->assertSame( 'https://example.com/input.mp4', $body['video']['url'] );
+        $this->assertSame( 'Reveal the city skyline', $body['prompt'] );
+        $this->assertSame( 6, $body['duration'] );
+        $this->assertSame( ['filename' => 'extended.mp4'], $body['storage_options'] );
+        $this->assertArrayNotHasKey( 'aspectRatio', $body );
+    }
+
+
     public function testImagineSilentlyUsesStartInsteadOfReferences() : void
     {
         $this->prisma( 'video', 'xai', ['api_key' => 'test'] )
