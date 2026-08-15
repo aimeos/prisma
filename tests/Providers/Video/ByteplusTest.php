@@ -91,4 +91,34 @@ class ByteplusTest extends TestCase
         $body = json_decode( (string) $this->requests()[0]->getBody(), true );
         $this->assertCount( 1, $body['content'] );
     }
+
+
+    public function testRepaint() : void
+    {
+        $this->prisma( 'video', 'byteplus', ['api_key' => 'test'] )
+            ->response( ['id' => 'task-1'], [], 201 );
+        $this->response( [
+            'status' => 'succeeded',
+            'content' => ['video_url' => 'https://example.com/repainted.mp4'],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'repaint' )
+            ->repaint( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Add falling snow', [
+                'duration' => 5,
+                'audio' => true,
+            ] );
+
+        $this->assertSame( 'https://example.com/repainted.mp4', $response->first()?->url() );
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+
+        $this->assertSame( 'https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks', (string) $request->getUri() );
+        $this->assertSame( 'dreamina-seedance-2-0-260128', $body['model'] );
+        $this->assertSame( 'Add falling snow', $body['content'][0]['text'] );
+        $this->assertSame( 'reference_video', $body['content'][1]['role'] );
+        $this->assertSame( 'https://example.com/input.mp4', $body['content'][1]['video_url']['url'] );
+        $this->assertSame( 5, $body['duration'] );
+        $this->assertTrue( $body['generate_audio'] );
+    }
 }
