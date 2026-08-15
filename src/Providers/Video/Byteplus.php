@@ -7,6 +7,7 @@ use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
@@ -16,7 +17,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Byteplus extends Base implements Describe, Imagine
+class Byteplus extends Base implements Describe, Imagine, Repaint
 {
     use CallsTools;
     use GeneratesVideo;
@@ -73,6 +74,12 @@ class Byteplus extends Base implements Describe, Imagine
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->imagine( $prompt, ['references' => [$video]], $options );
     }
 
 

@@ -35,6 +35,24 @@ class ByteplusTest extends TestCase
     }
 
 
+    public function testRepaintVideo() : void
+    {
+        $source = Video::fromUrl(
+            'https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_video/video_by_sd2.mp4',
+            'video/mp4'
+        );
+        $response = Prisma::video()
+            ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $source, 'Change the color of the cream to white' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
