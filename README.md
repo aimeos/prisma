@@ -83,6 +83,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#extend">extend</a><span>: Continue a video according to the prompt</span></li>
     <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
     <li><a href="#repaint-1">repaint</a><span>: Repaint a video according to the prompt</span></li>
+    <li><a href="#upscale-1">upscale</a><span>: Scale up a video</span></li>
 </ul>
 <div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a></div>
 </nav>
@@ -190,18 +191,18 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Video
 
-|                       | describe | extend | imagine | repaint |
-| :---                  | :---:    | :---:  | :---:   | :---:   |
-| **Alibaba**           | yes      | beta   | beta    | beta    |
-| **Bedrock Nova**      | beta     | -      | beta    | -       |
-| **BytePlus**          | beta     | beta   | beta    | beta    |
-| **Gemini**            | yes      | -      | -       | -       |
-| **Luma**              | -        | -      | beta    | beta    |
-| **MiniMax**           | -        | -      | beta    | -       |
-| **Omni**              | -        | -      | beta    | beta    |
-| **Runway**            | -        | -      | beta    | beta    |
-| **Veo**               | -        | -      | beta    | -       |
-| **xAI**               | -        | beta   | beta    | beta    |
+|                       | describe | extend | imagine | repaint | upscale |
+| :---                  | :---:    | :---:  | :---:   | :---:   | :---:   |
+| **Alibaba**           | yes      | beta   | beta    | beta    | -       |
+| **Bedrock Nova**      | beta     | -      | beta    | -       | -       |
+| **BytePlus**          | beta     | beta   | beta    | beta    | -       |
+| **Gemini**            | yes      | -      | -       | -       | -       |
+| **Luma**              | -        | -      | beta    | beta    | -       |
+| **MiniMax**           | -        | -      | beta    | -       | -       |
+| **Omni**              | -        | -      | beta    | beta    | -       |
+| **Runway**            | -        | -      | beta    | beta    | beta    |
+| **Veo**               | -        | -      | beta    | -       | -       |
+| **xAI**               | -        | beta   | beta    | beta    | -       |
 
 ## Installation
 
@@ -2226,3 +2227,44 @@ Most repaint jobs are asynchronous and use the same lazy polling behavior as
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)
+
+### upscale
+
+Scale up a video.
+
+```php
+public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
+```
+
+* @param **Video** `$video` Input video object
+* @param **int** `$factor` Upscaling factor between 2 and the maximum value supported by the provider
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Upscaled video response
+
+```php
+use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Prisma;
+
+$source = Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' );
+
+$video = Prisma::video()
+    ->using( 'runway', ['api_key' => 'xxx'] )
+    ->ensure( 'upscale' )
+    ->upscale( $source, 4, [
+        'resolution' => '4k',
+        'flavor' => 'natural',
+    ] );
+
+$url = $video->first()?->url();
+```
+
+Runway maps factors of four or more to `4k` and lower factors to `2k`. Set
+`resolution` to `720p`, `1k`, `2k`, or `4k` to select the exact output tier.
+Other supported options are `creativity`, `sharpen`, and `smartGrain` (integers
+from 0 to 100), `flavor` (`natural` or `vivid`), and `fpsBoost` (boolean).
+Unsupported values and options are ignored. Upscaling is asynchronous and uses
+the same lazy polling behavior as other video operations.
+
+**Supported options:**
+
+* [Runway Magnific Video Upscaler](https://dev.runwayml.com/endpoints/video_upscale?modelId=magnific_video_upscaler_creative)
