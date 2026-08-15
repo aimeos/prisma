@@ -23,6 +23,24 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testExtendVideo() : void
+    {
+        $source = Video::fromUrl(
+            'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260129/hfugmr/wan-r2v-role1.mp4',
+            'video/mp4'
+        );
+        $response = Prisma::video()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'extend' )
+            ->extend( $source, 'The girl leaves with her backpack', ['duration' => 10] );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     public function testImagine() : void
     {
         $response = Prisma::image()
