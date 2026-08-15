@@ -52,6 +52,40 @@ class ByteplusTest extends TestCase
     }
 
 
+    public function testExtend() : void
+    {
+        $this->prisma( 'video', 'byteplus', ['api_key' => 'test'] )
+            ->response( ['id' => 'task-1'], [], 201 );
+        $this->response( [
+            'status' => 'succeeded',
+            'content' => ['video_url' => 'https://example.com/extended.mp4'],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'extend' )
+            ->extend( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Show the museum entrance', [
+                'direction' => 'backward',
+                'duration' => 8,
+                'audio' => true,
+                'unsupported' => true,
+            ] );
+
+        $this->assertSame( 'https://example.com/extended.mp4', $response->first()?->url() );
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+
+        $this->assertSame( 'https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks', (string) $request->getUri() );
+        $this->assertSame( 'dreamina-seedance-2-0-260128', $body['model'] );
+        $this->assertSame( 'Extend [Video 1] backward. Show the museum entrance', $body['content'][0]['text'] );
+        $this->assertSame( 'reference_video', $body['content'][1]['role'] );
+        $this->assertSame( 'https://example.com/input.mp4', $body['content'][1]['video_url']['url'] );
+        $this->assertSame( 8, $body['duration'] );
+        $this->assertTrue( $body['generate_audio'] );
+        $this->assertArrayNotHasKey( 'direction', $body );
+        $this->assertArrayNotHasKey( 'unsupported', $body );
+    }
+
+
     public function testImagineSilentlyDropsReferencesWhenFramesAreUsed() : void
     {
         $this->prisma( 'video', 'byteplus', ['api_key' => 'test'] )

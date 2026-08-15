@@ -21,6 +21,24 @@ class ByteplusTest extends TestCase
     }
 
 
+    public function testExtendVideo() : void
+    {
+        $source = Video::fromUrl(
+            'https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_video/r2v_extend_video1.mp4',
+            'video/mp4'
+        );
+        $response = Prisma::video()
+            ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
+            ->ensure( 'extend' )
+            ->extend( $source, 'The arched window opens into an art museum', ['duration' => 8] );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     public function testImagineVideo() : void
     {
         $response = Prisma::video()

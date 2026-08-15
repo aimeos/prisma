@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Contracts\Video\Describe;
+use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -17,7 +18,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Byteplus extends Base implements Describe, Imagine, Repaint
+class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
 {
     use CallsTools;
     use GeneratesVideo;
@@ -55,6 +56,15 @@ class Byteplus extends Base implements Describe, Imagine, Repaint
             $input,
             $this->allowed( $options, ['temperature', 'top_p', 'thinking'] )
         );
+    }
+
+
+    public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        $direction = ( $options['direction'] ?? null ) === 'backward' ? 'backward' : 'forward';
+        $prompt = sprintf( 'Extend [Video 1] %s. %s', $direction, $prompt );
+
+        return $this->imagine( $prompt, ['references' => [$video]], $options );
     }
 
 
