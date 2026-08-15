@@ -38,6 +38,21 @@ class RunwayTest extends TestCase
     }
 
 
+    public function testUpscaleVideo() : void
+    {
+        $source = Video::fromUrl( 'https://data.x.ai/docs/video-generation/portrait-wave.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'runway', ['api_key' => $_ENV['RUNWAY_API_KEY']] )
+            ->ensure( 'upscale' )
+            ->upscale( $source, 2, ['resolution' => '1k'] );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
