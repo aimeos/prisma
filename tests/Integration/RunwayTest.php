@@ -23,6 +23,21 @@ class RunwayTest extends TestCase
     }
 
 
+    public function testRepaintVideo() : void
+    {
+        $source = Video::fromUrl( 'https://data.x.ai/docs/video-generation/portrait-wave.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'runway', ['api_key' => $_ENV['RUNWAY_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $source, 'Turn the scene into a watercolor painting' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
