@@ -79,4 +79,61 @@ class RunwayTest extends TestCase
         $this->assertSame( 123, $body['seed'] );
         $this->assertArrayNotHasKey( 'duration', $body );
     }
+
+
+    public function testUpscale() : void
+    {
+        $this->prisma( 'video', 'runway', ['api_key' => 'test'] )
+            ->response( ['id' => 'task-1'], [], 201 );
+        $this->response( [
+            'status' => 'SUCCEEDED',
+            'output' => ['https://example.com/upscaled.mp4'],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'upscale' )
+            ->upscale( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 4, [
+                'creativity' => 60,
+                'sharpen' => 40,
+                'smartGrain' => 20,
+                'flavor' => 'natural',
+                'fpsBoost' => true,
+                'duration' => 5,
+            ] );
+
+        $this->assertSame( 'https://example.com/upscaled.mp4', $response->first()?->url() );
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+
+        $this->assertSame( 'https://api.dev.runwayml.com/v1/video_upscale', (string) $request->getUri() );
+        $this->assertSame( 'magnific_video_upscaler_creative', $body['model'] );
+        $this->assertSame( 'https://example.com/input.mp4', $body['videoUri'] );
+        $this->assertSame( '4k', $body['resolution'] );
+        $this->assertSame( 60, $body['creativity'] );
+        $this->assertSame( 40, $body['sharpen'] );
+        $this->assertSame( 20, $body['smartGrain'] );
+        $this->assertSame( 'natural', $body['flavor'] );
+        $this->assertTrue( $body['fpsBoost'] );
+        $this->assertArrayNotHasKey( 'duration', $body );
+    }
+
+
+    public function testUpscaleSilentlyNormalizesOptions() : void
+    {
+        $this->prisma( 'video', 'runway', ['api_key' => 'test'] )
+            ->response( ['id' => 'task-1'], [], 201 );
+
+        $this->provider()->upscale(
+            Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ),
+            2,
+            ['resolution' => '1k', 'creativity' => 101, 'flavor' => 'invalid', 'fpsBoost' => 1]
+        );
+
+        $body = json_decode( (string) $this->requests()[0]->getBody(), true );
+
+        $this->assertSame( '1k', $body['resolution'] );
+        $this->assertArrayNotHasKey( 'creativity', $body );
+        $this->assertArrayNotHasKey( 'flavor', $body );
+        $this->assertArrayNotHasKey( 'fpsBoost', $body );
+    }
 }

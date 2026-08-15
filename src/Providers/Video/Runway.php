@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers\Video;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
+use Aimeos\Prisma\Contracts\Video\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Runway extends Base implements Imagine, Repaint
+class Runway extends Base implements Imagine, Repaint, Upscale
 {
     use GeneratesVideo;
 
@@ -41,6 +42,12 @@ class Runway extends Base implements Imagine, Repaint
     public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'v1/video_to_video', $this->repaintRequest( $video, $prompt, $options ) );
+    }
+
+
+    public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
+    {
+        return $this->submit( 'v1/video_upscale', $this->upscaleRequest( $video, $factor, $options ) );
     }
 
 
@@ -97,6 +104,59 @@ class Runway extends Base implements Imagine, Repaint
         }
 
         return $request;
+    }
+
+
+    /**
+     * Builds the Runway video upscaling request.
+     *
+     * @param Video $video Input video object
+     * @param int $factor Requested upscaling factor
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function upscaleRequest( Video $video, int $factor, array $options ) : array
+    {
+        $request = [
+            'model' => 'magnific_video_upscaler_creative',
+            'videoUri' => $this->mediaUrl( $video ),
+            'resolution' => $this->upscaleResolution( $factor, $options['resolution'] ?? null ),
+        ];
+
+        foreach( ['creativity', 'sharpen', 'smartGrain'] as $name ) {
+            $value = $options[$name] ?? null;
+
+            if( is_int( $value ) && $value >= 0 && $value <= 100 ) {
+                $request[$name] = $value;
+            }
+        }
+
+        if( in_array( $options['flavor'] ?? null, ['vivid', 'natural'], true ) ) {
+            $request['flavor'] = $options['flavor'];
+        }
+
+        if( is_bool( $options['fpsBoost'] ?? null ) ) {
+            $request['fpsBoost'] = $options['fpsBoost'];
+        }
+
+        return $request;
+    }
+
+
+    /**
+     * Normalizes the requested Runway upscale resolution.
+     *
+     * @param int $factor Requested upscaling factor
+     * @param mixed $resolution Requested target resolution
+     * @return string Supported target resolution
+     */
+    protected function upscaleResolution( int $factor, mixed $resolution ) : string
+    {
+        if( in_array( $resolution, ['720p', '1k', '2k', '4k'], true ) ) {
+            return $resolution;
+        }
+
+        return $factor >= 4 ? '4k' : '2k';
     }
 
 
