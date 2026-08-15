@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -11,7 +12,7 @@ use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Runway extends Base implements Imagine
+class Runway extends Base implements Imagine, Repaint
 {
     use GeneratesVideo;
 
@@ -32,8 +33,28 @@ class Runway extends Base implements Imagine
     {
         $frames = $this->frames( $media );
         $path = empty( $frames ) ? 'v1/text_to_video' : 'v1/image_to_video';
+
+        return $this->submit( $path, $this->request( $prompt, $frames, $options ) );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->submit( 'v1/video_to_video', $this->repaintRequest( $video, $prompt, $options ) );
+    }
+
+
+    /**
+     * Submits a Runway video request.
+     *
+     * @param string $path API endpoint path
+     * @param array<string, mixed> $request Request payload
+     * @return FileResponse Deferred video response
+     */
+    protected function submit( string $path, array $request ) : FileResponse
+    {
         $response = $this->client()->post( $path, [
-            'json' => $this->request( $prompt, $frames, $options ),
+            'json' => $request,
         ] );
         $this->validateVideoResponse( $response );
 
@@ -46,6 +67,36 @@ class Runway extends Base implements Imagine
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
+    }
+
+
+    /**
+     * Builds the Runway video editing request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    {
+        $request = [
+            'model' => $this->modelName( 'aleph2' ),
+            'promptText' => $prompt,
+            'videoUri' => $this->mediaUrl( $video ),
+        ];
+
+        if( is_int( $options['seed'] ?? null ) ) {
+            $request['seed'] = $options['seed'];
+        }
+
+        $ratios = ['16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '21:9'];
+
+        if( in_array( $options['aspectRatio'] ?? null, $ratios, true ) ) {
+            $request['targetAspectRatio'] = $options['aspectRatio'];
+        }
+
+        return $request;
     }
 
 
