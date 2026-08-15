@@ -25,11 +25,11 @@ class OmniTest extends TestCase
 
     public function testRepaintVideo() : void
     {
-        $source = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4', 'video/mp4' );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'omni', ['api_key' => $_ENV['GEMINI_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Turn the pen bright red' );
+            ->repaint( $source, 'Turn the flowers bright blue' );
 
         $video = $response->first();
 

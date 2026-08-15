@@ -39,13 +39,13 @@ class GeminiTest extends TestCase
 
     public function testDescribeVideo() : void
     {
-        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'gemini', ['api_key' => $_ENV['GEMINI_API_KEY']])
             ->ensure( 'describe' )
             ->describe( $video );
 
-        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
     }
 
 

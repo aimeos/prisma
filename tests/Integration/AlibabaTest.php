@@ -13,26 +13,23 @@ class AlibabaTest extends TestCase
 {
     public function testDescribeVideo() : void
     {
-        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->ensure( 'describe' )
             ->describe( $video );
 
-        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
     }
 
 
     public function testExtendVideo() : void
     {
-        $source = Video::fromUrl(
-            'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260129/hfugmr/wan-r2v-role1.mp4',
-            'video/mp4'
-        );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->ensure( 'extend' )
-            ->extend( $source, 'The girl leaves with her backpack', ['duration' => 10] );
+            ->extend( $source, 'The camera pulls back to reveal the surrounding garden', ['duration' => 10] );
 
         $video = $response->first();
 
@@ -70,14 +67,11 @@ class AlibabaTest extends TestCase
 
     public function testRepaintVideo() : void
     {
-        $source = Video::fromUrl(
-            'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260402/ldnfdf/wan2.7-videoedit-style-change.mp4',
-            'video/mp4'
-        );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Convert the entire scene to a watercolor style' );
+            ->repaint( $source, 'Turn the flowers into a watercolor painting' );
 
         $video = $response->first();
 

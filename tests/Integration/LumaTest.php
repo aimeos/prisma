@@ -25,11 +25,11 @@ class LumaTest extends TestCase
 
     public function testRepaintVideo() : void
     {
-        $source = Video::fromUrl( 'https://data.x.ai/docs/video-generation/portrait-wave.mp4', 'video/mp4' );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'luma', ['api_key' => $_ENV['LUMA_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Turn the scene into a watercolor painting' );
+            ->repaint( $source, 'Turn the flowers into a watercolor painting' );
 
         $video = $response->first();
 

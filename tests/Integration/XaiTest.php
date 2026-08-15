@@ -12,11 +12,11 @@ class XaiTest extends TestCase
 {
     public function testExtendVideo() : void
     {
-        $source = Video::fromUrl( 'https://data.x.ai/docs/video-generation/portrait-wave.mp4', 'video/mp4' );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
             ->ensure( 'extend' )
-            ->extend( $source, 'The camera pulls back to reveal the city skyline', ['duration' => 4] );
+            ->extend( $source, 'The camera pulls back to reveal the surrounding garden', ['duration' => 4] );
 
         $video = $response->first();
 
@@ -54,11 +54,11 @@ class XaiTest extends TestCase
 
     public function testRepaintVideo() : void
     {
-        $source = Video::fromUrl( 'https://data.x.ai/docs/video-generation/portrait-wave.mp4', 'video/mp4' );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Give the person a silver necklace' );
+            ->repaint( $source, 'Turn the flowers bright blue' );
 
         $video = $response->first();
 

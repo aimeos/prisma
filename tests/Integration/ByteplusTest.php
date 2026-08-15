@@ -11,26 +11,23 @@ class ByteplusTest extends TestCase
 {
     public function testDescribeVideo() : void
     {
-        $video = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4' );
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
             ->ensure( 'describe' )
             ->describe( $video );
 
-        $this->assertStringContainsStringIgnoringCase( 'pen', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
     }
 
 
     public function testExtendVideo() : void
     {
-        $source = Video::fromUrl(
-            'https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_video/r2v_extend_video1.mp4',
-            'video/mp4'
-        );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
             ->ensure( 'extend' )
-            ->extend( $source, 'The arched window opens into an art museum', ['duration' => 8] );
+            ->extend( $source, 'The camera pulls back to reveal the surrounding garden', ['duration' => 8] );
 
         $video = $response->first();
 
@@ -55,14 +52,11 @@ class ByteplusTest extends TestCase
 
     public function testRepaintVideo() : void
     {
-        $source = Video::fromUrl(
-            'https://ark-doc.tos-ap-southeast-1.bytepluses.com/doc_video/video_by_sd2.mp4',
-            'video/mp4'
-        );
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
         $response = Prisma::video()
             ->using( 'byteplus', ['api_key' => $_ENV['BYTEPLUS_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Change the color of the cream to white' );
+            ->repaint( $source, 'Turn the flowers bright blue' );
 
         $video = $response->first();
 
