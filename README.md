@@ -81,6 +81,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
     <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
+    <li><a href="#repaint-1">repaint</a><span>: Repaint a video according to the prompt</span></li>
 </ul>
 <div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a></div>
 </nav>
@@ -188,18 +189,18 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Video
 
-|                       | describe | imagine |
-| :---                  | :---:    | :---:   |
-| **Alibaba**           | yes      | beta    |
-| **Bedrock Nova**      | beta     | beta    |
-| **BytePlus**          | beta     | beta    |
-| **Gemini**            | yes      | -       |
-| **Luma**              | -        | beta    |
-| **MiniMax**           | -        | beta    |
-| **Omni**              | -        | beta    |
-| **Runway**            | -        | beta    |
-| **Veo**               | -        | beta    |
-| **xAI**               | -        | beta    |
+|                       | describe | imagine | repaint |
+| :---                  | :---:    | :---:   | :---:   |
+| **Alibaba**           | yes      | beta    | beta    |
+| **Bedrock Nova**      | beta     | beta    | -       |
+| **BytePlus**          | beta     | beta    | beta    |
+| **Gemini**            | yes      | -       | -       |
+| **Luma**              | -        | beta    | beta    |
+| **MiniMax**           | -        | beta    | -       |
+| **Omni**              | -        | beta    | beta    |
+| **Runway**            | -        | beta    | beta    |
+| **Veo**               | -        | beta    | -       |
+| **xAI**               | -        | beta    | beta    |
 
 ## Installation
 
@@ -2144,3 +2145,42 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
 * [Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
+
+### repaint
+
+Repaint a video according to the prompt.
+
+```php
+public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+```
+
+* @param **Video** `$video` Input video object
+* @param **string** `$prompt` Prompt describing the changes
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Repainted video response
+
+```php
+use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Prisma;
+
+$source = Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' );
+
+$video = Prisma::video()
+    ->using( 'runway', ['api_key' => 'xxx'] )
+    ->ensure( 'repaint' )
+    ->repaint( $source, 'Turn the scene into a watercolor painting' );
+
+$url = $video->first()?->url();
+```
+
+Most repaint jobs are asynchronous and use the same lazy polling behavior as
+`imagine()`. Providers ignore options they don't support.
+
+**Supported options:**
+
+* [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-editing-api-reference)
+* [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
+* [Gemini Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
+* [Runway](https://docs.dev.runwayml.com/api/)
+* [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)
