@@ -53,6 +53,45 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testExtend() : void
+    {
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )
+            ->response( ['output' => ['task_id' => 'task-1']], [], 202 );
+        $this->response( [
+            'output' => [
+                'task_status' => 'SUCCEEDED',
+                'video_url' => 'https://example.com/extended.mp4',
+            ],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'extend' )
+            ->extend( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Reveal the city skyline', [
+                'negative_prompt' => 'rain',
+                'resolution' => '720P',
+                'duration' => 10,
+                'prompt_extend' => false,
+                'watermark' => true,
+                'seed' => 123,
+                'aspectRatio' => '9:16',
+            ] );
+
+        $this->assertSame( 'https://example.com/extended.mp4', $response->first()?->url() );
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+
+        $this->assertSame( 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis', (string) $request->getUri() );
+        $this->assertSame( 'enable', $request->getHeaderLine( 'X-DashScope-Async' ) );
+        $this->assertSame( 'wan2.7-i2v', $body['model'] );
+        $this->assertSame( 'Reveal the city skyline', $body['input']['prompt'] );
+        $this->assertSame( 'rain', $body['input']['negative_prompt'] );
+        $this->assertSame( [['type' => 'first_clip', 'url' => 'https://example.com/input.mp4']], $body['input']['media'] );
+        $this->assertSame( 10, $body['parameters']['duration'] );
+        $this->assertFalse( $body['parameters']['prompt_extend'] );
+        $this->assertArrayNotHasKey( 'aspectRatio', $body['parameters'] );
+    }
+
+
     public function testImagineSilentlyFiltersFrameModeReferences() : void
     {
         $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )

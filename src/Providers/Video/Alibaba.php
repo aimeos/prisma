@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Describe;
+use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Files\Audio;
@@ -14,7 +15,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Describe, Imagine, Repaint
+class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
 {
     use GeneratesVideo;
 
@@ -37,6 +38,12 @@ class Alibaba extends Base implements Describe, Imagine, Repaint
             $this->messages( $content ),
             $this->allowed( $options, ['temperature', 'top_p', 'top_k'] )
         );
+    }
+
+
+    public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->extendRequest( $video, $prompt, $options ) );
     }
 
 
@@ -77,6 +84,38 @@ class Alibaba extends Base implements Describe, Imagine, Repaint
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
+    }
+
+
+    /**
+     * Builds the Alibaba video continuation request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the continuation
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function extendRequest( Video $video, string $prompt, array $options ) : array
+    {
+        $input = [
+            'prompt' => $prompt,
+            'media' => [['type' => 'first_clip', 'url' => $this->mediaUrl( $video )]],
+        ];
+
+        if( is_string( $options['negative_prompt'] ?? null ) ) {
+            $input['negative_prompt'] = $options['negative_prompt'];
+        }
+
+        $parameters = $this->allowed( $options, [
+            'resolution', 'duration', 'prompt_extend', 'watermark', 'seed',
+        ] );
+        $request = ['model' => $this->modelName( 'wan2.7-i2v' ), 'input' => $input];
+
+        if( !empty( $parameters ) ) {
+            $request['parameters'] = $parameters;
+        }
+
+        return $request;
     }
 
 
