@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers\Video;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -13,7 +14,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Describe, Imagine
+class Alibaba extends Base implements Describe, Imagine, Repaint
 {
     use GeneratesVideo;
 
@@ -41,9 +42,27 @@ class Alibaba extends Base implements Describe, Imagine
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
+        return $this->submit( $this->request( $prompt, $media, $options ) );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->repaintRequest( $video, $prompt, $options ) );
+    }
+
+
+    /**
+     * Submits an Alibaba video request.
+     *
+     * @param array<string, mixed> $request Request payload
+     * @return FileResponse Deferred video response
+     */
+    protected function submit( array $request ) : FileResponse
+    {
         $response = $this->client()->post( 'api/v1/services/aigc/video-generation/video-synthesis', [
             'headers' => ['X-DashScope-Async' => 'enable'],
-            'json' => $this->request( $prompt, $media, $options ),
+            'json' => $request,
         ] );
         $this->validateVideoResponse( $response );
 
@@ -58,6 +77,43 @@ class Alibaba extends Base implements Describe, Imagine
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
+    }
+
+
+    /**
+     * Builds the Alibaba video editing request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    {
+        $input = [
+            'prompt' => $prompt,
+            'media' => [['type' => 'video', 'url' => $this->mediaUrl( $video )]],
+        ];
+
+        if( is_string( $options['negative_prompt'] ?? null ) ) {
+            $input['negative_prompt'] = $options['negative_prompt'];
+        }
+
+        $parameters = $this->allowed( $options, [
+            'resolution', 'duration', 'audio_setting', 'prompt_extend', 'watermark', 'seed',
+        ] );
+
+        if( is_string( $options['aspectRatio'] ?? null ) ) {
+            $parameters['ratio'] = $options['aspectRatio'];
+        }
+
+        $request = ['model' => $this->modelName( 'wan2.7-videoedit' ), 'input' => $input];
+
+        if( !empty( $parameters ) ) {
+            $request['parameters'] = $parameters;
+        }
+
+        return $request;
     }
 
 
