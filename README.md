@@ -80,6 +80,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
     <li><a href="#describe">describe</a><span>: Describe the content of a video</span></li>
+    <li><a href="#extend">extend</a><span>: Continue a video according to the prompt</span></li>
     <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
     <li><a href="#repaint-1">repaint</a><span>: Repaint a video according to the prompt</span></li>
 </ul>
@@ -189,18 +190,18 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Video
 
-|                       | describe | imagine | repaint |
-| :---                  | :---:    | :---:   | :---:   |
-| **Alibaba**           | yes      | beta    | beta    |
-| **Bedrock Nova**      | beta     | beta    | -       |
-| **BytePlus**          | beta     | beta    | beta    |
-| **Gemini**            | yes      | -       | -       |
-| **Luma**              | -        | beta    | beta    |
-| **MiniMax**           | -        | beta    | -       |
-| **Omni**              | -        | beta    | beta    |
-| **Runway**            | -        | beta    | beta    |
-| **Veo**               | -        | beta    | -       |
-| **xAI**               | -        | beta    | beta    |
+|                       | describe | extend | imagine | repaint |
+| :---                  | :---:    | :---:  | :---:   | :---:   |
+| **Alibaba**           | yes      | beta   | beta    | beta    |
+| **Bedrock Nova**      | beta     | -      | beta    | -       |
+| **BytePlus**          | beta     | beta   | beta    | beta    |
+| **Gemini**            | yes      | -      | -       | -       |
+| **Luma**              | -        | -      | beta    | beta    |
+| **MiniMax**           | -        | -      | beta    | -       |
+| **Omni**              | -        | -      | beta    | beta    |
+| **Runway**            | -        | -      | beta    | beta    |
+| **Veo**               | -        | -      | beta    | -       |
+| **xAI**               | -        | beta   | beta    | beta    |
 
 ## Installation
 
@@ -2145,6 +2146,47 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
 * [Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
+
+### extend
+
+Continue a video according to the prompt.
+
+```php
+public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
+```
+
+* @param **Video** `$video` Input video object
+* @param **string** `$prompt` Prompt describing the continuation
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Extended video response
+
+```php
+use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Prisma;
+
+$source = Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' );
+
+$video = Prisma::video()
+    ->using( 'xai', ['api_key' => 'xxx'] )
+    ->ensure( 'extend' )
+    ->extend( $source, 'The camera pulls back to reveal the city skyline', [
+        'duration' => 6,
+    ] );
+
+$url = $video->first()?->url();
+```
+
+Most extension jobs are asynchronous and use the same lazy polling behavior as
+`imagine()`. Providers ignore options they don't support. `duration` is supported
+by all three providers, but Alibaba interprets it as the total output duration
+while xAI interprets it as the duration of the new continuation. BytePlus also
+supports `direction` with `forward` (default) or `backward`.
+
+**Supported options:**
+
+* [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/image-to-video-general-api-reference)
+* [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
+* [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/extension)
 
 ### repaint
 
