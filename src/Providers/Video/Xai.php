@@ -4,22 +4,50 @@ namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Xai as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Xai extends Base implements Imagine
+class Xai extends Base implements Imagine, Repaint
 {
     use GeneratesVideo;
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        $response = $this->client()->post( 'v1/videos/generations', [
-            'json' => $this->request( $prompt, $media, $options ),
-        ] );
+        return $this->submit( 'v1/videos/generations', $this->request( $prompt, $media, $options ) );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        $request = [
+            'model' => $this->modelName( 'grok-imagine-video' ),
+            'prompt' => $prompt,
+            'video' => ['url' => $this->mediaUrl( $video )],
+        ];
+
+        if( is_array( $options['storage_options'] ?? null ) ) {
+            $request['storage_options'] = $options['storage_options'];
+        }
+
+        return $this->submit( 'v1/videos/edits', $request );
+    }
+
+
+    /**
+     * Submits an xAI video request.
+     *
+     * @param string $path API endpoint path
+     * @param array<string, mixed> $request Request payload
+     * @return FileResponse Deferred video response
+     */
+    protected function submit( string $path, array $request ) : FileResponse
+    {
+        $response = $this->client()->post( $path, ['json' => $request] );
         $this->validateVideoResponse( $response );
 
         /** @var array<string, mixed> $data */
