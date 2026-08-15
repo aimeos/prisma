@@ -50,4 +50,34 @@ class OmniTest extends TestCase
 
         $this->assertSame( 'MP4', $response->binary() );
     }
+
+
+    public function testRepaint() : void
+    {
+        $response = $this->prisma( 'video', 'omni', ['api_key' => 'test'] )
+            ->response( ['steps' => [[
+                'type' => 'model_output',
+                'content' => [[
+                    'type' => 'video',
+                    'mime_type' => 'video/mp4',
+                    'data' => base64_encode( 'EDITED' ),
+                ]],
+            ]]] )
+            ->ensure( 'repaint' )
+            ->repaint( Video::fromBinary( 'MP4', 'video/mp4' ), 'Add falling snow' );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $body = json_decode( (string) $request->getBody(), true );
+
+            $this->assertSame( 'https://generativelanguage.googleapis.com/v1beta/interactions', (string) $request->getUri() );
+            $this->assertSame( 'gemini-omni-flash-preview', $body['model'] );
+            $this->assertSame( 'edit', $body['generation_config']['video_config']['task'] );
+            $this->assertSame( 'video', $body['input'][0]['type'] );
+            $this->assertSame( base64_encode( 'MP4' ), $body['input'][0]['data'] );
+            $this->assertSame( 'video/mp4', $body['input'][0]['mime_type'] );
+            $this->assertSame( 'Add falling snow', $body['input'][1]['text'] );
+        } );
+
+        $this->assertSame( 'EDITED', $response->binary() );
+    }
 }

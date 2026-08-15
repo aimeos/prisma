@@ -4,21 +4,40 @@ namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Omni extends Base implements Imagine
+class Omni extends Base implements Imagine, Repaint
 {
     use GeneratesVideo;
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
+        return $this->submit( $this->request( $prompt, $media, $options ) );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->repaintRequest( $video, $prompt ) );
+    }
+
+
+    /**
+     * Submits a Gemini Omni video request.
+     *
+     * @param array<string, mixed> $request Request payload
+     * @return FileResponse Video response
+     */
+    protected function submit( array $request ) : FileResponse
+    {
         $response = $this->client()->post( 'v1beta/interactions', [
-            'json' => $this->request( $prompt, $media, $options ),
+            'json' => $request,
         ] );
         $this->validateVideoResponse( $response );
 
@@ -33,6 +52,31 @@ class Omni extends Base implements Imagine
         unset( $data['steps'] );
 
         return FileResponse::fromFiles( $files )->withMeta( $data );
+    }
+
+
+    /**
+     * Builds the Gemini Omni video editing request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the changes
+     * @return array<string, mixed> Request payload
+     */
+    protected function repaintRequest( Video $video, string $prompt ) : array
+    {
+        return [
+            'model' => $this->modelName( 'gemini-omni-flash-preview' ),
+            'input' => [[
+                'type' => 'video',
+                'data' => $video->base64(),
+                'mime_type' => $video->mimeType() ?? 'video/mp4',
+            ], [
+                'type' => 'text',
+                'text' => $prompt,
+            ]],
+            'response_format' => ['type' => 'video'],
+            'generation_config' => ['video_config' => ['task' => 'edit']],
+        ];
     }
 
 
