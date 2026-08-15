@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Files\Image;
@@ -11,7 +12,7 @@ use Aimeos\Prisma\Providers\Xai as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Xai extends Base implements Imagine, Repaint
+class Xai extends Base implements Extend, Imagine, Repaint
 {
     use GeneratesVideo;
 
@@ -22,19 +23,22 @@ class Xai extends Base implements Imagine, Repaint
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
-        $request = [
-            'model' => $this->modelName( 'grok-imagine-video' ),
-            'prompt' => $prompt,
-            'video' => ['url' => $this->mediaUrl( $video )],
-        ];
+        $request = $this->videoRequest( $video, $prompt, $options );
+        $duration = $options['duration'] ?? null;
 
-        if( is_array( $options['storage_options'] ?? null ) ) {
-            $request['storage_options'] = $options['storage_options'];
+        if( is_int( $duration ) && $duration >= 2 && $duration <= 10 ) {
+            $request['duration'] = $duration;
         }
 
-        return $this->submit( 'v1/videos/edits', $request );
+        return $this->submit( 'v1/videos/extensions', $request );
+    }
+
+
+    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->submit( 'v1/videos/edits', $this->videoRequest( $video, $prompt, $options ) );
     }
 
 
@@ -59,6 +63,30 @@ class Xai extends Base implements Imagine, Repaint
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
+    }
+
+
+    /**
+     * Builds an xAI request using an input video.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the requested result
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function videoRequest( Video $video, string $prompt, array $options ) : array
+    {
+        $request = [
+            'model' => $this->modelName( 'grok-imagine-video' ),
+            'prompt' => $prompt,
+            'video' => ['url' => $this->mediaUrl( $video )],
+        ];
+
+        if( is_array( $options['storage_options'] ?? null ) ) {
+            $request['storage_options'] = $options['storage_options'];
+        }
+
+        return $request;
     }
 
 
