@@ -23,6 +23,21 @@ class OmniTest extends TestCase
     }
 
 
+    public function testRepaintVideo() : void
+    {
+        $source = Video::fromLocalPath( __DIR__ . '/assets/pen.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'omni', ['api_key' => $_ENV['GEMINI_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $source, 'Turn the pen bright red' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
