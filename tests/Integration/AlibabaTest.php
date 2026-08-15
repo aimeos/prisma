@@ -50,6 +50,24 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testRepaintVideo() : void
+    {
+        $source = Video::fromUrl(
+            'https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260402/ldnfdf/wan2.7-videoedit-style-change.mp4',
+            'video/mp4'
+        );
+        $response = Prisma::video()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $source, 'Convert the entire scene to a watercolor style' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = Prisma::audio()
