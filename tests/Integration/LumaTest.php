@@ -38,6 +38,23 @@ class LumaTest extends TestCase
     }
 
 
+    public function testUncropVideo() : void
+    {
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'luma', ['api_key' => $_ENV['LUMA_API_KEY']] )
+            ->ensure( 'uncrop' )
+            ->uncrop( $source, 'Extend the flower garden naturally beyond the frame', 0, 0.25, 0, 0.25, [
+                'resolution' => '720p',
+            ] );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
