@@ -80,6 +80,23 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testUncropVideo() : void
+    {
+        $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+            ->ensure( 'uncrop' )
+            ->uncrop( $source, 'Extend the flower garden naturally beyond the frame', 0, 0.25, 0, 0.25, [
+                'prompt_extend' => false,
+            ] );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = Prisma::audio()

@@ -7,6 +7,7 @@ use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
+use Aimeos\Prisma\Contracts\Video\Uncrop;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -15,7 +16,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
+class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
 {
     use GeneratesVideo;
 
@@ -56,6 +57,12 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
     public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( $this->repaintRequest( $video, $prompt, $options ) );
+    }
+
+
+    public function uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->uncropRequest( $video, $prompt, $top, $right, $bottom, $left, $options ) );
     }
 
 
@@ -153,6 +160,51 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
         }
 
         return $request;
+    }
+
+
+    /**
+     * Builds the Alibaba video outpainting request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the extended scene
+     * @param float $top Fraction of the source height to add at the top
+     * @param float $right Fraction of the source width to add at the right
+     * @param float $bottom Fraction of the source height to add at the bottom
+     * @param float $left Fraction of the source width to add at the left
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function uncropRequest( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options ) : array
+    {
+        $parameters = $this->allowed( $options, ['prompt_extend', 'seed', 'watermark'] ) + [
+            'top_scale' => 1 + $this->expansion( $top ),
+            'right_scale' => 1 + $this->expansion( $right ),
+            'bottom_scale' => 1 + $this->expansion( $bottom ),
+            'left_scale' => 1 + $this->expansion( $left ),
+        ];
+
+        return [
+            'model' => $this->modelName( 'wan2.1-vace-plus' ),
+            'input' => [
+                'function' => 'video_outpainting',
+                'prompt' => $prompt,
+                'video_url' => $this->mediaUrl( $video ),
+            ],
+            'parameters' => $parameters,
+        ];
+    }
+
+
+    /**
+     * Normalizes a requested frame expansion.
+     *
+     * @param float $value Fraction of the source dimension to add
+     * @return float Normalized expansion between zero and one
+     */
+    protected function expansion( float $value ) : float
+    {
+        return max( 0, min( 1, $value ) );
     }
 
 
