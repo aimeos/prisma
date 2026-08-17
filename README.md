@@ -2114,6 +2114,10 @@ Most video generation jobs are asynchronous. Accessing `first()`, `files()`,
 Use `ready()` to perform one non-blocking status poll; providers returning video
 data immediately are ready without polling.
 
+Alibaba video polling stops after 900 seconds by default. Set `poll_timeout` in
+the provider configuration to another number of seconds, or to `0` to disable
+the deadline.
+
 **Supported options:**
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-generation-api-reference)
@@ -2271,7 +2275,8 @@ $url = $video->first()?->url();
 Each edge value is a fraction of the corresponding source dimension and is
 limited to the range from `0` to `1`. Alibaba maps these values to its outpainting
 scales. Luma maps them to the source rectangle of a `video_reframe` request.
-Unsupported options are ignored.
+At least one edge must be greater than zero. Non-finite values are rejected and
+unsupported options are ignored.
 
 Alibaba supports `prompt_extend`, `seed`, and `watermark`. Luma supports
 `aspectRatio` and `resolution` (`360p`, `540p`, `720p`, or `1080p`); availability

@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use PHPUnit\Framework\TestCase;
@@ -125,5 +126,23 @@ class LumaTest extends TestCase
         $this->assertEqualsWithDelta( 4 / 9, $position['w_norm'], 0.000001 );
         $this->assertEqualsWithDelta( 2 / 3, $position['h_norm'], 0.000001 );
         $this->assertStringNotContainsString( 'unsupported', (string) $this->requests()[0]->getBody() );
+    }
+
+
+    public function testUncropRequiresFiniteExpansion() : void
+    {
+        $this->prisma( 'video', 'luma', ['api_key' => 'test'] );
+
+        $this->expectException( BadRequestException::class );
+        $this->expectExceptionMessage( 'Video frame expansion values must be finite' );
+
+        $this->provider()->uncrop(
+            Video::fromBinary( 'MP4', 'video/mp4' ),
+            'Extend the scene',
+            NAN,
+            0.25,
+            0,
+            0
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Concerns;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Psr\Http\Message\ResponseInterface;
@@ -9,6 +10,36 @@ use Psr\Http\Message\ResponseInterface;
 
 trait GeneratesVideo
 {
+    /**
+     * Normalizes uncrop edge expansions and rejects invalid no-op requests.
+     *
+     * @param float $top Fraction of the source height to add at the top
+     * @param float $right Fraction of the source width to add at the right
+     * @param float $bottom Fraction of the source height to add at the bottom
+     * @param float $left Fraction of the source width to add at the left
+     * @return array{top: float, right: float, bottom: float, left: float} Normalized edge expansions
+     * @throws BadRequestException If an expansion is not finite or all expansions are zero
+     */
+    protected function uncropEdges( float $top, float $right, float $bottom, float $left ) : array
+    {
+        $edges = ['top' => $top, 'right' => $right, 'bottom' => $bottom, 'left' => $left];
+
+        foreach( $edges as $value ) {
+            if( !is_finite( $value ) ) {
+                throw new BadRequestException( 'Video frame expansion values must be finite' );
+            }
+        }
+
+        $edges = array_map( fn( float $value ) : float => max( 0, min( 1, $value ) ), $edges );
+
+        if( max( $edges ) === 0.0 ) {
+            throw new BadRequestException( 'At least one video frame expansion must be greater than zero' );
+        }
+
+        return $edges;
+    }
+
+
     /**
      * Returns a public URL when available and otherwise an inline data URI.
      *

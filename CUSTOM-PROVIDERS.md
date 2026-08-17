@@ -986,12 +986,13 @@ For APIs that require polling, both FileResponse and TextResponse support
 *fromAsync()*:
 
 ```php
-FileResponse::fromAsync( Closure $closure, int $retry = 5 ) : FileResponse
-TextResponse::fromAsync( Closure $closure, int $retry = 5 ) : TextResponse
+FileResponse::fromAsync( Closure $closure, int $retry = 5, int $timeout = 0 ) : FileResponse
+TextResponse::fromAsync( Closure $closure, int $retry = 5, int $timeout = 0 ) : TextResponse
 ```
 
 The closure receives the response object and returns `true` when ready or
-`false` to keep polling. `$retry` is the sleep interval in seconds.
+`false` to keep polling. `$retry` is the sleep interval in seconds. `$timeout`
+limits the complete polling lifecycle; zero disables the deadline.
 
 Typical pattern — a separate method returning the polling closure:
 

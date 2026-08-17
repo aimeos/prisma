@@ -2,6 +2,8 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -209,5 +211,49 @@ class AlibabaTest extends TestCase
         $this->assertSame( 123, $body['parameters']['seed'] );
         $this->assertTrue( $body['parameters']['watermark'] );
         $this->assertArrayNotHasKey( 'aspectRatio', $body['parameters'] );
+    }
+
+
+    public function testUncropRequiresExpansion() : void
+    {
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] );
+
+        $this->expectException( BadRequestException::class );
+        $this->expectExceptionMessage( 'At least one video frame expansion must be greater than zero' );
+
+        $this->provider()->uncrop(
+            Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ),
+            'Extend the scene',
+            0,
+            -1,
+            0,
+            0
+        );
+    }
+
+
+    public function testCanceledTaskFails() : void
+    {
+        $this->assertTerminalTaskFails( 'CANCELED' );
+    }
+
+
+    public function testUnknownTaskFails() : void
+    {
+        $this->assertTerminalTaskFails( 'UNKNOWN' );
+    }
+
+
+    protected function assertTerminalTaskFails( string $status ) : void
+    {
+        $message = 'Task ended with status ' . $status;
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )
+            ->response( ['output' => ['task_id' => 'task-1']], [], 202 );
+        $this->response( ['output' => ['task_status' => $status, 'message' => $message]] );
+
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( $message );
+
+        $this->provider()->imagine( 'A flower garden' )->first();
     }
 }

@@ -21,6 +21,22 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
     use GeneratesVideo;
 
 
+    protected int $pollTimeout = 900;
+
+
+    public function __construct( array $config )
+    {
+        parent::__construct( $config );
+        $timeout = $config['poll_timeout'] ?? null;
+
+        if( is_int( $timeout ) && $timeout >= 0 ) {
+            $this->pollTimeout = $timeout;
+        } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
+            $this->pollTimeout = (int) $timeout;
+        }
+    }
+
+
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $content = [[
@@ -90,7 +106,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return FileResponse::fromAsync( $this->poll( $id ), 5, $this->pollTimeout );
     }
 
 
@@ -177,11 +193,12 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
      */
     protected function uncropRequest( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options ) : array
     {
+        $edges = $this->uncropEdges( $top, $right, $bottom, $left );
         $parameters = $this->allowed( $options, ['prompt_extend', 'seed', 'watermark'] ) + [
-            'top_scale' => 1 + $this->expansion( $top ),
-            'right_scale' => 1 + $this->expansion( $right ),
-            'bottom_scale' => 1 + $this->expansion( $bottom ),
-            'left_scale' => 1 + $this->expansion( $left ),
+            'top_scale' => 1 + $edges['top'],
+            'right_scale' => 1 + $edges['right'],
+            'bottom_scale' => 1 + $edges['bottom'],
+            'left_scale' => 1 + $edges['left'],
         ];
 
         return [
@@ -193,18 +210,6 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             ],
             'parameters' => $parameters,
         ];
-    }
-
-
-    /**
-     * Normalizes a requested frame expansion.
-     *
-     * @param float $value Fraction of the source dimension to add
-     * @return float Normalized expansion between zero and one
-     */
-    protected function expansion( float $value ) : float
-    {
-        return max( 0, min( 1, $value ) );
     }
 
 
@@ -274,7 +279,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             $output = is_array( $data['output'] ?? null ) ? $data['output'] : [];
             $status = $output['task_status'] ?? null;
 
-            if( $status === 'FAILED' ) {
+            if( in_array( $status, ['FAILED', 'CANCELED', 'UNKNOWN'], true ) ) {
                 $this->videoFailed( is_string( $output['message'] ?? null ) ? $output['message'] : null );
             }
 

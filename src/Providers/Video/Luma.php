@@ -162,31 +162,16 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
      */
     protected function sourcePosition( float $top, float $right, float $bottom, float $left ) : array
     {
-        $top = $this->expansion( $top );
-        $right = $this->expansion( $right );
-        $bottom = $this->expansion( $bottom );
-        $left = $this->expansion( $left );
-        $width = 1 + $left + $right;
-        $height = 1 + $top + $bottom;
+        $edges = $this->uncropEdges( $top, $right, $bottom, $left );
+        $width = 1 + $edges['left'] + $edges['right'];
+        $height = 1 + $edges['top'] + $edges['bottom'];
 
         return [
-            'x_norm' => $left / $width,
-            'y_norm' => $top / $height,
+            'x_norm' => $edges['left'] / $width,
+            'y_norm' => $edges['top'] / $height,
             'w_norm' => 1 / $width,
             'h_norm' => 1 / $height,
         ];
-    }
-
-
-    /**
-     * Normalizes a requested frame expansion.
-     *
-     * @param float $value Fraction of the source dimension to add
-     * @return float Normalized expansion between zero and one
-     */
-    protected function expansion( float $value ) : float
-    {
-        return max( 0, min( 1, $value ) );
     }
 
 
