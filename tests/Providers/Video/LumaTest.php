@@ -83,4 +83,47 @@ class LumaTest extends TestCase
         $this->assertTrue( $body['video']['edit']['controls']['face']['enabled'] );
         $this->assertArrayNotHasKey( 'auto_controls', $body['video']['edit'] );
     }
+
+
+    public function testUncrop() : void
+    {
+        $this->prisma( 'video', 'luma', ['api_key' => 'test'] )
+            ->response( ['id' => 'generation-1'], [], 201 );
+        $this->response( [
+            'state' => 'completed',
+            'output' => [['type' => 'video', 'url' => 'https://example.com/uncropped.mp4']],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'uncrop' )
+            ->uncrop(
+                Video::fromBinary( 'MP4', 'video/mp4' ),
+                'Extend the flower garden beyond the frame',
+                0.5,
+                2,
+                -1,
+                0.25,
+                [
+                    'resolution' => '540p',
+                    'aspectRatio' => '4:3',
+                    'unsupported' => true,
+                ]
+            );
+
+        $this->assertSame( 'https://example.com/uncropped.mp4', $response->first()?->url() );
+        $body = json_decode( (string) $this->requests()[0]->getBody(), true );
+        $position = $body['video']['source_position'];
+
+        $this->assertSame( 'ray-3.2', $body['model'] );
+        $this->assertSame( 'video_reframe', $body['type'] );
+        $this->assertSame( base64_encode( 'MP4' ), $body['source']['data'] );
+        $this->assertSame( 'video/mp4', $body['source']['media_type'] );
+        $this->assertSame( '540p', $body['video']['resolution'] );
+        $this->assertSame( '4:3', $body['aspect_ratio'] );
+        $this->assertEqualsWithDelta( 1 / 9, $position['x_norm'], 0.000001 );
+        $this->assertEqualsWithDelta( 1 / 3, $position['y_norm'], 0.000001 );
+        $this->assertEqualsWithDelta( 4 / 9, $position['w_norm'], 0.000001 );
+        $this->assertEqualsWithDelta( 2 / 3, $position['h_norm'], 0.000001 );
+        $this->assertStringNotContainsString( 'unsupported', (string) $this->requests()[0]->getBody() );
+    }
 }
