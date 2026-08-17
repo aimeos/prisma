@@ -83,6 +83,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#extend">extend</a><span>: Continue a video according to the prompt</span></li>
     <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
     <li><a href="#repaint-1">repaint</a><span>: Repaint a video according to the prompt</span></li>
+    <li><a href="#uncrop-1">uncrop</a><span>: Extend/outpaint the video frame</span></li>
     <li><a href="#upscale-1">upscale</a><span>: Scale up a video</span></li>
 </ul>
 <div class="method-header"><a href="CUSTOM-PROVIDERS">Custom providers</a></div>
@@ -191,18 +192,18 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Video
 
-|                       | describe | extend | imagine | repaint | upscale |
-| :---                  | :---:    | :---:  | :---:   | :---:   | :---:   |
-| **Alibaba**           | yes      | beta   | beta    | beta    | -       |
-| **Bedrock Nova**      | beta     | -      | beta    | -       | -       |
-| **BytePlus**          | beta     | beta   | beta    | beta    | -       |
-| **Gemini**            | yes      | -      | -       | -       | -       |
-| **Luma**              | -        | -      | beta    | beta    | -       |
-| **MiniMax**           | -        | -      | beta    | -       | -       |
-| **Omni**              | -        | -      | beta    | beta    | -       |
-| **Runway**            | -        | -      | beta    | beta    | beta    |
-| **Veo**               | -        | -      | beta    | -       | -       |
-| **xAI**               | -        | beta   | beta    | beta    | -       |
+|                       | describe | extend | imagine | repaint | uncrop | upscale |
+| :---                  | :---:    | :---:  | :---:   | :---:   | :---:  | :---:   |
+| **Alibaba**           | yes      | beta   | beta    | beta    | beta   | -       |
+| **Bedrock Nova**      | beta     | -      | beta    | -       | -      | -       |
+| **BytePlus**          | beta     | beta   | beta    | beta    | -      | -       |
+| **Gemini**            | yes      | -      | -       | -       | -      | -       |
+| **Luma**              | -        | -      | beta    | beta    | beta   | -       |
+| **MiniMax**           | -        | -      | beta    | -       | -      | -       |
+| **Omni**              | -        | -      | beta    | beta    | -      | -       |
+| **Runway**            | -        | -      | beta    | beta    | -      | beta    |
+| **Veo**               | -        | -      | beta    | -       | -      | -       |
+| **xAI**               | -        | beta   | beta    | beta    | -      | -       |
 
 ## Installation
 
@@ -2227,6 +2228,59 @@ Most repaint jobs are asynchronous and use the same lazy polling behavior as
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)
+
+### uncrop
+
+Extend/outpaint a video frame according to the prompt.
+
+```php
+public function uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] ) : FileResponse
+```
+
+* @param **Video** `$video` Input video object
+* @param **string** `$prompt` Prompt describing the extended scene
+* @param **float** `$top` Fraction of the source height to add at the top
+* @param **float** `$right` Fraction of the source width to add at the right
+* @param **float** `$bottom` Fraction of the source height to add at the bottom
+* @param **float** `$left` Fraction of the source width to add at the left
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **FileResponse** Extended video response
+
+```php
+use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Prisma;
+
+$source = Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' );
+
+$video = Prisma::video()
+    ->using( 'luma', ['api_key' => 'xxx'] )
+    ->ensure( 'uncrop' )
+    ->uncrop(
+        $source,
+        'Extend the flower garden naturally beyond the frame',
+        0,
+        0.25,
+        0,
+        0.25,
+        ['resolution' => '720p']
+    );
+
+$url = $video->first()?->url();
+```
+
+Each edge value is a fraction of the corresponding source dimension and is
+limited to the range from `0` to `1`. Alibaba maps these values to its outpainting
+scales. Luma maps them to the source rectangle of a `video_reframe` request.
+Unsupported options are ignored.
+
+Alibaba supports `prompt_extend`, `seed`, and `watermark`. Luma supports
+`aspectRatio` and `resolution` (`360p`, `540p`, `720p`, or `1080p`); availability
+of 1080p reframing depends on the Luma account.
+
+**Supported options:**
+
+* [Alibaba Wan video outpainting](https://www.alibabacloud.com/help/en/model-studio/legacy-wanx-vace-api-reference)
+* [Luma Ray video reframing](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 
 ### upscale
 

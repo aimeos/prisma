@@ -145,6 +145,7 @@ only needs to implement the ones it supports.
 | Extend | `extend( Video $video, string $prompt, array $options = [] )` | FileResponse |
 | Imagine | `imagine( string $prompt, array $media = [], array $options = [] )` | FileResponse |
 | Repaint | `repaint( Video $video, string $prompt, array $options = [] )` | FileResponse |
+| Uncrop | `uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] )` | FileResponse |
 | Upscale | `upscale( Video $video, int $factor, array $options = [] )` | FileResponse |
 
 ### New provider types
