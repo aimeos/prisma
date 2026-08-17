@@ -10,6 +10,23 @@ use Psr\Http\Message\ResponseInterface;
 trait GeneratesVideo
 {
     /**
+     * Separates semantic repaint media from legacy third-argument options.
+     *
+     * @param array<string, mixed> $media Reference media or legacy options
+     * @param array<string, mixed> $options Provider-specific options
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>} Media and options
+     */
+    protected function repaintArguments( array $media, array $options ) : array
+    {
+        if( array_key_exists( 'references', $media ) ) {
+            return [$media, $options];
+        }
+
+        return [[], array_replace( $media, $options )];
+    }
+
+
+    /**
      * Returns a public URL when available and otherwise an inline data URI.
      *
      * @param File $file Input media file

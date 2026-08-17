@@ -53,9 +53,11 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->submit( $this->repaintRequest( $video, $prompt, $options ) );
+        [$media, $options] = $this->repaintArguments( $media, $options );
+
+        return $this->submit( $this->repaintRequest( $video, $prompt, $media, $options ) );
     }
 
 
@@ -124,15 +126,25 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $media Reference media by semantic role
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */
-    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    protected function repaintRequest( Video $video, string $prompt, array $media, array $options ) : array
     {
         $input = [
             'prompt' => $prompt,
             'media' => [['type' => 'video', 'url' => $this->mediaUrl( $video )]],
         ];
+        $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
+        $images = array_slice( array_values( array_filter(
+            $references,
+            fn( mixed $item ) => $item instanceof Image
+        ) ), 0, 4 );
+
+        foreach( $images as $image ) {
+            $input['media'][] = ['type' => 'reference_image', 'url' => $this->mediaUrl( $image )];
+        }
 
         if( is_string( $options['negative_prompt'] ?? null ) ) {
             $input['negative_prompt'] = $options['negative_prompt'];

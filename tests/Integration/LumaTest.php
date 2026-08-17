@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 use PHPUnit\Framework\TestCase;
@@ -26,10 +27,13 @@ class LumaTest extends TestCase
     public function testRepaintVideo() : void
     {
         $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $reference = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg', 'image/jpeg' );
         $response = Prisma::video()
             ->using( 'luma', ['api_key' => $_ENV['LUMA_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Turn the flowers into a watercolor painting' );
+            ->repaint( $source, 'Repaint the scene using the reference image as visual guidance', [
+                'references' => [$reference],
+            ] );
 
         $video = $response->first();
 

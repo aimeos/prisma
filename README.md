@@ -2194,30 +2194,50 @@ supports `direction` with `forward` (default) or `backward`.
 Repaint a video according to the prompt.
 
 ```php
-public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
 ```
 
 * @param **Video** `$video` Input video object
 * @param **string** `$prompt` Prompt describing the changes
-* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @param **array** `$media` Semantic media role `references`
+* @param **array&#60;string, mixed&#62;** `$options` Common and provider-specific options
 * @return **FileResponse** Repainted video response
 
 ```php
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 
 $source = Video::fromUrl( 'https://example.com/video.mp4', 'video/mp4' );
+$reference = Image::fromUrl( 'https://example.com/style.png', 'image/png' );
 
 $video = Prisma::video()
     ->using( 'runway', ['api_key' => 'xxx'] )
     ->ensure( 'repaint' )
-    ->repaint( $source, 'Turn the scene into a watercolor painting' );
+    ->repaint( $source, 'Use the colors and clothing from the reference image', [
+        'references' => [$reference],
+    ] );
 
 $url = $video->first()?->url();
 ```
 
 Most repaint jobs are asynchronous and use the same lazy polling behavior as
-`imagine()`. Providers ignore options they don't support.
+`imagine()`. Unsupported reference types and references beyond provider limits are
+omitted silently. Calls using the third argument for options remain supported.
+
+| Provider          | references |
+| :---              | :---       |
+| Alibaba Wan       | image, up to 4 |
+| BytePlus Seedance | image, video, audio |
+| Gemini Omni       | image |
+| Luma Ray          | image keyframes |
+| Runway            | image keyframes, up to 5 |
+| xAI Grok Imagine  | - |
+
+Luma uses the first reference at frame `0` by default. Multiple Luma references
+require `keyframeIndexes`, for example `[0, 48]`. Runway distributes references
+across the video by default; normalized positions can be supplied using
+`referencePositions`, for example `[0.0, 1.0]`.
 
 **Supported options:**
 
