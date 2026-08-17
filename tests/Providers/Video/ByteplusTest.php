@@ -139,6 +139,12 @@ class ByteplusTest extends TestCase
         $response = $this->provider()
             ->ensure( 'repaint' )
             ->repaint( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Add falling snow', [
+                'references' => [
+                    Image::fromUrl( 'https://example.com/coat.png', 'image/png' ),
+                    Audio::fromUrl( 'https://example.com/voice.mp3', 'audio/mpeg' ),
+                    Video::fromUrl( 'https://example.com/motion.mp4', 'video/mp4' ),
+                ],
+            ], [
                 'duration' => 5,
                 'audio' => true,
             ] );
@@ -152,6 +158,10 @@ class ByteplusTest extends TestCase
         $this->assertSame( 'Add falling snow', $body['content'][0]['text'] );
         $this->assertSame( 'reference_video', $body['content'][1]['role'] );
         $this->assertSame( 'https://example.com/input.mp4', $body['content'][1]['video_url']['url'] );
+        $this->assertSame(
+            ['reference_video', 'reference_image', 'reference_audio', 'reference_video'],
+            array_column( array_slice( $body['content'], 1 ), 'role' )
+        );
         $this->assertSame( 5, $body['duration'] );
         $this->assertTrue( $body['generate_audio'] );
     }

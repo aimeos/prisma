@@ -68,10 +68,13 @@ class AlibabaTest extends TestCase
     public function testRepaintVideo() : void
     {
         $source = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $reference = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg', 'image/jpeg' );
         $response = Prisma::video()
             ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
             ->ensure( 'repaint' )
-            ->repaint( $source, 'Turn the flowers into a watercolor painting' );
+            ->repaint( $source, 'Repaint the scene using the colors from the reference image', [
+                'references' => [$reference],
+            ] );
 
         $video = $response->first();
 

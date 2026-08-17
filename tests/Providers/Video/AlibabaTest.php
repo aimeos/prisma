@@ -139,6 +139,16 @@ class AlibabaTest extends TestCase
         $response = $this->provider()
             ->ensure( 'repaint' )
             ->repaint( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Add falling snow', [
+                'references' => [
+                    Image::fromUrl( 'https://example.com/reference-1.png', 'image/png' ),
+                    Image::fromUrl( 'https://example.com/reference-2.png', 'image/png' ),
+                    Image::fromUrl( 'https://example.com/reference-3.png', 'image/png' ),
+                    Image::fromUrl( 'https://example.com/reference-4.png', 'image/png' ),
+                    Image::fromUrl( 'https://example.com/discarded.png', 'image/png' ),
+                    Audio::fromUrl( 'https://example.com/discarded.mp3', 'audio/mpeg' ),
+                    Video::fromUrl( 'https://example.com/discarded.mp4', 'video/mp4' ),
+                ],
+            ], [
                 'negative_prompt' => 'rain',
                 'resolution' => '720P',
                 'aspectRatio' => '9:16',
@@ -158,7 +168,11 @@ class AlibabaTest extends TestCase
         $this->assertSame( 'wan2.7-videoedit', $body['model'] );
         $this->assertSame( 'Add falling snow', $body['input']['prompt'] );
         $this->assertSame( 'rain', $body['input']['negative_prompt'] );
-        $this->assertSame( [['type' => 'video', 'url' => 'https://example.com/input.mp4']], $body['input']['media'] );
+        $this->assertSame(
+            ['video', 'reference_image', 'reference_image', 'reference_image', 'reference_image'],
+            array_column( $body['input']['media'], 'type' )
+        );
+        $this->assertStringNotContainsString( 'discarded', (string) $request->getBody() );
         $this->assertSame( '9:16', $body['parameters']['ratio'] );
         $this->assertSame( 'origin', $body['parameters']['audio_setting'] );
         $this->assertFalse( $body['parameters']['prompt_extend'] );

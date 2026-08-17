@@ -144,7 +144,7 @@ only needs to implement the ones it supports.
 | Describe | `describe( Video $video, ?string $lang = null, array $options = [] )` | TextResponse |
 | Extend | `extend( Video $video, string $prompt, array $options = [] )` | FileResponse |
 | Imagine | `imagine( string $prompt, array $media = [], array $options = [] )` | FileResponse |
-| Repaint | `repaint( Video $video, string $prompt, array $options = [] )` | FileResponse |
+| Repaint | `repaint( Video $video, string $prompt, array $media = [], array $options = [] )` | FileResponse |
 | Upscale | `upscale( Video $video, int $factor, array $options = [] )` | FileResponse |
 
 ### New provider types

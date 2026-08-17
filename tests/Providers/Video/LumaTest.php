@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use PHPUnit\Framework\TestCase;
@@ -64,9 +65,16 @@ class LumaTest extends TestCase
         $response = $this->provider()
             ->ensure( 'repaint' )
             ->repaint( Video::fromBinary( 'MP4', 'video/mp4' ), 'Add falling snow', [
+                'references' => [
+                    Image::fromUrl( 'https://example.com/start-guide.png', 'image/png' ),
+                    Audio::fromUrl( 'https://example.com/discarded.mp3', 'audio/mpeg' ),
+                    Image::fromUrl( 'https://example.com/end-guide.png', 'image/png' ),
+                ],
+            ], [
                 'resolution' => '540p',
                 'strength' => 'flex_2',
                 'controls' => ['face' => ['enabled' => true]],
+                'keyframeIndexes' => [0, 48],
             ] );
 
         $this->assertSame( 'https://example.com/repainted.mp4', $response->first()?->url() );
@@ -81,6 +89,12 @@ class LumaTest extends TestCase
         $this->assertSame( '540p', $body['video']['resolution'] );
         $this->assertSame( 'flex_2', $body['video']['edit']['strength'] );
         $this->assertTrue( $body['video']['edit']['controls']['face']['enabled'] );
+        $this->assertSame( [0, 48], $body['video']['edit']['keyframe_indexes'] );
+        $this->assertSame( [
+            ['url' => 'https://example.com/start-guide.png'],
+            ['url' => 'https://example.com/end-guide.png'],
+        ], $body['video']['edit']['keyframes'] );
+        $this->assertStringNotContainsString( 'discarded.mp3', (string) $request->getBody() );
         $this->assertArrayNotHasKey( 'auto_controls', $body['video']['edit'] );
     }
 }
