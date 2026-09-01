@@ -104,8 +104,9 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Deepgram](https://deepgram.com/)
 - [Deepseek](https://api-docs.deepseek.com/)
 - [ElevenLabs](https://elevenlabs.io/docs/overview/intro)
-- [Gemini (Google)](https://aistudio.google.com/models/gemini-2-5-flash-image)
+- [Google Gemini](https://aistudio.google.com/models/gemini-2-5-flash-image)
 - [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
+- [Google VertexAI](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [Groq](https://groq.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
@@ -123,7 +124,6 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Replicate](https://replicate.com/docs)
 - [Runway](https://docs.dev.runwayml.com/)
 - [StabilityAI](https://platform.stability.ai/)
-- [VertexAI (Google)](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [VoyageAI](https://docs.voyageai.com/)
 - [xAI](https://docs.x.ai/)
 - [Z.AI](https://docs.z.ai/api-reference)
@@ -136,7 +136,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **AudioPod**          | yes   | yes     | -        | yes     | yes   | yes        |
 | **Deepgram**          | -     | -       | -        | -       | yes   | yes        |
 | **ElevenLabs**        | -     | -       | -        | yes     | yes   | yes        |
-| **Gemini**            | -     | -       | yes      | -       | -     | -          |
+| **Google Gemini**     | -     | -       | yes      | -       | -     | -          |
 | **Groq**              | -     | -       | yes      | -       | yes   | yes        |
 | **Mistral**           | -     | -       | yes      | -       | -     | yes        |
 | **Murf**              | -     | -       | -        | yes     | yes   | -          |
@@ -153,7 +153,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | -       | beta   | -       | -         |
 | **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **Gemini**            | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
+| **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
@@ -178,7 +178,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -     | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Deepseek**          | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | -               |
 | **DeepL**             |       |            | yes       |           |       |           |              |                |               |                 |
-| **Gemini**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google Gemini**     | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |       |            | yes       |           |       |           |              |                |               |                 |
 | **Groq**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | -               |
 | **Kimi**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
@@ -199,13 +199,13 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Alibaba**           | yes      | beta   | beta    | beta    | beta   | -       |
 | **Bedrock Nova**      | beta     | -      | beta    | -       | -      | -       |
 | **BytePlus**          | beta     | beta   | beta    | beta    | -      | -       |
-| **Gemini**            | yes      | -      | -       | -       | -      | -       |
+| **Google Gemini**     | yes      | -      | -       | -       | -      | -       |
+| **Google Omni**       | -        | -      | beta    | beta    | -      | -       |
+| **Google Veo**        | -        | -      | beta    | -       | -      | -       |
 | **Luma**              | -        | -      | beta    | beta    | beta   | -       |
 | **MiniMax**           | -        | -      | beta    | -       | -      | -       |
-| **Omni**              | -        | -      | beta    | beta    | -      | -       |
 | **Openrouter**        | yes      | -      | beta    | -       | -      | -       |
 | **Runway**            | -        | -      | beta    | beta    | -      | beta    |
-| **Veo**               | -        | -      | beta    | -       | -      | -       |
 | **xAI**               | -        | beta   | beta    | beta    | -      | -       |
 
 ## Installation
@@ -418,7 +418,7 @@ Each entry is an array with a `role` of `user` or `assistant` and a string
 `content`. User turns may add a `files` key with an array of `File` objects for
 multimodal input, subject to the provider's file support (images for all text
 providers; PDFs additionally on Anthropic; images, audio, video and PDFs on
-Gemini). System context is set via [withSystemPrompt](#withsystemprompt), not as
+Google Gemini). System context is set via [withSystemPrompt](#withsystemprompt), not as
 a message. The current prompt passed to `stream()`/`write()`/`structure()` is
 appended as the final user turn.
 
@@ -464,7 +464,7 @@ public function withMaxTokens( ?int $tokens ) : self
 ### withReasoning
 
 Enable reasoning or ask supported providers to minimize it. Providers map
-`false` to their closest native control; for example, Gemini and Ollama disable
+`false` to their closest native control; for example, Google Gemini and Ollama disable
 thinking, OpenRouter excludes reasoning, and OpenAI uses minimal effort. Explicit
 provider options passed to `write()`, `stream()` or `structure()` take precedence.
 
@@ -487,7 +487,7 @@ Providers without a native reasoning control ignore this setting.
 
 Set the thinking/reasoning budget in tokens for models that support extended
 thinking. The budget is mapped to each provider's native format automatically:
-token counts for Anthropic, OpenAI, Gemini and Bedrock; effort levels for other
+token counts for Anthropic, OpenAI, Google Gemini and Bedrock; effort levels for other
 OpenAI-API providers (&#8804; 1024 → low, &#8804; 8192 → medium, > 8192 → high).
 Kimi uses its native low/high/max levels for those same three ranges.
 
@@ -609,7 +609,7 @@ $raw = $response->usage()->all();    // complete provider map as array
 ### Citations
 
 TextResponse objects include citations when returned by providers that support them
-(Anthropic, Gemini, OpenAI, Perplexity, xAI). Each citation is a normalized array
+(Anthropic, Google Gemini, OpenAI, Perplexity, xAI). Each citation is a normalized array
 with four fields:
 
 ```php
@@ -628,7 +628,7 @@ foreach( $citations as $citation ) {
 ```
 
 The `text` field contains the snippet from the model's **output** that cites the source
-(populated by OpenAI, xAI, Gemini). The `source` field contains a verbatim quote from the
+(populated by OpenAI, xAI, Google Gemini). The `source` field contains a verbatim quote from the
 **input/source document** (populated by Anthropic). For Perplexity, only `url` is available.
 
 Anthropic requires opting in via options:
@@ -771,10 +771,10 @@ $schema = Schema::for( 'result', [
 ] );
 ```
 
-`anyOf` is supported by OpenAI, Anthropic and Gemini (it is not supported at the
+`anyOf` is supported by OpenAI, Anthropic and Google Gemini (it is not supported at the
 root of an OpenAI schema). `oneOf` is not supported by any provider. Each branch
 is adapted to the target provider automatically (object branches are closed for
-OpenAI/Anthropic/Cohere and reduced to the OpenAPI subset for Gemini).
+OpenAI/Anthropic/Cohere and reduced to the OpenAPI subset for Google Gemini).
 
 **Reusable definitions** let you declare a sub-schema once and reference it from
 multiple places (JSON Schema `$defs` and `$ref`). Register a definition with
@@ -793,8 +793,8 @@ $schema = Schema::for( 'order', [
 `Schema::ref( 'Address' )` resolves to the pointer `#/$defs/Address`; a value
 already starting with `#` is used verbatim. Definitions are adapted to the target
 provider just like inline schemas (closed for OpenAI/Anthropic/Cohere, reduced to
-the OpenAPI subset for Gemini). `$ref`/`$defs` are supported by OpenAI, Anthropic,
-Gemini and Cohere; for providers without native schema support (e.g. Bedrock) they
+the OpenAPI subset for Google Gemini). `$ref`/`$defs` are supported by OpenAI, Anthropic,
+Google Gemini and Cohere; for providers without native schema support (e.g. Bedrock) they
 are passed through in the prompt as-is.
 
 ### From arrays
@@ -929,9 +929,9 @@ $response = Prisma::text()
 
 | Tool name | Providers |
 | :--- | :--- |
-| `web_search` | Anthropic, OpenAI, Gemini, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
+| `web_search` | Anthropic, OpenAI, Google Gemini, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
 | `web_search_premium` | Mistral |
-| `code_execution` | Anthropic, OpenAI, Gemini, Mistral, xAI |
+| `code_execution` | Anthropic, OpenAI, Google Gemini, Mistral, xAI |
 | `web_fetch` | Anthropic |
 | `file_search` | OpenAI |
 | `image_generation` | Mistral |
@@ -1155,7 +1155,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 **Supported options:**
 
-* Gemini
+* Google Gemini
 * Groq
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 
@@ -1302,7 +1302,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 **Supported options:**
 
-* Gemini
+* Google Gemini
 * Groq
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/describe#request)
 * OpenAI
@@ -1409,7 +1409,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
-* [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
@@ -1590,7 +1590,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 **Supported options:**
 
-* [Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/remix-v3#request)
 
 **Example:**
@@ -1747,7 +1747,7 @@ Iterating `$response->stream()` yields:
 * [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
-* [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/guide/utilize-the-streaming-output-feature-of-kimi-api)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
@@ -1871,7 +1871,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
-* [Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [Kimi](https://platform.kimi.ai/docs/guide/kimi-k3-quickstart#structured-output)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
@@ -1979,7 +1979,7 @@ public function vectorize( array $texts, ?int $size = null, array $options = [] 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#embeddings)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html)
 * [Cohere](https://docs.cohere.com/reference/embed)
-* [Gemini](https://ai.google.dev/api/embeddings)
+* [Google Gemini](https://ai.google.dev/api/embeddings)
 * [Mistral](https://docs.mistral.ai/api/#tag/embeddings)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/embeddings/create)
@@ -2020,7 +2020,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
-* [Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/api/chat)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
@@ -2101,11 +2101,11 @@ video reference.
 | Alibaba Wan       | image | image | image, video, audio; frame mode may use one driving audio |
 | Bedrock Nova Reel | image | -     | -        |
 | BytePlus Seedance | image | image | image, video, audio; audio requires a visual reference |
+| Google Omni       | image | -     | image    |
+| Google Veo        | image | image | image    |
 | Luma Ray          | image | image | -        |
 | MiniMax Hailuo    | image | image | image    |
-| Omni              | image | -     | image    |
 | Runway            | image | image | -        |
-| Veo               | image | image | image    |
 | xAI Grok Imagine  | image | -     | image    |
 
 Common options are `duration` (seconds), `aspectRatio`, `resolution`, `audio`,
@@ -2126,11 +2126,11 @@ the deadline.
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-generation-api-reference)
 * [Amazon Nova Reel](https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/1366799)
-* [Gemini Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
 * [Runway](https://docs.dev.runwayml.com/api/)
-* [Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
 
 Amazon Nova Reel also requires an S3 destination in the provider configuration:
@@ -2154,7 +2154,7 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Alibaba Qwen](https://www.alibabacloud.com/help/en/model-studio/vision-model)
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
-* [Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
+* [Google Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
 
 ### extend
 
@@ -2237,7 +2237,7 @@ omitted silently. Calls using the third argument for options remain supported.
 | :---              | :---       |
 | Alibaba Wan       | image, up to 4 |
 | BytePlus Seedance | image, video, audio |
-| Gemini Omni       | image |
+| Google Omni       | image |
 | Luma Ray          | image keyframes |
 | Runway            | image keyframes, up to 5 |
 | xAI Grok Imagine  | - |
@@ -2251,7 +2251,7 @@ across the video by default; normalized positions can be supplied using
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-editing-api-reference)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
-* [Gemini Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)
