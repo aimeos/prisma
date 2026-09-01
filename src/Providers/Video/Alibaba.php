@@ -70,9 +70,11 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->submit( $this->repaintRequest( $video, $prompt, $options ) );
+        [$media, $options] = $this->repaintArguments( $media, $options );
+
+        return $this->submit( $this->repaintRequest( $video, $prompt, $media, $options ) );
     }
 
 
@@ -147,15 +149,25 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $media Reference media by semantic role
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */
-    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    protected function repaintRequest( Video $video, string $prompt, array $media, array $options ) : array
     {
         $input = [
             'prompt' => $prompt,
             'media' => [['type' => 'video', 'url' => $this->mediaUrl( $video )]],
         ];
+        $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
+        $images = array_slice( array_values( array_filter(
+            $references,
+            fn( mixed $item ) => $item instanceof Image
+        ) ), 0, 4 );
+
+        foreach( $images as $image ) {
+            $input['media'][] = ['type' => 'reference_image', 'url' => $this->mediaUrl( $image )];
+        }
 
         if( is_string( $options['negative_prompt'] ?? null ) ) {
             $input['negative_prompt'] = $options['negative_prompt'];
@@ -184,10 +196,10 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the extended scene
-     * @param float $top Fraction of the source height to add at the top
-     * @param float $right Fraction of the source width to add at the right
-     * @param float $bottom Fraction of the source height to add at the bottom
-     * @param float $left Fraction of the source width to add at the left
+     * @param float $top Requested fraction of the source height to add at the top; negative values are treated as 0
+     * @param float $right Requested fraction of the source width to add at the right; negative values are treated as 0
+     * @param float $bottom Requested fraction of the source height to add at the bottom; negative values are treated as 0
+     * @param float $left Requested fraction of the source width to add at the left; negative values are treated as 0
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */

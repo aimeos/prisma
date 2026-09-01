@@ -36,8 +36,10 @@ class Xai extends Base implements Extend, Imagine, Repaint
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
+        [, $options] = $this->repaintArguments( $media, $options );
+
         return $this->submit( 'v1/videos/edits', $this->videoRequest( $video, $prompt, $options ) );
     }
 

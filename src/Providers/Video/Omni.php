@@ -22,9 +22,11 @@ class Omni extends Base implements Imagine, Repaint
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->submit( $this->repaintRequest( $video, $prompt ) );
+        [$media] = $this->repaintArguments( $media, $options );
+
+        return $this->submit( $this->repaintRequest( $video, $prompt, $media ) );
     }
 
 
@@ -60,20 +62,30 @@ class Omni extends Base implements Imagine, Repaint
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $media Reference media by semantic role
      * @return array<string, mixed> Request payload
      */
-    protected function repaintRequest( Video $video, string $prompt ) : array
+    protected function repaintRequest( Video $video, string $prompt, array $media ) : array
     {
+        $input = [[
+            'type' => 'video',
+            'data' => $video->base64(),
+            'mime_type' => $video->mimeType() ?? 'video/mp4',
+        ]];
+
+        foreach( $this->images( $media ) as $image ) {
+            $input[] = [
+                'type' => 'image',
+                'data' => $image->base64(),
+                'mime_type' => $image->mimeType() ?? 'image/png',
+            ];
+        }
+
+        $input[] = ['type' => 'text', 'text' => $prompt];
+
         return [
             'model' => $this->modelName( 'gemini-omni-flash-preview' ),
-            'input' => [[
-                'type' => 'video',
-                'data' => $video->base64(),
-                'mime_type' => $video->mimeType() ?? 'video/mp4',
-            ], [
-                'type' => 'text',
-                'text' => $prompt,
-            ]],
+            'input' => $input,
             'response_format' => ['type' => 'video'],
             'generation_config' => ['video_config' => ['task' => 'edit']],
         ];
