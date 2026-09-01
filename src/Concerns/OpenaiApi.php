@@ -227,17 +227,17 @@ trait OpenaiApi
      *
      * @param string $endpoint API endpoint path
      * @param string $defaultModel Default embedding model name
-     * @param array<int, string> $texts Input texts to embed
+     * @param array<int, mixed> $inputs Inputs to embed
      * @param int|null $size Requested vector size or null for the provider default
      * @param array<string, mixed> $options Pre-filtered request options
      * @param string $sizeParam Request field carrying the vector size (e.g. "dimensions")
      * @return \Aimeos\Prisma\Responses\VectorResponse Embedding vector response
      */
-    protected function embeddings( string $endpoint, string $defaultModel, array $texts, ?int $size, array $options, string $sizeParam = 'dimensions' ) : \Aimeos\Prisma\Responses\VectorResponse
+    protected function embeddings( string $endpoint, string $defaultModel, array $inputs, ?int $size, array $options, string $sizeParam = 'dimensions' ) : \Aimeos\Prisma\Responses\VectorResponse
     {
         $request = [
             'model' => $this->modelName( $defaultModel ),
-            'input' => array_values( $texts ),
+            'input' => array_values( $inputs ),
         ] + ( $size ? [$sizeParam => $size] : [] ) + $options;
 
         $response = $this->client()->post( $endpoint, ['json' => $request] );
