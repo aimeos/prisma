@@ -5,7 +5,6 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Openrouter extends Base
@@ -51,6 +50,22 @@ class Openrouter extends Base
     protected function reasoningParams() : array
     {
         return $this->reasoningEnabled() === false ? ['reasoning' => ['exclude' => true]] : [];
+    }
+
+
+    /**
+     * Returns a public URL or an inline data URI for an input file.
+     *
+     * @param \Aimeos\Prisma\Files\File $file Input file
+     * @return string URL or data URI
+     */
+    protected function fileUrl( \Aimeos\Prisma\Files\File $file ) : string
+    {
+        return $file->url() ?: sprintf(
+            'data:%s;base64,%s',
+            $file->mimeType() ?? 'application/octet-stream',
+            $file->base64()
+        );
     }
 
 
