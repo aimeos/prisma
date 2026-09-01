@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use PHPUnit\Framework\TestCase;
@@ -62,9 +63,16 @@ class RunwayTest extends TestCase
         $response = $this->provider()
             ->ensure( 'repaint' )
             ->repaint( Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ), 'Add falling snow', [
+                'references' => [
+                    Image::fromUrl( 'https://example.com/coat.png', 'image/png' ),
+                    Audio::fromUrl( 'https://example.com/discarded.mp3', 'audio/mpeg' ),
+                    Image::fromUrl( 'https://example.com/hat.png', 'image/png' ),
+                ],
+            ], [
                 'aspectRatio' => '21:9',
                 'seed' => 123,
                 'duration' => 5,
+                'referencePositions' => [0.25, 0.75],
             ] );
 
         $this->assertSame( 'https://example.com/repainted.mp4', $response->first()?->url() );
@@ -75,6 +83,11 @@ class RunwayTest extends TestCase
         $this->assertSame( 'aleph2', $body['model'] );
         $this->assertSame( 'https://example.com/input.mp4', $body['videoUri'] );
         $this->assertSame( 'Add falling snow', $body['promptText'] );
+        $this->assertSame( [
+            ['uri' => 'https://example.com/coat.png', 'at' => 0.25],
+            ['uri' => 'https://example.com/hat.png', 'at' => 0.75],
+        ], $body['keyframes'] );
+        $this->assertStringNotContainsString( 'discarded.mp3', (string) $request->getBody() );
         $this->assertSame( '21:9', $body['targetAspectRatio'] );
         $this->assertSame( 123, $body['seed'] );
         $this->assertArrayNotHasKey( 'duration', $body );

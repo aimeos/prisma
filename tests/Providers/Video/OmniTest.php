@@ -64,7 +64,13 @@ class OmniTest extends TestCase
                 ]],
             ]]] )
             ->ensure( 'repaint' )
-            ->repaint( Video::fromBinary( 'MP4', 'video/mp4' ), 'Add falling snow' );
+            ->repaint( Video::fromBinary( 'MP4', 'video/mp4' ), 'Add falling snow', [
+                'references' => [
+                    Image::fromBinary( 'REFERENCE', 'image/png' ),
+                    Audio::fromBinary( 'AUDIO', 'audio/mpeg' ),
+                    Video::fromBinary( 'VIDEO', 'video/mp4' ),
+                ],
+            ] );
 
         $this->assertPrismaRequest( function( $request ) {
             $body = json_decode( (string) $request->getBody(), true );
@@ -75,7 +81,10 @@ class OmniTest extends TestCase
             $this->assertSame( 'video', $body['input'][0]['type'] );
             $this->assertSame( base64_encode( 'MP4' ), $body['input'][0]['data'] );
             $this->assertSame( 'video/mp4', $body['input'][0]['mime_type'] );
-            $this->assertSame( 'Add falling snow', $body['input'][1]['text'] );
+            $this->assertSame( base64_encode( 'REFERENCE' ), $body['input'][1]['data'] );
+            $this->assertSame( 'Add falling snow', $body['input'][2]['text'] );
+            $this->assertStringNotContainsString( base64_encode( 'AUDIO' ), (string) $request->getBody() );
+            $this->assertStringNotContainsString( base64_encode( 'VIDEO' ), (string) $request->getBody() );
         } );
 
         $this->assertSame( 'EDITED', $response->binary() );
