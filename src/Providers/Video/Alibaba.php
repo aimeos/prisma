@@ -7,6 +7,7 @@ use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
+use Aimeos\Prisma\Contracts\Video\Uncrop;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -15,9 +16,25 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
+class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
 {
     use GeneratesVideo;
+
+
+    protected int $pollTimeout = 900;
+
+
+    public function __construct( array $config )
+    {
+        parent::__construct( $config );
+        $timeout = $config['poll_timeout'] ?? null;
+
+        if( is_int( $timeout ) && $timeout >= 0 ) {
+            $this->pollTimeout = $timeout;
+        } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
+            $this->pollTimeout = (int) $timeout;
+        }
+    }
 
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
@@ -61,6 +78,12 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
     }
 
 
+    public function uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->uncropRequest( $video, $prompt, $top, $right, $bottom, $left, $options ) );
+    }
+
+
     /**
      * Submits an Alibaba video request.
      *
@@ -85,7 +108,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
             $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return FileResponse::fromAsync( $this->poll( $id ), 5, $this->pollTimeout );
     }
 
 
@@ -169,6 +192,40 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
 
 
     /**
+     * Builds the Alibaba video outpainting request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the extended scene
+     * @param float $top Fraction of the source height to add at the top
+     * @param float $right Fraction of the source width to add at the right
+     * @param float $bottom Fraction of the source height to add at the bottom
+     * @param float $left Fraction of the source width to add at the left
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function uncropRequest( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options ) : array
+    {
+        $edges = $this->uncropEdges( $top, $right, $bottom, $left );
+        $parameters = $this->allowed( $options, ['prompt_extend', 'seed', 'watermark'] ) + [
+            'top_scale' => 1 + $edges['top'],
+            'right_scale' => 1 + $edges['right'],
+            'bottom_scale' => 1 + $edges['bottom'],
+            'left_scale' => 1 + $edges['left'],
+        ];
+
+        return [
+            'model' => $this->modelName( 'wan2.1-vace-plus' ),
+            'input' => [
+                'function' => 'video_outpainting',
+                'prompt' => $prompt,
+                'video_url' => $this->mediaUrl( $video ),
+            ],
+            'parameters' => $parameters,
+        ];
+    }
+
+
+    /**
      * Maps supported media and selects the matching default Wan model.
      *
      * @param array<string, mixed> $media Input media by semantic role
@@ -234,7 +291,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint
             $output = is_array( $data['output'] ?? null ) ? $data['output'] : [];
             $status = $output['task_status'] ?? null;
 
-            if( $status === 'FAILED' ) {
+            if( in_array( $status, ['FAILED', 'CANCELED', 'UNKNOWN'], true ) ) {
                 $this->videoFailed( is_string( $output['message'] ?? null ) ? $output['message'] : null );
             }
 

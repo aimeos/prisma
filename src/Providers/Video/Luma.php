@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers\Video;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
+use Aimeos\Prisma\Contracts\Video\Uncrop;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Luma extends Base implements Imagine, Repaint
+class Luma extends Base implements Imagine, Repaint, Uncrop
 {
     use GeneratesVideo;
 
@@ -39,6 +40,12 @@ class Luma extends Base implements Imagine, Repaint
         [$media, $options] = $this->repaintArguments( $media, $options );
 
         return $this->submit( $this->repaintRequest( $video, $prompt, $media, $options ) );
+    }
+
+
+    public function uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] ) : FileResponse
+    {
+        return $this->submit( $this->uncropRequest( $video, $prompt, $top, $right, $bottom, $left, $options ) );
     }
 
 
@@ -151,6 +158,65 @@ class Luma extends Base implements Imagine, Repaint
         return [
             'keyframes' => array_map( fn( Image $image ) => $this->mediaReference( $image ), $images ),
             'keyframe_indexes' => array_values( $indexes ),
+        ];
+    }
+
+
+    /**
+     * Builds the Luma video reframing request.
+     *
+     * @param Video $video Input video object
+     * @param string $prompt Prompt describing the extended scene
+     * @param float $top Fraction of the source height to add at the top
+     * @param float $right Fraction of the source width to add at the right
+     * @param float $bottom Fraction of the source height to add at the bottom
+     * @param float $left Fraction of the source width to add at the left
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Request payload
+     */
+    protected function uncropRequest( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options ) : array
+    {
+        $request = [
+            'prompt' => $prompt,
+            'model' => $this->modelName( 'ray-3.2' ),
+            'type' => 'video_reframe',
+            'source' => $this->videoReference( $video ),
+            'video' => [
+                'resolution' => $this->resolution( $options['resolution'] ?? null ),
+                'source_position' => $this->sourcePosition( $top, $right, $bottom, $left ),
+            ],
+        ];
+
+        $ratios = ['3:1', '2:1', '21:9', '16:9', '4:3', '3:2', '1:1', '3:4', '2:3', '9:16', '1:2', '1:3'];
+
+        if( in_array( $options['aspectRatio'] ?? null, $ratios, true ) ) {
+            $request['aspect_ratio'] = $options['aspectRatio'];
+        }
+
+        return $request;
+    }
+
+
+    /**
+     * Maps edge expansions to Luma's normalized source rectangle.
+     *
+     * @param float $top Fraction of the source height to add at the top
+     * @param float $right Fraction of the source width to add at the right
+     * @param float $bottom Fraction of the source height to add at the bottom
+     * @param float $left Fraction of the source width to add at the left
+     * @return array{x_norm: float, y_norm: float, w_norm: float, h_norm: float} Normalized source rectangle
+     */
+    protected function sourcePosition( float $top, float $right, float $bottom, float $left ) : array
+    {
+        $edges = $this->uncropEdges( $top, $right, $bottom, $left );
+        $width = 1 + $edges['left'] + $edges['right'];
+        $height = 1 + $edges['top'] + $edges['bottom'];
+
+        return [
+            'x_norm' => $edges['left'] / $width,
+            'y_norm' => $edges['top'] / $height,
+            'w_norm' => 1 / $width,
+            'h_norm' => 1 / $height,
         ];
     }
 

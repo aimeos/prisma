@@ -2,6 +2,8 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -177,5 +179,95 @@ class AlibabaTest extends TestCase
         $this->assertSame( 'origin', $body['parameters']['audio_setting'] );
         $this->assertFalse( $body['parameters']['prompt_extend'] );
         $this->assertArrayNotHasKey( 'unsupported', $body['parameters'] );
+    }
+
+
+    public function testUncrop() : void
+    {
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )
+            ->response( ['output' => ['task_id' => 'task-1']], [], 202 );
+        $this->response( [
+            'output' => [
+                'task_status' => 'SUCCEEDED',
+                'video_url' => 'https://example.com/uncropped.mp4',
+            ],
+        ] );
+
+        $response = $this->provider()
+            ->ensure( 'uncrop' )
+            ->uncrop(
+                Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ),
+                'Extend the flower garden beyond the frame',
+                0.5,
+                2,
+                -1,
+                0.25,
+                [
+                    'prompt_extend' => false,
+                    'seed' => 123,
+                    'watermark' => true,
+                    'aspectRatio' => '16:9',
+                ]
+            );
+
+        $this->assertSame( 'https://example.com/uncropped.mp4', $response->first()?->url() );
+        $body = json_decode( (string) $this->requests()[0]->getBody(), true );
+
+        $this->assertSame( 'wan2.1-vace-plus', $body['model'] );
+        $this->assertSame( 'video_outpainting', $body['input']['function'] );
+        $this->assertSame( 'Extend the flower garden beyond the frame', $body['input']['prompt'] );
+        $this->assertSame( 'https://example.com/input.mp4', $body['input']['video_url'] );
+        $this->assertSame( 1.5, $body['parameters']['top_scale'] );
+        $this->assertSame( 2, $body['parameters']['right_scale'] );
+        $this->assertSame( 1, $body['parameters']['bottom_scale'] );
+        $this->assertSame( 1.25, $body['parameters']['left_scale'] );
+        $this->assertFalse( $body['parameters']['prompt_extend'] );
+        $this->assertSame( 123, $body['parameters']['seed'] );
+        $this->assertTrue( $body['parameters']['watermark'] );
+        $this->assertArrayNotHasKey( 'aspectRatio', $body['parameters'] );
+    }
+
+
+    public function testUncropRequiresExpansion() : void
+    {
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] );
+
+        $this->expectException( BadRequestException::class );
+        $this->expectExceptionMessage( 'At least one video frame expansion must be greater than zero' );
+
+        $this->provider()->uncrop(
+            Video::fromUrl( 'https://example.com/input.mp4', 'video/mp4' ),
+            'Extend the scene',
+            0,
+            -1,
+            0,
+            0
+        );
+    }
+
+
+    public function testCanceledTaskFails() : void
+    {
+        $this->assertTerminalTaskFails( 'CANCELED' );
+    }
+
+
+    public function testUnknownTaskFails() : void
+    {
+        $this->assertTerminalTaskFails( 'UNKNOWN' );
+    }
+
+
+    protected function assertTerminalTaskFails( string $status ) : void
+    {
+        $message = 'Task ended with status ' . $status;
+        $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] )
+            ->response( ['output' => ['task_id' => 'task-1']], [], 202 );
+        $this->response( ['output' => ['task_status' => $status, 'message' => $message]] );
+
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( $message );
+
+        $this->provider()->imagine( 'A flower garden' )->first();
     }
 }
