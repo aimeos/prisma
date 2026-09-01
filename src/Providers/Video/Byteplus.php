@@ -87,9 +87,47 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->imagine( $prompt, ['references' => [$video]], $options );
+        [$media, $options] = $this->repaintArguments( $media, $options );
+
+        return $this->imagine( $prompt, ['references' => $this->repaintReferences( $video, $media )], $options );
+    }
+
+
+    /**
+     * Selects supported BytePlus repaint references within provider limits.
+     *
+     * @param Video $video Video to edit
+     * @param array<string, mixed> $media Reference media by semantic role
+     * @return array<int, Audio|Image|Video> Source video and supported references
+     */
+    protected function repaintReferences( Video $video, array $media ) : array
+    {
+        $result = [$video];
+        $counts = ['audio' => 0, 'image' => 0, 'video' => 1];
+        $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
+
+        foreach( $references as $reference ) {
+            $type = match( true ) {
+                $reference instanceof Audio => 'audio',
+                $reference instanceof Image => 'image',
+                $reference instanceof Video => 'video',
+                default => null,
+            };
+            $limit = match( $type ) {
+                'audio', 'video' => 3,
+                'image' => 9,
+                default => 0,
+            };
+
+            if( $type && $counts[$type] < $limit ) {
+                $result[] = $reference;
+                $counts[$type]++;
+            }
+        }
+
+        return $result;
     }
 
 

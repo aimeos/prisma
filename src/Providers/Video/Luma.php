@@ -35,9 +35,11 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->submit( $this->repaintRequest( $video, $prompt, $options ) );
+        [$media, $options] = $this->repaintArguments( $media, $options );
+
+        return $this->submit( $this->repaintRequest( $video, $prompt, $media, $options ) );
     }
 
 
@@ -77,10 +79,11 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $media Reference media by semantic role
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */
-    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    protected function repaintRequest( Video $video, string $prompt, array $media, array $options ) : array
     {
         $edit = [];
         $strengths = [
@@ -103,6 +106,8 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
             $edit['auto_controls'] = true;
         }
 
+        $edit += $this->editKeyframes( $media, $options );
+
         return [
             'prompt' => $prompt,
             'model' => $this->modelName( 'ray-3.2' ),
@@ -117,14 +122,55 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
 
 
     /**
+     * Builds supported timed guide frames for a Luma video edit.
+     *
+     * A single reference defaults to the first frame. Multiple references require a
+     * matching list of non-negative frame indexes in the keyframeIndexes option.
+     *
+     * @param array<string, mixed> $media Reference media by semantic role
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<string, mixed> Luma edit keyframe fields
+     */
+    protected function editKeyframes( array $media, array $options ) : array
+    {
+        $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
+        $images = array_slice( array_values( array_filter(
+            $references,
+            fn( mixed $item ) => $item instanceof Image
+        ) ), 0, 64 );
+
+        if( empty( $images ) ) {
+            return [];
+        }
+
+        $indexes = is_array( $options['keyframeIndexes'] ?? null )
+            ? array_slice( array_values( $options['keyframeIndexes'] ), 0, 64 )
+            : null;
+
+        if( !is_array( $indexes ) || count( $indexes ) !== count( $images )
+            || count( array_unique( $indexes, SORT_REGULAR ) ) !== count( $indexes )
+            || array_filter( $indexes, fn( mixed $item ) => !is_int( $item ) || $item < 0 )
+        ) {
+            $images = [$images[0]];
+            $indexes = [0];
+        }
+
+        return [
+            'keyframes' => array_map( fn( Image $image ) => $this->mediaReference( $image ), $images ),
+            'keyframe_indexes' => array_values( $indexes ),
+        ];
+    }
+
+
+    /**
      * Builds the Luma video reframing request.
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the extended scene
-     * @param float $top Fraction of the source height to add at the top
-     * @param float $right Fraction of the source width to add at the right
-     * @param float $bottom Fraction of the source height to add at the bottom
-     * @param float $left Fraction of the source width to add at the left
+     * @param float $top Requested fraction of the source height to add at the top; negative values are treated as 0
+     * @param float $right Requested fraction of the source width to add at the right; negative values are treated as 0
+     * @param float $bottom Requested fraction of the source height to add at the bottom; negative values are treated as 0
+     * @param float $left Requested fraction of the source width to add at the left; negative values are treated as 0
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */
@@ -154,10 +200,10 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
     /**
      * Maps edge expansions to Luma's normalized source rectangle.
      *
-     * @param float $top Fraction of the source height to add at the top
-     * @param float $right Fraction of the source width to add at the right
-     * @param float $bottom Fraction of the source height to add at the bottom
-     * @param float $left Fraction of the source width to add at the left
+     * @param float $top Requested fraction of the source height to add at the top; negative values are treated as 0
+     * @param float $right Requested fraction of the source width to add at the right; negative values are treated as 0
+     * @param float $bottom Requested fraction of the source height to add at the bottom; negative values are treated as 0
+     * @param float $left Requested fraction of the source width to add at the left; negative values are treated as 0
      * @return array{x_norm: float, y_norm: float, w_norm: float, h_norm: float} Normalized source rectangle
      */
     protected function sourcePosition( float $top, float $right, float $bottom, float $left ) : array

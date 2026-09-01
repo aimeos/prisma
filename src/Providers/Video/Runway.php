@@ -39,9 +39,11 @@ class Runway extends Base implements Imagine, Repaint, Upscale
     }
 
 
-    public function repaint( Video $video, string $prompt, array $options = [] ) : FileResponse
+    public function repaint( Video $video, string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        return $this->submit( 'v1/video_to_video', $this->repaintRequest( $video, $prompt, $options ) );
+        [$media, $options] = $this->repaintArguments( $media, $options );
+
+        return $this->submit( 'v1/video_to_video', $this->repaintRequest( $video, $prompt, $media, $options ) );
     }
 
 
@@ -82,16 +84,22 @@ class Runway extends Base implements Imagine, Repaint, Upscale
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the changes
+     * @param array<string, mixed> $media Reference media by semantic role
      * @param array<string, mixed> $options Provider specific options
      * @return array<string, mixed> Request payload
      */
-    protected function repaintRequest( Video $video, string $prompt, array $options ) : array
+    protected function repaintRequest( Video $video, string $prompt, array $media, array $options ) : array
     {
         $request = [
             'model' => $this->modelName( 'aleph2' ),
             'promptText' => $prompt,
             'videoUri' => $this->mediaUrl( $video ),
         ];
+        $keyframes = $this->repaintKeyframes( $media, $options );
+
+        if( !empty( $keyframes ) ) {
+            $request['keyframes'] = $keyframes;
+        }
 
         if( is_int( $options['seed'] ?? null ) ) {
             $request['seed'] = $options['seed'];
@@ -104,6 +112,42 @@ class Runway extends Base implements Imagine, Repaint, Upscale
         }
 
         return $request;
+    }
+
+
+    /**
+     * Builds Runway edit keyframes from supported image references.
+     *
+     * @param array<string, mixed> $media Reference media by semantic role
+     * @param array<string, mixed> $options Provider specific options
+     * @return array<int, array{uri: string, at: int|float}> Timed guidance images
+     */
+    protected function repaintKeyframes( array $media, array $options ) : array
+    {
+        $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
+        $images = array_slice( array_values( array_filter(
+            $references,
+            fn( mixed $item ) => $item instanceof Image
+        ) ), 0, 5 );
+
+        if( empty( $images ) ) {
+            return [];
+        }
+
+        $positions = $options['referencePositions'] ?? null;
+
+        if( !is_array( $positions ) || count( $positions ) !== count( $images )
+            || array_filter( $positions, fn( mixed $item ) => ( !is_int( $item ) && !is_float( $item ) ) || $item < 0 || $item > 1 )
+        ) {
+            $last = count( $images ) - 1;
+            $positions = array_map( fn( int $index ) => $last ? $index / $last : 0, array_keys( $images ) );
+        }
+
+        return array_map(
+            fn( Image $image, int|float $position ) => ['uri' => $this->mediaUrl( $image ), 'at' => $position],
+            $images,
+            array_values( $positions )
+        );
     }
 
 

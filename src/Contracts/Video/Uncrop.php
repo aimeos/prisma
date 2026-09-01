@@ -14,10 +14,10 @@ interface Uncrop
      *
      * @param Video $video Input video object
      * @param string $prompt Prompt describing the extended scene
-     * @param float $top Fraction of the source height to add at the top
-     * @param float $right Fraction of the source width to add at the right
-     * @param float $bottom Fraction of the source height to add at the bottom
-     * @param float $left Fraction of the source width to add at the left
+     * @param float $top Requested fraction of the source height to add at the top; negative values are treated as 0
+     * @param float $right Requested fraction of the source width to add at the right; negative values are treated as 0
+     * @param float $bottom Requested fraction of the source height to add at the bottom; negative values are treated as 0
+     * @param float $left Requested fraction of the source width to add at the left; negative values are treated as 0
      * @param array<string, mixed> $options Provider specific options
      * @return FileResponse Response file
      * @throws BadRequestException If an expansion is not finite or all expansions are zero

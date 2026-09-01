@@ -11,12 +11,29 @@ use Psr\Http\Message\ResponseInterface;
 trait GeneratesVideo
 {
     /**
+     * Separates semantic repaint media from legacy third-argument options.
+     *
+     * @param array<string, mixed> $media Reference media or legacy options
+     * @param array<string, mixed> $options Provider-specific options
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>} Media and options
+     */
+    protected function repaintArguments( array $media, array $options ) : array
+    {
+        if( array_key_exists( 'references', $media ) ) {
+            return [$media, $options];
+        }
+
+        return [[], array_replace( $media, $options )];
+    }
+
+
+    /**
      * Normalizes uncrop edge expansions and rejects invalid no-op requests.
      *
-     * @param float $top Fraction of the source height to add at the top
-     * @param float $right Fraction of the source width to add at the right
-     * @param float $bottom Fraction of the source height to add at the bottom
-     * @param float $left Fraction of the source width to add at the left
+     * @param float $top Requested fraction of the source height to add at the top; negative values are treated as 0
+     * @param float $right Requested fraction of the source width to add at the right; negative values are treated as 0
+     * @param float $bottom Requested fraction of the source height to add at the bottom; negative values are treated as 0
+     * @param float $left Requested fraction of the source width to add at the left; negative values are treated as 0
      * @return array{top: float, right: float, bottom: float, left: float} Normalized edge expansions
      * @throws BadRequestException If an expansion is not finite or all expansions are zero
      */

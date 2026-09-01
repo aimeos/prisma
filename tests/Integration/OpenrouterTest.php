@@ -3,6 +3,8 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +32,80 @@ class OpenrouterTest extends TestCase
             ->speak( 'This is a test.', 'af_alloy' );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+    }
+
+
+    public function testDescribeImage() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $image );
+
+        $this->assertStringContainsStringIgnoringCase( 'cartoon', $response->text() );
+        $this->assertStringContainsStringIgnoringCase( 'cat', $response->text() );
+    }
+
+
+    public function testImagineImage() : void
+    {
+        $response = Prisma::image()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'A simple red circle on a white background.' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+    }
+
+
+    public function testRecognizeImage() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/text.png' );
+        $response = Prisma::image()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'recognize' )
+            ->recognize( $image );
+
+        $this->assertStringContainsStringIgnoringCase( 'This is text', $response->text() );
+    }
+
+
+    public function testRepaintImage() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $image, 'Add eye glasses to the cat.' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+    }
+
+
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
+    }
+
+
+    public function testImagineVideo() : void
+    {
+        $response = Prisma::video()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'A paper boat crossing a rain-filled city street.' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
     }
 
 
@@ -110,6 +186,19 @@ class OpenrouterTest extends TestCase
             ->transcribe( $audio );
 
         $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
+    public function testVectorizeImage() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'vectorize' )
+            ->vectorize( [$image] );
+
+        $this->assertCount( 1, $response->vectors() );
+        $this->assertNotEmpty( $response->first() );
     }
 
 

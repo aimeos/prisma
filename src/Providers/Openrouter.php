@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Files\Video;
 
 
 class Openrouter extends Base
@@ -55,7 +56,7 @@ class Openrouter extends Base
 
 
     /**
-     * Builds OpenRouter chat content with audio support.
+     * Builds OpenRouter chat content with audio and video support.
      *
      * @param string $prompt Text prompt
      * @param array<int, \Aimeos\Prisma\Files\File> $files Input media files
@@ -74,6 +75,11 @@ class Openrouter extends Base
                         'data' => $file->base64(),
                         'format' => $this->audioFormat( $file ),
                     ],
+                ];
+            } elseif( $file instanceof Video ) {
+                $content[] = [
+                    'type' => 'video_url',
+                    'video_url' => ['url' => $this->fileUrl( $file )],
                 ];
             } else {
                 $content[] = [
