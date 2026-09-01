@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Video;
 
 
@@ -55,7 +56,7 @@ class Openrouter extends Base
 
 
     /**
-     * Builds OpenRouter chat content with video support.
+     * Builds OpenRouter chat content with audio and video support.
      *
      * @param string $prompt Text prompt
      * @param array<int, \Aimeos\Prisma\Files\File> $files Input media files
@@ -67,7 +68,15 @@ class Openrouter extends Base
 
         foreach( $files as $file )
         {
-            if( $file instanceof Video ) {
+            if( $file instanceof Audio ) {
+                $content[] = [
+                    'type' => 'input_audio',
+                    'input_audio' => [
+                        'data' => $file->base64(),
+                        'format' => $this->audioFormat( $file ),
+                    ],
+                ];
+            } elseif( $file instanceof Video ) {
                 $content[] = [
                     'type' => 'video_url',
                     'video_url' => ['url' => $this->fileUrl( $file )],
@@ -83,6 +92,36 @@ class Openrouter extends Base
         $content[] = ['type' => 'text', 'text' => $prompt];
 
         return $content;
+    }
+
+
+    /**
+     * Returns the OpenRouter audio format for an audio input.
+     *
+     * @param Audio $audio Input audio file
+     * @return string Audio format name
+     */
+    protected function audioFormat( Audio $audio ) : string
+    {
+        $extension = strtolower( pathinfo( (string) $audio->filename(), PATHINFO_EXTENSION ) );
+        $formats = ['aac', 'aiff', 'flac', 'm4a', 'mp3', 'ogg', 'opus', 'pcm16', 'pcm24', 'wav', 'webm'];
+
+        if( in_array( $extension, $formats, true ) ) {
+            return $extension;
+        }
+
+        return match( $audio->mimeType() ) {
+            'audio/aac' => 'aac',
+            'audio/aiff', 'audio/x-aiff' => 'aiff',
+            'audio/flac', 'audio/x-flac' => 'flac',
+            'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'video/mp4' => 'm4a',
+            'audio/mpga' => 'mp3',
+            'audio/ogg', 'video/ogg' => 'ogg',
+            'audio/opus' => 'opus',
+            'audio/wav', 'audio/wave', 'audio/x-wav' => 'wav',
+            'audio/webm', 'video/webm' => 'webm',
+            default => 'mp3',
+        };
     }
 
 
