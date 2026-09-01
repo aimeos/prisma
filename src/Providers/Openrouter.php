@@ -5,7 +5,7 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Psr\Http\Message\ResponseInterface;
+use Aimeos\Prisma\Files\Audio;
 
 
 class Openrouter extends Base
@@ -51,6 +51,87 @@ class Openrouter extends Base
     protected function reasoningParams() : array
     {
         return $this->reasoningEnabled() === false ? ['reasoning' => ['exclude' => true]] : [];
+    }
+
+
+    /**
+     * Builds OpenRouter chat content with audio support.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Input media files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function content( string $prompt, array $files ) : array
+    {
+        $content = [];
+
+        foreach( $files as $file )
+        {
+            if( $file instanceof Audio ) {
+                $content[] = [
+                    'type' => 'input_audio',
+                    'input_audio' => [
+                        'data' => $file->base64(),
+                        'format' => $this->audioFormat( $file ),
+                    ],
+                ];
+            } else {
+                $content[] = [
+                    'type' => 'image_url',
+                    'image_url' => ['url' => $this->fileUrl( $file )],
+                ];
+            }
+        }
+
+        $content[] = ['type' => 'text', 'text' => $prompt];
+
+        return $content;
+    }
+
+
+    /**
+     * Returns the OpenRouter audio format for an audio input.
+     *
+     * @param Audio $audio Input audio file
+     * @return string Audio format name
+     */
+    protected function audioFormat( Audio $audio ) : string
+    {
+        $extension = strtolower( pathinfo( (string) $audio->filename(), PATHINFO_EXTENSION ) );
+        $formats = ['aac', 'aiff', 'flac', 'm4a', 'mp3', 'ogg', 'opus', 'pcm16', 'pcm24', 'wav', 'webm'];
+
+        if( in_array( $extension, $formats, true ) ) {
+            return $extension;
+        }
+
+        return match( $audio->mimeType() ) {
+            'audio/aac' => 'aac',
+            'audio/aiff', 'audio/x-aiff' => 'aiff',
+            'audio/flac', 'audio/x-flac' => 'flac',
+            'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'video/mp4' => 'm4a',
+            'audio/mpga' => 'mp3',
+            'audio/ogg', 'video/ogg' => 'ogg',
+            'audio/opus' => 'opus',
+            'audio/wav', 'audio/wave', 'audio/x-wav' => 'wav',
+            'audio/webm', 'video/webm' => 'webm',
+            default => 'mp3',
+        };
+    }
+
+
+    /**
+     * Returns a public URL or an inline data URI for an input file.
+     *
+     * @param \Aimeos\Prisma\Files\File $file Input file
+     * @return string URL or data URI
+     */
+    protected function fileUrl( \Aimeos\Prisma\Files\File $file ) : string
+    {
+        return $file->url() ?: sprintf(
+            'data:%s;base64,%s',
+            $file->mimeType() ?? 'application/octet-stream',
+            $file->base64()
+        );
     }
 
 

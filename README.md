@@ -141,6 +141,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Mistral**           | -     | -       | yes      | -       | -     | yes        |
 | **Murf**              | -     | -       | -        | yes     | yes   | -          |
 | **OpenAI**            | -     | -       | yes      | -       | yes   | yes        |
+| **Openrouter**        | -     | -       | yes      | -       | yes   | yes        |
 | **Z.AI**              | -     | -       | -        | -       | -     | yes        |
 
 ### Image

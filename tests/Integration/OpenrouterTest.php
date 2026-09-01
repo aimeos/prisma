@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -9,6 +10,29 @@ use PHPUnit\Framework\TestCase;
 
 class OpenrouterTest extends TestCase
 {
+    public function testDescribeAudio() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
+    public function testSpeak() : void
+    {
+        $response = Prisma::audio()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.', 'af_alloy' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+    }
+
+
     public function testStream() : void
     {
         $deltas = [];
@@ -74,6 +98,18 @@ class OpenrouterTest extends TestCase
         $this->assertGreaterThanOrEqual( 2, count( $response->steps() ) );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
         $this->assertStringContainsStringIgnoringCase( 'crimson-otter-4521', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $response = Prisma::audio()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
     }
 
 
