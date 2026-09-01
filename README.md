@@ -201,6 +201,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Luma**              | -        | -      | beta    | beta    | beta   | -       |
 | **MiniMax**           | -        | -      | beta    | -       | -      | -       |
 | **Omni**              | -        | -      | beta    | beta    | -      | -       |
+| **Openrouter**        | yes      | -      | beta    | -       | -      | -       |
 | **Runway**            | -        | -      | beta    | beta    | -      | beta    |
 | **Veo**               | -        | -      | beta    | -       | -      | -       |
 | **xAI**               | -        | beta   | beta    | beta    | -      | -       |
