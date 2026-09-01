@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -9,6 +10,32 @@ use PHPUnit\Framework\TestCase;
 
 class OpenrouterTest extends TestCase
 {
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
+    }
+
+
+    public function testImagineVideo() : void
+    {
+        $response = Prisma::video()
+            ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'A paper boat crossing a rain-filled city street.' );
+
+        $video = $response->first();
+
+        $this->assertInstanceOf( Video::class, $video );
+        $this->assertNotEmpty( $video->url() ?? $video->binary() );
+    }
+
+
     public function testStream() : void
     {
         $deltas = [];
