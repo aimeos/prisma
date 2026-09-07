@@ -73,7 +73,7 @@ class IdeogramTest extends TestCase
             ->ensure( 'isolate' )
             ->isolate( $image );
 
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+        $this->assertTransparentPng( (string) $response->binary() );
 
         file_put_contents( __DIR__ . '/results/ideogram_isolate.png', $response->binary() );
     }
@@ -90,6 +90,62 @@ class IdeogramTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/ideogram_repaint.png', $response->binary() );
+    }
+
+
+    public function testImagineTransparent() : void
+    {
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->imagine( 'A watercolor sunflower on a transparent background', [], [
+                'transparent' => true,
+                'aspect_ratio' => '1x1',
+                'output_resolution' => '1K',
+                'rendering_speed' => 'TURBO',
+            ] );
+
+        $binary = (string) $response->binary();
+        $this->assertTransparentPng( $binary );
+
+        file_put_contents( __DIR__ . '/results/ideogram_imagine_transparent.png', $binary );
+    }
+
+
+    public function testRepaintTransparent() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->repaint( $image, 'Turn the cat into a watercolor illustration on a transparent background', [
+                'transparent' => true,
+            ] );
+
+        $binary = (string) $response->binary();
+        $this->assertTransparentPng( $binary );
+
+        file_put_contents( __DIR__ . '/results/ideogram_repaint_transparent.png', $binary );
+    }
+
+
+    private function assertTransparentPng( string $binary ) : void
+    {
+        $this->assertSame( 'image/png', ( new \finfo( FILEINFO_MIME_TYPE ) )->buffer( $binary ) );
+        $image = imagecreatefromstring( $binary );
+        $this->assertNotFalse( $image );
+        $transparent = false;
+
+        for( $y = 0; $y < imagesy( $image ); $y++ )
+        {
+            for( $x = 0; $x < imagesx( $image ); $x++ )
+            {
+                if( imagecolorsforindex( $image, imagecolorat( $image, $x, $y ) )['alpha'] > 0 ) {
+                    $transparent = true;
+                    break 2;
+                }
+            }
+        }
+
+        $this->assertTrue( $transparent, 'The image must contain transparent pixels' );
     }
 
 

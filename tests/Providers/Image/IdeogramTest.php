@@ -2,7 +2,9 @@
 
 namespace Tests\Providers\Image;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Image;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -36,7 +38,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
         $this->assertEquals( 'A photo of a cat', $file->description() );
         $this->assertEquals( [
             "prompt" => "A photo of a cat",
@@ -195,7 +197,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
     }
 
 
@@ -220,7 +222,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
     }
 
 
@@ -244,7 +246,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
     }
 
 
@@ -304,7 +306,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
     }
 
 
@@ -333,7 +335,7 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
     }
 
 
@@ -353,6 +355,168 @@ class IdeogramTest extends TestCase
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
-        $this->assertEquals( 'image/png', $file->mimeType() );
+        $this->assertInstanceOf( Image::class, $file->first() );
+    }
+
+
+    #[TestWith( [true, '2K', 'AUTO'] )]
+    #[TestWith( [false, '8K', '1x1'] )]
+    public function testImagineTransparent( bool $copyright, string $resolution, string $ratio ) : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/transparent.png']]] )
+            ->imagine( 'A watercolor sunflower', [], [
+                'transparent' => true,
+                'aspect_ratio' => $ratio,
+                'output_resolution' => $resolution,
+                'rendering_speed' => 'QUALITY',
+                'enable_copyright_detection' => $copyright,
+            ] );
+
+        $this->assertCount( 1, $this->requests() );
+        $request = $this->requests()[0];
+        $this->assertSame( 'POST', $request->getMethod() );
+        $this->assertSame( 'test', $request->getHeaderLine( 'Api-Key' ) );
+        $this->assertSame( 'https://api.ideogram.ai/v1/ideogram-v4/generate-transparent', (string) $request->getUri() );
+        $this->assertSame( [
+            'text_prompt' => 'A watercolor sunflower',
+            'aspect_ratio' => $ratio,
+            'output_resolution' => $resolution,
+            'rendering_speed' => 'QUALITY',
+            'enable_copyright_detection' => $copyright ? 'true' : 'false',
+        ], $this->formFields( (string) $request->getBody() ) );
+        $this->assertInstanceOf( Image::class, $file->first() );
+        $this->assertSame( 'https://example.com/transparent.png', $file->url() );
+    }
+
+
+    public function testImagineTransparentFiltersInvalidValues() : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/transparent.png']]] )
+            ->imagine( 'A sunflower', [], [
+                'transparent' => true,
+                'rendering_speed' => 'FLASH',
+                'output_resolution' => '10K',
+                'enable_copyright_detection' => null,
+            ] );
+
+        $this->assertSame( ['text_prompt' => 'A sunflower'], $this->formFields( (string) $this->requests()[0]->getBody() ) );
+    }
+
+
+    public function testImagineTransparentRejectsReferenceImages() : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+
+        try {
+            $this->provider()->imagine( 'A sunflower', [Image::fromBinary( 'PNG', 'image/png' )], ['transparent' => true] );
+            $this->fail( 'Reference images must not be discarded' );
+        } catch( BadRequestException $e ) {
+            $this->assertStringContainsString( 'reference images', $e->getMessage() );
+            $this->assertSame( [], $this->requests() );
+        }
+    }
+
+
+    #[TestWith( ['imagine', ['seed' => 0], 'seed'] )]
+    #[TestWith( ['imagine', ['style_preset' => 'WATERCOLOR'], 'style_preset'] )]
+    #[TestWith( ['imagine', ['resolution' => '1024x1024'], 'resolution'] )]
+    #[TestWith( ['repaint', ['image_weight' => 75], 'image_weight'] )]
+    #[TestWith( ['repaint', ['rendering_speed' => 'QUALITY'], 'rendering_speed'] )]
+    #[TestWith( ['repaint', ['enable_copyright_detection' => true], 'enable_copyright_detection'] )]
+    #[TestWith( ['repaint', ['aspect_ratio' => '1x1', 'resolution' => '1024x1024'], 'aspect_ratio and resolution'] )]
+    public function testTransparentRejectsIncompatibleOptions( string $method, array $options, string $error ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+
+        try
+        {
+            if( $method === 'imagine' ) {
+                $this->provider()->imagine( 'A sunflower', [], ['transparent' => true] + $options );
+            } else {
+                $this->provider()->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'A sunflower', ['transparent' => true] + $options );
+            }
+
+            $this->fail( 'Incompatible options must not be discarded' );
+        }
+        catch( BadRequestException $e )
+        {
+            $this->assertStringContainsString( $error, $e->getMessage() );
+            $this->assertSame( [], $this->requests() );
+        }
+    }
+
+
+    #[TestWith( ['imagine', 'character_reference_images'] )]
+    #[TestWith( ['imagine', 'character_reference_images_mask'] )]
+    #[TestWith( ['imagine', 'style_reference_images'] )]
+    #[TestWith( ['repaint', 'character_reference_images'] )]
+    #[TestWith( ['repaint', 'character_reference_images_mask'] )]
+    #[TestWith( ['repaint', 'style_reference_images'] )]
+    public function testTransparentRejectsReferenceOptions( string $method, string $name ) : void
+    {
+        $this->testTransparentRejectsIncompatibleOptions( $method, [$name => [Image::fromBinary( 'PNG', 'image/png' )]], $name );
+    }
+
+
+    #[TestWith( [['aspect_ratio' => '1x1']] )]
+    #[TestWith( [['resolution' => '1024x1024']] )]
+    public function testRepaintTransparent( array $size ) : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/transparent.png']]] )
+            ->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'Make the petals blue', [
+                'transparent' => true,
+                'magic_prompt' => 'OFF',
+                'num_images' => 1,
+                'seed' => 0,
+            ] + $size );
+
+        $this->assertCount( 1, $this->requests() );
+        $request = $this->requests()[0];
+        $this->assertSame( 'POST', $request->getMethod() );
+        $this->assertSame( 'test', $request->getHeaderLine( 'Api-Key' ) );
+        $this->assertSame( 'https://api.ideogram.ai/v1/edit', (string) $request->getUri() );
+        $this->assertSame( [
+            'prompt' => 'Make the petals blue',
+            'transparent_background' => 'true',
+            'magic_prompt' => 'OFF',
+            'num_images' => '1',
+            'seed' => '0',
+        ] + $size + ['images' => 'PNG'], $this->formFields( (string) $request->getBody() ) );
+        $this->assertStringContainsString( 'Content-Type: image/png', (string) $request->getBody() );
+        $this->assertInstanceOf( Image::class, $file->first() );
+        $this->assertSame( 'https://example.com/transparent.png', $file->url() );
+    }
+
+
+    #[TestWith( ['imagine', [], 'v1/ideogram-v4/generate'] )]
+    #[TestWith( ['imagine', ['style_preset' => 'WATERCOLOR'], 'v1/ideogram-v3/generate'] )]
+    #[TestWith( ['repaint', [], 'v1/ideogram-v4/remix'] )]
+    #[TestWith( ['repaint', ['style_preset' => 'WATERCOLOR'], 'v1/ideogram-v3/remix'] )]
+    public function testTransparentFalsePreservesRouting( string $method, array $options, string $path ) : void
+    {
+        $provider = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/image.png']]] );
+
+        if( $method === 'imagine' ) {
+            $provider->imagine( 'A sunflower', [], ['transparent' => false] + $options );
+        } else {
+            $provider->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'A sunflower', ['transparent' => false] + $options );
+        }
+
+        $this->assertCount( 1, $this->requests() );
+        $request = $this->requests()[0];
+        $this->assertSame( 'https://api.ideogram.ai/' . $path, (string) $request->getUri() );
+        $this->assertStringNotContainsString( 'name="transparent"', (string) $request->getBody() );
+        $this->assertStringNotContainsString( 'name="transparent_background"', (string) $request->getBody() );
+    }
+
+
+    private function formFields( string $body ) : array
+    {
+        preg_match_all( '/Content-Disposition: form-data; name="([^"]+)"[^\r\n]*\r\n(?:[^\r\n]+\r\n)*\r\n(.*?)\r\n(?=--)/s', $body, $matches );
+        return array_combine( $matches[1], $matches[2] );
     }
 }

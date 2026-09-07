@@ -1436,6 +1436,26 @@ $fileResponse = Prisma::image()
 $image = $fileResponse->binary();
 ```
 
+Ideogram supports generating PNG images with transparency using `transparent => true`:
+
+```php
+$fileResponse = Prisma::image()
+    ->using( 'ideogram', ['api_key' => 'xxx'] )
+    ->imagine( 'A watercolor sunflower', [], [
+        'transparent' => true,
+        'aspect_ratio' => '1x1',
+        'output_resolution' => '2K',
+    ] );
+```
+
+This selects [Ideogram V4 transparent generation](https://developer.ideogram.ai/api-reference/generate-images/generate-transparent-v4).
+Supported options are `aspect_ratio` (including `AUTO`), `output_resolution` (`1K`, `2K`, `4K`, or `8K`),
+`rendering_speed` (`TURBO`, `DEFAULT`, or `QUALITY`), and `enable_copyright_detection`.
+Use `output_resolution` for the output size; the ordinary `resolution` option is unavailable on this endpoint.
+Reference images and other options, including V3 style controls and `seed`, throw `BadRequestException` when
+`transparent` is true. To use reference images, generate normally and then call `isolate()` on the result.
+Omitting `transparent` or setting it to false keeps the existing V4/V3 routing.
+
 ### inpaint
 
 Edit an image by inpainting an area defined by a mask according to a prompt.
@@ -1610,6 +1630,22 @@ $fileResponse = Prisma::image()
 
 $image = $fileResponse->binary();
 ```
+
+Ideogram can also repaint an image with transparent output:
+
+```php
+$fileResponse = Prisma::image()
+    ->using( 'ideogram', ['api_key' => 'xxx'] )
+    ->repaint( $image, 'Make the petals blue', ['transparent' => true] );
+```
+
+This uses Ideogram's [edit endpoint](https://developer.ideogram.ai/api-reference/edit-images/edit-with-prompt),
+with `transparent` mapped to `transparent_background=true` on the request.
+Supported options are `aspect_ratio`, `resolution`, `magic_prompt`, `num_images`, and `seed`;
+`aspect_ratio` and `resolution` cannot be combined. Other options, including `image_weight`,
+rendering speed, and style/character references, throw `BadRequestException` when `transparent` is true.
+Omitting `transparent` or setting it to false keeps the existing V4/V3 remix routing.
+The returned PNG bytes retain transparency when accessed through `binary()`.
 
 ### uncrop
 

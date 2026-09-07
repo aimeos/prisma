@@ -11,6 +11,7 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
@@ -109,6 +110,26 @@ class Ideogram
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
+        if( ( $options['transparent'] ?? false ) === true )
+        {
+            if( $images ) {
+                throw new BadRequestException( 'Transparent generation does not support reference images; generate the image first, then call isolate()' );
+            }
+
+            $allowed = $this->transparentOptions( $options, [
+                'aspect_ratio', 'enable_copyright_detection', 'output_resolution', 'rendering_speed'
+            ] );
+            $allowed = $this->sanitize( $allowed, [
+                'output_resolution' => ['1K', '2K', '4K', '8K'],
+                'rendering_speed' => ['TURBO', 'DEFAULT', 'QUALITY'],
+            ] );
+
+            $request = $this->payload( ['text_prompt' => $prompt] + $allowed );
+            $response = $this->client()->post( 'v1/ideogram-v4/generate-transparent', ['multipart' => $request] );
+
+            return $this->toFileResponse( $response );
+        }
+
         $v3options = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
             'magic_prompt', 'negative_prompt', 'seed', 'style_codes', 'style_preset', 'style_type'
@@ -171,6 +192,24 @@ class Ideogram
 
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
+        if( ( $options['transparent'] ?? false ) === true )
+        {
+            $allowed = $this->transparentOptions( $options, [
+                'aspect_ratio', 'magic_prompt', 'num_images', 'resolution', 'seed'
+            ] );
+            $allowed = $this->sanitize( $allowed, $this->options() );
+
+            if( isset( $allowed['aspect_ratio'], $allowed['resolution'] ) ) {
+                throw new BadRequestException( 'Transparent repaint cannot combine aspect_ratio and resolution' );
+            }
+
+            // The edit endpoint expects the repeated field "images", not "image" or "images[0]".
+            $request = $this->payload( ['prompt' => $prompt, 'transparent_background' => 'true'] + $allowed, ['images' => $image] );
+            $response = $this->client()->post( 'v1/edit', ['multipart' => $request] );
+
+            return $this->toFileResponse( $response );
+        }
+
         $v3options = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
             'magic_prompt', 'negative_prompt', 'seed', 'style_codes', 'style_preset',
@@ -272,6 +311,36 @@ class Ideogram
             'rendering_speed' => ['FLASH', 'TURBO', 'DEFAULT', 'QUALITY'],
             'resolution' => null,
         ];
+    }
+
+
+    /**
+     * Validates options for transparent endpoints and encodes boolean multipart values.
+     *
+     * @param array<string, mixed> $options Provider specific options
+     * @param array<string> $names Supported option names
+     * @return array<string, mixed> Options to send to Ideogram
+     */
+    protected function transparentOptions( array $options, array $names ) : array
+    {
+        unset( $options['transparent'] );
+        $allowed = $this->allowed( $options, $names );
+        $unsupported = array_diff_key( $options, $allowed );
+
+        if( $unsupported ) {
+            throw new BadRequestException( 'Unsupported options with transparent=true: ' . implode( ', ', array_keys( $unsupported ) ) );
+        }
+
+        foreach( $allowed as $key => $value )
+        {
+            if( $value === null ) {
+                unset( $allowed[$key] );
+            } elseif( is_bool( $value ) ) {
+                $allowed[$key] = $value ? 'true' : 'false';
+            }
+        }
+
+        return $allowed;
     }
 
 
