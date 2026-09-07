@@ -9,6 +9,19 @@ use PHPUnit\Framework\TestCase;
 
 class IdeogramTest extends TestCase
 {
+    public function testDescribe() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $image );
+
+        $this->assertNotEmpty( $response->text() );
+        $this->assertNotEmpty( $response->structured() );
+    }
+
+
     public function testDetext() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/detext.jpg' );
@@ -39,6 +52,19 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testImagine() : void
+    {
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'A watercolor painting of a cat sitting beside a vase of flowers' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/ideogram_imagine.png', $response->binary() );
+    }
+
+
     public function testIsolate() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
@@ -50,6 +76,20 @@ class IdeogramTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/ideogram_isolate.png', $response->binary() );
+    }
+
+
+    public function testRepaint() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $image, 'Repaint the scene as a watercolor illustration' );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/ideogram_repaint.png', $response->binary() );
     }
 
 

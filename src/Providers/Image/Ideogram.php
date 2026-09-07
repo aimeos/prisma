@@ -53,30 +53,22 @@ class Ideogram
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $allowed = $this->allowed( $options, ['describe_model_version'] );
-
-        $request = $this->payload( $allowed, ['image_file' => $image] );
-        $response = $this->client()->post( 'describe', ['multipart' => $request] );
+        $request = $this->payload( [], ['image_file' => $image] );
+        $response = $this->client()->post( 'v1/ideogram-v4/describe', ['multipart' => $request] );
 
         $this->validate( $response );
 
         /** @var array<string, mixed> $result */
         $result = $this->fromJson( $response );
-        /** @var array<string|null> $texts */
-        $texts = [];
+        $jsonPrompt = $result['json_prompt'] ?? null;
 
-        /** @var array<int, array<string, mixed>> $descriptions */
-        $descriptions = $result['descriptions'] ?? [];
-
-        foreach( $descriptions as $item )
-        {
-            if( $text = $item['text'] ?? null ) {
-                /** @var string $text */
-                $texts[] = $text;
-            }
+        if( !is_array( $jsonPrompt ) || !is_string( $jsonPrompt['high_level_description'] ?? null ) ) {
+            throw new PrismaException( 'No image description found in response' );
         }
 
-        return TextResponse::fromTexts( $texts );
+        return TextResponse::fromText( $jsonPrompt['high_level_description'] )
+            ->withStructured( $jsonPrompt )
+            ->withMeta( $result );
     }
 
 
@@ -117,6 +109,25 @@ class Ideogram
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
+        $v3options = $this->allowed( $options, [
+            'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
+            'magic_prompt', 'negative_prompt', 'seed', 'style_codes', 'style_preset', 'style_type'
+        ] );
+        $v3options = $this->sanitize( $v3options, $this->options() );
+
+        if( empty( $images ) && empty( $v3options ) )
+        {
+            $allowed = $this->allowed( $options, [
+                'enable_copyright_detection', 'rendering_speed', 'resolution'
+            ] );
+            $allowed = $this->sanitize( $allowed, $this->v4Options() );
+
+            $request = $this->payload( ['text_prompt' => $prompt] + $allowed );
+            $response = $this->client()->post( 'v1/ideogram-v4/generate', ['multipart' => $request] );
+
+            return $this->toFileResponse( $response );
+        }
+
         $allowed = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
             'magic_prompt', 'negative_prompt', 'rendering_speed', 'resolution', 'seed', 'style_codes',
@@ -160,6 +171,26 @@ class Ideogram
 
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
+        $v3options = $this->allowed( $options, [
+            'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
+            'magic_prompt', 'negative_prompt', 'seed', 'style_codes', 'style_preset',
+            'style_reference_images', 'style_type'
+        ] );
+        $v3options = $this->sanitize( $v3options, $this->options() );
+
+        if( empty( $v3options ) )
+        {
+            $allowed = $this->allowed( $options, [
+                'enable_copyright_detection', 'image_weight', 'rendering_speed', 'resolution'
+            ] );
+            $allowed = $this->sanitize( $allowed, $this->v4Options() );
+
+            $request = $this->payload( ['text_prompt' => $prompt] + $allowed, ['image' => $image] );
+            $response = $this->client()->post( 'v1/ideogram-v4/remix', ['multipart' => $request] );
+
+            return $this->toFileResponse( $response );
+        }
+
         $allowed = $this->allowed( $options, [
             'aspect_ratio', 'character_reference_images', 'character_reference_images_mask', 'color_palette',
             'image_weight', 'magic_prompt', 'negative_prompt', 'rendering_speed', 'resolution', 'seed',
@@ -226,6 +257,20 @@ class Ideogram
                 '1312x736', '1344x640', '1344x704', '1344x768', '1408x576', '1408x640', '1408x704',
                 '1472x576', '1472x640', '1472x704', '1536x512', '1536x576', '1536x640'
             ]
+        ];
+    }
+
+
+    /**
+     * Returns the options supported by Ideogram V4 endpoints.
+     *
+     * @return array<string, array<int, mixed>|null> List of option names and their possible values
+     */
+    protected function v4Options() : array
+    {
+        return [
+            'rendering_speed' => ['FLASH', 'TURBO', 'DEFAULT', 'QUALITY'],
+            'resolution' => null,
         ];
     }
 

@@ -1304,7 +1304,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 * Google Gemini
 * Groq
-* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/describe#request)
+* [Ideogram V4](https://developer.ideogram.ai/api-reference/describe-prompts/describe-v4)
 * OpenAI
 
 **Example:**
@@ -1412,7 +1412,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
-* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/generate-v3#request)
+* [Ideogram V4](https://developer.ideogram.ai/api-reference/generate-images/generate-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/generate-images/generate-v3))
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
@@ -1594,7 +1594,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 **Supported options:**
 
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
-* [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/remix-v3#request)
+* [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 
 **Example:**
 
