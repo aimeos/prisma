@@ -54,18 +54,44 @@ class IdeogramTest extends TestCase
     {
         $response = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
             ->response( '{
-                "descriptions": [{
-                    "text": "an image description"
-                }]
+                "json_prompt": {
+                    "high_level_description": "an image description",
+                    "compositional_deconstruction": {
+                        "background": "a blue wall",
+                        "elements": []
+                    },
+                    "style_description": {
+                        "aesthetics": "minimal"
+                    }
+                }
             }' )
             ->ensure( 'describe' )
-            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe(
+                Image::fromBinary( 'PNG', 'image/png' ),
+                'en',
+                ['describe_model_version' => 'V_2']
+            );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://api.ideogram.ai/describe', (string) $request->getUri() );
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v4/describe', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image_file"', $body );
+            $this->assertStringNotContainsString( 'name="describe_model_version"', $body );
         } );
 
         $this->assertEquals( 'an image description', $response->text() );
+        $this->assertEquals( [
+            'high_level_description' => 'an image description',
+            'compositional_deconstruction' => [
+                'background' => 'a blue wall',
+                'elements' => [],
+            ],
+            'style_description' => [
+                'aesthetics' => 'minimal',
+            ],
+        ], $response->structured() );
+        $this->assertEquals( $response->structured(), $response->meta()['json_prompt'] );
     }
 
 
@@ -149,10 +175,48 @@ class IdeogramTest extends TestCase
                 }]
             }' )
             ->ensure( 'imagine' )
+            ->imagine( 'prompt', [], [
+                'enable_copyright_detection' => true,
+                'rendering_speed' => 'QUALITY',
+                'resolution' => '2048x2048',
+                'unsupported' => true,
+            ] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v4/generate', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="text_prompt"', $body );
+            $this->assertStringContainsString( 'name="enable_copyright_detection"', $body );
+            $this->assertStringContainsString( 'name="rendering_speed"', $body );
+            $this->assertStringContainsString( 'name="resolution"', $body );
+            $this->assertStringNotContainsString( 'name="prompt"', $body );
+            $this->assertStringNotContainsString( 'name="unsupported"', $body );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
+    public function testImagineUsesV3ForReferenceImages() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "data": [{
+                    "url": "https://placehold.co/10x10.png"
+                }]
+            }' )
+            ->ensure( 'imagine' )
             ->imagine( 'prompt', [Image::fromBinary( 'PNG', 'image/png' )] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
             $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/generate', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="prompt"', $body );
+            $this->assertStringContainsString( 'name="style_reference_images[0]"', $body );
+            $this->assertStringNotContainsString( 'name="text_prompt"', $body );
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
@@ -215,11 +279,57 @@ class IdeogramTest extends TestCase
             ->ensure( 'repaint' )
             ->repaint(
                 Image::fromBinary( 'PNG', 'image/png' ),
-                'prompt'
+                'prompt',
+                [
+                    'enable_copyright_detection' => true,
+                    'image_weight' => 75,
+                    'rendering_speed' => 'TURBO',
+                    'resolution' => '2048x2048',
+                    'unsupported' => true,
+                ]
             );
 
         $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v4/remix', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', $body );
+            $this->assertStringContainsString( 'name="text_prompt"', $body );
+            $this->assertStringContainsString( 'name="enable_copyright_detection"', $body );
+            $this->assertStringContainsString( 'name="image_weight"', $body );
+            $this->assertStringContainsString( 'name="rendering_speed"', $body );
+            $this->assertStringContainsString( 'name="resolution"', $body );
+            $this->assertStringNotContainsString( 'name="prompt"', $body );
+            $this->assertStringNotContainsString( 'name="unsupported"', $body );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+        $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
+    public function testRepaintUsesV3ForStyleOptions() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "data": [{
+                    "url": "https://placehold.co/10x10.png"
+                }]
+            }' )
+            ->ensure( 'repaint' )
+            ->repaint(
+                Image::fromBinary( 'PNG', 'image/png' ),
+                'prompt',
+                ['style_preset' => 'WATERCOLOR']
+            );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
             $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/remix', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="prompt"', $body );
+            $this->assertStringContainsString( 'name="style_preset"', $body );
+            $this->assertStringNotContainsString( 'name="text_prompt"', $body );
         } );
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
