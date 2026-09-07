@@ -155,7 +155,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Ideogram**          | beta       | beta     | beta   | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
+| **Ideogram**          | beta       | beta     | beta   | beta  | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
@@ -1373,6 +1373,7 @@ to remove.
 **Supported options:**
 
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
+* [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-object#request)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
 
 **Example:**

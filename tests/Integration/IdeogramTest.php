@@ -23,6 +23,22 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testErase() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
+        $mask = Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' );
+
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->ensure( 'erase' )
+            ->erase( $image, $mask );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/ideogram_erase.png', $response->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();

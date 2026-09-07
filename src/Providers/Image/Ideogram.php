@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers\Image;
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Describe;
 use Aimeos\Prisma\Contracts\Image\Detext;
+use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
@@ -19,7 +20,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Detext, Imagine, Inpaint, Repaint, Upscale
+    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -96,6 +97,20 @@ class Ideogram
         }
 
         return FileResponse::fromFiles( [Image::fromUrl( $url )] )->withMeta( $result );
+    }
+
+
+    public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, [
+            'guidance_scale', 'num_inference_steps', 'rendering_speed', 'seed'
+        ] );
+        $allowed = $this->sanitize( $allowed, $this->options() );
+
+        $request = $this->payload( $allowed, ['image' => $image, 'mask' => $mask] );
+        $response = $this->client()->post( 'v1/remove-object', ['multipart' => $request] );
+
+        return $this->toFileResponse( $response );
     }
 
 
