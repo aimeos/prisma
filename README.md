@@ -155,7 +155,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Ideogram**          | beta       | beta     | beta   | beta  | beta    | beta    | beta    | -         | -        | beta    | -      | beta    | -         |
+| **Ideogram**          | yes        | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | -      | yes     | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
@@ -165,7 +165,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Z.AI**             | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
+| **Z.AI**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 
 ### Text
 
