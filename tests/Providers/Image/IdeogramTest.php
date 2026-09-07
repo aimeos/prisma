@@ -69,6 +69,77 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testDetext() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "base_image_url": "https://placehold.co/10x10.png",
+                "seed": 12345,
+                "original_image_url": "https://placehold.co/20x20.png"
+            }' )
+            ->ensure( 'detext' )
+            ->detext(
+                Image::fromBinary( 'PNG', 'image/png' ),
+                ['prompt' => 'A poster', 'seed' => 12345, 'unsupported' => true]
+            );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/layerize-text', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', $body );
+            $this->assertStringContainsString( 'name="prompt"', $body );
+            $this->assertStringContainsString( 'name="seed"', $body );
+            $this->assertStringNotContainsString( 'name="unsupported"', $body );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+        $this->assertEquals( [
+            'base_image_url' => 'https://placehold.co/10x10.png',
+            'seed' => 12345,
+            'original_image_url' => 'https://placehold.co/20x20.png',
+        ], $file->meta()->all() );
+    }
+
+
+    public function testErase() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "data": [{
+                    "url": "https://placehold.co/10x10.png"
+                }]
+            }' )
+            ->ensure( 'erase' )
+            ->erase(
+                Image::fromBinary( 'PNG', 'image/png' ),
+                Image::fromBinary( 'PNG', 'image/png' ),
+                [
+                    'guidance_scale' => 5.5,
+                    'num_inference_steps' => 32,
+                    'rendering_speed' => 'QUALITY',
+                    'seed' => 12345,
+                    'unsupported' => true,
+                ]
+            );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/remove-object', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', $body );
+            $this->assertStringContainsString( 'name="mask"', $body );
+            $this->assertStringContainsString( 'name="guidance_scale"', $body );
+            $this->assertStringContainsString( 'name="num_inference_steps"', $body );
+            $this->assertStringContainsString( 'name="rendering_speed"', $body );
+            $this->assertStringContainsString( 'name="seed"', $body );
+            $this->assertStringNotContainsString( 'name="unsupported"', $body );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+    }
+
+
     public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
@@ -110,6 +181,26 @@ class IdeogramTest extends TestCase
 
         $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
         $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
+    public function testIsolate() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "data": [{
+                    "url": "https://placehold.co/10x10.png"
+                }]
+            }' )
+            ->ensure( 'isolate' )
+            ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.ideogram.ai/v1/remove-background', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', (string) $request->getBody() );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
     }
 
 

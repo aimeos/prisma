@@ -4,8 +4,11 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Describe;
+use Aimeos\Prisma\Contracts\Image\Detext;
+use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -18,7 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Imagine, Inpaint, Repaint, Upscale
+    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -77,6 +80,41 @@ class Ideogram
     }
 
 
+    public function detext( Image $image, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['prompt', 'seed'] );
+
+        $request = $this->payload( $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v1/ideogram-v3/layerize-text', ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $result */
+        $result = $this->fromJson( $response );
+        $url = $result['base_image_url'] ?? null;
+
+        if( !is_string( $url ) || $url === '' ) {
+            throw new PrismaException( 'No image data found in response' );
+        }
+
+        return FileResponse::fromFiles( [Image::fromUrl( $url )] )->withMeta( $result );
+    }
+
+
+    public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, [
+            'guidance_scale', 'num_inference_steps', 'rendering_speed', 'seed'
+        ] );
+        $allowed = $this->sanitize( $allowed, $this->options() );
+
+        $request = $this->payload( $allowed, ['image' => $image, 'mask' => $mask] );
+        $response = $this->client()->post( 'v1/remove-object', ['multipart' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $allowed = $this->allowed( $options, [
@@ -106,6 +144,15 @@ class Ideogram
 
         $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/edit', ['multipart' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function isolate( Image $image, array $options = [] ) : FileResponse
+    {
+        $request = $this->payload( [], ['image' => $image] );
+        $response = $this->client()->post( 'v1/remove-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }

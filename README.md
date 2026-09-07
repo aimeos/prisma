@@ -155,7 +155,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
+| **Ideogram**          | beta       | beta     | beta   | beta  | beta    | beta    | beta    | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
@@ -1337,6 +1337,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 **Supported options:**
 
 * Clipdrop
+* [Ideogram](https://developer.ideogram.ai/api-reference/tools/layerize-text-v3#request)
 
 **Example:**
 
@@ -1372,6 +1373,7 @@ to remove.
 **Supported options:**
 
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
+* [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-object#request)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
 
 **Example:**
@@ -1493,6 +1495,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
+* [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-background#request)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1remove-background/post)
 
