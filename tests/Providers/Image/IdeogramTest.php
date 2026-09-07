@@ -3,6 +3,7 @@
 namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
@@ -511,6 +512,279 @@ class IdeogramTest extends TestCase
         $this->assertSame( 'https://api.ideogram.ai/' . $path, (string) $request->getUri() );
         $this->assertStringNotContainsString( 'name="transparent"', (string) $request->getBody() );
         $this->assertStringNotContainsString( 'name="transparent_background"', (string) $request->getBody() );
+    }
+
+
+    #[TestWith( [false, false, 'generate'] )]
+    #[TestWith( [false, true, 'async/generate'] )]
+    #[TestWith( [true, false, 'generate-transparent'] )]
+    #[TestWith( [true, true, 'async/generate-transparent'] )]
+    public function testGenerationModes( bool $transparent, bool $async, string $path ) : void
+    {
+        $options = $transparent ? ['output_resolution' => '1K', 'aspect_ratio' => 'AUTO'] : ['resolution' => '1K'];
+        $response = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( $async ? ['generation_id' => 'job-1'] : ['data' => [['url' => 'https://example.com/image.png']]] )
+            ->imagine( 'A sunflower', [], ['async' => $async, 'transparent' => $transparent] + $options );
+
+        $this->assertCount( 1, $this->requests() );
+        $request = $this->requests()[0];
+        $this->assertSame( 'POST', $request->getMethod() );
+        $this->assertSame( 'test', $request->getHeaderLine( 'Api-Key' ) );
+        $this->assertSame( 'https://api.ideogram.ai/v1/ideogram-v4/' . $path, (string) $request->getUri() );
+        $this->assertSame( ['text_prompt' => 'A sunflower'] + $options, $this->formFields( (string) $request->getBody() ) );
+
+        if( $async ) {
+            $this->assertSame( 'job-1', $response->meta()['generation_id'] );
+        } else {
+            $this->assertTrue( $response->ready() );
+            $this->assertSame( 'https://example.com/image.png', $response->url() );
+        }
+
+        $this->assertCount( 1, $this->requests() );
+    }
+
+
+    #[TestWith( [false] )]
+    #[TestWith( [true] )]
+    public function testAsyncPolling( bool $transparent ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test', 'poll_timeout' => 0] );
+        $this->response( ['generation_id' => 'job-1'] );
+        $this->response( ['generation_id' => 'job-1', 'status' => 'pending', 'created' => '2026-09-07T12:00:00Z'] );
+        $this->response( [
+            'generation_id' => 'job-1',
+            'status' => 'completed',
+            'created' => '2026-09-07T12:00:00Z',
+            'response_type' => 'url',
+            'usage_cost_usd_micros' => 12345,
+            'data' => [
+                ['url' => 'https://example.com/first.png', 'prompt' => 'A sunflower', 'seed' => 42, 'is_image_safe' => true],
+                ['url' => 'https://example.com/second.png'],
+            ],
+        ] );
+
+        $response = $this->provider()->imagine( 'A sunflower', [], ['async' => true, 'transparent' => $transparent] );
+        $this->assertCount( 1, $this->requests() );
+        $this->assertFalse( $response->ready() );
+        $this->assertCount( 2, $this->requests() );
+        $this->assertSame( 'pending', $response->meta()['status'] );
+        $this->assertTrue( $response->ready() );
+        $this->assertCount( 3, $this->requests() );
+
+        $this->assertCount( 2, $response->files() );
+        $this->assertInstanceOf( Image::class, $response->first() );
+        $this->assertSame( 'https://example.com/first.png', $response->url() );
+        $this->assertSame( 'https://example.com/second.png', $response->files()[1]->url() );
+        $this->assertSame( 'A sunflower', $response->description() );
+        $this->assertSame( 'completed', $response->meta()['status'] );
+        $this->assertSame( 'job-1', $response->meta()['generation_id'] );
+        $this->assertSame( '2026-09-07T12:00:00Z', $response->meta()['created'] );
+        $this->assertSame( 12345, $response->meta()['usage_cost_usd_micros'] );
+        $this->assertSame( 42, $response->meta()['seed'] );
+        $this->assertTrue( $response->meta()['is_image_safe'] );
+        $this->assertTrue( $response->ready() );
+        $this->assertCount( 3, $this->requests(), 'Resolved responses must not poll again' );
+
+        foreach( array_slice( $this->requests(), 1 ) as $request ) {
+            $this->assertSame( 'GET', $request->getMethod() );
+            $this->assertSame( 'test', $request->getHeaderLine( 'Api-Key' ) );
+            $this->assertSame( 'https://api.ideogram.ai/v1/generations/job-1', (string) $request->getUri() );
+        }
+    }
+
+
+    public function testSyncAndAsyncCallsKeepIndependentJobs() : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+        $this->response( ['generation_id' => 'job-1'] );
+        $this->response( ['data' => [['url' => 'https://example.com/sync.png']]] );
+        $this->response( ['generation_id' => 'job-2'] );
+        $this->response( ['status' => 'pending'] );
+        $this->response( ['status' => 'completed', 'data' => [['url' => 'https://example.com/second.png']]] );
+        $this->response( ['status' => 'completed', 'data' => [['url' => 'https://example.com/first.png']]] );
+
+        $first = $this->provider()->imagine( 'First', [], ['async' => true] );
+        $sync = $this->provider()->imagine( 'Sync' );
+        $second = $this->provider()->imagine( 'Second', [], ['async' => true, 'transparent' => true] );
+        $this->assertCount( 3, $this->requests() );
+        $this->assertTrue( $sync->ready() );
+        $this->assertSame( 'https://example.com/sync.png', $sync->url() );
+        $this->assertFalse( $first->ready() );
+        $this->assertSame( 'https://example.com/second.png', $second->url(), 'File access must resolve an unfinished job' );
+        $this->assertSame( 'https://example.com/first.png', $first->url() );
+        $this->assertSame( 'job-1', $first->meta()['generation_id'] );
+        $this->assertSame( 'job-2', $second->meta()['generation_id'] );
+        $this->assertSame( [
+            '/v1/ideogram-v4/async/generate',
+            '/v1/ideogram-v4/generate',
+            '/v1/ideogram-v4/async/generate-transparent',
+            '/v1/generations/job-1',
+            '/v1/generations/job-2',
+            '/v1/generations/job-1',
+        ], array_map( fn( $request ) => $request->getUri()->getPath(), $this->requests() ) );
+    }
+
+
+    public function testAsyncEncodesGenerationId() : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+        $this->response( ['generation_id' => 'job/one?x#='] );
+        $this->response( ['status' => 'pending'] );
+
+        $response = $this->provider()->imagine( 'A sunflower', [], ['async' => true] );
+        $this->assertFalse( $response->ready() );
+        $this->assertSame( 'https://api.ideogram.ai/v1/generations/job%2Fone%3Fx%23%3D', (string) $this->requests()[1]->getUri() );
+    }
+
+
+    #[TestWith( [[]] )]
+    #[TestWith( [['generation_id' => '']] )]
+    #[TestWith( [['generation_id' => null]] )]
+    #[TestWith( [['generation_id' => 123]] )]
+    #[TestWith( [['generation_id' => ['job-1']]] )]
+    public function testAsyncRejectsMissingGenerationId( array $result ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )->response( $result );
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'No generation ID found in response' );
+        $this->provider()->imagine( 'A sunflower', [], ['async' => true] );
+    }
+
+
+    #[TestWith( [['status' => 'failed'], 'Ideogram generation failed'] )]
+    #[TestWith( [['status' => 'failed', 'failure_reason' => 'content_policy_violation'], 'content_policy_violation'] )]
+    #[TestWith( [['status' => 'unexpected'], 'Unknown Ideogram generation status'] )]
+    #[TestWith( [[], 'Unknown Ideogram generation status'] )]
+    #[TestWith( [['status' => 'completed'], 'No image data found'] )]
+    #[TestWith( [['status' => 'completed', 'data' => []], 'No image data found'] )]
+    #[TestWith( [['status' => 'completed', 'data' => 'invalid'], 'No image data found'] )]
+    #[TestWith( [['status' => 'completed', 'data' => [['url' => null], ['url' => ''], ['url' => 42]]], 'No image data found'] )]
+    #[TestWith( ['not json', 'Invalid JSON response'] )]
+    public function testAsyncRejectsFailedOrMalformedResults( string|array $result, string $message ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+        $this->response( ['generation_id' => 'job-1'] );
+        $this->response( $result );
+        $response = $this->provider()->imagine( 'A sunflower', [], ['async' => true] );
+
+        try {
+            $response->ready();
+            $this->fail( 'Invalid async results must stop polling' );
+        } catch( PrismaException $e ) {
+            $this->assertStringContainsString( $message, $e->getMessage() );
+            $this->assertCount( 2, $this->requests() );
+        }
+    }
+
+
+    #[TestWith( [false, 400] )]
+    #[TestWith( [false, 401] )]
+    #[TestWith( [false, 422] )]
+    #[TestWith( [false, 429] )]
+    #[TestWith( [true, 404] )]
+    #[TestWith( [true, 429] )]
+    #[TestWith( [true, 500] )]
+    public function testAsyncHttpErrors( bool $poll, int $status ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+
+        if( $poll ) {
+            $this->response( ['generation_id' => 'job-1'] );
+        }
+
+        $this->response( ['error' => $status === 422 ? 'test error' : ['message' => 'test error']], [], $status );
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'test error' );
+        $this->provider()->imagine( 'A sunflower', [], ['async' => true] )->ready();
+    }
+
+
+    #[TestWith( [1] )]
+    #[TestWith( ['1'] )]
+    public function testAsyncPollingTimeout( int|string $timeout ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test', 'poll_timeout' => $timeout] );
+        $this->response( ['generation_id' => 'job-1'] );
+        $this->response( ['status' => 'pending'] );
+        $this->response( ['status' => 'pending'] );
+        $response = $this->provider()->imagine( 'A sunflower', [], ['async' => true] );
+
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'Asynchronous operation timed out after 1 seconds' );
+        $response->files();
+    }
+
+
+    #[TestWith( [false, ['seed' => 0]] )]
+    #[TestWith( [false, ['style_preset' => 'WATERCOLOR']] )]
+    #[TestWith( [false, ['aspect_ratio' => '1x1']] )]
+    #[TestWith( [true, []] )]
+    public function testAsyncRejectsV3Fallback( bool $reference, array $options ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+        $images = $reference ? [Image::fromBinary( 'PNG', 'image/png' )] : [];
+
+        try {
+            $this->provider()->imagine( 'A sunflower', $images, ['async' => true] + $options );
+            $this->fail( 'Async must not fall back to V3' );
+        } catch( BadRequestException $e ) {
+            $this->assertStringContainsString( 'reference images or V3 options', $e->getMessage() );
+            $this->assertSame( [], $this->requests() );
+        }
+    }
+
+
+    #[TestWith( ['background'] )]
+    #[TestWith( ['describe'] )]
+    #[TestWith( ['detext'] )]
+    #[TestWith( ['erase'] )]
+    #[TestWith( ['inpaint'] )]
+    #[TestWith( ['isolate'] )]
+    #[TestWith( ['repaint'] )]
+    #[TestWith( ['repaint', ['transparent' => true]] )]
+    #[TestWith( ['repaint', ['style_preset' => 'WATERCOLOR']] )]
+    #[TestWith( ['upscale'] )]
+    public function testAsyncRejectsUnsupportedMethods( string $method, array $options = [] ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] );
+        $image = Image::fromBinary( 'PNG', 'image/png' );
+        $args = match( $method ) {
+            'background', 'repaint' => [$image, 'A sunflower'],
+            'describe' => [$image, 'en'],
+            'erase' => [$image, $image],
+            'inpaint' => [$image, $image, 'A sunflower'],
+            'upscale' => [$image, 2],
+            default => [$image],
+        };
+
+        try {
+            $this->provider()->$method( ...[...$args, ['async' => true] + $options] );
+            $this->fail( 'Unsupported methods must not silently run synchronously' );
+        } catch( BadRequestException $e ) {
+            $this->assertStringContainsString( 'Async is only supported', $e->getMessage() );
+            $this->assertSame( [], $this->requests() );
+        }
+    }
+
+
+    #[TestWith( ['imagine', ['style_preset' => 'WATERCOLOR'], 'v1/ideogram-v3/generate'] )]
+    #[TestWith( ['repaint', [], 'v1/ideogram-v4/remix'] )]
+    #[TestWith( ['repaint', ['style_preset' => 'WATERCOLOR'], 'v1/ideogram-v3/remix'] )]
+    #[TestWith( ['repaint', ['transparent' => true], 'v1/edit'] )]
+    public function testAsyncFalsePreservesRouting( string $method, array $options, string $path ) : void
+    {
+        $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/image.png']]] );
+        $options = ['async' => false] + $options;
+
+        $response = $method === 'imagine'
+            ? $this->provider()->imagine( 'A sunflower', [], $options )
+            : $this->provider()->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'A sunflower', $options );
+
+        $this->assertTrue( $response->ready() );
+        $this->assertCount( 1, $this->requests() );
+        $this->assertSame( 'https://api.ideogram.ai/' . $path, (string) $this->requests()[0]->getUri() );
+        $this->assertStringNotContainsString( 'name="async"', (string) $this->requests()[0]->getBody() );
     }
 
 

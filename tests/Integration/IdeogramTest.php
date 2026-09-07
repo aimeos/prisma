@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Prisma;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 
 
@@ -52,16 +53,28 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testImagine() : void
+    #[TestWith( [false] )]
+    #[TestWith( [true] )]
+    public function testImagine( bool $async ) : void
     {
         $response = Prisma::image()
             ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
             ->ensure( 'imagine' )
-            ->imagine( 'A watercolor painting of a cat sitting beside a vase of flowers' );
+            ->imagine( 'A watercolor painting of a cat sitting beside a vase of flowers', [], ['async' => $async] );
 
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+        if( $async ) {
+            $this->assertNotEmpty( $response->meta()['generation_id'] );
+        }
 
-        file_put_contents( __DIR__ . '/results/ideogram_imagine.png', $response->binary() );
+        $binary = (string) $response->binary();
+        $this->assertGreaterThan( 0, strlen( $binary ) );
+        $this->assertTrue( $response->ready() );
+
+        if( $async ) {
+            $this->assertSame( 'completed', $response->meta()['status'] );
+        }
+
+        file_put_contents( __DIR__ . '/results/ideogram_imagine' . ( $async ? '_async' : '' ) . '.png', $binary );
     }
 
 
@@ -93,21 +106,33 @@ class IdeogramTest extends TestCase
     }
 
 
-    public function testImagineTransparent() : void
+    #[TestWith( [false] )]
+    #[TestWith( [true] )]
+    public function testImagineTransparent( bool $async ) : void
     {
         $response = Prisma::image()
             ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
             ->imagine( 'A watercolor sunflower on a transparent background', [], [
+                'async' => $async,
                 'transparent' => true,
                 'aspect_ratio' => '1x1',
                 'output_resolution' => '1K',
                 'rendering_speed' => 'TURBO',
             ] );
 
+        if( $async ) {
+            $this->assertNotEmpty( $response->meta()['generation_id'] );
+        }
+
         $binary = (string) $response->binary();
         $this->assertTransparentPng( $binary );
+        $this->assertTrue( $response->ready() );
 
-        file_put_contents( __DIR__ . '/results/ideogram_imagine_transparent.png', $binary );
+        if( $async ) {
+            $this->assertSame( 'completed', $response->meta()['status'] );
+        }
+
+        file_put_contents( __DIR__ . '/results/ideogram_imagine_transparent' . ( $async ? '_async' : '' ) . '.png', $binary );
     }
 
 

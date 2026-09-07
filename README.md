@@ -1456,6 +1456,38 @@ Reference images and other options, including V3 style controls and `seed`, thro
 `transparent` is true. To use reference images, generate normally and then call `isolate()` on the result.
 Omitting `transparent` or setting it to false keeps the existing V4/V3 routing.
 
+Ideogram V4 generation also supports `async => true`, independently of `transparent`.
+Omitting `async` or setting it to false keeps synchronous behavior. Both modes return a `FileResponse`.
+The async routes are [V4 generation](https://developer.ideogram.ai/api-reference/generate-images/generate-v4-async)
+and [V4 transparent generation](https://developer.ideogram.ai/api-reference/generate-images/generate-transparent-v4-async),
+with the same generation options as their synchronous counterparts.
+
+```php
+$provider = Prisma::image()->using( 'ideogram', [
+    'api_key' => 'xxx',
+    'poll_timeout' => 300,
+] );
+
+// Submit both jobs before accessing their files so generation can overlap.
+$first = $provider->imagine( 'A watercolor landscape', [], ['async' => true] );
+$second = $provider->imagine( 'A sunflower sticker', [], ['async' => true, 'transparent' => true] );
+
+$generationId = $first->meta()['generation_id']; // Available immediately after submission
+$ready = $first->ready(); // One status request; no polling loop or sleep
+$landscape = $first->binary(); // Waits for completion if needed, then downloads the image
+$sticker = $second->binary();
+```
+
+Each response polls its own [generation ID](https://developer.ideogram.ai/api-reference/generate-images/get-generation).
+File access, including `url()`, `first()`, `files()`, and iteration, waits for completion; completed responses do not poll again.
+Submissions and individual status requests still use blocking HTTP. Waiting polls every two seconds, with a default
+900-second deadline. Configure `poll_timeout` in the provider configuration in seconds; `0` disables the deadline.
+Failed generations, malformed results, and polling timeouts throw `PrismaException`.
+Completed metadata includes the generation ID, status, image metadata, and usage cost when supplied by Ideogram.
+
+`async => true` throws `BadRequestException` for requests that require V3 reference/style options and for methods
+other than `imagine()`, including `repaint()` with or without transparency. These calls are rejected before submission.
+
 ### inpaint
 
 Edit an image by inpainting an area defined by a mask according to a prompt.
