@@ -69,6 +69,39 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testDetext() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "base_image_url": "https://placehold.co/10x10.png",
+                "seed": 12345,
+                "original_image_url": "https://placehold.co/20x20.png"
+            }' )
+            ->ensure( 'detext' )
+            ->detext(
+                Image::fromBinary( 'PNG', 'image/png' ),
+                ['prompt' => 'A poster', 'seed' => 12345, 'unsupported' => true]
+            );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = (string) $request->getBody();
+
+            $this->assertEquals( 'https://api.ideogram.ai/v1/ideogram-v3/layerize-text', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', $body );
+            $this->assertStringContainsString( 'name="prompt"', $body );
+            $this->assertStringContainsString( 'name="seed"', $body );
+            $this->assertStringNotContainsString( 'name="unsupported"', $body );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+        $this->assertEquals( [
+            'base_image_url' => 'https://placehold.co/10x10.png',
+            'seed' => 12345,
+            'original_image_url' => 'https://placehold.co/20x20.png',
+        ], $file->meta()->all() );
+    }
+
+
     public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )

@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Describe;
+use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Repaint;
@@ -18,7 +19,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Imagine, Inpaint, Repaint, Upscale
+    implements Background, Describe, Detext, Imagine, Inpaint, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -74,6 +75,27 @@ class Ideogram
         }
 
         return TextResponse::fromTexts( $texts );
+    }
+
+
+    public function detext( Image $image, array $options = [] ) : FileResponse
+    {
+        $allowed = $this->allowed( $options, ['prompt', 'seed'] );
+
+        $request = $this->payload( $allowed, ['image' => $image] );
+        $response = $this->client()->post( 'v1/ideogram-v3/layerize-text', ['multipart' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $result */
+        $result = $this->fromJson( $response );
+        $url = $result['base_image_url'] ?? null;
+
+        if( !is_string( $url ) || $url === '' ) {
+            throw new PrismaException( 'No image data found in response' );
+        }
+
+        return FileResponse::fromFiles( [Image::fromUrl( $url )] )->withMeta( $result );
     }
 
 

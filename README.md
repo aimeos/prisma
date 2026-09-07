@@ -155,7 +155,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
 | **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Ideogram**          | beta       | beta     | -      | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
+| **Ideogram**          | beta       | beta     | beta   | -     | beta    | beta    | -       | -         | -        | beta    | -      | beta    | -         |
 | **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
@@ -1337,6 +1337,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 **Supported options:**
 
 * Clipdrop
+* [Ideogram](https://developer.ideogram.ai/api-reference/tools/layerize-text-v3#request)
 
 **Example:**
 
