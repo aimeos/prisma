@@ -39,6 +39,20 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testIsolate() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $response = Prisma::image()
+            ->using( 'ideogram', ['api_key' => $_ENV['IDEOGRAM_API_KEY']] )
+            ->ensure( 'isolate' )
+            ->isolate( $image );
+
+        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
+
+        file_put_contents( __DIR__ . '/results/ideogram_isolate.png', $response->binary() );
+    }
+
+
     protected function setUp() : void
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();

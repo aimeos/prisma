@@ -184,6 +184,26 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testIsolate() : void
+    {
+        $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )
+            ->response( '{
+                "data": [{
+                    "url": "https://placehold.co/10x10.png"
+                }]
+            }' )
+            ->ensure( 'isolate' )
+            ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://api.ideogram.ai/v1/remove-background', (string) $request->getUri() );
+            $this->assertStringContainsString( 'name="image"', (string) $request->getBody() );
+        } );
+
+        $this->assertEquals( 'https://placehold.co/10x10.png', $file->url() );
+    }
+
+
     public function testRepaint() : void
     {
         $file = $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )

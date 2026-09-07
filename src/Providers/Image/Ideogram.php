@@ -8,6 +8,7 @@ use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -20,7 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Repaint, Upscale
+    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Repaint, Upscale
 {
     public function __construct( array $config )
     {
@@ -143,6 +144,15 @@ class Ideogram
 
         $request = $this->payload( ['prompt' => $prompt] + $allowed, ['image' => $image, 'mask' => $mask] + $files );
         $response = $this->client()->post( 'v1/ideogram-v3/edit', ['multipart' => $request] );
+
+        return $this->toFileResponse( $response );
+    }
+
+
+    public function isolate( Image $image, array $options = [] ) : FileResponse
+    {
+        $request = $this->payload( [], ['image' => $image] );
+        $response = $this->client()->post( 'v1/remove-background', ['multipart' => $request] );
 
         return $this->toFileResponse( $response );
     }
