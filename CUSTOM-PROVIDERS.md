@@ -58,7 +58,7 @@
 </ul>
 <div class="method-header"><a href="#testing">Testing</a></div>
 <ul class="method-list">
-    <li><a href="#makesprismarequests-trait">MakesPrismaRequests trait</a></li>
+    <li><a href="#interactswithprisma-trait">InteractsWithPrisma trait</a></li>
     <li><a href="#fake-provider">Fake provider</a></li>
 </ul>
 </nav>
@@ -234,7 +234,7 @@ $provider = Prisma::type( 'embedding' )->using( 'openai', ['api_key' => '...'] )
 $response = $provider->embed( ['Hello world', 'Another text'], 256 );
 ```
 
-Capability checks, `Prisma::supports()`, `Fake`, and `MakesPrismaRequests` all
+Capability checks, `Prisma::supports()`, `Fake`, and `InteractsWithPrisma` all
 work automatically for new types — no extra wiring is needed.
 
 ### Base skeleton
@@ -347,8 +347,9 @@ if( $budget = $this->thinkingBudget() ) {
 ### File types
 
 The `Aimeos\Prisma\Files` namespace provides typed file classes. `File` is the
-base class, while `Audio`, `Image` and `Video` extend it with mime type validation
-(ensuring the mime type starts with `audio/`, `image/` or `video/` respectively).
+base class, while `Audio`, `Image` and `Video` validate the `audio/`, `image/` and
+`video/` mime prefixes respectively. `Audio` also accepts `video/mp4`, `video/ogg`
+and `video/webm` for audio recordings labeled with a container's video mime type.
 
 #### Factory methods
 
@@ -366,7 +367,9 @@ $file = Image::fromStream( $stream, 'image/png' );
 ```
 
 The mime type parameter is optional but recommended. If omitted, it will be
-guessed from the content when accessed.
+guessed from the content when accessed. URL-backed files probe the first 255 bytes.
+`fromStoragePath()` requires Laravel's storage facade. `fromUrl()` also accepts
+`bool $strict = true` as its third argument.
 
 `fromStream()` retains the supplied resource without reading it. Keep the
 resource open while the file object uses it. Conversion is deferred until another
@@ -398,7 +401,7 @@ supports. This lets callers pass parameters for multiple providers at once:
 $allowed = $this->allowed( $options, ['<key1>', '<key2>', /* ... */] );
 
 // filter values to pass only allowed option values (optional)
-$allowed = $this->sanitize( $allowed, ['<key1>' => ['<val1>', '<val2>', '<val3>']])
+$allowed = $this->sanitize( $allowed, ['<key1>' => ['<val1>', '<val2>', '<val3>']] );
 ```
 
 The *modelName()* method returns the user's model choice or the given default:
@@ -407,14 +410,15 @@ The *modelName()* method returns the user's model choice or the given default:
 $model = $this->modelName( 'gemini-2.5-flash' );
 ```
 
-The *payload()* method formats parameters and files for form or multipart
-requests. Build JSON payloads directly:
+The *payload()* method returns multipart parts. Its second argument accepts
+`File` objects or arrays of `File` objects, keyed by form field name. It extracts
+the bytes, filename and mime type itself. Build form and JSON payloads directly:
 
 ```php
 // Form data request
-$data = $this->payload( $params );
+$data = ['form_params' => $params];
 // Multipart request
-$data = ['multipart' => $this->payload( $params, ['image_key' => $image->binary()] )];
+$data = ['multipart' => $this->payload( $params, ['image_key' => $image] )];
 // JSON request
 $data = ['json' => ['image_key' => array_map( fn( $image ) => $image->base64(), $images )] + $params];
 ```
@@ -438,14 +442,14 @@ public function describe( Image $image, ?string $lang = null, array $options = [
     $model = $this->modelName( 'flash' );
     $allowed = $this->allowed( $options, ['version'] );
 
-    $params = ['language' => $lang] + $allowed;
-    $data = ['multipart' => $this->payload( $params, ['file' => $image->binary()] )];
+    $params = ['language' => $lang, 'model' => $model] + $allowed;
+    $data = ['multipart' => $this->payload( $params, ['file' => $image] )];
     $response = $this->client()->post( 'relative/api/path', $data );
 
     $this->validate( $response );
 
-    $content = $response->getBody()->getContents();
-    // return a response
+    $content = $this->fromJson( $response );
+    return TextResponse::fromText( $content['text'] ?? '' );
 }
 ```
 
@@ -493,7 +497,7 @@ protected function validate( ResponseInterface $response ) : void
     $data = $this->fromJson( $response );
     $error = $data['detail'] ?? $response->getReasonPhrase();
 
-    // remap status codes if needed (e.g. API returns 422 for auth errors)
+    // remap status codes if needed (e.g. treat 422 as a bad request)
     $this->throw( match( $response->getStatusCode() ) {
         422 => 400,
         default => $response->getStatusCode(),
@@ -626,7 +630,7 @@ $response->withDescription( '...' );
 #### Finish reason
 
 TextResponse supports *withReason()* to indicate why the model stopped
-generating. Use the constants defined in the `HasReason` trait:
+generating. The constants from `HasReason` are available on `TextResponse`:
 
 | Constant | Meaning |
 |----------|---------|
@@ -640,11 +644,11 @@ generating. Use the constants defined in the `HasReason` trait:
 ```php
 return TextResponse::fromText( $data['text'] ?? '' )
     ->withReason( match( $data['finish_reason'] ?? '' ) {
-        'stop' => self::STOP,
-        'length' => self::LENGTH,
-        'tool_calls' => self::TOOL,
-        'content_filter' => self::CONTENT,
-        default => self::UNKNOWN,
+        'stop' => TextResponse::STOP,
+        'length' => TextResponse::LENGTH,
+        'tool_calls' => TextResponse::TOOL,
+        'content_filter' => TextResponse::CONTENT,
+        default => TextResponse::UNKNOWN,
     } );
 ```
 
@@ -706,10 +710,10 @@ The `RateLimit` value object provides these accessors:
 
 ```php
 $rateLimit = $response->rateLimit();
-$rateLimit->limit();       // request limit (int or null)
-$rateLimit->remaining();   // remaining requests (int or null)
-$rateLimit->reset();       // reset timestamp (string or null)
-$rateLimit->retryAfter();  // retry after seconds (int or null)
+$rateLimit?->limit();       // request limit (int or null)
+$rateLimit?->remaining();   // remaining requests (int or null)
+$rateLimit?->reset();       // reset timestamp (string or null)
+$rateLimit?->retryAfter();  // retry after seconds (int or null)
 ```
 
 ### Structured output
@@ -757,8 +761,8 @@ All types share these methods: `description()`, `title()`, `required()`, `nullab
 The `enum()` method accepts either an array of values or a `BackedEnum` class name:
 
 ```php
-Schema::string()->enum( ['draft', 'published', 'archived'] )
-Schema::string()->enum( StatusEnum::class )
+Schema::string()->enum( ['draft', 'published', 'archived'] );
+Schema::string()->enum( StatusEnum::class );
 ```
 
 Schema instance methods:
@@ -806,7 +810,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
     $data = $this->fromJson( $response );
 
     $text = $data['choices'][0]['message']['content'] ?? '';
-    $structured = json_decode( $text, true ) ?: [];
+    $structured = $this->parseJson( $text );
 
     return TextResponse::fromText( $text )->withStructured( $structured );
 }
@@ -821,9 +825,8 @@ $schemaPrompt = $prompt
 
 // ... send $schemaPrompt to the API ...
 
-$text = trim( $data['text'] ?? '' );
-$text = preg_replace( '/^```(?:json)?\s*|\s*```$/s', '', $text ) ?? $text;
-$structured = json_decode( $text, true ) ?: [];
+$text = $data['text'] ?? '';
+$structured = $this->parseJson( $text );
 
 return TextResponse::fromText( $text )->withStructured( $structured );
 ```
@@ -837,7 +840,8 @@ mid-level base class.
 
 | Method | Purpose |
 |--------|---------|
-| `execTools( array $toolCalls )` | Execute tool calls, returns array of `Step` results |
+| `execTools( array $toolCalls, array &$calls )` | Execute tool calls with a per-request call budget, returns array of `Step` results |
+| `execStream( array $toolCalls, array &$calls )` | Yield `Step` objects before and after execution; returns completed steps |
 | `tools()` | Returns user-provided tool adapters |
 | `providerTools()` | Returns built-in provider tool adapters |
 | `toolChoice()` | Returns tool choice setting (`self::AUTO`, `self::REQUIRED`, `self::NONE`) |
@@ -856,9 +860,12 @@ protected function toolsParam() : array
 
     foreach( $this->tools() as $tool ) {
         $tools[] = [
-            'name' => $tool->name(),
-            'description' => $tool->description(),
-            'parameters' => $tool->schema()->toArray(),
+            'type' => 'function',
+            'function' => [
+                'name' => $tool->name(),
+                'description' => $tool->description(),
+                'parameters' => $tool->schema()->toArray(),
+            ],
         ];
     }
 
@@ -871,11 +878,11 @@ protected function toolCalls( array $result ) : array
 {
     $toolCalls = [];
 
-    foreach( $result['tool_calls'] ?? [] as $call ) {
+    foreach( $result['choices'][0]['message']['tool_calls'] ?? [] as $call ) {
         $toolCalls[] = [
             'id' => $call['id'] ?? null,
             'name' => $call['function']['name'] ?? '',
-            'arguments' => json_decode( $call['function']['arguments'] ?? '{}', true ) ?: [],
+            'arguments' => $this->jsonArgs( $call['function']['arguments'] ?? null ),
         ];
     }
 
@@ -909,6 +916,7 @@ results, and repeats until no more tool calls or `maxSteps()` is reached:
 private function generate( array $messages, array $options ) : TextResponse
 {
     $allSteps = [];
+    $calls = []; // initialize once per request; retain across tool-loop steps
 
     for( $step = 1; $step <= $this->maxSteps(); $step++ )
     {
@@ -919,7 +927,7 @@ private function generate( array $messages, array $options ) : TextResponse
 
         if( $tools = $this->toolsParam() ) {
             $params['tools'] = $tools;
-            $params['tool_choice'] = $this->toolChoice();
+            $params['tool_choice'] = $step === 1 ? $this->toolChoice() : self::AUTO;
         }
 
         $response = $this->client()->post( 'v1/chat/completions', ['json' => $params] );
@@ -932,7 +940,7 @@ private function generate( array $messages, array $options ) : TextResponse
             break;
         }
 
-        $toolResults = $this->execTools( $toolCalls );
+        $toolResults = $this->execTools( $toolCalls, $calls );
         array_push( $allSteps, ...$toolResults );
 
         $messages[] = $result['choices'][0]['message'] ?? [];
@@ -943,7 +951,7 @@ private function generate( array $messages, array $options ) : TextResponse
 
     return TextResponse::fromText( $text )
         ->withSteps( $allSteps )
-        ->withReason( $toolCalls ? self::TOOL : self::STOP );
+        ->withReason( $toolCalls ? TextResponse::TOOL : TextResponse::STOP );
 }
 ```
 
@@ -970,9 +978,12 @@ protected function toolsParam() : array
 
     foreach( $this->tools() as $tool ) {
         $tools[] = [
-            'name' => $tool->name(),
-            'description' => $tool->description(),
-            'parameters' => $tool->schema()->toArray(),
+            'type' => 'function',
+            'function' => [
+                'name' => $tool->name(),
+                'description' => $tool->description(),
+                'parameters' => $tool->schema()->toArray(),
+            ],
         ];
     }
 
@@ -983,16 +994,21 @@ protected function toolsParam() : array
 ### Async operations
 
 For APIs that require polling, both FileResponse and TextResponse support
-*fromAsync()*:
+*fromAsync()* with this shared signature:
 
 ```php
-FileResponse::fromAsync( Closure $closure, int $retry = 5, int $timeout = 0 ) : FileResponse
-TextResponse::fromAsync( Closure $closure, int $retry = 5, int $timeout = 0 ) : TextResponse
+public static function fromAsync( \Closure $closure, int $retry = 5, int $timeout = 0 ) : static
 ```
 
 The closure receives the response object and returns `true` when ready or
 `false` to keep polling. `$retry` is the sleep interval in seconds. `$timeout`
 limits the complete polling lifecycle; zero disables the deadline.
+
+The third argument changed from an optional sleep closure in 0.5/0.6 to an
+integer timeout. Replace `fromAsync( $poll, 5, $sleep )` with
+`fromAsync( $poll, 5, 900 )` for a 900-second deadline, or omit the third argument
+for no deadline. Tests can override protected `sleepAsync( int $seconds ) : void`
+in a response subclass.
 
 Typical pattern — a separate method returning the polling closure:
 
@@ -1046,8 +1062,11 @@ return TextResponse::fromAsync( function( TextResponse $tr ) use ( $client, $id 
 }, 3 );
 ```
 
-Use `$response->ready()` for non-blocking checks. Accessing content (`files()`,
-`text()`) blocks until the operation completes.
+Use `$response->ready()` for a single status check without a polling loop or
+sleep; the polling closure's HTTP request still blocks. Accessing content
+(`files()`, `text()`) blocks until the operation completes. `ready()` only tracks
+async polling: streamed text responses are ready immediately and must be consumed
+via `stream()` or a text accessor to assemble their content.
 
 ### OpenAI-compatible APIs
 
@@ -1272,7 +1291,7 @@ class Myprovider extends Base implements Describe
         $model = $this->modelName( 'flash' );
 
         $params = ['language' => $lang, 'model' => $model] + $allowed;
-        $data = ['multipart' => $this->payload( $params, ['file' => $image->binary()] )];
+        $data = ['multipart' => $this->payload( $params, ['file' => $image] )];
         $response = $this->client()->post( 'relative/api/path', $data );
 
         $this->validate( $response );
@@ -1336,9 +1355,12 @@ class Myprovider extends Base implements Translate
 
 ### Testing
 
-#### MakesPrismaRequests trait
+#### InteractsWithPrisma trait
 
-The `MakesPrismaRequests` trait provides a mocked HTTP layer for PHPUnit:
+The shipped `Aimeos\Prisma\Testing\InteractsWithPrisma` trait provides a mocked
+HTTP layer that works with any test framework. Inside the Prisma repository,
+`Tests\MakesPrismaRequests` wraps it with PHPUnit's `assertPrismaRequest()` helper;
+the `Tests` namespace is not autoloaded for Composer consumers.
 
 | Method | Purpose |
 |--------|---------|
@@ -1346,28 +1368,30 @@ The `MakesPrismaRequests` trait provides a mocked HTTP layer for PHPUnit:
 | `response( string\|array $body, array $headers, int $status, string $reason )` | Queue a fake HTTP response, returns Provider |
 | `requests()` | Get all recorded HTTP requests |
 | `provider()` | Access the underlying provider instance |
-| `assertPrismaRequest( callable $callback )` | Assert a matching request was sent |
+| `requested( callable $matcher )` | Return the first matching request/options entry, or null |
+| `streamResponse( array $events, array $headers = [] )` | Queue an SSE response, returns Provider |
 
 ```php
-use Tests\MakesPrismaRequests;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Testing\InteractsWithPrisma;
 use PHPUnit\Framework\TestCase;
 
 class MyproviderTest extends TestCase
 {
-    use MakesPrismaRequests;
+    use InteractsWithPrisma;
 
     public function testDescribe() : void
     {
         $this->prisma( 'image', 'myprovider', ['api_key' => 'test'] );
 
         $result = $this->response( ['text' => 'A photo of a cat'] )
-            ->describe( Image::fromUrl( 'https://example.com/cat.jpg' ) );
+            ->describe( Image::fromBinary( 'image bytes', 'image/png' ) );
 
         $this->assertEquals( 'A photo of a cat', $result->text() );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
+        $this->assertNotNull( $this->requested( function( $request, $options ) {
             return str_contains( $request->getUri()->getPath(), 'relative/api/path' );
-        } );
+        } ) );
     }
 }
 ```
@@ -1398,6 +1422,10 @@ $fake = new Fake( [
 
 $fake->use( new \Aimeos\Prisma\Providers\Text\Myprovider( ['api_key' => 'test'] ) );
 
-$result = $fake->write( 'prompt' );  // returns "Hello"
-$result = $fake->write( 'prompt' );  // returns "World"
+$result = $fake->write( 'prompt' );  // TextResponse containing "Hello"
+$result = $fake->write( 'prompt' );  // TextResponse containing "World"
 ```
+
+When using `Prisma::fake()` instead of constructing `Fake` directly, call
+`Prisma::reset()` in test teardown to clear its process-global state. Provider
+construction still runs, so supply the configuration required by the real provider.
