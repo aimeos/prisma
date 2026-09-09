@@ -54,6 +54,8 @@ class RecraftTest extends TestCase
         return [
             'repaint' => ['repaint', [$image, 'Winter'], 'imageToImage', $input + ['prompt' => 'Winter', 'model' => 'recraftv4_1', 'strength' => 0.5], false],
             'repaint strength' => ['repaint', [$image, 'Winter', ['strength' => 0, 'random_seed' => 12]], 'imageToImage', $input + ['strength' => 0, 'random_seed' => 12], false],
+            'uncrop' => ['uncrop', [$image, 10, 20, 30, 40], 'outpaint', $input + ['expand_top' => 10, 'expand_right' => 20, 'expand_bottom' => 30, 'expand_left' => 40, 'model' => 'recraftv3', 'prompt' => 'Extend the image naturally'], false],
+            'uncrop prompt' => ['uncrop', [$image, 0, 20, 0, 0, ['prompt' => 'Forest', 'zoom_out_percentage' => 10]], 'outpaint', $input + ['prompt' => 'Forest', 'zoom_out_percentage' => 10], false],
         ];
     }
 
@@ -94,15 +96,42 @@ class RecraftTest extends TestCase
     }
 
 
+    #[DataProvider('invalidArguments')]
+    public function testInvalidArguments( string $method, array $arguments ) : void
+    {
+        $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )->provider();
+
+        try {
+            $provider->$method( ...$arguments );
+            $this->fail( 'Expected invalid arguments to be rejected' );
+        } catch( BadRequestException $e ) {
+            $this->assertNotEmpty( $e->getMessage() );
+            $this->assertCount( 0, $this->requests() );
+        }
+    }
+
+
+    public static function invalidArguments() : array
+    {
+        $image = Image::fromUrl( 'https://example.com/image.png' );
+
+        return [
+            ['uncrop', [$image, -1, 0, 0, 0]],
+            ['uncrop', [$image, 4097, 0, 0, 0]],
+            ['uncrop', [$image, 10, 0, 0, 0, ['size' => '16:9']]],
+        ];
+    }
+
+
     public function testCapabilities() : void
     {
         $provider = Prisma::image()->using( 'recraft', ['api_key' => 'test'] );
 
-        foreach( ['repaint'] as $method ) {
+        foreach( ['repaint', 'uncrop'] as $method ) {
             $this->assertTrue( $provider->has( $method ), $method );
         }
 
-        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'uncrop', 'upscale', 'describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
+        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'upscale', 'describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
             $this->assertFalse( $provider->has( $method ), $method );
         }
     }

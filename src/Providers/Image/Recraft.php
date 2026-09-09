@@ -3,6 +3,8 @@
 namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Repaint;
+use Aimeos\Prisma\Contracts\Image\Uncrop;
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
@@ -10,7 +12,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Recraft extends Base implements Repaint
+class Recraft extends Base implements Repaint, Uncrop
 {
     public function __construct( array $config )
     {
@@ -30,6 +32,28 @@ class Recraft extends Base implements Repaint
             'image_url' => $this->imageUrl( $image ),
         ] + $this->generationOptions( $options, 'recraftv4_1' )
             + $this->allowed( $options, ['strength', 'random_seed'] ) + ['strength' => 0.5] );
+    }
+
+
+    public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
+    {
+        if( min( $top, $right, $bottom, $left ) < 0 || max( $top, $right, $bottom, $left ) > 4096 ) {
+            throw new BadRequestException( 'Outpainting margins must be between 0 and 4096 pixels' );
+        }
+
+        if( isset( $options['size'] ) ) {
+            throw new BadRequestException( 'Outpainting size cannot be combined with pixel margins' );
+        }
+
+        return $this->request( 'outpaint', [
+            'image_url' => $this->imageUrl( $image ),
+            'expand_top' => $top,
+            'expand_right' => $right,
+            'expand_bottom' => $bottom,
+            'expand_left' => $left,
+        ] + $this->generationOptions( $options, 'recraftv3' )
+            + $this->allowed( $options, ['prompt', 'zoom_out_percentage'] )
+            + ['prompt' => 'Extend the image naturally'] );
     }
 
 

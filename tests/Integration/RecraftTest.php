@@ -39,6 +39,7 @@ class RecraftTest extends TestCase
 
         return [
             'repaint' => ['repaint', [$image, 'A watercolor painting', $base64]],
+            'uncrop' => ['uncrop', [$image, 0, 100, 0, 0, $base64]],
         ];
     }
 }
