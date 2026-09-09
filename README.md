@@ -119,6 +119,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
 - [Perplexity](https://docs.perplexity.ai/)
+- [Photoroom](https://docs.photoroom.com/)
 - [Recraft](https://www.recraft.ai/docs/api-reference/getting-started)
 - [Requesty](https://docs.requesty.ai/api-reference/overview)
 - [RemoveBG](https://www.remove.bg/api)
@@ -161,6 +162,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
 | **Openrouter**        | -          | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     | -      | -       | yes       |
+| **Photoroom**         | yes        | -        | yes    | -     | yes     | -       | yes     | -         | yes      | yes     | -      | beta    | -         |
 | **Recraft**           | yes        | -        | -      | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | yes     | -         |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
@@ -1301,6 +1303,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/ai-backgrounds)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#replace-background) ([masked background](https://www.recraft.ai/docs/api-reference/endpoints#generate-background))
 
 **Example:**
@@ -1370,6 +1373,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/layerize-text-v3#request)
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/ai-text-removal)
 
 **Example:**
 
@@ -1452,6 +1456,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
 * OpenAI GPT image 2 (default)
 * Openrouter
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/create-any-image)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#generate-image)
 * [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
@@ -1586,6 +1591,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-background#request)
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/hd-background-removal)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#remove-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1remove-background/post)
@@ -1652,6 +1658,7 @@ public function relocate( Image $image, Image $bgimage, array $options = [] ) : 
 
 **Supported options:**
 
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/static-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 
 **Example:**
@@ -1689,6 +1696,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 * Openrouter
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/edit-with-ai)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
 * [xAI](https://docs.x.ai/developers/model-capabilities/images/editing)
 
@@ -1764,6 +1772,7 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
+* [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/preview-ai-upscale)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#crisp-upscale) ([creative upscale](https://www.recraft.ai/docs/api-reference/endpoints#creative-upscale))
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
