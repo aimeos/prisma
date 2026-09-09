@@ -43,6 +43,26 @@ class BlackforestlabsTest extends TestCase
     }
 
 
+    public function testRepaint() : void
+    {
+        $mock = $this->prisma( 'image', 'blackforestlabs', ['api_key' => 'test'] );
+        $mock->response( ['polling_url' => 'https://api.bfl.ai/poll', 'cost' => 4] );
+        $file = $mock->response( ['status' => 'Ready', 'result' => ['sample' => 'https://example.com/edited.png']] )
+            ->model( 'flux-2-pro' )->ensure( 'repaint' )
+            ->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'Winter', ['seed' => 0, 'unknown' => true, 'prompt' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $this->assertSame( 'https://api.bfl.ai/v1/flux-2-pro', (string) $request->getUri() );
+            $this->assertSame( ['prompt' => 'Winter', 'seed' => 0, 'output_format' => 'png', 'input_image' => base64_encode( 'PNG' )],
+                json_decode( (string) $request->getBody(), true ) );
+        } );
+
+        $this->assertTrue( $file->ready() );
+        $this->assertSame( 'https://example.com/edited.png', $file->url() );
+        $this->assertSame( 4.0, $file->usage()['used'] );
+    }
+
+
     public function testInpaint() : void
     {
         $prisma = $this->prisma( 'image', 'blackforestlabs', ['api_key' => 'test'] );
