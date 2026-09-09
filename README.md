@@ -119,6 +119,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [OpenAI](https://openai.com/api/)
 - [Openrouter](https://openrouter.ai/docs/quickstart)
 - [Perplexity](https://docs.perplexity.ai/)
+- [Recraft](https://www.recraft.ai/docs/api-reference/getting-started)
 - [Requesty](https://docs.requesty.ai/api-reference/overview)
 - [RemoveBG](https://www.remove.bg/api)
 - [Replicate](https://replicate.com/docs)
@@ -160,6 +161,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
 | **Openrouter**        | -          | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     | -      | -       | yes       |
+| **Recraft**           | - | - | - | - | - | - | - | - | - | - | yes | - | - |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
@@ -1731,6 +1733,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 
 **Supported options:**
 
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-outpainting)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/expand-an-image-by-adding-pixels-on-any-side)
 * Clipdrop
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
@@ -1749,6 +1752,20 @@ $fileResponse = Prisma::image()
 
 $image = $fileResponse->binary();
 ```
+
+#### Recraft
+
+Use `Prisma::image()->using( 'recraft', ['api_key' => 'xxx'] )`.
+
+Recraft defaults to `recraftv3`; this endpoint supports V3 raster/vector models.
+The four pixel margins map directly to Recraft's expansion parameters and must
+be between 0 and 4096. `size` is rejected because it conflicts with pixel margins.
+Options include `prompt` (default `Extend the image naturally`),
+`zoom_out_percentage`, `n`, `style`, `style_id`, `style_match`, `negative_prompt`,
+`text_layout`, and `controls`.
+
+`response_format` accepts `url` (default) or `b64_json`. Results use
+`FileResponse`, including metadata and credit usage.
 
 ### upscale
 
