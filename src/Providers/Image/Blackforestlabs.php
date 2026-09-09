@@ -4,6 +4,7 @@ namespace Aimeos\Prisma\Providers\Image;
 
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
+use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
+class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
 {
     public function __construct( array $config )
     {
@@ -77,6 +78,20 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
     }
 
 
+    /**
+     * Repaints an image using the selected image-editing model.
+     *
+     * @param Image $image Source image
+     * @param string $prompt Description of the requested changes
+     * @param array<string, mixed> $options Model-specific generation options
+     * @return FileResponse Asynchronous edited image response
+     */
+    public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->imagine( $prompt, [$image], $options );
+    }
+
+
     public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'flux-pro-1.0-expand' );
@@ -117,11 +132,13 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Uncrop
                 return false;
             }
 
-            if( !@$data['sample'] ) {
+            $sample = $data['result']['sample'] ?? $data['sample'] ?? null;
+
+            if( !is_string( $sample ) || $sample === '' ) {
                 throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
             }
 
-            $fr->add( Image::fromUrl( is_string( $data['sample'] ) ? $data['sample'] : '' ) );
+            $fr->add( Image::fromUrl( $sample ) );
 
             return true;
         };

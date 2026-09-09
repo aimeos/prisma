@@ -39,6 +39,16 @@ class BlackforestlabsTest extends TestCase
     }
 
 
+    public function testRepaint() : void
+    {
+        $response = Prisma::image()->using( 'blackforestlabs', ['api_key' => $_ENV['BLACKFORESTLABS_API_KEY']] )
+            ->ensure( 'repaint' )->repaint( Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), 'Paint the cat in watercolor' );
+
+        $this->assertNotEmpty( $response->binary() );
+        $this->assertStringStartsWith( 'image/', $response->mimeType() );
+    }
+
+
     public function testUncrop() : void
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
