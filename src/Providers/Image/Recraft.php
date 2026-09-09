@@ -22,6 +22,7 @@ class Recraft extends Base implements
     // inpaint
 
     // isolate
+    \Aimeos\Prisma\Contracts\Image\Isolate,
 
     // upscale
     Repaint,
@@ -80,6 +81,14 @@ class Recraft extends Base implements
             'n', 'style', 'style_id', 'style_match', 'response_format',
             'negative_prompt', 'text_layout', 'controls'
         ] );
+    }
+
+
+    public function isolate( Image $image, array $options = [] ) : FileResponse
+    {
+        return $this->request( 'removeBackground', [
+            'image_url' => $this->imageUrl( $image ),
+        ] + $this->allowed( $options, ['response_format'] ) );
     }
 
 
