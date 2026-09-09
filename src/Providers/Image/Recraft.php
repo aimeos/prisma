@@ -16,6 +16,7 @@ class Recraft extends Base implements
     // background
 
     // erase
+    \Aimeos\Prisma\Contracts\Image\Erase,
 
     // imagine
     \Aimeos\Prisma\Contracts\Image\Imagine,
@@ -38,6 +39,15 @@ class Recraft extends Base implements
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://external.api.recraft.ai' ) );
+    }
+
+
+    public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
+    {
+        return $this->request( 'eraseRegion', [
+            'image_url' => $this->imageUrl( $image ),
+            'mask_url' => $this->imageUrl( $mask ),
+        ] + $this->allowed( $options, ['response_format'] ) );
     }
 
 
