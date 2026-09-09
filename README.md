@@ -91,6 +91,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ## Supported providers
 
+- [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/)
 - [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 - [Anthropic](https://docs.anthropic.com/en/api)
 - [AudioPod AI](https://audiopod.ai/)
@@ -150,6 +151,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 |                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
 | :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
+| **Adobe Firefly**     | beta       | -        | -      | -     | beta    | beta    | -       | -         | beta     | beta    | beta   | beta    | -         |
 | **Alibaba**           | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **Bedrock Titan**     | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
 | **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | -       | -         |
@@ -1301,6 +1303,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/generateObjectCompositeV3Async)
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/ai-backgrounds)
@@ -1444,6 +1447,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/firefly_image_v5_generate_async_v4) ([Image3/4](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/generateImagesV3Async))
 * [Alibaba Qwen/Wan/Z-Image](https://www.alibabacloud.com/help/en/model-studio/qwen-image-api)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
@@ -1548,6 +1552,7 @@ to edit.
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/fillImagesV3Async)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
@@ -1658,6 +1663,7 @@ public function relocate( Image $image, Image $bgimage, array $options = [] ) : 
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/preciseComposite) ([adaptive](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/adaptiveComposite))
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/static-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 
@@ -1692,6 +1698,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/firefly_image_v5_generate_async_v4)
 * [Black Forest Labs](https://docs.bfl.ai/flux_2/flux2_image_editing)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
@@ -1735,6 +1742,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/expandImagesV3Async)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/expand-an-image-by-adding-pixels-on-any-side)
 * Clipdrop
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-outpainting)
@@ -1770,6 +1778,7 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 **Supported options:**
 
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/preciseUpsamplerV3Async)
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/preview-ai-upscale)
