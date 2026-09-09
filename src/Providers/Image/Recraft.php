@@ -18,6 +18,7 @@ class Recraft extends Base implements
     // erase
 
     // imagine
+    \Aimeos\Prisma\Contracts\Image\Imagine,
 
     // inpaint
 
@@ -45,6 +46,33 @@ class Recraft extends Base implements
             'image_url' => $this->imageUrl( $image ),
         ] + $this->generationOptions( $options, 'recraftv4_1' )
             + $this->allowed( $options, ['strength', 'random_seed'] ) + ['strength' => 0.5] );
+    }
+
+
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    {
+        $data = ['prompt' => $prompt];
+
+        if( $images )
+        {
+            if( count( $images ) > 10 || isset( $options['style_id'] ) ) {
+                throw new BadRequestException( 'Use at most 10 style reference images and do not combine them with style_id' );
+            }
+
+            foreach( $images as $image )
+            {
+                if( !( $image instanceof Image ) ) {
+                    throw new BadRequestException( 'Style references must be Image objects' );
+                }
+
+                $data['style_reference_urls'][] = $this->imageUrl( $image );
+            }
+        }
+
+        $allowed = $this->generationOptions( $options, $images ? 'recraftv4_styles' : 'recraftv4_1' );
+        $allowed += $this->allowed( $options, ['size', 'random_seed'] );
+
+        return $this->request( 'generations', $data + $allowed );
     }
 
 
