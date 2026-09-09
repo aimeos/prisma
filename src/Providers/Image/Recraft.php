@@ -20,6 +20,7 @@ class Recraft extends Base implements
     // imagine
 
     // inpaint
+    \Aimeos\Prisma\Contracts\Image\Inpaint,
 
     // isolate
 
@@ -67,6 +68,16 @@ class Recraft extends Base implements
         ] + $this->generationOptions( $options, 'recraftv3' )
             + $this->allowed( $options, ['prompt', 'zoom_out_percentage'] )
             + ['prompt' => 'Extend the image naturally'] );
+    }
+
+
+    public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->request( 'inpaint', [
+            'prompt' => $prompt,
+            'image_url' => $this->imageUrl( $image ),
+            'mask_url' => $this->imageUrl( $mask ),
+        ] + $this->generationOptions( $options, 'recraftv3' ) );
     }
 
 
