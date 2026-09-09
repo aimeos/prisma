@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
+use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
@@ -11,7 +12,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Recraft extends Base implements Uncrop
+class Recraft extends Base implements Repaint, Uncrop
 {
     public function __construct( array $config )
     {
@@ -21,6 +22,16 @@ class Recraft extends Base implements Uncrop
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://external.api.recraft.ai' ) );
+    }
+
+
+    public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
+    {
+        return $this->request( 'imageToImage', [
+            'prompt' => $prompt,
+            'image_url' => $this->imageUrl( $image ),
+        ] + $this->generationOptions( $options, 'recraftv4_1' )
+            + $this->allowed( $options, ['strength', 'random_seed'] ) + ['strength' => 0.5] );
     }
 
 

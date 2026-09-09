@@ -38,6 +38,7 @@ class RecraftTest extends TestCase
         $base64 = ['response_format' => 'b64_json'];
 
         return [
+            'repaint' => ['repaint', [$image, 'A watercolor painting', $base64]],
             'uncrop' => ['uncrop', [$image, 0, 100, 0, 0, $base64]],
         ];
     }

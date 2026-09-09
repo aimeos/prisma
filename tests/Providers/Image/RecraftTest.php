@@ -52,6 +52,8 @@ class RecraftTest extends TestCase
         $masked = $input + ['mask_url' => 'https://example.com/mask.png'];
 
         return [
+            'repaint' => ['repaint', [$image, 'Winter'], 'imageToImage', $input + ['prompt' => 'Winter', 'model' => 'recraftv4_1', 'strength' => 0.5], false],
+            'repaint strength' => ['repaint', [$image, 'Winter', ['strength' => 0, 'random_seed' => 12]], 'imageToImage', $input + ['strength' => 0, 'random_seed' => 12], false],
             'uncrop' => ['uncrop', [$image, 10, 20, 30, 40], 'outpaint', $input + ['expand_top' => 10, 'expand_right' => 20, 'expand_bottom' => 30, 'expand_left' => 40, 'model' => 'recraftv3', 'prompt' => 'Extend the image naturally'], false],
             'uncrop prompt' => ['uncrop', [$image, 0, 20, 0, 0, ['prompt' => 'Forest', 'zoom_out_percentage' => 10]], 'outpaint', $input + ['prompt' => 'Forest', 'zoom_out_percentage' => 10], false],
         ];
@@ -63,7 +65,7 @@ class RecraftTest extends TestCase
     {
         $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )->response( $response );
         $this->expectException( PrismaException::class );
-        $provider->uncrop( Image::fromUrl( 'https://example.com/image.png' ), 10, 20, 30, 40 );
+        $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
     }
 
 
@@ -80,7 +82,7 @@ class RecraftTest extends TestCase
         $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )->response( $body, [], $status );
         $this->expectException( $exception );
         $this->expectExceptionMessage( $message );
-        $provider->uncrop( Image::fromUrl( 'https://example.com/image.png' ), 10, 20, 30, 40 );
+        $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
     }
 
 
@@ -125,11 +127,11 @@ class RecraftTest extends TestCase
     {
         $provider = Prisma::image()->using( 'recraft', ['api_key' => 'test'] );
 
-        foreach( ['uncrop'] as $method ) {
+        foreach( ['repaint', 'uncrop'] as $method ) {
             $this->assertTrue( $provider->has( $method ), $method );
         }
 
-        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'repaint', 'upscale', 'describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
+        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'upscale', 'describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
             $this->assertFalse( $provider->has( $method ), $method );
         }
     }

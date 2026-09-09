@@ -161,7 +161,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
 | **Openrouter**        | -          | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     | -      | -       | yes       |
-| **Recraft**           | - | - | - | - | - | - | - | - | - | - | yes | - | - |
+| **Recraft**           | - | - | - | - | - | - | - | - | - | yes | yes | - | - |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
@@ -1680,6 +1680,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 **Supported options:**
 
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 * Openrouter
@@ -1714,6 +1715,18 @@ Supported options are `aspect_ratio`, `resolution`, `magic_prompt`, `num_images`
 rendering speed, and style/character references, throw `BadRequestException` when `transparent` is true.
 Omitting `transparent` or setting it to false keeps the existing V4/V3 remix routing.
 The returned PNG bytes retain transparency when accessed through `binary()`.
+
+#### Recraft
+
+Use `Prisma::image()->using( 'recraft', ['api_key' => 'xxx'] )`.
+
+Recraft defaults to `recraftv4_1`. The `strength` option defaults to `0.5`;
+values range from `0` (minimal change) to `1` (minimal similarity). Other options
+include `random_seed`, `n`, `style`, `style_id`, `style_match`, `negative_prompt`,
+`text_layout`, and `controls`, subject to model support.
+
+`response_format` accepts `url` (default) or `b64_json`. Results use
+`FileResponse`, including metadata and credit usage.
 
 ### uncrop
 
