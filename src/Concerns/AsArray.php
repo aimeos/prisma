@@ -88,6 +88,7 @@ trait AsArray
      *
      * @param mixed $key Map key
      * @param mixed $value Value to store
+     * @return void No return value; updates the map for string keys
      */
     public function offsetSet( mixed $key, mixed $value ) : void
     {
@@ -101,6 +102,7 @@ trait AsArray
      * Removes the value for the given key.
      *
      * @param mixed $key Map key
+     * @return void No return value; removes the entry for a string key
      */
     public function offsetUnset( mixed $key ) : void
     {

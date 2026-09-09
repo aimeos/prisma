@@ -36,26 +36,6 @@ class Cohere extends CohereBase implements Vectorize
             $request['inputs'] = $inputs;
         }
 
-        $response = $this->client()->post( 'v2/embed', ['json' => $request] );
-
-        $this->validate( $response );
-
-        /** @var array<string, mixed> $data */
-        $data = $this->fromJson( $response );
-
-        /** @var array<string, mixed> $embeddings */
-        $embeddings = $data['embeddings'] ?? [];
-        /** @var array<int, array<int, float>|null> $floatVectors */
-        $floatVectors = $embeddings['float'] ?? [];
-
-        /** @var array<string, mixed> $meta */
-        $meta = $data['meta'] ?? [];
-        /** @var array<string, mixed> $billedUnits */
-        $billedUnits = $meta['billed_units'] ?? [];
-        $used = $billedUnits['images'] ?? 0;
-
-        return VectorResponse::fromVectors( $floatVectors )
-            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
-            ->withMeta( $meta );
+        return $this->embed( $request, 'images' );
     }
 }

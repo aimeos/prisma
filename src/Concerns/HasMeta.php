@@ -27,7 +27,7 @@ trait HasMeta
      * Sets the meta information.
      *
      * @param array<string, mixed> $meta Meta information
-     * @return static
+     * @return static Same instance for fluent chaining
      */
     public function withMeta( array $meta ) : static
     {

@@ -92,6 +92,7 @@ trait Stream
      * Notifies registered stream completion callbacks once.
      *
      * @param \Throwable|null $error Stream failure, or null when the stream completed successfully
+     * @return void No return value; invokes and clears the registered callbacks
      */
     private function complete( ?\Throwable $error = null ) : void
     {

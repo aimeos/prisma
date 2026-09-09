@@ -128,6 +128,11 @@ trait FetchesUrls
 
     /**
      * Requests a URL and validates every redirect before following it.
+     *
+     * @param string $url HTTP(S) URL to request
+     * @param bool $strict TRUE to reject private and reserved IP addresses
+     * @return ResponseInterface Final HTTP response with its body available for reading
+     * @throws PrismaException If the URL or redirect is unsafe, resolution fails, or the request fails
      */
     protected function fetchResponse( string $url, bool $strict ) : ResponseInterface
     {
@@ -212,6 +217,10 @@ trait FetchesUrls
 
     /**
      * Checks whether an IP address is valid for the requested mode.
+     *
+     * @param string $ip IPv4 or IPv6 address to validate
+     * @param bool $strict TRUE to reject private and reserved addresses
+     * @return bool TRUE if the address is valid and allowed in the requested mode
      */
     protected function allowedIp( string $ip, bool $strict ) : bool
     {

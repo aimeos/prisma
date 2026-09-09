@@ -19,6 +19,83 @@ class RecraftTest extends TestCase
     private const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
 
+    public function testImagine() : void
+    {
+        $response = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )
+            ->response( ['data' => [['b64_json' => self::PNG], ['b64_json' => self::PNG]], 'credits' => 4, 'id' => 'job'] )
+            ->ensure( 'imagine' )->imagine( 'A fox', [], [
+                'n' => 2, 'size' => '1024x1024', 'random_seed' => 42,
+                'controls' => ['colors' => [['rgb' => [255, 0, 0]]]],
+                'response_format' => 'b64_json', 'unknown' => true, 'prompt' => 'ignored',
+            ] );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $body = json_decode( (string) $request->getBody(), true );
+            $this->assertSame( 'POST', $request->getMethod() );
+            $this->assertSame( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
+            $this->assertSame( 'https://external.api.recraft.ai/v1/images/generations', (string) $request->getUri() );
+            $this->assertSame( 'recraftv4_1', $body['model'] );
+            $this->assertSame( 'A fox', $body['prompt'] );
+            $this->assertSame( 2, $body['n'] );
+            $this->assertSame( 42, $body['random_seed'] );
+            $this->assertSame( '1024x1024', $body['size'] );
+            $this->assertSame( [255, 0, 0], $body['controls']['colors'][0]['rgb'] );
+            $this->assertSame( 'b64_json', $body['response_format'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+
+        $this->assertCount( 2, $response->files() );
+        $this->assertSame( base64_decode( self::PNG ), $response->binary() );
+        $this->assertSame( 'image/png', $response->mimeType() );
+        $this->assertSame( 4.0, $response->usage()['used'] );
+        $this->assertSame( 'job', $response->meta()['id'] );
+    }
+
+
+    public function testStyleReferences() : void
+    {
+        $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )
+            ->response( ['data' => [['url' => 'https://example.com/output.png']], 'style_id' => 'style'] )
+            ->imagine( 'A fox', [
+                Image::fromBase64( self::PNG, 'image/png' ),
+                Image::fromUrl( 'https://example.com/reference.png' ),
+            ] );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $body = json_decode( (string) $request->getBody(), true );
+            $this->assertSame( 'recraftv4_styles', $body['model'] );
+            $this->assertSame( ['data:image/png;base64,' . self::PNG, 'https://example.com/reference.png'], $body['style_reference_urls'] );
+        } );
+    }
+
+
+    public function testCustomModelAndUrl() : void
+    {
+        $response = $this->prisma( 'image', 'recraft', ['api_key' => 'test', 'url' => 'https://example.com'] )
+            ->response( ['data' => [['url' => 'https://example.com/output.svg']]] )
+            ->model( 'recraftv3_vector' )->imagine( 'A logo' );
+
+        $this->assertPrismaRequest( function( $request ) {
+            $this->assertSame( 'https://example.com/v1/images/generations', (string) $request->getUri() );
+            $this->assertSame( 'recraftv3_vector', json_decode( (string) $request->getBody(), true )['model'] );
+        } );
+
+        $this->assertSame( 'https://example.com/output.svg', $response->first()->url() );
+    }
+
+
+    public function testSvgResponse() : void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256"/></svg>';
+        $file = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )
+            ->response( ['image' => ['b64_json' => base64_encode( $svg )]] )
+            ->isolate( Image::fromBinary( $svg, 'image/svg+xml' ) );
+
+        $this->assertSame( $svg, $file->binary() );
+        $this->assertSame( 'image/svg+xml', $file->mimeType() );
+    }
+
+
     #[DataProvider('operations')]
     public function testEditing( string $method, array $arguments, string $endpoint, array $expected, bool $single ) : void
     {
@@ -52,10 +129,17 @@ class RecraftTest extends TestCase
         $masked = $input + ['mask_url' => 'https://example.com/mask.png'];
 
         return [
+            'background' => ['background', [$image, 'Forest'], 'replaceBackground', $input + ['prompt' => 'Forest', 'model' => 'recraftv3'], false],
+            'masked background' => ['background', [$image, 'Forest', ['mask' => $mask]], 'generateBackground', $masked + ['prompt' => 'Forest', 'model' => 'recraftv3'], false],
+            'erase' => ['erase', [$image, $mask, ['unknown' => true]], 'eraseRegion', $masked, true],
+            'inpaint' => ['inpaint', [$image, $mask, 'Glasses'], 'inpaint', $masked + ['prompt' => 'Glasses', 'model' => 'recraftv3'], false],
+            'isolate' => ['isolate', [$image, ['response_format' => 'b64_json']], 'removeBackground', $input + ['response_format' => 'b64_json'], true],
             'repaint' => ['repaint', [$image, 'Winter'], 'imageToImage', $input + ['prompt' => 'Winter', 'model' => 'recraftv4_1', 'strength' => 0.5], false],
             'repaint strength' => ['repaint', [$image, 'Winter', ['strength' => 0, 'random_seed' => 12]], 'imageToImage', $input + ['strength' => 0, 'random_seed' => 12], false],
             'uncrop' => ['uncrop', [$image, 10, 20, 30, 40], 'outpaint', $input + ['expand_top' => 10, 'expand_right' => 20, 'expand_bottom' => 30, 'expand_left' => 40, 'model' => 'recraftv3', 'prompt' => 'Extend the image naturally'], false],
             'uncrop prompt' => ['uncrop', [$image, 0, 20, 0, 0, ['prompt' => 'Forest', 'zoom_out_percentage' => 10]], 'outpaint', $input + ['prompt' => 'Forest', 'zoom_out_percentage' => 10], false],
+            'crisp upscale' => ['upscale', [$image, 2], 'crispUpscale', $input, true],
+            'creative upscale' => ['upscale', [$image, 4, ['mode' => 'creative']], 'creativeUpscale', $input, true],
         ];
     }
 
@@ -116,9 +200,14 @@ class RecraftTest extends TestCase
         $image = Image::fromUrl( 'https://example.com/image.png' );
 
         return [
-            ['uncrop', [$image, -1, 0, 0, 0]],
-            ['uncrop', [$image, 4097, 0, 0, 0]],
-            ['uncrop', [$image, 10, 0, 0, 0, ['size' => '16:9']]],
+            'background invalid mask' => ['background', [$image, 'Forest', ['mask' => 'bad']]],
+            'imagine conflicting style' => ['imagine', ['Fox', [$image], ['style_id' => 'style']]],
+            'imagine too many references' => ['imagine', ['Fox', array_fill( 0, 11, $image )]],
+            'imagine invalid reference' => ['imagine', ['Fox', ['bad']]],
+            'uncrop negative margin' => ['uncrop', [$image, -1, 0, 0, 0]],
+            'uncrop excessive margin' => ['uncrop', [$image, 4097, 0, 0, 0]],
+            'uncrop conflicting size' => ['uncrop', [$image, 10, 0, 0, 0, ['size' => '16:9']]],
+            'upscale invalid mode' => ['upscale', [$image, 2, ['mode' => 'unknown']]],
         ];
     }
 
@@ -127,7 +216,7 @@ class RecraftTest extends TestCase
     {
         $provider = Prisma::image()->using( 'recraft', ['api_key' => 'test'] );
 
-        foreach( ['repaint', 'uncrop'] as $method ) {
+        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'repaint', 'uncrop', 'upscale'] as $method ) {
             $this->assertTrue( $provider->has( $method ), $method );
         }
 

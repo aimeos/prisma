@@ -17,7 +17,7 @@ trait HasTokens
      * Sets the maximum number of output tokens.
      *
      * @param int|null $tokens Maximum output tokens
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withMaxTokens( ?int $tokens ) : self
     {
@@ -33,7 +33,7 @@ trait HasTokens
      * Providers that cannot control reasoning ignore it.
      *
      * @param bool $enabled TRUE to leave reasoning enabled, FALSE to minimize it
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withReasoning( bool $enabled = true ) : self
     {
@@ -46,7 +46,7 @@ trait HasTokens
      * Sets the thinking budget in tokens.
      *
      * @param int|null $budget Thinking budget tokens
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withThinkingBudget( ?int $budget ) : self
     {
@@ -68,6 +68,8 @@ trait HasTokens
 
     /**
      * Returns whether reasoning was explicitly enabled or minimized.
+     *
+     * @return bool|null TRUE if enabled, FALSE if minimized, or null if not configured
      */
     protected function reasoningEnabled() : ?bool
     {

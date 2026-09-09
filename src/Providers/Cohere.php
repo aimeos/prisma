@@ -25,6 +25,36 @@ class Cohere extends Base
     }
 
 
+    /**
+     * @param array<string, mixed> $request Embedding request
+     * @param string $unit Billed unit to report as usage
+     */
+    protected function embed( array $request, string $unit ) : \Aimeos\Prisma\Responses\VectorResponse
+    {
+        $response = $this->client()->post( 'v2/embed', ['json' => $request] );
+
+        $this->validate( $response );
+
+        /** @var array<string, mixed> $data */
+        $data = $this->fromJson( $response );
+
+        /** @var array<string, mixed> $embeddings */
+        $embeddings = $data['embeddings'] ?? [];
+        /** @var array<int, array<int, float>|null> $vectors */
+        $vectors = $embeddings['float'] ?? [];
+
+        /** @var array<string, mixed> $meta */
+        $meta = $data['meta'] ?? [];
+        /** @var array<string, mixed> $billedUnits */
+        $billedUnits = $meta['billed_units'] ?? [];
+        $used = $billedUnits[$unit] ?? 0;
+
+        return \Aimeos\Prisma\Responses\VectorResponse::fromVectors( $vectors )
+            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
+            ->withMeta( $meta );
+    }
+
+
     protected function validate( ResponseInterface $response ) : void
     {
         if( ( $status = $response->getStatusCode() ) !== 200 )

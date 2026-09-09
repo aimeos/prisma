@@ -149,19 +149,7 @@ class OpenrouterTest extends TestCase
 
     public function testTools() : void
     {
-        $next = \Aimeos\Prisma\Tools::make(
-            'get_next_passphrase',
-            'Returns the confidential passphrase for the next day. This is the only way to obtain it.',
-            Schema::for( 'next_passphrase' ),
-            fn() => 'wobbly-marmalade-1987'
-        );
-
-        $ahead = \Aimeos\Prisma\Tools::make(
-            'get_passphrase_in_days',
-            'Returns the confidential passphrase a given number of days ahead.',
-            Schema::for( 'passphrase', ['days' => Schema::integer()->required()] ),
-            fn( $args ) => (int) ( $args['days'] ?? 0 ) === 2 ? 'crimson-otter-4521' : 'unknown'
-        );
+        [$next, $ahead] = \Tests\Fixtures\PassphraseTools::make();
 
         $response = Prisma::text()
             ->using( 'openrouter', ['api_key' => $_ENV['OPENROUTER_API_KEY']] )

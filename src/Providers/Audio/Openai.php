@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Concerns\HandlesAudioTranscription;
 use Aimeos\Prisma\Contracts\Audio\Describe;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
@@ -13,45 +14,12 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Openai extends Base implements Describe, Speak, Transcribe
 {
+    use HandlesAudioTranscription;
+
+
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $text = $this->transcribe( $audio, $lang, $options )->text();
-        $cmd = 'Summarize the text in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '":';
-
-        $request = [
-            'model' => $this->modelName( 'gpt-5.6-luna' ),
-            'messages' => [
-                ['role' => 'user', 'content' => $cmd . "\n" . $text]
-            ]
-        ];
-        $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
-
-        /** @var array<string, mixed> */
-        $data = $this->fromJson( $response );
-
-        /** @var array<int, array<string, mixed>> */
-        $choices = $data['choices'] ?? [];
-
-        /** @var array<string, mixed> */
-        $usage = $data['usage'] ?? [];
-
-        /** @var list<string|null> */
-        $texts = [];
-
-        foreach( $choices as $choice ) {
-            /** @var array<string, mixed> */
-            $message = $choice['message'] ?? [];
-            $content = $message['content'] ?? '';
-            $texts[] = is_string( $content ) ? $content : '';
-        }
-
-        $totalTokens = $usage['total_tokens'] ?? null;
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
-                $usage,
-            );
+        return $this->describeAudio( 'v1/chat/completions', 'gpt-5.6-luna', $audio, $lang, $options );
     }
 
 
@@ -88,32 +56,6 @@ class Openai extends Base implements Describe, Speak, Transcribe
         $request = $this->payload( ['model' => $model] + $allowed, ['file' => $audio] );
         $response = $this->client()->post( 'v1/audio/transcriptions', ['multipart' => $request] );
 
-        $this->validate( $response );
-
-        /** @var string */
-        $format = $allowed['response_format'] ?? 'json';
-
-        if( !str_contains( $format, 'json' ) ) {
-            return TextResponse::fromText( $response->getBody()->getContents() );
-        }
-
-        /** @var array<string, mixed> */
-        $data = $this->fromJson( $response );
-
-        $text = $data['text'] ?? null;
-
-        /** @var array<int, array<string, mixed>> */
-        $segments = $data['segments'] ?? [];
-
-        /** @var array<string, mixed> */
-        $usage = $data['usage'] ?? [];
-        $totalTokens = $usage['total_tokens'] ?? null;
-
-        return TextResponse::fromText( is_string( $text ) ? $text : null )
-            ->withStructured( $segments )
-            ->withUsage(
-                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
-                $usage,
-            );
+        return $this->transcriptionResponse( $response, $allowed );
     }
 }

@@ -161,14 +161,13 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
 | **Openrouter**        | -          | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     | -      | -       | yes       |
+| **Recraft**           | yes        | -        | -      | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | yes     | -         |
 | **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
 | **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **Z.AI**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
-
-Recraft's capabilities and options are listed in the [Recraft image guide](docs/recraft/README.md).
 
 ### Text
 
@@ -1251,8 +1250,8 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * Groq
 * [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
-* [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
 * Openrouter
+* [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
 
 *Note: Z.AI audio transcriptions currently support only mono (single-channel) input files.*
 
@@ -1302,6 +1301,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#replace-background) ([masked background](https://www.recraft.ai/docs/api-reference/endpoints#generate-background))
 
 **Example:**
 
@@ -1406,6 +1406,7 @@ to remove.
 
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-object#request)
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#erase-region)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
 
 **Example:**
@@ -1446,17 +1447,18 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/generate-images/generate-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/generate-images/generate-v3))
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
-* OpenAI GPT image 2 (default)
-* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
-* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
+* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
+* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
+* OpenAI GPT image 2 (default)
+* Openrouter
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#generate-image)
 * [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
-* [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
+* [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations)
 * [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
-* Openrouter
 
 **Example:**
 
@@ -1544,10 +1546,11 @@ to edit.
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
-* OpenAI GPT image 2 (default)
-* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
-* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
+* [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
+* [OpenAI GPT image 1](https://platform.openai.com/docs/guides/image-generation?image-generation-model=gpt-image-1#customize-image-output)
+* OpenAI GPT image 2 (default)
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-inpainting)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1inpaint/post)
 
 **Example:**
@@ -1583,6 +1586,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-background#request)
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#remove-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1remove-background/post)
 
@@ -1681,10 +1685,10 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 **Supported options:**
 
-* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 * Openrouter
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
 
 **Example:**
 
@@ -1696,38 +1700,12 @@ $image = Image::fromUrl( 'https://example.com/image.png' );
 
 $fileResponse = Prisma::image()
     ->using( '<provider>', ['api_key' => 'xxx'])
-    ->repaint( $image, 'Use a van Goch style' );
+    ->repaint( $image, 'Use a van Goch style', ['transparent' => true] );
 
 $image = $fileResponse->binary();
 ```
 
-Ideogram can also repaint an image with transparent output:
-
-```php
-$fileResponse = Prisma::image()
-    ->using( 'ideogram', ['api_key' => 'xxx'] )
-    ->repaint( $image, 'Make the petals blue', ['transparent' => true] );
-```
-
-This uses Ideogram's [edit endpoint](https://developer.ideogram.ai/api-reference/edit-images/edit-with-prompt),
-with `transparent` mapped to `transparent_background=true` on the request.
-Supported options are `aspect_ratio`, `resolution`, `magic_prompt`, `num_images`, and `seed`;
-`aspect_ratio` and `resolution` cannot be combined. Other options, including `image_weight`,
-rendering speed, and style/character references, throw `BadRequestException` when `transparent` is true.
-Omitting `transparent` or setting it to false keeps the existing V4/V3 remix routing.
-The returned PNG bytes retain transparency when accessed through `binary()`.
-
-#### Recraft
-
-Use `Prisma::image()->using( 'recraft', ['api_key' => 'xxx'] )`.
-
-Recraft defaults to `recraftv4_1`. The `strength` option defaults to `0.5`;
-values range from `0` (minimal change) to `1` (minimal similarity). Other options
-include `random_seed`, `n`, `style`, `style_id`, `style_match`, `negative_prompt`,
-`text_layout`, and `controls`, subject to model support.
-
-`response_format` accepts `url` (default) or `b64_json`. Results use
-`FileResponse`, including metadata and credit usage.
+Transparent output is only supported by a few providers.
 
 ### uncrop
 
@@ -1747,9 +1725,9 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 
 **Supported options:**
 
-* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-outpainting)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/expand-an-image-by-adding-pixels-on-any-side)
 * Clipdrop
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-outpainting)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
 
 **Example:**
@@ -1766,20 +1744,6 @@ $fileResponse = Prisma::image()
 
 $image = $fileResponse->binary();
 ```
-
-#### Recraft
-
-Use `Prisma::image()->using( 'recraft', ['api_key' => 'xxx'] )`.
-
-Recraft defaults to `recraftv3`; this endpoint supports V3 raster/vector models.
-The four pixel margins map directly to Recraft's expansion parameters and must
-be between 0 and 4096. `size` is rejected because it conflicts with pixel margins.
-Options include `prompt` (default `Extend the image naturally`),
-`zoom_out_percentage`, `n`, `style`, `style_id`, `style_match`, `negative_prompt`,
-`text_layout`, and `controls`.
-
-`response_format` accepts `url` (default) or `b64_json`. Results use
-`FileResponse`, including metadata and credit usage.
 
 ### upscale
 
@@ -1798,6 +1762,7 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 * Clipdrop
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
+* [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#crisp-upscale) ([creative upscale](https://www.recraft.ai/docs/api-reference/endpoints#creative-upscale))
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Upscale)
 
 **Example:**
@@ -1833,8 +1798,8 @@ public function vectorize( array $images, ?int $size = null, array $options = []
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/multimodal-embedding-api-reference)
 * Bedrock
 * [Cohere](https://docs.cohere.com/reference/embed#request)
-* [VoyageAI](https://docs.voyageai.com/reference/multimodal-embeddings-api)
 * Openrouter
+* [VoyageAI](https://docs.voyageai.com/reference/multimodal-embeddings-api)
 
 **Example:**
 
@@ -2019,8 +1984,8 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [Requesty](https://docs.requesty.ai/features/structured-outputs)
-* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 * Vertexai
+* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 
 **Example:**
 
@@ -2166,6 +2131,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 * [Anthropic](https://docs.anthropic.com/en/api/messages)
+* Azure
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
@@ -2178,9 +2144,8 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
 * [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
 * [Requesty](https://docs.requesty.ai/api-reference/endpoint/chat-completions-create)
-* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
-* Azure
 * Vertexai
+* [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 * Z.AI
 
 **Example:**
@@ -2286,9 +2251,9 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
+* Openrouter
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
-* Openrouter
 
 Amazon Nova Reel also requires an S3 destination in the provider configuration:
 `['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`.

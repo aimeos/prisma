@@ -4,108 +4,37 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Image;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 
 class ClipdropTest extends TestCase
 {
-    public function testBackground() : void
+    #[DataProvider('operations')]
+    public function testImageOperation( string $method, array $arguments ) : void
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/room.jpg' );
         $response = Prisma::image()
             ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'background' )
-            ->background( $image, 'beach at sunset' );
+            ->ensure( $method )
+            ->$method( ...$arguments );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
-        file_put_contents( __DIR__ . '/results/clipdrop_background.png', $response->binary() );
+        file_put_contents( __DIR__ . '/results/clipdrop_' . $method . '.png', $response->binary() );
     }
 
 
-    public function testDetext() : void
+    public static function operations() : array
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/detext.jpg' );
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'detext' )
-            ->detext( $image );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_detext.png', $response->binary() );
-    }
-
-
-    public function testErase() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
-        $mask = Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' );
-
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'erase' )
-            ->erase( $image, $mask );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_erase.png', $response->binary() );
-    }
-
-
-    public function testImagine() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'imagine' )
-            ->imagine( 'a cartoon dog', [$image] );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_imagine.png', $response->binary() );
-    }
-
-
-    public function testIsolate() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'isolate' )
-            ->isolate( $image );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_isolate.png', $response->binary() );
-    }
-
-
-    public function testUncrop() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'uncrop' )
-            ->uncrop( $image, 0, 200, 0, 0 );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_uncrop.png', $response->binary() );
-    }
-
-
-    public function testUpscale() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'clipdrop', ['api_key' => $_ENV['CLIPDROP_API_KEY']])
-            ->ensure( 'upscale' )
-            ->upscale( $image, 2 );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/clipdrop_upscale.png', $response->binary() );
+        return [
+            'background' => ['background', [Image::fromLocalPath( __DIR__ . '/assets/room.jpg' ), 'beach at sunset']],
+            'detext' => ['detext', [Image::fromLocalPath( __DIR__ . '/assets/detext.jpg' )]],
+            'erase' => ['erase', [Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' ), Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' )]],
+            'imagine' => ['imagine', ['a cartoon dog', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' )]]],
+            'isolate' => ['isolate', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' )]],
+            'uncrop' => ['uncrop', [Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' ), 0, 200, 0, 0]],
+            'upscale' => ['upscale', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), 2]],
+        ];
     }
 
 

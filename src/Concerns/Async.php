@@ -74,6 +74,8 @@ trait Async
 
     /**
      * Blocks by polling until the response is populated.
+     *
+     * @return void No return value; marks the response ready when polling completes
      */
     protected function wait() : void
     {
@@ -102,7 +104,7 @@ trait Async
      * Pauses before the next polling attempt.
      *
      * @param int $seconds Number of seconds to wait
-     * @return void
+     * @return void No return value; resumes after the requested pause
      */
     protected function sleepAsync( int $seconds ) : void
     {
@@ -114,7 +116,7 @@ trait Async
      * Raises an exception when the asynchronous polling deadline has elapsed.
      *
      * @param int $waited Seconds spent in polling sleeps
-     * @return void
+     * @return void No return value; throws when the polling deadline has elapsed
      */
     private function ensureAsyncActive( int $waited = 0 ) : void
     {

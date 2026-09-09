@@ -15,7 +15,7 @@ trait HasSystemPrompt
      * Sets the system prompt for the LLM.
      *
      * @param string|null $prompt System prompt
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withSystemPrompt( ?string $prompt ) : self
     {

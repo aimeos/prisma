@@ -26,7 +26,7 @@ trait HasDescription
      * Sets the content description.
      *
      * @param string|null $description Content description
-     * @return static
+     * @return static Same instance for fluent chaining
      */
     public function withDescription( ?string $description ) : static
     {

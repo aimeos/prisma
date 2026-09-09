@@ -4,25 +4,13 @@ namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Alibaba as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
 class Alibaba extends Base implements Speak
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
-        $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $this->config( $config, 'url', 'https://dashscope-intl.aliyuncs.com' ) );
-    }
-
-
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'Cherry';

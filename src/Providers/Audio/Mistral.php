@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Concerns\HandlesAudioTranscription;
 use Aimeos\Prisma\Contracts\Audio\Describe;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Files\Audio;
@@ -12,45 +13,12 @@ use Psr\Http\Message\ResponseInterface;
 
 class Mistral extends Base implements Describe, Transcribe
 {
+    use HandlesAudioTranscription;
+
+
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $text = $this->transcribe( $audio, $lang, $options )->text();
-        $cmd = 'Summarize the text in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '":';
-
-        $request = [
-            'model' => $this->modelName( 'mistral-large-latest' ),
-            'messages' => [
-                ['role' => 'user', 'content' => $cmd . "\n" . $text]
-            ]
-        ];
-        $response = $this->client()->post( 'v1/chat/completions', ['json' => $request] );
-
-        /** @var array<string, mixed> */
-        $data = $this->fromJson( $response );
-
-        /** @var array<int, array<string, mixed>> */
-        $choices = $data['choices'] ?? [];
-
-        /** @var array<string, mixed> */
-        $usage = $data['usage'] ?? [];
-
-        /** @var list<string|null> */
-        $texts = [];
-
-        foreach( $choices as $choice ) {
-            /** @var array<string, mixed> */
-            $message = $choice['message'] ?? [];
-            $content = $message['content'] ?? '';
-            $texts[] = is_string( $content ) ? $content : '';
-        }
-
-        $totalTokens = $usage['total_tokens'] ?? null;
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                is_numeric( $totalTokens ) ? (float) $totalTokens : null,
-                $usage,
-            );
+        return $this->describeAudio( 'v1/chat/completions', 'mistral-large-latest', $audio, $lang, $options );
     }
 
 

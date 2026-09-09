@@ -28,7 +28,7 @@ trait HasUsage
      *
      * @param float|null $used Used units
      * @param array<string, mixed> $more Additional usage information
-     * @return static
+     * @return static Same instance for fluent chaining
      */
     public function withUsage( ?float $used, array $more = [] ) : static
     {

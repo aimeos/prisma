@@ -6,7 +6,7 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Vectorize;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Alibaba as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\VectorResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -14,18 +14,6 @@ use Psr\Http\Message\ResponseInterface;
 
 class Alibaba extends Base implements Imagine, Vectorize
 {
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
-        $this->header( 'Content-Type', 'application/json' );
-        $this->baseUrl( $this->config( $config, 'url', 'https://dashscope-intl.aliyuncs.com' ) );
-    }
-
-
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'wan2.7-image-pro' );

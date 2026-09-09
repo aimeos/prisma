@@ -24,7 +24,7 @@ trait HasMessages
      * context is set via withSystemPrompt(); tool calls are not part of the history.
      *
      * @param array<int, array<string, mixed>> $messages Conversation turns
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withMessages( array $messages ) : self
     {

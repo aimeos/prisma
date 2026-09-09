@@ -3,6 +3,7 @@
 namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Files\Image;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -45,5 +46,34 @@ class CohereTest extends TestCase
         } );
 
         $this->assertEquals( [[0.1, 0.2, 0.3]], $response->vectors() );
+        $this->assertSame( 1.0, $response->usage()['used'] );
+        $this->assertSame( ['You are using an experimental version'], $response->meta()['warnings'] );
+    }
+
+
+    #[DataProvider('billingCases')]
+    public function testSharedEmbeddingResponse( string $type, array $units, float $expected ) : void
+    {
+        $meta = ['billed_units' => $units, 'warnings' => ['Test warning']];
+        $input = $type === 'image' ? Image::fromBinary( 'PNG', 'image/png' ) : 'Hello';
+        $response = $this->prisma( $type, 'cohere', ['api_key' => 'test'] )
+            ->response( ['meta' => $meta] )->vectorize( [$input] );
+
+        $this->assertSame( [], $response->vectors() );
+        $this->assertSame( ['used' => $expected] + $units, $response->usage()->all() );
+        $this->assertSame( $meta, $response->meta()->all() );
+    }
+
+
+    public static function billingCases() : array
+    {
+        return [
+            'text tokens' => ['text', ['input_tokens' => '4', 'images' => 2], 4.0],
+            'image count' => ['image', ['input_tokens' => 4, 'images' => '2'], 2.0],
+            'text missing' => ['text', [], 0.0],
+            'image missing' => ['image', [], 0.0],
+            'text invalid' => ['text', ['input_tokens' => 'unknown'], 0.0],
+            'image invalid' => ['image', ['images' => 'unknown'], 0.0],
+        ];
     }
 }

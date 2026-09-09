@@ -33,7 +33,7 @@ trait HasHttpClient
      * Sets the Guzzle handler stack for the HTTP client.
      *
      * @param HandlerStack $stack Guzzle handler stack
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withClientHandler( HandlerStack $stack ) : self
     {
@@ -46,7 +46,7 @@ trait HasHttpClient
      * Merges additional options into the HTTP client configuration.
      *
      * @param array<string, mixed> $options Guzzle client options
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withClientOptions( array $options ) : self
     {
@@ -61,7 +61,7 @@ trait HasHttpClient
      * @param int $maxAttempts Total number of attempts including the initial request
      * @param \Closure|int $delayMs Fixed delay in ms or closure: fn(int $attempt, ResponseInterface $response): int
      * @param \Closure|null $when Retry condition: fn(ResponseInterface $response, int $attempt): bool
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withClientRetry( int $maxAttempts = 3, Closure|int $delayMs = 100, ?Closure $when = null ) : self
     {
@@ -92,7 +92,7 @@ trait HasHttpClient
      * Sets the base URL for the HTTP client.
      *
      * @param mixed $url Base URL string
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     protected function baseUrl( mixed $url ) : self
     {
@@ -181,7 +181,7 @@ trait HasHttpClient
      *
      * @param string $name Header name
      * @param mixed $value Header value string
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     protected function header( string $name, mixed $value ) : self
     {

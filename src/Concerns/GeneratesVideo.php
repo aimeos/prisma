@@ -74,7 +74,7 @@ trait GeneratesVideo
      * Validates any successful 2xx response.
      *
      * @param ResponseInterface $response Provider response
-     * @return void
+     * @return void No return value; throws for responses outside the 2xx range
      */
     protected function validateVideoResponse( ResponseInterface $response ) : void
     {
@@ -98,7 +98,7 @@ trait GeneratesVideo
      * Raises a provider job failure with a consistent exception type.
      *
      * @param mixed $message Provider failure message
-     * @return never
+     * @return never Always throws a provider job failure exception
      */
     protected function videoFailed( mixed $message = null ) : never
     {

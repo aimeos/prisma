@@ -27,7 +27,7 @@ trait HasCitations
      * Sets the citations.
      *
      * @param array<int, \Aimeos\Prisma\Values\Citation> $citations Citations
-     * @return static
+     * @return static Same instance for fluent chaining
      */
     public function withCitations( array $citations ) : static
     {

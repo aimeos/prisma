@@ -41,27 +41,7 @@ class Cohere extends CohereBase implements Structure, Vectorize, Write
             ...$allowed,
         ] + ['embedding_types' => ['float']];
 
-        $response = $this->client()->post( 'v2/embed', ['json' => $request] );
-
-        $this->validate( $response );
-
-        /** @var array<string, mixed> $data */
-        $data = $this->fromJson( $response );
-
-        /** @var array<string, mixed> $embeddings */
-        $embeddings = $data['embeddings'] ?? [];
-        /** @var array<int, array<int, float>|null> $vectors */
-        $vectors = $embeddings['float'] ?? [];
-
-        /** @var array<string, mixed> $meta */
-        $meta = $data['meta'] ?? [];
-        /** @var array<string, mixed> $billedUnits */
-        $billedUnits = $meta['billed_units'] ?? [];
-        $used = $billedUnits['input_tokens'] ?? 0;
-
-        return VectorResponse::fromVectors( $vectors )
-            ->withUsage( is_numeric( $used ) ? (float) $used : 0, $billedUnits )
-            ->withMeta( $meta );
+        return $this->embed( $request, 'input_tokens' );
     }
 
 

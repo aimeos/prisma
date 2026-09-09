@@ -37,7 +37,7 @@ trait HasTools
      * Sets the concurrency strategy for tool execution.
      *
      * @param Concurrency $concurrency Concurrency strategy
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withConcurrency( Concurrency $concurrency ) : self
     {
@@ -50,7 +50,7 @@ trait HasTools
      * Sets the maximum number of tool execution steps.
      *
      * @param int $steps Maximum number of steps (minimum 1)
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withMaxSteps( int $steps ) : self
     {
@@ -69,7 +69,7 @@ trait HasTools
      * model so it can choose a different action.
      *
      * @param callable|null $callback Approval resolver: fn(string $name, array $arguments): bool
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withToolApproval( ?callable $callback ) : self
     {
@@ -82,7 +82,7 @@ trait HasTools
      * Sets the tool choice strategy.
      *
      * @param string $choice Tool choice (use AUTO, REQUIRED, NONE constants)
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withToolChoice( string $choice ) : self
     {
@@ -98,7 +98,7 @@ trait HasTools
      * for built-in provider tools (e.g. web search, code execution).
      *
      * @param array<int, \Aimeos\Prisma\Tools\Adapter\Adapter> $tools Tool definitions
-     * @return self
+     * @return self Same instance for fluent chaining
      * @throws \InvalidArgumentException If a tool doesn't implement Adapter
      */
     public function withTools( array $tools ) : self

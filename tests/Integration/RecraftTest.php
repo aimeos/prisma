@@ -38,8 +38,17 @@ class RecraftTest extends TestCase
         $base64 = ['response_format' => 'b64_json'];
 
         return [
+            'background' => ['background', [$image, 'A forest', $base64]],
+            'masked background' => ['background', [$image, 'A forest', ['mask' => $mask] + $base64]],
+            'erase' => ['erase', [$image, $mask, $base64]],
+            'imagine' => ['imagine', ['A cartoon fox in a forest', [], $base64]],
+            'style references' => ['imagine', ['A cartoon fox', [$image], $base64]],
+            'inpaint' => ['inpaint', [$image, $mask, 'Glasses', $base64]],
+            'isolate' => ['isolate', [$image, $base64]],
             'repaint' => ['repaint', [$image, 'A watercolor painting', $base64]],
             'uncrop' => ['uncrop', [$image, 0, 100, 0, 0, $base64]],
+            'crisp upscale' => ['upscale', [$image, 2, $base64]],
+            'creative upscale' => ['upscale', [$image, 2, ['mode' => 'creative'] + $base64]],
         ];
     }
 }

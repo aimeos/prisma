@@ -722,6 +722,7 @@ trait OpenaiApi
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return void No return value; updates the supplied response
      */
     private function applyCompletion( \Aimeos\Prisma\Responses\TextResponse $res, array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {
@@ -995,6 +996,7 @@ trait OpenaiApi
      * @param array<int, \Aimeos\Prisma\Tools\Step> $allSteps Accumulated tool steps
      * @param array<int, string|null> $texts Extracted text content
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Rate limit information
+     * @return void No return value; updates the supplied response
      */
     private function applyResponse( \Aimeos\Prisma\Responses\TextResponse $res, array $result, array $allSteps, array $texts, ?\Aimeos\Prisma\Values\RateLimit $rateLimit ) : void
     {

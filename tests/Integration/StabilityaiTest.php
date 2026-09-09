@@ -4,96 +4,36 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Image;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 
 class StabilityaiTest extends TestCase
 {
-    public function testErase() : void
+    #[DataProvider('operations')]
+    public function testImageOperation( string $method, array $arguments ) : void
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
-        $mask = Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' );
-
         $response = Prisma::image()
             ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'erase' )
-            ->erase( $image, $mask );
+            ->ensure( $method )
+            ->$method( ...$arguments );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
-        file_put_contents( __DIR__ . '/results/stabilityai_erase.png', $response->binary() );
+        file_put_contents( __DIR__ . '/results/stabilityai_' . $method . '.png', $response->binary() );
     }
 
 
-    public function testImagine() : void
+    public static function operations() : array
     {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'imagine' )
-            ->imagine( 'a cartoon dog', [$image] );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/stabilityai_imagine.png', $response->binary() );
-    }
-
-
-    public function testInpaint() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $mask = Image::fromLocalPath( __DIR__ . '/assets/mask.png' );
-
-        $response = Prisma::image()
-            ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'inpaint' )
-            ->inpaint( $image, $mask, 'add eye glasses' );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/stabilityai_inpaint.png', $response->binary() );
-    }
-
-
-    public function testIsolate() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'isolate' )
-            ->isolate( $image );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/stabilityai_isolate.png', $response->binary() );
-    }
-
-
-    public function testUncrop() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
-        $response = Prisma::image()
-            ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'uncrop' )
-            ->uncrop( $image, 0, 200, 0, 0 );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/stabilityai_uncrop.png', $response->binary() );
-    }
-
-
-    public function testUpscale() : void
-    {
-        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'stabilityai', ['api_key' => $_ENV['STABILITYAI_API_KEY']])
-            ->ensure( 'upscale' )
-            ->upscale( $image, 2 );
-
-        $this->assertGreaterThan( 0, strlen( $response->binary() ) );
-
-        file_put_contents( __DIR__ . '/results/stabilityai_upscale.png', $response->binary() );
+        return [
+            'erase' => ['erase', [Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' ), Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' )]],
+            'imagine' => ['imagine', ['a cartoon dog', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' )]]],
+            'inpaint' => ['inpaint', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), Image::fromLocalPath( __DIR__ . '/assets/mask.png' ), 'add eye glasses']],
+            'isolate' => ['isolate', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' )]],
+            'uncrop' => ['uncrop', [Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' ), 0, 200, 0, 0]],
+            'upscale' => ['upscale', [Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), 2]],
+        ];
     }
 
 

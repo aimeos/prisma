@@ -15,7 +15,7 @@ trait HasModel
      * Sets the model to use.
      *
      * @param string|null $model Model name
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function model( ?string $model ) : self
     {

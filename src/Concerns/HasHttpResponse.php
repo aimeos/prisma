@@ -24,7 +24,7 @@ trait HasHttpResponse
      * multi-turn conversation.
      *
      * @param int $bytes Maximum bytes per response (minimum 1)
-     * @return self
+     * @return self Same instance for fluent chaining
      */
     public function withMaxResponseSize( int $bytes ) : self
     {
@@ -36,6 +36,7 @@ trait HasHttpResponse
     /**
      * Decodes a JSON response body into an array.
      *
+     * @param ResponseInterface $response HTTP response whose body will be decoded
      * @return array<string, mixed> Decoded response data
      */
     protected function fromJson( ResponseInterface $response ) : array
@@ -129,6 +130,7 @@ trait HasHttpResponse
      *
      * @param int $status HTTP status code
      * @param string $message Error message
+     * @return void No return value; always throws a status-specific exception
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
     protected function throw( int $status, string $message ) : void
@@ -156,6 +158,7 @@ trait HasHttpResponse
      * Validates the HTTP response and throws on non-200 status.
      *
      * @param ResponseInterface $response HTTP response
+     * @return void No return value; returns normally only for HTTP 200
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
     protected function validate( ResponseInterface $response ) : void
