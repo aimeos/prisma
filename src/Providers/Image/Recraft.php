@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Recraft extends Base implements
     // background
+    \Aimeos\Prisma\Contracts\Image\Background,
 
     // erase
     \Aimeos\Prisma\Contracts\Image\Erase,
@@ -31,6 +32,25 @@ class Recraft extends Base implements
     Repaint,
     Uncrop
 {
+    public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
+    {
+        $data = ['prompt' => $prompt, 'image_url' => $this->imageUrl( $image )];
+        $endpoint = 'replaceBackground';
+
+        if( isset( $options['mask'] ) )
+        {
+            if( !( $options['mask'] instanceof Image ) ) {
+                throw new BadRequestException( 'The background mask must be an Image' );
+            }
+
+            $data['mask_url'] = $this->imageUrl( $options['mask'] );
+            $endpoint = 'generateBackground';
+        }
+
+        return $this->request( $endpoint, $data + $this->generationOptions( $options, 'recraftv3' ) );
+    }
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
