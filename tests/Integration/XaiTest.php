@@ -3,6 +3,7 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -35,6 +36,29 @@ class XaiTest extends TestCase
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/xai_imagine.png', $response->binary() );
+    }
+
+
+    public function testRepaintImage() : void
+    {
+        $response = Prisma::image()->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+            ->ensure( 'repaint' )->repaint( Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), 'Paint the cat in watercolor' );
+
+        $this->assertNotEmpty( $response->binary() );
+        $this->assertStringStartsWith( 'image/', $response->mimeType() );
+    }
+
+
+    public function testImagineReferences() : void
+    {
+        $response = Prisma::image()->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+            ->imagine( 'Place the cat from the first image in the room from the second image', [
+                Image::fromLocalPath( __DIR__ . '/assets/cat.png' ),
+                Image::fromLocalPath( __DIR__ . '/assets/room.jpg' ),
+            ] );
+
+        $this->assertNotEmpty( $response->binary() );
+        $this->assertStringStartsWith( 'image/', $response->mimeType() );
     }
 
 

@@ -166,7 +166,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
 | **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
 | **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
+| **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | beta    | -      | -       | -         |
 | **Z.AI**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
 
 ### Text
@@ -1457,7 +1457,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
-* [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations)
+* [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations) ([Multi-image editing](https://docs.x.ai/developers/model-capabilities/images/multi-image-editing))
 * [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
 
 **Example:**
@@ -1690,6 +1690,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 * Openrouter
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
+* [xAI](https://docs.x.ai/developers/model-capabilities/images/editing)
 
 **Example:**
 
