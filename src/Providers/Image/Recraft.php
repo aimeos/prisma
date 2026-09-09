@@ -12,7 +12,20 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Recraft extends Base implements Repaint, Uncrop
+class Recraft extends Base implements
+    // background
+
+    // erase
+
+    // imagine
+
+    // inpaint
+
+    // isolate
+
+    // upscale
+    Repaint,
+    Uncrop
 {
     public function __construct( array $config )
     {

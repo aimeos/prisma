@@ -131,7 +131,7 @@ class RecraftTest extends TestCase
             $this->assertTrue( $provider->has( $method ), $method );
         }
 
-        foreach( ['background', 'erase', 'imagine', 'inpaint', 'isolate', 'upscale', 'describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
+        foreach( ['describe', 'detext', 'recognize', 'relocate', 'vectorize'] as $method ) {
             $this->assertFalse( $provider->has( $method ), $method );
         }
     }

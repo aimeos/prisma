@@ -1,0 +1,3 @@
+# isolate()
+
+Not implemented yet.
