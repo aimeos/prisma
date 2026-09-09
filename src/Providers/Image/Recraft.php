@@ -24,6 +24,7 @@ class Recraft extends Base implements
     // isolate
 
     // upscale
+    \Aimeos\Prisma\Contracts\Image\Upscale,
     Repaint,
     Uncrop
 {
@@ -86,6 +87,21 @@ class Recraft extends Base implements
     protected function imageUrl( Image $image ) : string
     {
         return $image->url() ?? 'data:' . $image->mimeType() . ';base64,' . $image->base64();
+    }
+
+
+    public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
+    {
+        $mode = $options['mode'] ?? 'crisp';
+
+        if( !in_array( $mode, ['crisp', 'creative'], true ) ) {
+            throw new BadRequestException( 'Upscale mode must be crisp or creative' );
+        }
+
+        // Recraft determines the output resolution; its API has no scale parameter.
+        return $this->request( $mode . 'Upscale', [
+            'image_url' => $this->imageUrl( $image ),
+        ] + $this->allowed( $options, ['response_format'] ) );
     }
 
 
