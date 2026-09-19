@@ -156,7 +156,7 @@ class Stabilityai extends Base
             $this->throw( match( $status ) {
                 413 => 400,
                 default => $status,
-            }, join( ', ', $errorList ) );
+            }, join( ', ', $errorList ), $response );
         }
     }
 }

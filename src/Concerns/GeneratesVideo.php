@@ -90,7 +90,7 @@ trait GeneratesVideo
         $error = is_array( $data['error'] ?? null ) ? $data['error'] : [];
         $message = $error['message'] ?? $data['message'] ?? $response->getReasonPhrase();
 
-        $this->throw( $status, is_string( $message ) ? $message : '' );
+        $this->throw( $status, is_string( $message ) ? $message : '', $response );
     }
 
 

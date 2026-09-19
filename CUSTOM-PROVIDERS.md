@@ -377,7 +377,8 @@ representation or automatic mime detection is requested. Streams are treated as
 forward-only: `stream()` returns the retained resource at its current position,
 and conversion consumes and caches its remaining bytes. When no retained input
 stream remains, every `stream()` call returns a fresh resource that the caller is
-responsible for closing.
+responsible for closing. URL files not fetched yet are downloaded into a temporary
+stream on each `stream()` call instead of being kept in memory.
 
 #### Accessors
 
@@ -465,13 +466,15 @@ status codes to typed exceptions:
 | 401 | UnauthorizedException |
 | 402 | PaymentRequiredException |
 | 403 | ForbiddenException |
-| 404 | NotFoundException |
+| 404, 410 | NotFoundException |
 | 413 | SizeException |
 | 429 | RateLimitException |
 | 502, 503, 504 | OverloadedException |
 | other | PrismaException |
 
 All exceptions extend `PrismaException` (`Aimeos\Prisma\Exceptions` namespace).
+Pass the response as third argument of *throw()* in your own *validate()* method, so
+`RateLimitException::retryAfter()` contains the seconds from the `Retry-After` header.
 
 The *fromJson()* method decodes a JSON response body into an array, throwing
 `PrismaException` on invalid JSON.

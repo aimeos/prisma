@@ -304,7 +304,7 @@ class Gemini extends Base
             $this->throw( match( $status ) {
                 403 => 401, // unauthorized, not forbidden content
                 default   => $status
-            }, $error );
+            }, $error, $response );
         }
     }
 

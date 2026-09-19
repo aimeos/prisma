@@ -105,7 +105,7 @@ class Removebg extends Base implements Isolate, Relocate
             $this->throw( match( $status ) {
                 403 => 401,
                 default => $status,
-            }, join( ', ', array_column( $errorList, 'title' ) ) );
+            }, join( ', ', array_column( $errorList, 'title' ) ), $response );
         }
     }
 }

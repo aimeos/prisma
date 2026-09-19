@@ -114,7 +114,7 @@ class Deepgram extends Base implements Speak, Transcribe
         if( $response->getStatusCode() !== 200 )
         {
             $error = @$this->fromJson( $response )['err_msg'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
+            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
         }
     }
 }

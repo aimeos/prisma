@@ -55,7 +55,7 @@ class Mistral extends Base
             $this->throw( match( $status ) {
                 422 => 400,
                 default => $status
-            }, ( $msg = @$this->fromJson( $response )['message'] ?? null ) && is_string( $msg ) ? $msg : $response->getReasonPhrase() );
+            }, ( $msg = @$this->fromJson( $response )['message'] ?? null ) && is_string( $msg ) ? $msg : $response->getReasonPhrase(), $response );
         }
     }
 }

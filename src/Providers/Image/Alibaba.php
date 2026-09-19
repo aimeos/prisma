@@ -164,6 +164,6 @@ class Alibaba extends Base implements Imagine, Vectorize
 
         $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
 
-        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
+        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
     }
 }

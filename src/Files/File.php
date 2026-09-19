@@ -29,6 +29,21 @@ class File
 
 
     /**
+     * Reads a stream into memory before serialization because resources cannot be serialized.
+     *
+     * @return array<string, mixed> Object properties to serialize
+     */
+    public function __serialize() : array
+    {
+        if( $this->stream !== null ) {
+            $this->binary();
+        }
+
+        return get_object_vars( $this );
+    }
+
+
+    /**
      * Set the file name.
      *
      * @param string $name New file name
@@ -84,7 +99,7 @@ class File
             return $this->binary = $content;
         }
 
-        if( $this->url && !( $this->binary = $this->fetch( $this->url, max( 0, $this->maxBytes ), $this->strict ) ?: null ) ) {
+        if( $this->url && !( $this->binary = $this->fetch( $this->url, $this->maxBytes, $this->strict ) ?: null ) ) {
             throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
         }
 
@@ -222,7 +237,7 @@ class File
      *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
-     * @param bool $strict TRUE to reject private and reserved addresses, FALSE to allow them
+     * @param bool $strict TRUE to reject non-public addresses, FALSE to allow them
      * @return static File instance
      */
     public static function fromUrl( string $url, ?string $mimeType = null, bool $strict = true ) : static
@@ -239,12 +254,12 @@ class File
     /**
      * Sets the maximum number of bytes fetched from a URL.
      *
-     * @param int $bytes Maximum size in bytes
+     * @param int $bytes Maximum size in bytes or -1 for no limit
      * @return self File instance
      */
     public function maxSize( int $bytes ) : self
     {
-        $this->maxBytes = $bytes;
+        $this->maxBytes = $bytes < 0 ? PHP_INT_MAX : $bytes;
         return $this;
     }
 
@@ -313,12 +328,19 @@ class File
     /**
      * Returns the file content as a stream.
      *
+     * URL files not fetched yet are downloaded into a temporary stream on each call instead
+     * of being kept in memory, so large files like videos can be stored at constant memory.
+     *
      * @return resource Retained input stream or a new readable stream
      */
     public function stream() : mixed
     {
         if( $this->stream !== null ) {
             return self::resource( $this->stream );
+        }
+
+        if( $this->url && $this->binary === null && $this->base64 === null ) {
+            return $this->fetchStream( $this->url, $this->maxBytes, $this->strict );
         }
 
         return self::resource( Utils::streamFor( (string) $this->binary() )->detach() );

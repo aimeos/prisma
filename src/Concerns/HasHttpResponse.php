@@ -110,9 +110,9 @@ trait HasHttpResponse
         $limit = $response->getHeaderLine( 'x-ratelimit-limit' );
         $remaining = $response->getHeaderLine( 'x-ratelimit-remaining' );
         $reset = $response->getHeaderLine( 'x-ratelimit-reset' );
-        $retryAfter = $response->getHeaderLine( 'retry-after' );
+        $retryAfter = $this->retryAfter( $response );
 
-        if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === '' ) {
+        if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === null ) {
             return null;
         }
 
@@ -120,8 +120,27 @@ trait HasHttpResponse
             $limit !== '' ? (int) $limit : null,
             $remaining !== '' ? (int) $remaining : null,
             $reset !== '' ? $reset : null,
-            $retryAfter !== '' ? (int) $retryAfter : null,
+            $retryAfter,
         );
+    }
+
+
+    /**
+     * Returns the seconds to wait from the Retry-After header.
+     *
+     * @param ResponseInterface $response HTTP response
+     * @return int|null Seconds to wait or NULL if the header is missing or invalid
+     */
+    protected function retryAfter( ResponseInterface $response ) : ?int
+    {
+        $value = trim( $response->getHeaderLine( 'retry-after' ) );
+
+        if( ctype_digit( $value ) ) {
+            return (int) $value;
+        }
+
+        // the header can also contain an HTTP date instead of seconds
+        return $value !== '' && ( $time = strtotime( $value ) ) !== false ? max( 0, $time - time() ) : null;
     }
 
 
@@ -130,10 +149,11 @@ trait HasHttpResponse
      *
      * @param int $status HTTP status code
      * @param string $message Error message
+     * @param ResponseInterface|null $response HTTP response for the Retry-After header of rate limit errors
      * @return void No return value; always throws a status-specific exception
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
-    protected function throw( int $status, string $message ) : void
+    protected function throw( int $status, string $message, ?ResponseInterface $response = null ) : void
     {
         switch( $status )
         {
@@ -143,9 +163,11 @@ trait HasHttpResponse
             case 401: throw new \Aimeos\Prisma\Exceptions\UnauthorizedException( $message );
             case 402: throw new \Aimeos\Prisma\Exceptions\PaymentRequiredException( $message );
             case 403: throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $message );
+            case 410:
             case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
             case 413: throw new \Aimeos\Prisma\Exceptions\SizeException( $message );
-            case 429: throw new \Aimeos\Prisma\Exceptions\RateLimitException( $message );
+            case 429: throw ( new \Aimeos\Prisma\Exceptions\RateLimitException( $message ) )
+                ->withRetryAfter( $response ? $this->retryAfter( $response ) : null );
             case 502:
             case 504:
             case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
@@ -173,6 +195,6 @@ trait HasHttpResponse
         $errorObj = $json['error'] ?? [];
         $errorMsg = $errorObj['message'] ?? $json['message'] ?? $response->getReasonPhrase();
 
-        $this->throw( $response->getStatusCode(), is_string( $errorMsg ) ? $errorMsg : '' );
+        $this->throw( $response->getStatusCode(), is_string( $errorMsg ) ? $errorMsg : '', $response );
     }
 }

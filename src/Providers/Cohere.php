@@ -64,7 +64,7 @@ class Cohere extends Base
                 413 => 400,
                 498 => 403,
                 default => $status,
-            }, is_string( $msg ) ? $msg : '' );
+            }, is_string( $msg ) ? $msg : '', $response );
         }
     }
 }
