@@ -239,6 +239,6 @@ class Recraft extends Base
             $error = $error['message'] ?? $response->getReasonPhrase();
         }
 
-        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : $response->getReasonPhrase() );
+        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : $response->getReasonPhrase(), $response );
     }
 }

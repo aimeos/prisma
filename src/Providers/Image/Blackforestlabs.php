@@ -174,7 +174,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
                 $error = $detail;
             }
 
-            $this->throw( $status, is_string( $error ) ? $error : $response->getReasonPhrase() );
+            $this->throw( $status, is_string( $error ) ? $error : $response->getReasonPhrase(), $response );
         }
     }
 }

@@ -385,7 +385,7 @@ Set the maximum number of bytes read for a single provider response.
 Bounds the bytes read through Prisma's JSON and SSE response readers, including text,
 reasoning and tool-call arguments. Defaults to 64 MiB and applies to each HTTP response,
 so each tool-loop turn has its own limit. Direct binary response reads and file downloads
-are separate; use `$file->maxSize( $bytes )` to configure a file's URL download limit.
+are separate; use `$file->maxSize( $bytes )` to configure a file's URL download limit (`-1` for no limit).
 
 ```php
 public function withMaxResponseSize( int $bytes ) : self
@@ -2254,8 +2254,10 @@ uses `generate_audio` for audio generation; the common `audio` option is ignored
 
 Most video generation jobs are asynchronous. Accessing `first()`, `files()`,
 `binary()`, or iterating the response waits and polls until the provider finishes.
-Use `ready()` to perform one non-blocking status poll; providers returning video
-data immediately are ready without polling.
+Rate limited status requests don't abort waiting; the next poll waits as long as the
+`Retry-After` header of the provider asks for, unless that exceeds the polling deadline
+and the `RateLimitException` is thrown. Use `ready()` to perform one non-blocking status
+poll; providers returning video data immediately are ready without polling.
 
 Alibaba and Openrouter video polling stop after 900 seconds by default. Set
 `poll_timeout` in the provider configuration to another number of seconds, or to

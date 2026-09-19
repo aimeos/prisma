@@ -3,6 +3,7 @@
 namespace Tests\Responses;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Exceptions\RateLimitException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\FileResponse;
 use PHPUnit\Framework\TestCase;
@@ -69,6 +70,53 @@ class AsyncTest extends TestCase
 
         $this->assertSame( 3, $polls );
         $this->assertSame( [5, 5], $response->sleeps );
+    }
+
+
+    public function testWaitRetriesRateLimit() : void
+    {
+        $polls = 0;
+        $response = AsyncFileResponse::fromAsync(
+            function( $response ) use ( &$polls ) {
+                if( ++$polls === 4 ) {
+                    $response->add( File::fromBinary( 'data', 'text/plain' ) );
+                    return true;
+                }
+
+                throw ( new RateLimitException( 'Too many requests' ) )->withRetryAfter( [12, 2, null][$polls - 1] );
+            },
+            5
+        );
+
+        // rate limited polls wait as long as the provider asks for, but at least the polling interval
+        $this->assertInstanceOf( File::class, $response->first() );
+        $this->assertSame( 4, $polls );
+        $this->assertSame( [12, 5, 5], $response->sleeps );
+    }
+
+
+    public function testWaitRateLimitBeyondTimeout() : void
+    {
+        $polls = 0;
+        $response = AsyncFileResponse::fromAsync(
+            function() use ( &$polls ) {
+                $polls++;
+                throw ( new RateLimitException( 'Too many requests' ) )->withRetryAfter( 8 );
+            },
+            5,
+            10
+        );
+
+        try {
+            $response->first();
+            $this->fail( 'Expected the rate limit exception' );
+        } catch( RateLimitException $e ) {
+            $this->assertSame( 8, $e->retryAfter() );
+        }
+
+        // the second wait would exceed the deadline, so the rate limit is thrown instead of sleeping
+        $this->assertSame( 2, $polls );
+        $this->assertSame( [8], $response->sleeps );
     }
 }
 

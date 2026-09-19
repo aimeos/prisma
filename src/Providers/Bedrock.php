@@ -34,7 +34,7 @@ class Bedrock extends Base
         if( ( $status = $response->getStatusCode() ) !== 200 )
         {
             $msg = @$this->fromJson( $response )['message'] ?: $response->getReasonPhrase();
-            $this->throw( $status, is_string( $msg ) ? $msg : '' );
+            $this->throw( $status, is_string( $msg ) ? $msg : '', $response );
         }
     }
 }

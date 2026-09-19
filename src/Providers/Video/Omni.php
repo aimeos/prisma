@@ -48,7 +48,7 @@ class Omni extends Base implements Imagine, Repaint
         $files = $this->files( $data );
 
         if( empty( $files ) ) {
-            $this->videoFailed( is_array( $data['error'] ?? null ) ? ( $data['error']['message'] ?? null ) : null );
+            $this->videoFailed( $data['error']['message'] ?? null );
         }
 
         unset( $data['steps'] );

@@ -72,7 +72,7 @@ class Voyageai extends Base implements Vectorize
         if( ( $status = $response->getStatusCode() ) !== 200 )
         {
             $error = @$this->fromJson( $response )['detail'] ?: $response->getReasonPhrase();
-            $this->throw( $status, is_string( $error ) ? $error : '' );
+            $this->throw( $status, is_string( $error ) ? $error : '', $response );
         }
     }
 }

@@ -116,7 +116,7 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
         {
             $detail = @$this->fromJson( $response )['detail'] ?? [];
             $error = is_array( $detail ) ? ( $detail['message'] ?? $response->getReasonPhrase() ) : $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '' );
+            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
         }
     }
 }

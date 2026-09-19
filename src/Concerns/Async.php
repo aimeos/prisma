@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Concerns;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Exceptions\RateLimitException;
 
 
 /**
@@ -75,27 +76,21 @@ trait Async
     /**
      * Blocks by polling until the response is populated.
      *
+     * Rate limited status requests don't abort waiting for the running job, the next poll
+     * waits as long as the provider asks for instead, unless that exceeds the polling deadline.
+     *
      * @return void No return value; marks the response ready when polling completes
      */
     protected function wait() : void
     {
-        if( $this->asyncDone ) {
-            return;
-        }
+        $waited = 0;
 
-        if( $closure = $this->asyncPoll )
+        while( ( $retry = $this->pollAsync( $waited ) ) > 0 )
         {
-            $waited = 0;
-
-            while( !$closure( $this ) )
-            {
-                $this->ensureAsyncActive( $waited );
-                $seconds = $this->sleepSeconds( $waited );
-                $this->sleepAsync( $seconds );
-                $waited += $seconds;
-            }
-
-            $this->asyncDone = true;
+            $this->ensureAsyncActive( $waited );
+            $seconds = $this->sleepSeconds( $waited, $retry );
+            $this->sleepAsync( $seconds );
+            $waited += $seconds;
         }
     }
 
@@ -113,6 +108,18 @@ trait Async
 
 
     /**
+     * Returns the seconds elapsed since polling started.
+     *
+     * @param int $waited Seconds spent in polling sleeps
+     * @return float Elapsed seconds
+     */
+    private function asyncElapsed( int $waited ) : float
+    {
+        return max( $waited, microtime( true ) - $this->asyncStartedAt );
+    }
+
+
+    /**
      * Raises an exception when the asynchronous polling deadline has elapsed.
      *
      * @param int $waited Seconds spent in polling sleeps
@@ -124,10 +131,29 @@ trait Async
             return;
         }
 
-        $elapsed = max( $waited, microtime( true ) - $this->asyncStartedAt );
-
-        if( $elapsed >= $this->asyncTimeout ) {
+        if( $this->asyncElapsed( $waited ) >= $this->asyncTimeout ) {
             throw new PrismaException( sprintf( 'Asynchronous operation timed out after %d seconds', $this->asyncTimeout ) );
+        }
+    }
+
+
+    /**
+     * Polls once and returns the seconds to wait before polling again.
+     *
+     * @param int $waited Seconds spent in polling sleeps
+     * @return int Seconds until the next poll or zero if the response is ready
+     * @throws RateLimitException If the provider asks to wait beyond the polling deadline
+     */
+    private function pollAsync( int $waited ) : int
+    {
+        try {
+            return $this->ready() ? 0 : $this->asyncRetry;
+        } catch( RateLimitException $e ) {
+            if( $this->asyncTimeout > 0 && $this->asyncElapsed( $waited ) + (int) $e->retryAfter() > $this->asyncTimeout ) {
+                throw $e;
+            }
+
+            return max( $this->asyncRetry, (int) $e->retryAfter() );
         }
     }
 
@@ -136,16 +162,15 @@ trait Async
      * Returns the next sleep interval without exceeding the polling deadline.
      *
      * @param int $waited Seconds spent in polling sleeps
+     * @param int $retry Seconds until the next poll
      * @return int Seconds to sleep
      */
-    private function sleepSeconds( int $waited ) : int
+    private function sleepSeconds( int $waited, int $retry ) : int
     {
         if( $this->asyncTimeout === 0 ) {
-            return $this->asyncRetry;
+            return $retry;
         }
 
-        $elapsed = max( $waited, microtime( true ) - $this->asyncStartedAt );
-
-        return max( 1, min( $this->asyncRetry, (int) ceil( $this->asyncTimeout - $elapsed ) ) );
+        return max( 1, min( $retry, (int) ceil( $this->asyncTimeout - $this->asyncElapsed( $waited ) ) ) );
     }
 }
