@@ -3,6 +3,7 @@
 namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\OverloadedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Exceptions\RateLimitException;
 use Aimeos\Prisma\Files\Image;
@@ -157,6 +158,26 @@ class RecraftTest extends TestCase
     {
         return [[[]], [['data' => []]], [['data' => 'bad']], [['image' => []]],
             [['data' => ['bad']]], [['data' => [['b64_json' => '!bad!']]]], [['data' => [['url' => '']]]]];
+    }
+
+
+    public function testNonJsonResponse() : void
+    {
+        // a successful response must be JSON, so its body is reported instead of missing image data
+        $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )->response( '<html>maintenance</html>' );
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'Invalid JSON response (HTTP 200)' );
+        $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
+    }
+
+
+    public function testNonJsonError() : void
+    {
+        $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )
+            ->response( '<html>maintenance</html>', [], 503, 'Service Unavailable' );
+        $this->expectException( OverloadedException::class );
+        $this->expectExceptionMessage( 'Service Unavailable' );
+        $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
     }
 
 

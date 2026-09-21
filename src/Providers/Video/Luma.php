@@ -60,14 +60,14 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
         $response = $this->client()->post( 'generations', [
             'json' => $request,
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $id = $data['id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            $this->videoFailed( is_string( $data['failure_reason'] ?? null ) ? $data['failure_reason'] : null );
+            $this->videoFailed( $data['failure_reason'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
@@ -231,14 +231,14 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'generations/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
             $state = $data['state'] ?? null;
 
             if( $state === 'failed' ) {
-                $this->videoFailed( is_string( $data['failure_reason'] ?? null ) ? $data['failure_reason'] : null );
+                $this->videoFailed( $data['failure_reason'] ?? null );
             }
 
             if( $state !== 'completed' ) {
@@ -246,7 +246,7 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
             }
 
             foreach( is_array( $data['output'] ?? null ) ? $data['output'] : [] as $output ) {
-                $url = is_array( $output ) && $output['type'] === 'video' ? ( $output['url'] ?? null ) : null;
+                $url = is_array( $output ) && ( $output['type'] ?? null ) === 'video' ? ( $output['url'] ?? null ) : null;
 
                 if( is_string( $url ) && $url !== '' ) {
                     $result->add( Video::fromUrl( $url, 'video/mp4' ) );

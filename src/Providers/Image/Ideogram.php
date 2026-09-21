@@ -510,8 +510,7 @@ class Ideogram
     {
         if( $response->getStatusCode() === 422 )
         {
-            $error = @$this->fromJson( $response )['error'] ?: $response->getReasonPhrase();
-            throw new \Aimeos\Prisma\Exceptions\ForbiddenException( is_string( $error ) ? $error : '' );
+            throw new \Aimeos\Prisma\Exceptions\ForbiddenException( $this->errorMessage( $this->errorData( $response ) ) ?? $response->getReasonPhrase() );
         }
 
         parent::validate( $response );

@@ -82,7 +82,7 @@ class Openrouter extends Base implements Describe, Imagine
     protected function submit( array $request ) : FileResponse
     {
         $response = $this->client()->post( 'api/v1/videos', ['json' => $request] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
@@ -106,7 +106,7 @@ class Openrouter extends Base implements Describe, Imagine
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'api/v1/videos/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
@@ -194,22 +194,5 @@ class Openrouter extends Base implements Describe, Imagine
         }
 
         return $result;
-    }
-
-
-    /** @param array<string, mixed> $data */
-    protected function errorMessage( array $data ) : ?string
-    {
-        $error = $data['error'] ?? null;
-
-        if( is_string( $error ) ) {
-            return $error;
-        }
-
-        if( is_array( $error ) && is_string( $error['message'] ?? null ) ) {
-            return $error['message'];
-        }
-
-        return is_string( $data['message'] ?? null ) ? $data['message'] : null;
     }
 }

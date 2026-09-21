@@ -456,9 +456,9 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 ### Error handling
 
-The *validate()* method checks for HTTP 200, extracts the error message from
-the JSON body (`error.message` or `message`), and calls *throw()* which maps
-status codes to typed exceptions:
+The *validate()* method accepts all 2xx status codes, extracts the error message of
+other responses from the JSON body (`error`, `error.message`, `message` or the FastAPI
+`detail`), and calls *throw()* which maps status codes to typed exceptions:
 
 | HTTP Status | Exception |
 |-------------|-----------|
@@ -475,6 +475,11 @@ status codes to typed exceptions:
 All exceptions extend `PrismaException` (`Aimeos\Prisma\Exceptions` namespace).
 Pass the response as third argument of *throw()* in your own *validate()* method, so
 `RateLimitException::retryAfter()` contains the seconds from the `Retry-After` header.
+The *retryHeader()* method reads that header.
+`$this->errorMessage( $this->errorData( $response ) )` returns the error message like
+*validate()* reads it, or NULL if the body contains none.
+Video providers use *validate()* as well; the *validateVideoResponse()* method of the
+`GeneratesVideo` trait was removed after 0.7.
 
 The *fromJson()* method decodes a JSON response body into an array, throwing
 `PrismaException` on invalid JSON.
@@ -493,18 +498,16 @@ use Psr\Http\Message\ResponseInterface;
 
 protected function validate( ResponseInterface $response ) : void
 {
-    if( $response->getStatusCode() === 200 ) {
+    if( ( $status = $response->getStatusCode() ) >= 200 && $status < 300 ) {
         return;
     }
 
-    $data = $this->fromJson( $response );
-    $error = $data['detail'] ?? $response->getReasonPhrase();
+    // errorData() doesn't throw for bodies that aren't JSON, so the status decides the exception
+    $data = $this->errorData( $response );
+    $error = $data['errors'][0]['description'] ?? null;
 
-    // remap status codes if needed (e.g. treat 422 as a bad request)
-    $this->throw( match( $response->getStatusCode() ) {
-        422 => 400,
-        default => $response->getStatusCode(),
-    }, is_string( $error ) ? $error : '' );
+    // remap status codes if needed (e.g. an API reporting rate limits as 403)
+    $this->throw( $status === 403 ? 429 : $status, is_string( $error ) ? $error : $response->getReasonPhrase(), $response );
 }
 ```
 

@@ -283,22 +283,20 @@ class Gemini extends Base
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
+        if( ( $status = $response->getStatusCode() ) < 200 || $status >= 300 )
         {
-            $json = @$this->fromJson( $response );
-            /** @var array<string, mixed> $errorObj */
-            $errorObj = $json['error'] ?? [];
-            /** @var string $error */
-            $error = $errorObj['message'] ?? $response->getReasonPhrase();
+            $json = $this->errorData( $response );
+            $error = $this->errorMessage( $json ) ?? $response->getReasonPhrase();
 
             // Gemini returns the retry delay in the 429 body (RetryInfo) rather than a
             // header, so it is parsed here and attached to the rate-limit exception.
+            // Proxies in front of the API may send the Retry-After header instead.
             if( $status === 429 )
             {
                 /** @var array<int, array<string, mixed>> $details */
-                $details = $errorObj['details'] ?? [];
-                throw ( new \Aimeos\Prisma\Exceptions\RateLimitException( is_string( $error ) ? $error : '' ) )
-                    ->withRetryAfter( $this->retryDelay( $details ) );
+                $details = is_array( $json['error']['details'] ?? null ) ? $json['error']['details'] : [];
+                throw ( new \Aimeos\Prisma\Exceptions\RateLimitException( $error ) )
+                    ->withRetryAfter( $this->retryDelay( $details ) ?? $this->retryHeader( $response ) );
             }
 
             $this->throw( match( $status ) {

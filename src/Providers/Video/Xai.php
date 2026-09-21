@@ -54,14 +54,14 @@ class Xai extends Base implements Extend, Imagine, Repaint
     protected function submit( string $path, array $request ) : FileResponse
     {
         $response = $this->client()->post( $path, ['json' => $request] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $id = $data['request_id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
+            $this->videoFailed( $data['message'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
@@ -102,14 +102,14 @@ class Xai extends Base implements Extend, Imagine, Repaint
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'v1/videos/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
             $status = $data['status'] ?? null;
 
             if( $status === 'failed' || $status === 'expired' ) {
-                $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : $status );
+                $this->videoFailed( $this->errorMessage( $data ) ?: $status );
             }
 
             if( $status !== 'done' ) {

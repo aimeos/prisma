@@ -6,7 +6,6 @@ use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Alibaba as Base;
 use Aimeos\Prisma\Responses\FileResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Alibaba extends Base implements Speak
@@ -54,17 +53,5 @@ class Alibaba extends Base implements Speak
         return FileResponse::fromUrl( $url, 'audio/mpeg' )
             ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
             ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
-
-        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
     }
 }

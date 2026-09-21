@@ -32,7 +32,7 @@ class Minimax extends Base implements Imagine
         $response = $this->client()->post( 'v1/video_generation', [
             'json' => $this->request( $prompt, $media, $options ),
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
@@ -57,7 +57,7 @@ class Minimax extends Base implements Imagine
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'v1/query/video_generation?task_id=' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
@@ -168,7 +168,7 @@ class Minimax extends Base implements Imagine
     protected function video( string|int $id ) : Video
     {
         $response = $this->client()->get( 'v1/files/retrieve?file_id=' . rawurlencode( (string) $id ) );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );

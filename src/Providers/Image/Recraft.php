@@ -15,7 +15,6 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Recraft extends Base
@@ -223,22 +222,5 @@ class Recraft extends Base
         return FileResponse::fromFiles( $files )
             ->withMeta( $result )
             ->withUsage( is_numeric( $result['credits'] ?? null ) ? (float) $result['credits'] : null );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $result = $this->fromJson( $response );
-        $error = $result['error'] ?? $result['message'] ?? $response->getReasonPhrase();
-
-        if( is_array( $error ) ) {
-            $error = $error['message'] ?? $response->getReasonPhrase();
-        }
-
-        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : $response->getReasonPhrase(), $response );
     }
 }

@@ -111,10 +111,13 @@ class Deepgram extends Base implements Speak, Transcribe
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() !== 200 )
+        if( ( $status = $response->getStatusCode() ) < 200 || $status >= 300 )
         {
-            $error = @$this->fromJson( $response )['err_msg'] ?: $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
+            // most errors use "err_msg", JSON validation errors a "message" instead
+            $data = $this->errorData( $response );
+            $msg = is_string( $data['err_msg'] ?? null ) && $data['err_msg'] !== '' ? $data['err_msg'] : $this->errorMessage( $data );
+
+            $this->throw( $status, $msg ?? $response->getReasonPhrase(), $response );
         }
     }
 }

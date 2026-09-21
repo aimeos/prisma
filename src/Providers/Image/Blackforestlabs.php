@@ -159,22 +159,4 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
         return FileResponse::fromAsync( $this->download( $data['polling_url'] ), 2 )
             ->withUsage( is_numeric( $cost ) ? (float) $cost : 0 );
     }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
-        {
-            $detail = @$this->fromJson( $response )['detail'];
-
-            if( is_array( $detail ) ) {
-                /** @var array<int, array<string, mixed>> $detail */
-                $error = join( ', ', array_map( fn( $entry ) => $entry['msg'] ?? '', $detail ) );
-            } else {
-                $error = $detail;
-            }
-
-            $this->throw( $status, is_string( $error ) ? $error : $response->getReasonPhrase(), $response );
-        }
-    }
 }

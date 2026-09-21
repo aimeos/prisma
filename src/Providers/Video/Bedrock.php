@@ -51,14 +51,14 @@ class Bedrock extends Base implements Describe, Imagine
         $response = $this->client()->post( $this->baseUrl . '/async-invoke', [
             'json' => $this->request( $prompt, $media, $options ),
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $arn = $data['invocationArn'] ?? null;
 
         if( !is_string( $arn ) || $arn === '' ) {
-            $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
+            $this->videoFailed( $data['message'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $arn ), 10 );
@@ -221,14 +221,14 @@ class Bedrock extends Base implements Describe, Imagine
     {
         return function( FileResponse $result ) use ( $arn ) : bool {
             $response = $this->client()->get( $this->baseUrl . '/async-invoke/' . rawurlencode( $arn ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
             $status = $data['status'] ?? null;
 
             if( $status === 'Failed' ) {
-                $this->videoFailed( is_string( $data['failureMessage'] ?? null ) ? $data['failureMessage'] : null );
+                $this->videoFailed( $data['failureMessage'] ?? null );
             }
 
             if( $status !== 'Completed' ) {

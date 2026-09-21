@@ -98,14 +98,15 @@ class Removebg extends Base implements Isolate, Relocate
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
+        if( ( $status = $response->getStatusCode() ) < 200 || $status >= 300 )
         {
-            /** @var array<int, array<string, mixed>> $errorList */
-            $errorList = @$this->fromJson( $response )['errors'] ?? [];
+            $errors = $this->errorData( $response )['errors'] ?? null;
+            $msg = is_array( $errors ) ? join( ', ', array_filter( array_column( $errors, 'title' ), 'is_string' ) ) : '';
+
             $this->throw( match( $status ) {
                 403 => 401,
                 default => $status,
-            }, join( ', ', array_column( $errorList, 'title' ) ), $response );
+            }, $msg ?: $response->getReasonPhrase(), $response );
         }
     }
 }

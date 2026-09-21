@@ -154,16 +154,4 @@ class Alibaba extends Base implements Imagine, Vectorize
 
         return FileResponse::fromFiles( $files )->withMeta( $data );
     }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $error = $this->fromJson( $response )['message'] ?? $response->getReasonPhrase();
-
-        $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
-    }
 }

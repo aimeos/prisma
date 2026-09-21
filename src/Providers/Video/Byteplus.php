@@ -73,14 +73,14 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
         $response = $this->client()->post( 'api/v3/contents/generations/tasks', [
             'json' => $this->request( $prompt, $media, $options ),
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $id = $data['id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
+            $this->videoFailed( $this->errorMessage( $data ) );
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
@@ -207,14 +207,14 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'api/v3/contents/generations/tasks/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
             $status = $data['status'] ?? null;
 
             if( in_array( $status, ['failed', 'cancelled'], true ) ) {
-                $this->videoFailed( is_string( $data['error'] ?? null ) ? $data['error'] : $status );
+                $this->videoFailed( $this->errorMessage( $data ) ?: $status );
             }
 
             if( $status !== 'succeeded' ) {
