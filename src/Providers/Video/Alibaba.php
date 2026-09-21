@@ -96,7 +96,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             'headers' => ['X-DashScope-Async' => 'enable'],
             'json' => $request,
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
@@ -105,7 +105,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
         $id = $output['task_id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            $this->videoFailed( is_string( $data['message'] ?? null ) ? $data['message'] : null );
+            $this->videoFailed( $data['message'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5, $this->pollTimeout );
@@ -283,7 +283,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'api/v1/tasks/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
@@ -292,7 +292,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             $status = $output['task_status'] ?? null;
 
             if( in_array( $status, ['FAILED', 'CANCELED', 'UNKNOWN'], true ) ) {
-                $this->videoFailed( is_string( $output['message'] ?? null ) ? $output['message'] : null );
+                $this->videoFailed( $output['message'] ?? null );
             }
 
             if( $status !== 'SUCCEEDED' ) {

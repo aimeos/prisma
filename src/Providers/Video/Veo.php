@@ -21,14 +21,14 @@ class Veo extends Base implements Imagine
         $response = $this->client()->post( 'v1beta/models/' . $model . ':predictLongRunning', [
             'json' => $this->request( $prompt, $media, $options ),
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $name = $data['name'] ?? null;
 
         if( !is_string( $name ) || $name === '' ) {
-            $this->videoFailed( is_array( $data['error'] ?? null ) ? ( $data['error']['message'] ?? null ) : null );
+            $this->videoFailed( $data['error']['message'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $name ), 10 );
@@ -125,13 +125,13 @@ class Veo extends Base implements Imagine
     {
         return function( FileResponse $result ) use ( $name ) : bool {
             $response = $this->client()->get( 'v1beta/' . ltrim( $name, '/' ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
 
             if( isset( $data['error'] ) ) {
-                $this->videoFailed( is_array( $data['error'] ) ? ( $data['error']['message'] ?? null ) : null );
+                $this->videoFailed( $data['error']['message'] ?? null );
             }
 
             if( ( $data['done'] ?? false ) !== true ) {

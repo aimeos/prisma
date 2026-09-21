@@ -149,14 +149,15 @@ class Stabilityai extends Base
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
+        if( ( $status = $response->getStatusCode() ) < 200 || $status >= 300 )
         {
-            /** @var array<int, string> $errorList */
-            $errorList = @$this->fromJson( $response )['errors'] ?? [];
+            $errors = $this->errorData( $response )['errors'] ?? null;
+            $msg = is_array( $errors ) ? join( ', ', array_filter( $errors, 'is_string' ) ) : '';
+
             $this->throw( match( $status ) {
                 413 => 400,
                 default => $status,
-            }, join( ', ', $errorList ), $response );
+            }, $msg ?: $response->getReasonPhrase(), $response );
         }
     }
 }

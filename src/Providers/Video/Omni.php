@@ -41,7 +41,7 @@ class Omni extends Base implements Imagine, Repaint
         $response = $this->client()->post( 'v1beta/interactions', [
             'json' => $request,
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );

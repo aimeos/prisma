@@ -34,6 +34,56 @@ trait HasHttpResponse
 
 
     /**
+     * Decodes the body of a failed response into an array.
+     *
+     * Error bodies are not guaranteed to be JSON: gateways and proxies in front of the provider
+     * answer with HTML pages or plain text and don't know the format of the API they shield. What
+     * the caller needs in that case is the status code, so decoding must not throw and hide it -
+     * a rate limited or overloaded request has to raise its own exception and not a JSON error.
+     * An undecodable, unreadable or oversized body is therefore reported as no error data at all.
+     *
+     * @param ResponseInterface $response HTTP response with a status code outside the 2xx range
+     * @return array<string, mixed> Decoded response data or an empty array
+     */
+    protected function errorData( ResponseInterface $response ) : array
+    {
+        try {
+            $data = json_decode( $this->readBody( $response ), true );
+        } catch( \Aimeos\Prisma\Exceptions\PrismaException | \RuntimeException $e ) {
+            // oversized bodies and read errors of the stream, e.g. if the connection was reset
+            return [];
+        }
+
+        /** @var array<string, mixed> */
+        return is_array( $data ) ? $data : [];
+    }
+
+
+    /**
+     * Returns the error message of the decoded response data.
+     *
+     * Providers report the error either as string or as object with a message, some only
+     * as message at the top level. FastAPI based APIs use "detail" instead, see errorDetail().
+     * A string error next to a message is the status phrase only, e.g. "Bad Request", so the
+     * message is preferred then.
+     *
+     * @param array<string, mixed> $data Decoded response data
+     * @return string|null Error message or NULL if the data contains none
+     */
+    protected function errorMessage( array $data ) : ?string
+    {
+        $error = $data['error'] ?? null;
+
+        $msg = is_array( $error ) ? ( $error['message'] ?? null ) : null;
+        $msg = is_string( $msg ) && $msg !== '' ? $msg : ( $data['message'] ?? null );
+        $msg = is_string( $msg ) && $msg !== '' ? $msg : $error;
+        $msg = is_string( $msg ) && $msg !== '' ? $msg : $this->errorDetail( $data['detail'] ?? null );
+
+        return is_string( $msg ) && $msg !== '' ? $msg : null;
+    }
+
+
+    /**
      * Decodes a JSON response body into an array.
      *
      * @param ResponseInterface $response HTTP response whose body will be decoded
@@ -45,11 +95,34 @@ trait HasHttpResponse
         $data = json_decode( $body, true );
 
         if( !is_array( $data ) ) {
-            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Invalid JSON response: ' . $body );
+            throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf(
+                'Invalid JSON response (HTTP %1$s): %2$s', $response->getStatusCode(), $body
+            ) );
         }
 
         /** @var array<string, mixed> $data */
         return $data;
+    }
+
+
+    /**
+     * Returns the message of a FastAPI "detail" error.
+     *
+     * FastAPI reports validation errors as list of objects with a "msg" each, other errors
+     * as string or as object with a message.
+     *
+     * @param mixed $detail Value of the "detail" key of the decoded response data
+     * @return string|null Error message or NULL if the detail contains none
+     */
+    private function errorDetail( mixed $detail ) : ?string
+    {
+        if( is_array( $detail ) ) {
+            $detail = array_is_list( $detail )
+                ? join( ', ', array_filter( array_column( $detail, 'msg' ), 'is_string' ) )
+                : $detail['message'] ?? null;
+        }
+
+        return is_string( $detail ) && $detail !== '' ? $detail : null;
     }
 
 
@@ -65,6 +138,7 @@ trait HasHttpResponse
      * @param ResponseInterface $response HTTP response
      * @return string Response body, at most maxResponseSize bytes
      * @throws \Aimeos\Prisma\Exceptions\PrismaException When the body exceeds the maximum size
+     * @throws \RuntimeException When the body can't be read, e.g. if the connection was reset
      */
     private function readBody( ResponseInterface $response ) : string
     {
@@ -110,7 +184,7 @@ trait HasHttpResponse
         $limit = $response->getHeaderLine( 'x-ratelimit-limit' );
         $remaining = $response->getHeaderLine( 'x-ratelimit-remaining' );
         $reset = $response->getHeaderLine( 'x-ratelimit-reset' );
-        $retryAfter = $this->retryAfter( $response );
+        $retryAfter = $this->retryHeader( $response );
 
         if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === null ) {
             return null;
@@ -131,7 +205,7 @@ trait HasHttpResponse
      * @param ResponseInterface $response HTTP response
      * @return int|null Seconds to wait or NULL if the header is missing or invalid
      */
-    protected function retryAfter( ResponseInterface $response ) : ?int
+    protected function retryHeader( ResponseInterface $response ) : ?int
     {
         $value = trim( $response->getHeaderLine( 'retry-after' ) );
 
@@ -167,7 +241,7 @@ trait HasHttpResponse
             case 404: throw new \Aimeos\Prisma\Exceptions\NotFoundException( $message );
             case 413: throw new \Aimeos\Prisma\Exceptions\SizeException( $message );
             case 429: throw ( new \Aimeos\Prisma\Exceptions\RateLimitException( $message ) )
-                ->withRetryAfter( $response ? $this->retryAfter( $response ) : null );
+                ->withRetryAfter( $response ? $this->retryHeader( $response ) : null );
             case 502:
             case 504:
             case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
@@ -177,24 +251,22 @@ trait HasHttpResponse
 
 
     /**
-     * Validates the HTTP response and throws on non-200 status.
+     * Validates the HTTP response and throws for status codes outside the 2xx range.
+     *
+     * The status code decides which exception is raised, so a body that isn't the JSON error of
+     * the provider only costs the message, not the type of the exception.
      *
      * @param ResponseInterface $response HTTP response
-     * @return void No return value; returns normally only for HTTP 200
+     * @return void No return value; returns normally for successful responses
      * @throws \Aimeos\Prisma\Exceptions\PrismaException
      */
     protected function validate( ResponseInterface $response ) : void
     {
-        if( $response->getStatusCode() === 200 ) {
+        if( ( $status = $response->getStatusCode() ) >= 200 && $status < 300 ) {
             return;
         }
 
-        $json = $this->fromJson( $response );
-
-        /** @var array<string, mixed> $errorObj */
-        $errorObj = $json['error'] ?? [];
-        $errorMsg = $errorObj['message'] ?? $json['message'] ?? $response->getReasonPhrase();
-
-        $this->throw( $response->getStatusCode(), is_string( $errorMsg ) ? $errorMsg : '', $response );
+        $msg = $this->errorMessage( $this->errorData( $response ) );
+        $this->throw( $status, $msg ?? $response->getReasonPhrase(), $response );
     }
 }

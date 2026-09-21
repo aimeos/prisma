@@ -65,14 +65,14 @@ class Runway extends Base implements Imagine, Repaint, Upscale
         $response = $this->client()->post( $path, [
             'json' => $request,
         ] );
-        $this->validateVideoResponse( $response );
+        $this->validate( $response );
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
         $id = $data['id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            $this->videoFailed( is_string( $data['error'] ?? null ) ? $data['error'] : null );
+            $this->videoFailed( $data['error'] ?? null );
         }
 
         return FileResponse::fromAsync( $this->poll( $id ), 5 );
@@ -236,14 +236,14 @@ class Runway extends Base implements Imagine, Repaint, Upscale
     {
         return function( FileResponse $result ) use ( $id ) : bool {
             $response = $this->client()->get( 'v1/tasks/' . rawurlencode( $id ) );
-            $this->validateVideoResponse( $response );
+            $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
             $status = $data['status'] ?? null;
 
             if( $status === 'FAILED' || $status === 'CANCELED' ) {
-                $this->videoFailed( is_string( $data['failure'] ?? null ) ? $data['failure'] : $status );
+                $this->videoFailed( $data['failure'] ?? $status );
             }
 
             if( $status !== 'SUCCEEDED' ) {

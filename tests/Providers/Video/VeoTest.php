@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Exceptions\RateLimitException;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
@@ -36,5 +37,20 @@ class VeoTest extends TestCase
         $this->assertArrayHasKey( 'image', $body['instances'][0] );
         $this->assertArrayHasKey( 'lastFrame', $body['instances'][0] );
         $this->assertArrayNotHasKey( 'referenceImages', $body['instances'][0] );
+    }
+
+
+    public function testRateLimitRetryHeader() : void
+    {
+        // without RetryInfo in the body, e.g. from a proxy, the Retry-After header is used
+        $this->prisma( 'video', 'veo', ['api_key' => 'test'] )
+            ->response( ['error' => ['code' => 429, 'message' => 'Resource exhausted']], ['Retry-After' => '7'], 429, 'Too Many Requests' );
+
+        try {
+            $this->provider()->imagine( 'prompt' );
+            $this->fail( 'RateLimitException expected' );
+        } catch( RateLimitException $e ) {
+            $this->assertSame( 7, $e->retryAfter() );
+        }
     }
 }

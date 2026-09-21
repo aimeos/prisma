@@ -10,7 +10,6 @@ use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Elevenlabs extends Base implements Revoice, Speak, Transcribe
@@ -107,16 +106,5 @@ class Elevenlabs extends Base implements Revoice, Speak, Transcribe
         return TextResponse::fromText( is_string( $text ) ? $text : '' )
             ->withUsage( is_numeric( $totalTokens ) ? (float) $totalTokens : 0, $usage )
             ->withStructured( $words );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() !== 200 )
-        {
-            $detail = @$this->fromJson( $response )['detail'] ?? [];
-            $error = is_array( $detail ) ? ( $detail['message'] ?? $response->getReasonPhrase() ) : $response->getReasonPhrase();
-            $this->throw( $response->getStatusCode(), is_string( $error ) ? $error : '', $response );
-        }
     }
 }

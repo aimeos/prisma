@@ -7,7 +7,6 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\VectorResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Voyageai extends Base implements Vectorize
@@ -64,15 +63,5 @@ class Voyageai extends Base implements Vectorize
 
         return VectorResponse::fromVectors( $vectors )
             ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage );
-    }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
-        {
-            $error = @$this->fromJson( $response )['detail'] ?: $response->getReasonPhrase();
-            $this->throw( $status, is_string( $error ) ? $error : '', $response );
-        }
     }
 }

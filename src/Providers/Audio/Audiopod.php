@@ -264,16 +264,4 @@ class Audiopod extends Base implements Demix, Denoise, Revoice, Speak, Transcrib
             return true;
         };
     }
-
-
-    protected function validate( ResponseInterface $response ) : void
-    {
-        if( $response->getStatusCode() === 200 ) {
-            return;
-        }
-
-        $body = $response->getBody()->getContents();
-
-        $this->throw( $response->getStatusCode(), $body ?: $response->getReasonPhrase(), $response );
-    }
 }

@@ -5,7 +5,6 @@ namespace Aimeos\Prisma\Concerns;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
-use Psr\Http\Message\ResponseInterface;
 
 
 trait GeneratesVideo
@@ -67,30 +66,6 @@ trait GeneratesVideo
     {
         return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
             . ';base64,' . $file->base64();
-    }
-
-
-    /**
-     * Validates any successful 2xx response.
-     *
-     * @param ResponseInterface $response Provider response
-     * @return void No return value; throws for responses outside the 2xx range
-     */
-    protected function validateVideoResponse( ResponseInterface $response ) : void
-    {
-        $status = $response->getStatusCode();
-
-        if( $status >= 200 && $status < 300 ) {
-            return;
-        }
-
-        /** @var array<string, mixed> $data */
-        $data = $this->fromJson( $response );
-        /** @var array<string, mixed> $error */
-        $error = is_array( $data['error'] ?? null ) ? $data['error'] : [];
-        $message = $error['message'] ?? $data['message'] ?? $response->getReasonPhrase();
-
-        $this->throw( $status, is_string( $message ) ? $message : '', $response );
     }
 
 

@@ -50,12 +50,12 @@ class Mistral extends Base
 
     protected function validate( ResponseInterface $response ) : void
     {
-        if( ( $status = $response->getStatusCode() ) !== 200 )
+        if( ( $status = $response->getStatusCode() ) < 200 || $status >= 300 )
         {
             $this->throw( match( $status ) {
                 422 => 400,
                 default => $status
-            }, ( $msg = @$this->fromJson( $response )['message'] ?? null ) && is_string( $msg ) ? $msg : $response->getReasonPhrase(), $response );
+            }, $this->errorMessage( $this->errorData( $response ) ) ?? $response->getReasonPhrase(), $response );
         }
     }
 }
