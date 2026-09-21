@@ -34,6 +34,16 @@ class BaseTest extends TestCase
     }
 
 
+    public function testHasReturnsFalseForProviderContract() : void
+    {
+        $provider = $this->provider();
+
+        // interface_exists() and instanceof ignore the case, so the contract name does too
+        $this->assertFalse( $provider->has( 'provider' ) );
+        $this->assertFalse( $provider->has( 'PROVIDER' ) );
+    }
+
+
     public function testModel() : void
     {
         $provider = $this->provider();

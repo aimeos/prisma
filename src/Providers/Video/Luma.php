@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Contracts\Video\Uncrop;
@@ -13,7 +14,7 @@ use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Luma extends Base implements Imagine, Repaint, Uncrop
+class Luma extends Base implements Imagine, Repaint, Resume, Uncrop
 {
     use GeneratesVideo;
 
@@ -40,6 +41,14 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
         [$media, $options] = $this->repaintArguments( $media, $options );
 
         return $this->submit( $this->repaintRequest( $video, $prompt, $media, $options ) );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -70,7 +79,7 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
             $this->videoFailed( $data['failure_reason'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return $this->resume( $id );
     }
 
 
@@ -235,6 +244,7 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $state = $data['state'] ?? null;
 
             if( $state === 'failed' ) {
@@ -257,7 +267,6 @@ class Luma extends Base implements Imagine, Repaint, Uncrop
                 $this->videoFailed();
             }
 
-            $result->withMeta( $data );
             return true;
         };
     }

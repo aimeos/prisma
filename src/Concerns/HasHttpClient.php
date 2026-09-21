@@ -8,6 +8,9 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\StreamHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -85,6 +88,18 @@ trait HasHttpClient
 
         $this->retryMiddleware = Middleware::retry( $decider, $delay );
         return $this;
+    }
+
+
+    /**
+     * Returns the absolute URL of an API path, resolved against the base URL like requests are.
+     *
+     * @param string $path Path relative to the base URL
+     * @return string Absolute URL
+     */
+    protected function apiUrl( string $path ) : string
+    {
+        return (string) UriResolver::resolve( Utils::uriFor( $this->clientOptions['base_uri'] ?? '' ), new Uri( $path ) );
     }
 
 
@@ -190,5 +205,69 @@ trait HasHttpClient
         }
 
         return $this;
+    }
+
+
+    /**
+     * Returns the URI of a job URL the credentials may be sent to.
+     *
+     * A status, result or cancel URL is either data the provider returned or a job ID the caller
+     * passed, so the host alone doesn't make it safe: the API key must only go to the API hosts
+     * and to the endpoint the job needs, not to any other endpoint of these hosts. Both halves of
+     * that rule are checked here so no caller can remember one and forget the other. The pattern
+     * matches the end of the path only, so an API gateway in front of the provider that adds a
+     * path prefix still works.
+     *
+     * @param string $url Absolute URL returned by the provider or passed by the caller
+     * @param string $pattern Regular expression the end of the URL path must match
+     * @param string $hosts Regular expression of the HTTPS hosts trusted too, e.g. regional API hosts
+     * @param string $error Message of the exception thrown for URLs that aren't allowed
+     * @return Uri Validated URL
+     * @throws \Aimeos\Prisma\Exceptions\BadRequestException If the URL isn't the allowed endpoint of an API host
+     */
+    protected function jobUrl( string $url, string $pattern, string $hosts = '', string $error = 'Invalid provider URL' ) : Uri
+    {
+        $uri = $this->trusted( $url, $hosts ) ? new Uri( $url ) : null;
+
+        if( $uri === null || !preg_match( $pattern, $uri->getPath() ) ) {
+            throw new \Aimeos\Prisma\Exceptions\BadRequestException( $error );
+        }
+
+        return $uri;
+    }
+
+
+    /**
+     * Tests if the URL points to the API host, so credentials can be sent to it.
+     *
+     * Only list the API hosts of the provider, not its whole domain: other subdomains like
+     * documentation or status pages are often run by third parties.
+     *
+     * @param string $url Absolute URL, e.g. a status URL returned by the provider or passed by the caller
+     * @param string $hosts Regular expression of the HTTPS hosts trusted too, e.g. regional API hosts
+     * @return bool TRUE if the URL uses the scheme, host and port of the base URL or is one of the HTTPS hosts
+     * @see jobUrl() Use it instead to allow the endpoints of the host the credentials may go to
+     */
+    protected function trusted( string $url, string $hosts = '' ) : bool
+    {
+        try {
+            $uri = new Uri( $url );
+            $base = Utils::uriFor( $this->clientOptions['base_uri'] ?? '' );
+        } catch( \InvalidArgumentException $e ) {
+            return false;
+        }
+
+        $host = $uri->getHost();
+
+        if( $host === '' || $uri->getUserInfo() !== '' ) {
+            return false;
+        }
+
+        if( $host === $base->getHost() && $uri->getScheme() === $base->getScheme() && $uri->getPort() === $base->getPort() ) {
+            return true;
+        }
+
+        return $hosts !== '' && preg_match( $hosts, $host ) === 1
+            && $uri->getScheme() === 'https' && $uri->getPort() === null;
     }
 }

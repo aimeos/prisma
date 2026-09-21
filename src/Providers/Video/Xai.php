@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
@@ -12,7 +13,7 @@ use Aimeos\Prisma\Providers\Xai as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Xai extends Base implements Extend, Imagine, Repaint
+class Xai extends Base implements Extend, Imagine, Repaint, Resume
 {
     use GeneratesVideo;
 
@@ -44,6 +45,14 @@ class Xai extends Base implements Extend, Imagine, Repaint
     }
 
 
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+    }
+
+
     /**
      * Submits an xAI video request.
      *
@@ -64,7 +73,7 @@ class Xai extends Base implements Extend, Imagine, Repaint
             $this->videoFailed( $data['message'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return $this->resume( $id );
     }
 
 
@@ -106,6 +115,7 @@ class Xai extends Base implements Extend, Imagine, Repaint
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
 
             if( $status === 'failed' || $status === 'expired' ) {
@@ -124,7 +134,7 @@ class Xai extends Base implements Extend, Imagine, Repaint
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) )->withMeta( $data );
+            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
             return true;
         };
     }

@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Image;
 
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -51,6 +52,16 @@ class ReplicateTest extends TestCase
     }
 
 
+    public function testImagineNoUrl() : void
+    {
+        $this->expectException( FailedException::class );
+
+        $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['id' => 'p1', 'status' => 'starting'] )
+            ->imagine( 'a fox' );
+    }
+
+
     public function testImaginePolls() : void
     {
         $provider = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
@@ -59,9 +70,22 @@ class ReplicateTest extends TestCase
 
         $response = $provider->ensure( 'imagine' )->imagine( 'a cat' );
 
-        // an unfinished prediction is resolved by polling its status URL
+        // an unfinished prediction is resolved by polling the URL of the provider
+        $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', $response->jobId() );
         $this->assertTrue( $response->ready() );
         $this->assertEquals( 'https://replicate.delivery/b.png', $response->first()?->url() );
+        $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', (string) $this->requests()[1]->getUri() );
+    }
+
+
+    public function testImaginePollsNoOutput() : void
+    {
+        $provider = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['id' => 'p1', 'status' => 'processing', 'urls' => ['get' => 'https://api.replicate.com/v1/predictions/p1']] );
+        $this->response( ['status' => 'succeeded', 'output' => null] );
+
+        $this->expectException( FailedException::class );
+        $provider->imagine( 'a cat' )->ready();
     }
 
 

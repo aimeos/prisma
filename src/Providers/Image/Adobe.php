@@ -2,6 +2,7 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
+use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
@@ -9,15 +10,22 @@ use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repaint, Uncrop, Upscale
+class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Relocate, Repaint, Resume, Uncrop, Upscale
 {
+    // Status path whose job ID can't be a dot segment or contain encoded characters
+    private const HOSTS = '#^firefly-[a-z0-9-]+\.adobe\.io$#D';
+    private const STATUS = '#(/v\d+)/status/(\w[\w:.-]*)$#D';
+
+
     /**
      * @param array<string, mixed> $config api_key (IMS access token), client_id (Adobe API key), and optional url
      */
@@ -58,6 +66,25 @@ class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repa
         return $this->request( 'v3/images/generate-object-composite-async', $data + $this->allowed( $options, [
             'contentClass', 'numVariations', 'placement', 'seeds', 'size', 'style'
         ] ) );
+    }
+
+
+    /**
+     * Cancels a pending or running Firefly job.
+     *
+     * @param string $jobId Status URL of the job returned by jobId()
+     * @return void
+     * @throws BadRequestException If the URL isn't a status URL of Adobe or the configured API host
+     */
+    public function cancel( string $jobId ) : void
+    {
+        // Never send Adobe credentials to an unrelated host or endpoint
+        $uri = $this->jobUrl( $jobId, self::STATUS, self::HOSTS, 'Invalid Adobe status URL' );
+        $path = (string) preg_replace( self::STATUS, '$1/cancel/$2', $uri->getPath(), 1 );
+
+        $response = $this->client()->put( $uri->withPath( $path )->withQuery( '' ), ['allow_redirects' => false] );
+
+        $this->validate( $response );
     }
 
 
@@ -183,6 +210,19 @@ class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repa
 
 
     /**
+     * Resumes polling an asynchronous Firefly job.
+     *
+     * @param string $jobId Status URL of the job returned by jobId()
+     * @return FileResponse Asynchronous image response
+     * @throws BadRequestException If the URL isn't a status URL of Adobe or the configured API host
+     */
+    public function resume( string $jobId ) : FileResponse
+    {
+        return FileResponse::fromAsync( $this->poll( $jobId ), 2, jobId: $jobId );
+    }
+
+
+    /**
      * Expands the canvas by the requested pixel margins without resizing the source.
      *
      * @param Image $image Source image with readable raster dimensions
@@ -273,51 +313,43 @@ class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repa
 
 
     /**
-     * @param string $endpoint Relative Firefly API endpoint
-     * @param array<string, mixed> $data Request parameters
-     * @param string|null $model Optional x-model-version header
-     * @return FileResponse Asynchronous image response
+     * Returns a closure that polls a Firefly job.
+     *
+     * @param string $url Status URL of the job
+     * @param array<string, mixed> $job Fields of the submit response the status response doesn't repeat
+     * @return \Closure Polling closure populating the file response
+     * @throws BadRequestException If the URL isn't a status URL of Adobe or the configured API host
      */
-    protected function request( string $endpoint, array $data, ?string $model = null ) : FileResponse
+    protected function poll( string $url, array $job = [] ) : \Closure
     {
-        $response = $this->client()->post( $endpoint, ['json' => $data, 'headers' => $model ? ['x-model-version' => $model] : [], 'allow_redirects' => false] );
+        // Never send Adobe credentials to an unrelated polling host or endpoint
+        $uri = $this->jobUrl( $url, self::STATUS, self::HOSTS, 'Invalid Adobe status URL' );
 
-        if( $response->getStatusCode() !== 202 ) {
-            $this->validate( $response );
-        }
-
-        $job = $this->fromJson( $response );
-        $url = $job['statusUrl'] ?? $job['links']['result']['href'] ?? null;
-
-        // Never send Adobe credentials to an unrelated polling host.
-        $origin = $this->client()->getConfig( 'base_uri' );
-        $defaultPort = $origin->getScheme() === 'https' ? 443 : 80;
-        $parts = is_string( $url ) ? parse_url( $url ) : false;
-
-        if( $parts === false || ( $parts['host'] ?? null ) !== $origin->getHost()
-            || ( $parts['scheme'] ?? null ) !== $origin->getScheme()
-            || ( $parts['port'] ?? $defaultPort ) !== ( $origin->getPort() ?? $defaultPort )
-            || isset( $parts['user'] ) ) {
-            throw new PrismaException( 'Invalid Adobe status URL' );
-        }
-
-        return FileResponse::fromAsync( function( FileResponse $result ) use ( $url, $job ) : bool {
-            $response = $this->client()->get( $url, ['allow_redirects' => false] );
+        return function( FileResponse $result ) use ( $uri, $job ) : bool {
+            $response = $this->client()->get( $uri, ['allow_redirects' => false] );
             $this->validate( $response );
             $data = $this->fromJson( $response );
 
-            if( in_array( $data['status'] ?? null, ['pending', 'running'], true ) ) {
+            // Adobe doesn't repeat the job fields of the submit response in the status response
+            $result->withMeta( $data + $job );
+
+            // a job whose cancellation is pending may still succeed
+            if( in_array( $data['status'] ?? null, ['pending', 'running', 'cancel_pending'], true ) ) {
                 return false;
             }
 
+            if( in_array( $data['status'] ?? null, ['failed', 'canceled', 'cancelled'], true ) ) {
+                throw new FailedException( 'Adobe image job failed or was canceled' );
+            }
+
             if( ( $data['status'] ?? null ) !== 'succeeded' ) {
-                throw new PrismaException( 'Adobe image job failed, was canceled, or returned an invalid status' );
+                throw new PrismaException( 'Adobe image job returned an invalid status' );
             }
 
             $outputs = $data['result']['outputs'] ?? null;
 
             if( !is_array( $outputs ) || !$outputs ) {
-                throw new PrismaException( 'No images in Adobe response' );
+                throw new FailedException( 'No images in Adobe response' );
             }
 
             $files = [];
@@ -327,7 +359,7 @@ class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repa
                 $image = $output['image']['url'] ?? null;
 
                 if( !is_string( $image ) || $image === '' ) {
-                    throw new PrismaException( 'Invalid image in Adobe response' );
+                    throw new FailedException( 'Invalid image in Adobe response' );
                 }
 
                 $files[] = Image::fromUrl( $image );
@@ -337,8 +369,32 @@ class Adobe extends Base implements Background, Imagine, Inpaint, Relocate, Repa
                 $result->add( $file );
             }
 
-            $result->withMeta( $data + $job )->withDescription( is_string( $data['result']['altText'] ?? null ) ? $data['result']['altText'] : null );
+            $result->withDescription( is_string( $data['result']['altText'] ?? null ) ? $data['result']['altText'] : null );
             return true;
-        }, 2 )->withMeta( $job )->withRateLimit( $this->getRateLimit( $response ) );
+        };
+    }
+
+
+    /**
+     * @param string $endpoint Relative Firefly API endpoint
+     * @param array<string, mixed> $data Request parameters
+     * @param string|null $model Optional x-model-version header
+     * @return FileResponse Asynchronous image response
+     */
+    protected function request( string $endpoint, array $data, ?string $model = null ) : FileResponse
+    {
+        $response = $this->client()->post( $endpoint, ['json' => $data, 'headers' => $model ? ['x-model-version' => $model] : [], 'allow_redirects' => false] );
+
+        $this->validate( $response );
+
+        $job = $this->fromJson( $response );
+        $url = $job['statusUrl'] ?? null;
+
+        if( !is_string( $url ) || $url === '' ) {
+            throw new FailedException( 'No status URL in response' );
+        }
+
+        return FileResponse::fromAsync( $this->poll( $url, $job ), 2, jobId: $url )
+            ->withMeta( $job )->withRateLimit( $this->getRateLimit( $response ) );
     }
 }

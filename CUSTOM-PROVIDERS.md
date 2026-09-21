@@ -95,7 +95,15 @@ Prisma::fake( [TextResponse::fromText( 'Hello' )] );
 ### Available contracts
 
 Each provider type has a set of contracts (interfaces) you can implement. A provider
-only needs to implement the ones it supports.
+only needs to implement the ones it supports. `Cancel` and `Resume` are shared by all
+provider types and live in `Aimeos\Prisma\Contracts` instead of the type namespace.
+
+#### Shared
+
+| Contract | Method | Returns |
+|----------|--------|---------|
+| Cancel | `cancel( string $jobId )` | void |
+| Resume | `resume( string $jobId )` | FileResponse\|TextResponse |
 
 #### Audio
 
@@ -171,6 +179,10 @@ interface Embed
     public function embed( array $texts, ?int $size = null, array $options = [] ) : VectorResponse;
 }
 ```
+
+`has()` and `ensure()` look up `Contracts\{Type}\{Method}` first and fall back to
+`Contracts\{Method}`, so type-independent capabilities like `Cancel` and `Resume`
+work for the new type without adding an interface.
 
 **2. Choose a response class**
 
@@ -480,6 +492,8 @@ The *retryHeader()* method reads that header.
 *validate()* reads it, or NULL if the body contains none.
 Video providers use *validate()* as well; the *validateVideoResponse()* method of the
 `GeneratesVideo` trait was removed after 0.7.
+Throw `FailedException` if the provider reports a failed or canceled job or if a
+finished job has no results, so callers know that retrying won't succeed.
 
 The *fromJson()* method decodes a JSON response body into an array, throwing
 `PrismaException` on invalid JSON.
@@ -1003,12 +1017,25 @@ For APIs that require polling, both FileResponse and TextResponse support
 *fromAsync()* with this shared signature:
 
 ```php
-public static function fromAsync( \Closure $closure, int $retry = 5, int $timeout = 0 ) : static
+public static function fromAsync( \Closure $closure, int $retry = 5, int $timeout = 0, ?string $jobId = null ) : static
 ```
 
 The closure receives the response object and returns `true` when ready or
-`false` to keep polling. `$retry` is the sleep interval in seconds. `$timeout`
-limits the complete polling lifecycle; zero disables the deadline.
+`false` to keep polling. `$retry` is the sleep interval in seconds, which queue
+jobs get from the response's `retryAfter()` method to delay the next poll. `$timeout`
+limits the complete polling lifecycle; zero disables the deadline. `$jobId` is the
+provider job ID returned by the response's `jobId()` method.
+
+If the API estimates how long the job takes, pass that estimate to
+`$response->withRetry( $seconds )` in the polling closure, so waiting queue jobs and
+polling loops use the interval of the provider instead of the initial one. A polling
+closure that throws a `FailedException` isn't called again because a failed job doesn't
+change any more; `ready()` and the response accessors throw the same exception instead.
+Other exceptions aren't kept, so the next `ready()` call polls again, e.g. after a network
+error. Unknown or expired jobs throw a `NotFoundException` instead of a `FailedException`
+because they may have succeeded before, and callers stop polling them. Blocking accessors
+only keep polling after a `RateLimitException` and the response's `retryAfter()` returns
+the seconds from the `Retry-After` header then; all other exceptions are thrown to the caller.
 
 The third argument changed from an optional sleep closure in 0.5/0.6 to an
 integer timeout. Replace `fromAsync( $poll, 5, $sleep )` with
@@ -1073,6 +1100,80 @@ sleep; the polling closure's HTTP request still blocks. Accessing content
 (`files()`, `text()`) blocks until the operation completes. `ready()` only tracks
 async polling: streamed text responses are ready immediately and must be consumed
 via `stream()` or a text accessor to assemble their content.
+
+#### Resuming jobs
+
+Pending responses can't be serialized because they contain the polling closure, so
+they can only be continued in another process, e.g. a queue job, if the provider can
+resume them by their job ID. Pass the job ID to `fromAsync()` and implement the
+`Resume` contract. Let the submitting method end with
+`resume()`, so both use the same polling code. Throw a `BadRequestException` in
+`resume()` if the job ID is empty or doesn't match the format of the provider's job
+IDs, so submit responses without a job ID fail and IDs passed by callers aren't
+polled:
+
+```php
+use Aimeos\Prisma\Contracts\Resume;
+use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Responses\FileResponse;
+
+public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
+{
+    $response = $this->client()->post( 'v1/videos', ['json' => ['prompt' => $prompt]] );
+    $this->validate( $response );
+    $data = $this->fromJson( $response );
+
+    return $this->resume( $data['id'] ?? '' );
+}
+
+
+public function resume( string $jobId ) : FileResponse
+{
+    // IDs only, no empty ones, dot segments or queries to reach other endpoints
+    if( !preg_match( '#^\w[\w.-]*$#D', $jobId ) ) {
+        throw new BadRequestException( 'Invalid job ID' );
+    }
+
+    return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+}
+```
+
+The job ID is passed back by callers and sent with your API credentials, so match
+the whole job ID with an anchored pattern (`^...$` with the `D` modifier) before using
+it in a request URL. The pattern above accepts IDs like `task-1` or `job.1`, but no
+slashes, queries or `.` and `..` segments, which would reach other endpoints of the
+API. If the job ID is a status path, match the complete path instead, e.g.
+`'#^operations/\w[\w.-]*$#D'`. For opaque IDs without a known format, use
+`$jobId = $this->jobId( $jobId );` of the base class, which rejects empty IDs and the
+relative segments that escape the endpoint when the request URL is resolved.
+
+`Resume::resume()` returns a `FileResponse` or a `TextResponse`, so declare the
+response type your provider returns, e.g. `: FileResponse` for generated files or
+`: TextResponse` for transcriptions. Implement `Resume` only if the job ID alone is
+enough to poll the job: either an ID
+the status URL is built from, or the full status URL if `resume()` only accepts URLs
+the API credentials can be sent to. *jobUrl()* checks if a URL uses the scheme, host
+and port of the configured base URL, or an HTTPS host matching the passed regular
+expression, e.g. for regional hosts, and if the end of its path matches the endpoint
+pattern. List the API hosts only, not the whole domain, because other subdomains like
+documentation or status pages are often run by third parties:
+
+```php
+$uri = $this->jobUrl( $jobId, '#/v\d+/get_result$#D', '#^api(\.[a-z0-9-]+)?\.bfl\.ai$#D', 'Invalid polling URL' );
+```
+
+It returns the validated URL or throws a `BadRequestException`. The endpoint pattern
+only matches the end of the path, so API gateways that add a path prefix still work.
+
+Disable redirects when requesting such URLs, e.g. with `['allow_redirects' => false]`.
+
+Update the response meta data with each status response, e.g. with
+`$response->withMeta( $data )`, so callers can show the progress of pending jobs.
+
+If the API can cancel jobs, implement the `Cancel` contract using the same job ID
+as `resume()`. Validate the response, so jobs that can't be
+canceled anymore throw an exception, and let the polling closure throw a
+`FailedException` for canceled jobs.
 
 ### OpenAI-compatible APIs
 
@@ -1430,6 +1531,28 @@ $fake->use( new \Aimeos\Prisma\Providers\Text\Myprovider( ['api_key' => 'test'] 
 
 $result = $fake->write( 'prompt' );  // TextResponse containing "Hello"
 $result = $fake->write( 'prompt' );  // TextResponse containing "World"
+```
+
+A queued exception is thrown by the call itself. To test code polling asynchronous
+jobs, e.g. queue jobs using `resume()`, fake pending jobs with *fromAsync()*: its
+closure returns `false` while the job is pending or throws the exception `ready()`
+should throw. Methods without a return value like `cancel()` still consume a queued
+response, so queue `null` for them:
+
+```php
+use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Responses\FileResponse;
+
+$fake = Prisma::fake( [
+    FileResponse::fromAsync( fn() => false, 10, jobId: 'job-1' ), // pending, retryAfter() is 10
+    FileResponse::fromAsync( fn() => throw new FailedException( 'Failed' ), jobId: 'job-1' ),
+    FileResponse::fromBinary( 'video bytes', 'video/mp4' ),        // ready
+    null,                                                          // cancel()
+] );
+
+// run the code under test, then check the calls
+$fake->assertCalled( 'resume', fn( array $args ) => $args[0] === 'job-1' );
 ```
 
 When using `Prisma::fake()` instead of constructing `Fake` directly, call

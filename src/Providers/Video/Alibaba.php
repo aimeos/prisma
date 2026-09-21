@@ -3,11 +3,14 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Cancel;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Contracts\Video\Uncrop;
+use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -16,7 +19,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
+class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint, Resume, Uncrop
 {
     use GeneratesVideo;
 
@@ -34,6 +37,21 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
         } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
             $this->pollTimeout = (int) $timeout;
         }
+    }
+
+
+    /**
+     * Cancels a queued task; running tasks can't be canceled anymore.
+     *
+     * @param string $jobId Task ID returned by jobId()
+     * @return void
+     */
+    public function cancel( string $jobId ) : void
+    {
+        $jobId = $this->jobId( $jobId );
+
+        $response = $this->client()->post( 'api/v1/tasks/' . rawurlencode( $jobId ) . '/cancel' );
+        $this->validate( $response );
     }
 
 
@@ -78,6 +96,14 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
     }
 
 
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
+    }
+
+
     public function uncrop( Video $video, string $prompt, float $top, float $right, float $bottom, float $left, array $options = [] ) : FileResponse
     {
         return $this->submit( $this->uncropRequest( $video, $prompt, $top, $right, $bottom, $left, $options ) );
@@ -108,7 +134,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
             $this->videoFailed( $data['message'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5, $this->pollTimeout );
+        return $this->resume( $id );
     }
 
 
@@ -287,11 +313,17 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             /** @var array<string, mixed> $output */
             $output = is_array( $data['output'] ?? null ) ? $data['output'] : [];
             $status = $output['task_status'] ?? null;
 
-            if( in_array( $status, ['FAILED', 'CANCELED', 'UNKNOWN'], true ) ) {
+            // task IDs expire after 24 hours, but an unknown ID isn't reported as failed job
+            if( $status === 'UNKNOWN' ) {
+                throw new NotFoundException( 'Alibaba task not found or expired' );
+            }
+
+            if( in_array( $status, ['FAILED', 'CANCELED'], true ) ) {
                 $this->videoFailed( $output['message'] ?? null );
             }
 
@@ -305,7 +337,7 @@ class Alibaba extends Base implements Describe, Extend, Imagine, Repaint, Uncrop
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) )->withMeta( $data );
+            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
             return true;
         };
     }

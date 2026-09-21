@@ -9,6 +9,9 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Values\Meta;
 use Aimeos\Prisma\Values\Observation;
 use Aimeos\Prisma\Values\Usage;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 
 
@@ -251,6 +254,29 @@ class PrismaTest extends TestCase
                 @unlink( $log );
             }
         }
+    }
+
+
+    public function testObserveRecordsVoidOperation() : void
+    {
+        $records = [];
+        $stack = HandlerStack::create( new MockHandler( [new Response( 200, [], '{"id": "p1", "status": "canceled"}' )] ) );
+
+        // cancel() returns no response, so there's no meta data and usage to record
+        ( new Prisma( 'image' ) )
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
+            } )
+            ->using( 'replicate', ['api_key' => 'test'] )
+            ->withClientHandler( $stack )
+            ->ensure( 'cancel' )
+            ->cancel( 'https://api.replicate.com/v1/predictions/p1' );
+
+        $this->assertCount( 1, $records );
+        $this->assertSame( 'cancel', $records[0]->operation );
+        $this->assertNull( $records[0]->error );
+        $this->assertNull( $records[0]->meta );
+        $this->assertNull( $records[0]->usage );
     }
 
 

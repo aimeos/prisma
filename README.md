@@ -49,6 +49,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#demix">demix</a><span>: Separate an audio file into its individual tracks</span></li>
     <li><a href="#denoise">denoise</a><span>: Remove noise from an audio file</span></li>
     <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
+    <li><a href="#resume">resume</a><span>: Continue polling an audio job in another process</span></li>
     <li><a href="#revoice">revoice</a><span>: Exchange the voice in an audio file</span></li>
     <li><a href="#speak">speak</a><span>: Convert text to speech in an audio file</span></li>
     <li><a href="#transcribe">transcribe</a><span>: Converts speech of an audio file to text</span></li>
@@ -56,6 +57,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 <div class="method-header"><a href="#image-api">Image API</a></div>
 <ul class="method-list">
     <li><a href="#background">background</a><span>: Replace background according to the prompt</span></li>
+    <li><a href="#cancel">cancel</a><span>: Cancel a pending image job</span></li>
     <li><a href="#describe-1">describe</a><span>: Describe the content of an image</span></li>
     <li><a href="#detext">detext</a><span>: Remove all text from the image</span></li>
     <li><a href="#erase">erase</a><span>: Erase parts of the image</span></li>
@@ -65,6 +67,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#recognize">recognize</a><span>: Recognize the text in an image (OCR)</span></li>
     <li><a href="#relocate">relocate</a><span>: Place the foreground object on a new background</span></li>
     <li><a href="#repaint">repaint</a><span>: Repaint an image according to the prompt</span></li>
+    <li><a href="#resume-1">resume</a><span>: Continue polling an image job in another process</span></li>
     <li><a href="#uncrop">uncrop</a><span>: Extend/outpaint the image</span></li>
     <li><a href="#upscale">upscale</a><span>: Scale up the image</span></li>
     <li><a href="#vectorize">vectorize</a><span>: Creates embedding vectors from images</span></li>
@@ -79,10 +82,12 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#video-api">Video API</a></div>
 <ul class="method-list">
+    <li><a href="#cancel-1">cancel</a><span>: Cancel a pending video job</span></li>
     <li><a href="#describe-2">describe</a><span>: Describe the content of a video</span></li>
     <li><a href="#extend">extend</a><span>: Continue a video according to the prompt</span></li>
     <li><a href="#imagine-1">imagine</a><span>: Generate a video from text and optional media</span></li>
     <li><a href="#repaint-1">repaint</a><span>: Repaint a video according to the prompt</span></li>
+    <li><a href="#resume-2">resume</a><span>: Continue polling a video job in another process</span></li>
     <li><a href="#uncrop-1">uncrop</a><span>: Extend/outpaint the video frame</span></li>
     <li><a href="#upscale-1">upscale</a><span>: Scale up a video</span></li>
 </ul>
@@ -133,45 +138,45 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Audio
 
-|                       | demix | denoise | describe | revoice | speak | transcribe |
-| :---                  | :---: | :---:   | :---:    | :---:   | :---: | :---:      |
-| **Alibaba**           | -     | -       | -        | -       | yes   | -          |
-| **AudioPod**          | yes   | yes     | -        | yes     | yes   | yes        |
-| **Deepgram**          | -     | -       | -        | -       | yes   | yes        |
-| **ElevenLabs**        | -     | -       | -        | yes     | yes   | yes        |
-| **Google Gemini**     | -     | -       | yes      | -       | -     | -          |
-| **Groq**              | -     | -       | yes      | -       | yes   | yes        |
-| **Mistral**           | -     | -       | yes      | -       | -     | yes        |
-| **Murf**              | -     | -       | -        | yes     | yes   | -          |
-| **OpenAI**            | -     | -       | yes      | -       | yes   | yes        |
-| **Openrouter**        | -     | -       | yes      | -       | yes   | yes        |
-| **Z.AI**              | -     | -       | -        | -       | -     | yes        |
+|                       | demix | denoise | describe | resume | revoice | speak | transcribe |
+| :---                  | :---: | :---:   | :---:    | :---:  | :---:   | :---: | :---:      |
+| **Alibaba**           | -     | -       | -        |        | -       | yes   | -          |
+| **AudioPod**          | yes   | yes     | -        | yes    | yes     | yes   | yes        |
+| **Deepgram**          | -     | -       | -        |        | -       | yes   | yes        |
+| **ElevenLabs**        | -     | -       | -        |        | yes     | yes   | yes        |
+| **Google Gemini**     | -     | -       | yes      |        | -       | -     | -          |
+| **Groq**              | -     | -       | yes      |        | -       | yes   | yes        |
+| **Mistral**           | -     | -       | yes      |        | -       | -     | yes        |
+| **Murf**              | -     | -       | -        |        | yes     | yes   | -          |
+| **OpenAI**            | -     | -       | yes      |        | -       | yes   | yes        |
+| **Openrouter**        | -     | -       | yes      |        | -       | yes   | yes        |
+| **Z.AI**              | -     | -       | -        |        | -       | -     | yes        |
 
 ### Image
 
-|                       | background | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | uncrop | upscale | vectorize |
-| :---                  | :---:      | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:   | :---:     |
-| **Adobe Firefly**     | beta       | -        | -      | -     | beta    | beta    | -       | -         | beta     | beta    | beta   | beta    | -         |
-| **Alibaba**           | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **Bedrock Titan**     | -          | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       | -      | -       | yes       |
-| **Black Forest Labs** | -          | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | -       | -         |
-| **Clipdrop**          | yes        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       | yes    | yes     | -         |
-| **Cohere**            | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **Google Gemini**     | -          | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     | -      | -       | -         |
-| **Groq**              | -          | yes      | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | -         |
-| **Ideogram**          | yes        | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | -      | yes     | -         |
-| **Mistral**           | -          | -        | -      | -     | -       | -       | -       | yes       | -        | -       | -      | -       | -         |
-| **ModelsLab**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
-| **OpenAI**            | -          | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       | -      | -       | -         |
-| **Openrouter**        | -          | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     | -      | -       | yes       |
-| **Photoroom**         | yes        | -        | yes    | -     | yes     | -       | yes     | -         | yes      | yes     | -      | beta    | -         |
-| **Recraft**           | yes        | -        | -      | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | yes     | -         |
-| **RemoveBG**          | -          | -        | -      | -     | -       | -       | yes     | -         | yes      | -       | -      | -       | -         |
-| **Replicate**         | -          | -        | -      | -     | beta    | -       | -       | -         | -        | -       | -      | -       | -         |
-| **StabilityAI**       | -          | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       | yes    | yes     | -         |
-| **VoyageAI**          | -          | -        | -      | -     | -       | -       | -       | -         | -        | -       | -      | -       | yes       |
-| **xAI**               | -          | -        | -      | -     | beta    | -       | -       | -         | -        | beta    | -      | -       | -         |
-| **Z.AI**              | -          | -        | -      | -     | yes     | -       | -       | -         | -        | -       | -      | -       | -         |
+|                       | background | cancel | describe | detext | erase | imagine | inpaint | isolate | recognize | relocate | repaint | resume | uncrop | upscale | vectorize |
+| :---                  | :---:      | :---:  | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
+| **Adobe Firefly**     | beta       | beta   | -        | -      | -     | beta    | beta    | -       | -         | beta     | beta    | beta   | beta   | beta    | -         |
+| **Alibaba**           | -          |        | -        | -      | -     | yes     | -       | -       | -         | -        | -       |        | -      | -       | yes       |
+| **Bedrock Titan**     | -          |        | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       |        | -      | -       | yes       |
+| **Black Forest Labs** | -          | -      | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | beta   | -       | -         |
+| **Clipdrop**          | yes        |        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       |        | yes    | yes     | -         |
+| **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
+| **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
+| **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
+| **Ideogram**          | yes        | -      | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | -      | yes     | -         |
+| **Mistral**           | -          |        | -        | -      | -     | -       | -       | -       | yes       | -        | -       |        | -      | -       | -         |
+| **ModelsLab**         | -          | -      | -        | -      | -     | beta    | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
+| **OpenAI**            | -          |        | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       |        | -      | -       | -         |
+| **Openrouter**        | -          |        | yes      | -      | -     | yes     | -       | -       | yes       | -        | yes     |        | -      | -       | yes       |
+| **Photoroom**         | yes        |        | -        | yes    | -     | yes     | -       | yes     | -         | yes      | yes     |        | -      | beta    | -         |
+| **Recraft**           | yes        |        | -        | -      | yes   | yes     | yes     | yes     | -         | -        | yes     |        | yes    | yes     | -         |
+| **RemoveBG**          | -          |        | -        | -      | -     | -       | -       | yes     | -         | yes      | -       |        | -      | -       | -         |
+| **Replicate**         | -          | beta   | -        | -      | -     | beta    | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
+| **StabilityAI**       | -          |        | -        | -      | yes   | yes     | yes     | yes     | -         | -        | -       |        | yes    | yes     | -         |
+| **VoyageAI**          | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
+| **xAI**               | -          |        | -        | -      | -     | beta    | -       | -       | -         | -        | beta    |        | -      | -       | -         |
+| **Z.AI**              | -          |        | -        | -      | -     | yes     | -       | -       | -         | -        | -       |        | -      | -       | -         |
 
 ### Text
 
@@ -203,19 +208,19 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 
 ### Video
 
-|                       | describe | extend | imagine | repaint | uncrop | upscale |
-| :---                  | :---:    | :---:  | :---:   | :---:   | :---:  | :---:   |
-| **Alibaba**           | yes      | beta   | beta    | beta    | beta   | -       |
-| **Bedrock Nova**      | beta     | -      | beta    | -       | -      | -       |
-| **BytePlus**          | beta     | beta   | beta    | beta    | -      | -       |
-| **Google Gemini**     | yes      | -      | -       | -       | -      | -       |
-| **Google Omni**       | -        | -      | beta    | beta    | -      | -       |
-| **Google Veo**        | -        | -      | beta    | -       | -      | -       |
-| **Luma**              | -        | -      | beta    | beta    | beta   | -       |
-| **MiniMax**           | -        | -      | beta    | -       | -      | -       |
-| **Openrouter**        | yes      | -      | beta    | -       | -      | -       |
-| **Runway**            | -        | -      | beta    | beta    | -      | beta    |
-| **xAI**               | -        | beta   | beta    | beta    | -      | -       |
+|                       | cancel | describe | extend | imagine | repaint | resume | uncrop | upscale |
+| :---                  | :---:  | :---:    | :---:  | :---:   | :---:   | :---:  | :---:  | :---:   |
+| **Alibaba**           | beta   | yes      | beta   | beta    | beta    | beta   | beta   | -       |
+| **Bedrock Nova**      | -      | beta     | -      | beta    | -       | beta   | -      | -       |
+| **BytePlus**          | beta   | beta     | beta   | beta    | beta    | beta   | -      | -       |
+| **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
+| **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
+| **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
+| **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
+| **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
+| **Openrouter**        | -      | yes      | -      | beta    | -       | beta   | -      | -       |
+| **Runway**            | beta   | -        | -      | beta    | beta    | beta   | -      | beta    |
+| **xAI**               | -      | -        | beta   | beta    | beta    | beta   | -      | -       |
 
 ## Installation
 
@@ -1190,6 +1195,48 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 * OpenAI
 * Openrouter
 
+### resume
+
+Continue polling an asynchronous audio job, e.g. in a later queue job.
+
+```php
+public function resume( string $jobId ) : FileResponse|TextResponse
+```
+
+* @param **string** `$jobId` Job ID returned by `jobId()` of a previous response
+* @return **FileResponse|TextResponse** Audio response, a text response for transcriptions
+
+**Supported providers:**
+
+* AudioPod: Only for `demix()`, `denoise()`, `revoice()`, `speak()` and `transcribe()`; the job ID is the status path
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$audio = Prisma::audio()
+    ->using( 'audiopod', config( 'services.audiopod' ) )
+    ->ensure( 'resume' )
+    ->denoise( $audio );
+
+$jobId = $audio->jobId(); // store it or pass it to a queue job
+
+// later, e.g. in the queue job
+$audio = Prisma::audio()
+    ->using( 'audiopod', config( 'services.audiopod' ) )
+    ->resume( $jobId );
+
+if( $audio->ready() ) {
+    $stream = $audio->stream();
+}
+```
+
+AudioPod transcriptions resume as a `TextResponse`, so use `text()` and `structured()`
+instead of `stream()` for job IDs of `transcribe()`.
+
+See the video [resume()](#resume-2) method for a complete queue job example.
+
 ### revoice
 
 Exchange the voice in an audio file.
@@ -1323,6 +1370,36 @@ $fileResponse = Prisma::image()
 
 $image = $fileResponse->binary();
 ```
+
+### cancel
+
+Cancel an asynchronous image job, e.g. if its result isn't needed anymore.
+
+```php
+public function cancel( string $jobId ) : void
+```
+
+* @param **string** `$jobId` Job ID returned by `jobId()` of a pending response
+
+**Supported providers:**
+
+* [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/): Pending and running jobs; the job ID is the status URL
+* [Replicate](https://replicate.com/docs/reference/http#predictions.cancel): Starting and processing predictions; the job ID is the prediction URL
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+Prisma::image()
+    ->using( 'replicate', config( 'services.replicate' ) )
+    ->ensure( 'cancel' )
+    ->cancel( $jobId );
+```
+
+Adobe throws a `BadRequestException` for finished jobs and a `NotFoundException` for
+jobs that were already canceled. See the video [cancel()](#cancel-1) method for
+details about the exceptions.
 
 ### describe
 
@@ -1527,7 +1604,8 @@ Each response polls its own [generation ID](https://developer.ideogram.ai/api-re
 File access, including `url()`, `first()`, `files()`, and iteration, waits for completion; completed responses do not poll again.
 Submissions and individual status requests still use blocking HTTP. Waiting polls every two seconds, with a default
 900-second deadline. Configure `poll_timeout` in the provider configuration in seconds; `0` disables the deadline.
-Failed generations, malformed results, and polling timeouts throw `PrismaException`.
+Failed generations, generations without images and submissions without a generation ID throw `FailedException`, malformed responses and polling timeouts throw `PrismaException`.
+To continue polling in another process, e.g. a queue job, see [resume()](#resume-1).
 Completed metadata includes the generation ID, status, image metadata, and usage cost when supplied by Ideogram.
 
 `async => true` throws `BadRequestException` for requests that require V3 reference/style options and for methods
@@ -1723,6 +1801,51 @@ $image = $fileResponse->binary();
 ```
 
 Transparent output is only supported by a few providers.
+
+### resume
+
+Continue polling an asynchronous image job, e.g. in a later queue job.
+
+```php
+public function resume( string $jobId ) : FileResponse
+```
+
+* @param **string** `$jobId` Job ID returned by `jobId()` of a previous response
+* @return **FileResponse** Image response
+
+**Supported providers:**
+
+* Adobe Firefly: The job ID is the status URL and must point to a `firefly-*.adobe.io` HTTPS host or the configured API host
+* Black Forest Labs: The job ID is the polling URL and must be an HTTPS URL of `api.bfl.ai` or a regional host like `api.eu1.bfl.ai`
+* Ideogram: Only for `imagine()` with the `async` option
+* ModelsLab: Only for queued generations; the job ID is the fetch URL of the `modelslab.com` HTTPS host or the configured API host
+* Replicate: Only for predictions not finished while the request was open; the job ID is the prediction URL of the `api.replicate.com` HTTPS host or the configured API host
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$image = Prisma::image()
+    ->using( 'ideogram', config( 'services.ideogram' ) )
+    ->ensure( 'resume' )
+    ->imagine( 'A watercolor lighthouse at dusk', [], ['async' => true] );
+
+$jobId = $image->jobId(); // store it or pass it to a queue job
+
+// later, e.g. in the queue job
+$image = Prisma::image()
+    ->using( 'ideogram', config( 'services.ideogram' ) )
+    ->resume( $jobId );
+
+if( $image->ready() ) {
+    $stream = $image->stream();
+}
+```
+
+ModelsLab and Replicate return images directly if they finish fast enough. Then,
+`jobId()` is NULL and the response is ready, so check `jobId()` before resuming.
+See the video [resume()](#resume-2) method for a complete queue job example.
 
 ### uncrop
 
@@ -2257,7 +2380,8 @@ Most video generation jobs are asynchronous. Accessing `first()`, `files()`,
 Rate limited status requests don't abort waiting; the next poll waits as long as the
 `Retry-After` header of the provider asks for, unless that exceeds the polling deadline
 and the `RateLimitException` is thrown. Use `ready()` to perform one non-blocking status
-poll; providers returning video data immediately are ready without polling.
+poll; providers returning video data immediately are ready without polling. To continue
+polling in another process, e.g. a queue job, see [resume()](#resume-2).
 
 Alibaba and Openrouter video polling stop after 900 seconds by default. Set
 `poll_timeout` in the provider configuration to another number of seconds, or to
@@ -2278,7 +2402,56 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
 
 Amazon Nova Reel also requires an S3 destination in the provider configuration:
-`['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`.
+`['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`. The video is stored there
+and the response contains its `s3://` URL, see [resume()](#resume-2) for copying it.
+
+### cancel
+
+Cancel an asynchronous video job, e.g. if its result isn't needed anymore.
+
+```php
+public function cancel( string $jobId ) : void
+```
+
+* @param **string** `$jobId` Job ID returned by `jobId()` of a pending response
+
+**Supported providers:**
+
+* [Alibaba](https://www.alibabacloud.com/help/en/model-studio/manage-asynchronous-tasks): Only queued tasks, running tasks can't be canceled
+* [BytePlus](https://docs.byteplus.com/en/docs/ModelArk/1521720): Only queued tasks, finished tasks are deleted instead
+* [Runway](https://docs.dev.runwayml.com/api/): Pending and running tasks, finished tasks are deleted instead
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+Prisma::video()
+    ->using( 'runway', config( 'services.runway' ) )
+    ->ensure( 'cancel' )
+    ->cancel( $jobId );
+```
+
+Canceling uses your API key too, so keep the same ownership checks as for
+[resume()](#resume-2) and never cancel job IDs passed by users.
+
+Jobs that can't be canceled throw an exception, e.g. a `BadRequestException` for
+running or finished Alibaba tasks. Polling a canceled job throws a `FailedException`
+and deleted jobs throw a `NotFoundException`. BytePlus and Runway delete a task that
+finished in the meantime together with its result, so don't cancel a job whose video
+you may still want. Canceling twice isn't a no-op:
+Runway throws a `NotFoundException` for tasks that were already canceled or deleted,
+which is safe to ignore:
+
+```php
+use Aimeos\Prisma\Exceptions\NotFoundException;
+
+try {
+    Prisma::video()->using( 'runway', config( 'services.runway' ) )->cancel( $jobId );
+} catch( NotFoundException $e ) {
+    // already canceled or deleted
+}
+```
 
 ### describe
 
@@ -2400,6 +2573,148 @@ across the video by default; normalized positions can be supplied using
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)
+
+### resume
+
+Continue polling an asynchronous video job, e.g. in a later queue job.
+
+```php
+public function resume( string $jobId ) : FileResponse
+```
+
+* @param **string** `$jobId` Job ID returned by `jobId()` of a previous response
+* @return **FileResponse** Video response
+
+To poll in a queue job, pass the job ID returned by `jobId()` to the job and call
+`resume()` of the same provider created with the same configuration there. Pending
+responses can't be serialized because they contain the polling closure, but the job
+ID is a short string that stays valid across Prisma updates while jobs are waiting in
+the queue:
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$video = Prisma::video()
+    ->using( 'runway', config( 'services.runway' ) )
+    ->ensure( 'resume' )
+    ->imagine( 'A paper boat crossing a rain-filled city street' );
+
+PollVideo::dispatch( $video->jobId() )->delay( 10 );
+```
+
+Each `imagine()` call starts a new job the provider charges for. Don't submit in code
+that is retried automatically, e.g. in a queue job with several `$tries`, and dispatch
+or store the job ID right after submitting. `withClientRetry()` repeats submit
+requests that failed with a server error too, even if the provider started the job.
+
+Job IDs are trusted input: `resume()` and `cancel()` send requests authenticated with
+your API key for any job ID they get, and Adobe, AudioPod, Black Forest Labs, Google Veo,
+ModelsLab and Replicate use status paths or URLs as job IDs. Only pass job IDs from your own queue payloads
+or database, never from users, e.g. in status requests of the browser. Store the job ID
+together with the user who started the job and look it up by your own record ID, so
+users can't poll or cancel the jobs of others. `meta()` contains the latest status
+response of the provider, so don't return it or `json_encode( $response )` to users
+unfiltered.
+
+Laravel queue job polling once per attempt:
+
+```php
+use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\ForbiddenException;
+use Aimeos\Prisma\Exceptions\NotFoundException;
+use Aimeos\Prisma\Exceptions\RateLimitException;
+use Aimeos\Prisma\Prisma;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Storage;
+
+class PollVideo implements ShouldQueue
+{
+    use InteractsWithQueue, Queueable;
+
+    public string $jobId;
+
+
+    public function __construct( string $jobId )
+    {
+        $this->jobId = $jobId;
+    }
+
+
+    public function handle() : void
+    {
+        $video = Prisma::video()
+            ->using( 'runway', config( 'services.runway' ) )
+            ->resume( $this->jobId );
+
+        try {
+            if( !$video->ready() ) {
+                $this->release( min( 60, $video->retryAfter() * $this->attempts() ) ); // videos take minutes
+                return;
+            }
+
+            // result URLs expire, so store the file right away
+            Storage::writeStream( 'videos/boat.mp4', $video->stream() );
+        } catch( FailedException | ForbiddenException | NotFoundException $e ) {
+            $this->fail( $e ); // failed, canceled or expired jobs and files won't succeed
+        } catch( RateLimitException $e ) {
+            $this->release( $e->retryAfter() ?? $video->retryAfter() );
+        }
+    }
+
+
+    public function retryUntil() : \DateTimeInterface
+    {
+        return now()->addHour();
+    }
+}
+```
+
+Where the configuration comes from is up to the application.
+
+`ready()` performs a single status request and throws a `FailedException` if the
+provider reports a failed or canceled job or a finished job has no results, which
+retrying won't change. Providers delete jobs and result files after some time, so
+resuming an expired job or downloading an expired file throws a `NotFoundException`,
+or a `ForbiddenException` for expired signed URLs. A failed job doesn't change any more,
+so it isn't polled again: `ready()` and the file accessors throw the same
+`FailedException` for every later call instead of reporting a response without files.
+Empty and malformed job IDs throw a `BadRequestException` before any request is sent. Rate
+limits are temporary: `RateLimitException::retryAfter()` returns the seconds from the
+`Retry-After` header of the provider, or NULL if it's not sent. `retryAfter()` of the
+response returns the polling interval of the provider in seconds, the seconds of the
+`Retry-After` header after a rate limited poll, or zero if the job completed or failed. Other
+exceptions like network errors may be temporary too and the queue retries them.
+Released and failed attempts count as attempts in Laravel, so limit the total polling
+time with `retryUntil()` instead of `$tries`. The provider `poll_timeout` of Alibaba,
+Ideogram and Openrouter starts again with each `resume()` call, so it doesn't limit the
+total polling time in the queue.
+
+While a job is pending, `meta()` contains the data of the latest status response,
+e.g. `progress` from 0.0 to 1.0 for Runway.
+
+`stream()` downloads the file into a temporary stream, which uses a temporary file for
+larger downloads instead of memory, and downloads it again on each call. `binary()` and
+`base64()` keep the whole file in memory, so prefer `stream()` for videos. The download
+is limited to 64 MiB by default; use `$video->first()?->maxSize( $bytes )` for longer
+videos or `-1` for no limit. Downloads taking longer than 10 minutes are aborted.
+
+Amazon Bedrock stores the video in the configured `s3_uri` and returns its `s3://`
+URL, which Prisma can't download, so `stream()` and `binary()` throw an exception.
+Copy the file within S3 instead, e.g. using a Laravel S3 disk for that bucket:
+
+```php
+$url = $video->first()?->url(); // s3://bucket/prefix/abc123/output.mp4
+Storage::disk( 's3' )->copy( ltrim( (string) parse_url( $url, PHP_URL_PATH ), '/' ), 'videos/boat.mp4' );
+```
+
+Bedrock job IDs contain the region, so resume them with the same regional `url`
+configuration. Google Veo job IDs are operation names, e.g.
+`models/veo-3.1-generate-preview/operations/abc`.
+
+To test queue jobs without requests to the provider, fake pending, failed and ready
+jobs as described in [Fake provider](CUSTOM-PROVIDERS.md#fake-provider).
 
 ### uncrop
 

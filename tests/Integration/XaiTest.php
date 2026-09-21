@@ -64,11 +64,13 @@ class XaiTest extends TestCase
 
     public function testImagineVideo() : void
     {
-        $response = Prisma::video()
-            ->using( 'xai', ['api_key' => $_ENV['XAI_API_KEY']] )
+        $config = ['api_key' => $_ENV['XAI_API_KEY']];
+        $pending = Prisma::video()->using( 'xai', $config )
             ->ensure( 'imagine' )
             ->imagine( 'A paper boat crossing a rain-filled city street' );
 
+        // queued job: continue polling with a new provider instance
+        $response = Prisma::video()->using( 'xai', $config )->ensure( 'resume' )->resume( (string) $pending->jobId() );
         $video = $response->first();
 
         $this->assertInstanceOf( Video::class, $video );

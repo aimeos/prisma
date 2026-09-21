@@ -3,6 +3,8 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Cancel;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Contracts\Video\Upscale;
@@ -13,7 +15,7 @@ use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Runway extends Base implements Imagine, Repaint, Upscale
+class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
 {
     use GeneratesVideo;
 
@@ -27,6 +29,21 @@ class Runway extends Base implements Imagine, Repaint, Upscale
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->header( 'X-Runway-Version', '2024-11-06' );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.dev.runwayml.com' ) );
+    }
+
+
+    /**
+     * Cancels a pending or running task, or deletes a finished one.
+     *
+     * @param string $jobId Task ID returned by jobId()
+     * @return void
+     */
+    public function cancel( string $jobId ) : void
+    {
+        $jobId = $this->jobId( $jobId );
+
+        $response = $this->client()->delete( 'v1/tasks/' . rawurlencode( $jobId ) );
+        $this->validate( $response );
     }
 
 
@@ -44,6 +61,14 @@ class Runway extends Base implements Imagine, Repaint, Upscale
         [$media, $options] = $this->repaintArguments( $media, $options );
 
         return $this->submit( 'v1/video_to_video', $this->repaintRequest( $video, $prompt, $media, $options ) );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -75,7 +100,7 @@ class Runway extends Base implements Imagine, Repaint, Upscale
             $this->videoFailed( $data['error'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return $this->resume( $id );
     }
 
 
@@ -240,9 +265,10 @@ class Runway extends Base implements Imagine, Repaint, Upscale
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
 
-            if( $status === 'FAILED' || $status === 'CANCELED' ) {
+            if( $status === 'FAILED' || $status === 'CANCELLED' ) {
                 $this->videoFailed( $data['failure'] ?? $status );
             }
 
@@ -260,7 +286,6 @@ class Runway extends Base implements Imagine, Repaint, Upscale
                 $this->videoFailed();
             }
 
-            $result->withMeta( $data );
             return true;
         };
     }

@@ -42,7 +42,7 @@ class AdobeTest extends TestCase
         $provider = $this->prisma( 'image', 'adobe', ['api_key' => 'token', 'client_id' => 'client'] )->provider();
         $this->response( ['statusUrl' => self::STATUS, 'jobId' => 'job'], ['retry-after' => '2'], 202 );
         $this->response( ['status' => 'running'] );
-        $this->response( ['status' => 'succeeded', 'result' => ['altText' => 'Result', 'outputs' => [
+        $this->response( ['jobId' => 'job', 'status' => 'succeeded', 'result' => ['altText' => 'Result', 'outputs' => [
             ['seed' => 0, 'image' => ['url' => 'https://example.com/a.png']],
             ['seed' => 1, 'image' => ['url' => 'https://example.com/b.png']],
         ]]] );
@@ -56,6 +56,21 @@ class AdobeTest extends TestCase
         $this->assertSame( 'job', $result->meta()['jobId'] );
         $this->assertSame( self::STATUS, (string) $this->requests()[1]->getUri() );
         $this->assertSame( 'Bearer token', $this->requests()[1]->getHeaderLine( 'Authorization' ) );
+    }
+
+
+    public function testCancelPending() : void
+    {
+        $prisma = $this->prisma( 'image', 'adobe', ['api_key' => 'token', 'client_id' => 'client'] );
+        $prisma->response( ['status' => 'cancel_pending'] );
+        $prisma->response( ['status' => 'succeeded', 'result' => ['outputs' => [['image' => ['url' => 'https://example.com/a.png']]]]] );
+
+        $result = $this->provider()->resume( self::STATUS );
+
+        // the job may still finish while its cancellation is pending
+        $this->assertFalse( $result->ready() );
+        $this->assertTrue( $result->ready() );
+        $this->assertSame( 'https://example.com/a.png', $result->url() );
     }
 
 
@@ -92,7 +107,7 @@ class AdobeTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/../../Integration/assets/cat.png' );
         $size = getimagesizefromstring( $image->binary() );
         $this->response( ['images' => [['id' => 'upload']]] );
-        $this->response( ['links' => ['result' => ['href' => self::STATUS]]], [], 202 );
+        $this->response( ['statusUrl' => self::STATUS], [], 202 );
         $provider->ensure( 'uncrop' )->uncrop( $image, 10, 20, 30, 40, ['size' => ['width' => 1], 'prompt' => 'Extend'] );
 
         $requests = $this->requests();
@@ -111,7 +126,7 @@ class AdobeTest extends TestCase
     public function testImage4StyleReferenceAndCustomUrl() : void
     {
         $provider = $this->prisma( 'image', 'adobe', ['api_key' => 'token', 'client_id' => 'client', 'url' => 'https://gateway.example'] )->provider();
-        $this->response( ['statusUrl' => 'https://gateway.example/poll'] );
+        $this->response( ['statusUrl' => 'https://gateway.example/v3/status/job'] );
         $provider->model( 'image4_standard' )->imagine( 'Scene', [Image::fromUrl( self::SOURCE )], ['style' => ['strength' => 50], 'resolutionLevel' => '4MP'] );
         $request = $this->requests()[0];
         $this->assertSame( 'https://gateway.example/v3/images/generate-async', (string) $request->getUri() );
@@ -121,12 +136,12 @@ class AdobeTest extends TestCase
     }
 
 
-    public function testBinaryInpaintAndLinkedJob() : void
+    public function testBinaryInpaint() : void
     {
         $provider = $this->prisma( 'image', 'adobe', ['api_key' => 'token', 'client_id' => 'client'] )->provider();
         $this->response( ['images' => [['id' => 'source']]] );
         $this->response( ['images' => [['id' => 'mask']]] );
-        $this->response( ['links' => ['result' => ['href' => self::STATUS]]], [], 202 );
+        $this->response( ['statusUrl' => self::STATUS], [], 202 );
         $this->response( ['status' => 'succeeded', 'result' => ['outputs' => [['image' => ['url' => self::SOURCE]]]]] );
         $result = $provider->inpaint( Image::fromBinary( 'SOURCE', 'image/png' ), Image::fromBinary( 'MASK', 'image/png' ), 'Edit' );
         $requests = $this->requests();
@@ -194,11 +209,12 @@ class AdobeTest extends TestCase
         $job = ['statusUrl' => self::STATUS];
         return [
             'missing job' => [[[]]],
-            'foreign poll host' => [[['statusUrl' => 'https://attacker.example/poll']]],
-            'insecure poll' => [[['statusUrl' => 'http://firefly-api.adobe.io/poll']]],
-            'foreign poll port' => [[['statusUrl' => 'https://firefly-api.adobe.io:8443/poll']]],
-            'poll user info' => [[['statusUrl' => 'https://user@firefly-api.adobe.io/poll']]],
-            'malformed poll URL' => [[['statusUrl' => 'https://firefly-api.adobe.io:invalid/poll']]],
+            'foreign poll host' => [[['statusUrl' => 'https://attacker.example/v3/status/job']]],
+            'foreign poll path' => [[['statusUrl' => 'https://firefly-api.adobe.io/poll']]],
+            'insecure poll' => [[['statusUrl' => 'http://firefly-api.adobe.io/v3/status/job']]],
+            'foreign poll port' => [[['statusUrl' => 'https://firefly-api.adobe.io:8443/v3/status/job']]],
+            'poll user info' => [[['statusUrl' => 'https://user@firefly-api.adobe.io/v3/status/job']]],
+            'malformed poll URL' => [[['statusUrl' => 'https://firefly-api.adobe.io:invalid/v3/status/job']]],
             'failure' => [[$job, ['status' => 'failed']]],
             'canceled' => [[$job, ['status' => 'canceled']]],
             'unknown status' => [[$job, ['status' => 'unknown']]],

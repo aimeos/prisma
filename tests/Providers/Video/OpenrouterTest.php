@@ -2,6 +2,7 @@
 
 namespace Tests\Providers\Video;
 
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
@@ -117,10 +118,30 @@ class OpenrouterTest extends TestCase
             ->response( ['id' => 'job-3'], [], 202 );
         $this->response( ['status' => $status, 'error' => 'Job ' . $status] );
 
-        $this->expectException( PrismaException::class );
+        $this->expectException( FailedException::class );
         $this->expectExceptionMessage( 'Job ' . $status );
 
         $this->provider()->imagine( 'prompt' )->first();
+    }
+
+
+    public function testUnknownStatus() : void
+    {
+        $prisma = $this->prisma( 'video', 'openrouter', ['api_key' => 'test'] );
+        $prisma->response( ['status' => 'unknown'] );
+        $prisma->response( ['status' => 'in_progress'] );
+
+        $response = $this->provider()->resume( 'job-1' );
+
+        try {
+            $response->ready();
+            $this->fail( 'PrismaException expected' );
+        } catch( PrismaException $e ) {
+            $this->assertNotInstanceOf( FailedException::class, $e );
+        }
+
+        // unknown states aren't reported as failed jobs, so the job is polled again
+        $this->assertFalse( $response->ready() );
     }
 
 
@@ -131,7 +152,6 @@ class OpenrouterTest extends TestCase
             'failed' => ['failed'],
             'cancelled' => ['cancelled'],
             'expired' => ['expired'],
-            'unknown' => ['unknown'],
         ];
     }
 }

@@ -11,11 +11,15 @@ class BlackforestlabsTest extends TestCase
 {
     public function testImagine() : void
     {
+        $config = ['api_key' => $_ENV['BLACKFORESTLABS_API_KEY']];
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
-        $response = Prisma::image()
-            ->using( 'blackforestlabs', ['api_key' => $_ENV['BLACKFORESTLABS_API_KEY']])
+        $pending = Prisma::image()
+            ->using( 'blackforestlabs', $config )
             ->ensure( 'imagine' )
             ->imagine( 'a cartoon dog', [$image] );
+
+        // queued job: continue polling with a new provider instance
+        $response = Prisma::image()->using( 'blackforestlabs', $config )->ensure( 'resume' )->resume( (string) $pending->jobId() );
 
         $this->assertGreaterThan( 0, strlen( $response->binary() ) );
 

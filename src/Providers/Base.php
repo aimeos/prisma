@@ -89,18 +89,21 @@ abstract class Base implements Provider
      */
     public function has( string $method ) : bool
     {
+        // method names only, namespaced names would resolve to contracts of other types
+        if( !ctype_alpha( $method ) ) {
+            return false;
+        }
+
         $type = current( array_slice( explode( '\\', get_class( $this ) ), -2, 1 ) );
         $name = '\\Aimeos\\Prisma\\Contracts\\' . $type . '\\' . ucfirst( $method );
+        $shared = 'Aimeos\\Prisma\\Contracts\\' . ucfirst( $method );
 
-        if( !interface_exists( $name ) ) {
-            return false;
+        // Contracts\Provider is implemented by all providers and isn't a capability
+        if( !interface_exists( $name ) && strcasecmp( $shared, Provider::class ) !== 0 ) {
+            $name = $shared;
         }
 
-        if( !( $this instanceof $name ) ) {
-            return false;
-        }
-
-        return true;
+        return interface_exists( $name ) && $this instanceof $name;
     }
 
 
@@ -128,6 +131,29 @@ abstract class Base implements Provider
     protected function config( array $config, string $key, string $default = '' ) : string
     {
         return isset( $config[$key] ) && is_string( $config[$key] ) ? $config[$key] : $default;
+    }
+
+
+    /**
+     * Validates an opaque job ID passed to resume() or cancel() by the application.
+     *
+     * Job IDs are sent as a single path segment of the status URL and must be URL encoded by the
+     * caller, which is what keeps them inside that segment. Encoding leaves dots untouched though,
+     * so an ID of "." or ".." would still escape the endpoint when the URL is resolved and is
+     * rejected here along with an empty one. Providers whose job ID is a whole path or URL
+     * validate it against their allowed endpoints instead, see jobUrl().
+     *
+     * @param string $jobId Job ID returned by jobId() of a previous response
+     * @return string Validated job ID to be URL encoded by the caller
+     * @throws BadRequestException If the job ID is empty or consists of dots only
+     */
+    protected function jobId( string $jobId ) : string
+    {
+        if( $jobId === '' || trim( $jobId, '.' ) === '' ) {
+            throw new BadRequestException( 'Invalid job ID' );
+        }
+
+        return $jobId;
     }
 
 
