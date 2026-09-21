@@ -2,7 +2,9 @@
 
 namespace Tests\Providers\Audio;
 
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Audio;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -37,6 +39,23 @@ class AudiopodTest extends TestCase
 
         $this->assertFalse( $file->ready() );
         $this->assertEquals( "https://localhost/test.mp3", $file->url() );
+    }
+
+
+    #[TestWith( ['denoise', ['id' => '.']] )]
+    #[TestWith( ['transcribe', ['job_id' => '..']] )]
+    public function testInvalidJobId( string $method, array $body ) : void
+    {
+        $prisma = $this->prisma( 'audio', 'audiopod', ['api_key' => 'test'] );
+        $prisma->response( $body );
+
+        // a job ID that resume() rejects mustn't be polled either
+        try {
+            $prisma->provider()->$method( Audio::fromBinary( 'MP3', 'audio/wav' ) );
+            $this->fail( 'BadRequestException expected' );
+        } catch( BadRequestException $e ) {
+            $this->assertCount( 1, $this->requests() );
+        }
     }
 
 

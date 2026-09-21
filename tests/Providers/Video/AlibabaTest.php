@@ -3,6 +3,8 @@
 namespace Tests\Providers\Video;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
@@ -252,9 +254,23 @@ class AlibabaTest extends TestCase
     }
 
 
-    public function testUnknownTaskFails() : void
+    public function testUnknownTask() : void
     {
-        $this->assertTerminalTaskFails( 'UNKNOWN' );
+        // task IDs expire after 24 hours and unknown IDs aren't failed jobs
+        $prisma = $this->prisma( 'video', 'alibaba', ['api_key' => 'test'] );
+        $prisma->response( ['output' => ['task_status' => 'UNKNOWN']] );
+        $prisma->response( ['output' => ['task_status' => 'RUNNING']] );
+
+        $response = $this->provider()->resume( 'task-1' );
+
+        try {
+            $response->ready();
+            $this->fail( 'NotFoundException expected' );
+        } catch( NotFoundException $e ) {
+            $this->assertNotInstanceOf( FailedException::class, $e );
+        }
+
+        $this->assertFalse( $response->ready() );
     }
 
 

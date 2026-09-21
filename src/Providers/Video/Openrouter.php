@@ -3,8 +3,10 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -13,7 +15,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Openrouter extends Base implements Describe, Imagine
+class Openrouter extends Base implements Describe, Imagine, Resume
 {
     use GeneratesVideo;
 
@@ -73,6 +75,14 @@ class Openrouter extends Base implements Describe, Imagine
     }
 
 
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
+    }
+
+
     /**
      * Submits an OpenRouter video generation request.
      *
@@ -92,7 +102,7 @@ class Openrouter extends Base implements Describe, Imagine
             $this->videoFailed( $this->errorMessage( $data ) );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5, $this->pollTimeout );
+        return $this->resume( $id );
     }
 
 
@@ -110,10 +120,16 @@ class Openrouter extends Base implements Describe, Imagine
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
 
+            if( in_array( $status, ['failed', 'cancelled', 'expired'], true ) ) {
+                $this->videoFailed( $this->errorMessage( $data ) ?: $status );
+            }
+
+            // unknown states stop waiting for the job but aren't reported as failed jobs, so it can be polled again
             if( !in_array( $status, ['pending', 'in_progress', 'completed'], true ) ) {
-                $this->videoFailed( $this->errorMessage( $data ) ?: ( is_string( $status ) ? $status : null ) );
+                throw new PrismaException( $this->errorMessage( $data ) ?: 'Unknown OpenRouter video status' );
             }
 
             if( $status !== 'completed' ) {
@@ -137,7 +153,7 @@ class Openrouter extends Base implements Describe, Imagine
             $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
             $used = $usage['cost'] ?? null;
 
-            $result->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )->withMeta( $data );
+            $result->withUsage( is_numeric( $used ) ? (float) $used : null, $usage );
             return true;
         };
     }
@@ -195,4 +211,5 @@ class Openrouter extends Base implements Describe, Imagine
 
         return $result;
     }
+
 }

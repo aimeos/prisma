@@ -3,6 +3,7 @@
 namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -645,7 +646,7 @@ class IdeogramTest extends TestCase
     public function testAsyncRejectsMissingGenerationId( array $result ) : void
     {
         $this->prisma( 'image', 'ideogram', ['api_key' => 'test'] )->response( $result );
-        $this->expectException( PrismaException::class );
+        $this->expectException( FailedException::class );
         $this->expectExceptionMessage( 'No generation ID found in response' );
         $this->provider()->imagine( 'A sunflower', [], ['async' => true] );
     }

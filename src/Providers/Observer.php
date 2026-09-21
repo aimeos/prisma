@@ -65,8 +65,7 @@ class Observer implements Provider
         {
             $response = $this->provider->{$method}( ...$arguments );
 
-            /** @var object $response */
-            if( $method === 'stream' && method_exists( $response, 'onComplete' ) )
+            if( $method === 'stream' && is_object( $response ) && method_exists( $response, 'onComplete' ) )
             {
                 return $response->onComplete(
                     function( object $response, ?\Throwable $error ) use ( $method, $start ) {
@@ -78,9 +77,10 @@ class Observer implements Provider
                 );
             }
 
+            // void operations like cancel() don't return a response
             $this->emit( $method, $start, null,
-                method_exists( $response, 'meta' ) ? $response->meta() : null,
-                method_exists( $response, 'usage' ) ? $response->usage() : null
+                is_object( $response ) && method_exists( $response, 'meta' ) ? $response->meta() : null,
+                is_object( $response ) && method_exists( $response, 'usage' ) ? $response->usage() : null
             );
         }
         catch( \Throwable $e )

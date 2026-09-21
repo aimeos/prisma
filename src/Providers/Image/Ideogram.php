@@ -11,7 +11,9 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Isolate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Upscale;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
@@ -22,7 +24,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class Ideogram
     extends Base
-    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Repaint, Upscale
+    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Repaint, Resume, Upscale
 {
     protected int $pollTimeout = 900;
 
@@ -273,6 +275,15 @@ class Ideogram
     }
 
 
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 2, $this->pollTimeout, $jobId )
+            ->withMeta( ['generation_id' => $jobId] );
+    }
+
+
     public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
         $this->rejectAsync( $options );
@@ -374,6 +385,47 @@ class Ideogram
 
 
     /**
+     * Returns a closure that polls an Ideogram generation.
+     *
+     * @param string $id Generation ID
+     * @return \Closure Polling closure populating the file response
+     */
+    protected function poll( string $id ) : \Closure
+    {
+        return function( FileResponse $file ) use ( $id ) : bool {
+            $response = $this->client()->get( 'v1/generations/' . rawurlencode( $id ) );
+            $this->validate( $response );
+            $result = $this->fromJson( $response );
+            $file->withMeta( ['generation_id' => $id] + $result );
+
+            if( ( $result['status'] ?? null ) === 'pending' ) {
+                return false;
+            }
+
+            if( ( $result['status'] ?? null ) === 'failed' ) {
+                $reason = $result['failure_reason'] ?? null;
+                throw new FailedException( 'Ideogram generation failed' . ( is_string( $reason ) ? ': ' . $reason : '' ) );
+            }
+
+            if( ( $result['status'] ?? null ) !== 'completed' ) {
+                throw new PrismaException( 'Unknown Ideogram generation status' );
+            }
+
+            $generated = $this->fromResult( $result );
+
+            foreach( $generated->files() as $image ) {
+                $file->add( $image );
+            }
+
+            $file->withDescription( $generated->description() )
+                ->withMeta( ['generation_id' => $id] + $result + $generated->meta()->all() );
+
+            return true;
+        };
+    }
+
+
+    /**
      * Rejects async requests for methods without a pollable endpoint.
      *
      * @param array<string, mixed> $options Provider specific options
@@ -399,39 +451,10 @@ class Ideogram
         $id = $result['generation_id'] ?? null;
 
         if( !is_string( $id ) || $id === '' ) {
-            throw new PrismaException( 'No generation ID found in response' );
+            throw new FailedException( 'No generation ID found in response' );
         }
 
-        return FileResponse::fromAsync( function( FileResponse $file ) use ( $id ) : bool {
-            $response = $this->client()->get( 'v1/generations/' . rawurlencode( $id ) );
-            $this->validate( $response );
-            $result = $this->fromJson( $response );
-            $file->withMeta( ['generation_id' => $id] + $result );
-
-            if( ( $result['status'] ?? null ) === 'pending' ) {
-                return false;
-            }
-
-            if( ( $result['status'] ?? null ) === 'failed' ) {
-                $reason = $result['failure_reason'] ?? null;
-                throw new PrismaException( 'Ideogram generation failed' . ( is_string( $reason ) ? ': ' . $reason : '' ) );
-            }
-
-            if( ( $result['status'] ?? null ) !== 'completed' ) {
-                throw new PrismaException( 'Unknown Ideogram generation status' );
-            }
-
-            $generated = $this->fromResult( $result );
-
-            foreach( $generated->files() as $image ) {
-                $file->add( $image );
-            }
-
-            $file->withDescription( $generated->description() )
-                ->withMeta( ['generation_id' => $id] + $result + $generated->meta()->all() );
-
-            return true;
-        }, 2, $this->pollTimeout )->withMeta( ['generation_id' => $id] );
+        return $this->resume( $id );
     }
 
 
@@ -454,6 +477,7 @@ class Ideogram
      *
      * @param array<string, mixed> $result Decoded generation result
      * @return FileResponse Generated images with their description and metadata
+     * @throws FailedException If the generation contains no images
      */
     protected function fromResult( array $result ) : FileResponse
     {
@@ -471,7 +495,7 @@ class Ideogram
         }
 
         if( empty( $files ) ) {
-            throw new PrismaException( 'No image data found in response' );
+            throw new FailedException( 'No image data found in response' );
         }
 
         $prompt = $first['prompt'] ?? null;

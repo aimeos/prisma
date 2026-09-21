@@ -43,14 +43,13 @@ class BedrockTest extends TestCase
             $this->markTestSkipped( 'BEDROCK_S3_URI is not defined in the environment' );
         }
 
-        $response = Prisma::video()
-            ->using( 'bedrock', [
-                'api_key' => $_ENV['BEDROCK_API_KEY'],
-                's3_uri' => $_ENV['BEDROCK_S3_URI'],
-            ] )
+        $config = ['api_key' => $_ENV['BEDROCK_API_KEY'], 's3_uri' => $_ENV['BEDROCK_S3_URI']];
+        $pending = Prisma::video()->using( 'bedrock', $config )
             ->ensure( 'imagine' )
             ->imagine( 'A paper boat crossing a rain-filled city street' );
 
+        // queued job: continue polling with a new provider instance
+        $response = Prisma::video()->using( 'bedrock', $config )->ensure( 'resume' )->resume( (string) $pending->jobId() );
         $video = $response->first();
 
         $this->assertInstanceOf( Video::class, $video );

@@ -5,6 +5,8 @@ namespace Aimeos\Prisma\Providers\Video;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Concerns\OpenaiApi;
+use Aimeos\Prisma\Contracts\Cancel;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
@@ -18,7 +20,7 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
 
-class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
+class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repaint, Resume
 {
     use CallsTools;
     use GeneratesVideo;
@@ -33,6 +35,21 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://ark.ap-southeast.bytepluses.com' ) );
+    }
+
+
+    /**
+     * Cancels a queued task or deletes a finished one; running tasks can't be canceled.
+     *
+     * @param string $jobId Task ID returned by jobId()
+     * @return void
+     */
+    public function cancel( string $jobId ) : void
+    {
+        $jobId = $this->jobId( $jobId );
+
+        $response = $this->client()->delete( 'api/v3/contents/generations/tasks/' . rawurlencode( $jobId ) );
+        $this->validate( $response );
     }
 
 
@@ -83,7 +100,7 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
             $this->videoFailed( $this->errorMessage( $data ) );
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return $this->resume( $id );
     }
 
 
@@ -92,6 +109,14 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
         [$media, $options] = $this->repaintArguments( $media, $options );
 
         return $this->imagine( $prompt, ['references' => $this->repaintReferences( $video, $media )], $options );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -211,6 +236,7 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
 
             if( in_array( $status, ['failed', 'cancelled'], true ) ) {
@@ -229,7 +255,7 @@ class Byteplus extends Base implements Describe, Extend, Imagine, Repaint
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) )->withMeta( $data );
+            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
             return true;
         };
     }

@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Exceptions\BadRequestException;
@@ -15,7 +16,7 @@ use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Bedrock extends Base implements Describe, Imagine
+class Bedrock extends Base implements Describe, Imagine, Resume
 {
     use GeneratesVideo;
 
@@ -61,7 +62,15 @@ class Bedrock extends Base implements Describe, Imagine
             $this->videoFailed( $data['message'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $arn ), 10 );
+        return $this->resume( $arn );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 10, jobId: $jobId );
     }
 
 
@@ -225,6 +234,7 @@ class Bedrock extends Base implements Describe, Imagine
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
 
             if( $status === 'Failed' ) {
@@ -245,7 +255,7 @@ class Bedrock extends Base implements Describe, Imagine
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( rtrim( $uri, '/' ) . '/output.mp4', 'video/mp4' ) )->withMeta( $data );
+            $result->add( Video::fromUrl( rtrim( $uri, '/' ) . '/output.mp4', 'video/mp4' ) );
             return true;
         };
     }

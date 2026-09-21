@@ -3,17 +3,28 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Psr\Http\Message\ResponseInterface;
 
 
-class Minimax extends Base implements Imagine
+class Minimax extends Base implements Imagine, Resume
 {
     use GeneratesVideo;
+
+    /** Error codes of MiniMax responses with HTTP status 200 mapped to the HTTP status of their exception */
+    private const ERRORS = [
+        1001 => 504, // request timeout
+        1002 => 429, 1039 => 429, 1041 => 429, 2045 => 429, 2056 => 429, // rate, token, connection and usage limits
+        1004 => 401, 2049 => 401, // invalid API key
+        1008 => 402, // insufficient balance
+        1026 => 400, 1027 => 400, 1042 => 400, 2013 => 400, // sensitive content, invalid characters and parameters
+    ];
 
 
     public function __construct( array $config )
@@ -38,12 +49,21 @@ class Minimax extends Base implements Imagine
         $data = $this->fromJson( $response );
         $id = $data['task_id'] ?? null;
 
+        $this->status( $data, $response );
+
         if( !is_string( $id ) || $id === '' ) {
-            $base = is_array( $data['base_resp'] ?? null ) ? $data['base_resp'] : [];
-            $this->videoFailed( is_string( $base['status_msg'] ?? null ) ? $base['status_msg'] : null );
+            $this->videoFailed();
         }
 
-        return FileResponse::fromAsync( $this->poll( $id ), 5 );
+        return $this->resume( $id );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        $jobId = $this->jobId( $jobId );
+
+        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -61,11 +81,17 @@ class Minimax extends Base implements Imagine
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( $data );
             $status = $data['status'] ?? null;
+            $code = is_numeric( $data['base_resp']['status_code'] ?? null ) ? (int) $data['base_resp']['status_code'] : 0;
 
-            if( $status === 'Fail' ) {
-                $this->videoFailed( is_array( $data['base_resp'] ?? null ) ? ( $data['base_resp']['status_msg'] ?? null ) : null );
+            // the task query reports sensitive input (1026) or output (1027) as error of the task itself
+            if( $status === 'Fail' || in_array( $code, [1026, 1027], true ) ) {
+                // the status message of code 0 is "success" of the query, not the reason of the failure
+                $this->videoFailed( $code !== 0 ? $data['base_resp']['status_msg'] ?? null : null );
             }
+
+            $this->status( $data, $response );
 
             if( $status !== 'Success' ) {
                 return false;
@@ -77,7 +103,7 @@ class Minimax extends Base implements Imagine
                 $this->videoFailed();
             }
 
-            $result->add( $this->video( $fileId ) )->withMeta( $data );
+            $result->add( $this->video( $fileId ) );
             return true;
         };
     }
@@ -135,6 +161,32 @@ class Minimax extends Base implements Imagine
 
 
     /**
+     * Throws the typed exception for errors MiniMax reports in responses with HTTP status 200.
+     *
+     * The errors are temporary or caused by the request, so they aren't reported as failed jobs.
+     *
+     * @param array<string, mixed> $data Response data with the "base_resp" status
+     * @param ResponseInterface $response HTTP response for the Retry-After header of rate limit errors
+     * @throws PrismaException If the status code isn't zero
+     */
+    protected function status( array $data, ResponseInterface $response ) : void
+    {
+        $base = is_array( $data['base_resp'] ?? null ) ? $data['base_resp'] : [];
+        $code = is_numeric( $base['status_code'] ?? null ) ? (int) $base['status_code'] : 0;
+
+        if( $code === 0 ) {
+            return;
+        }
+
+        $msg = is_string( $base['status_msg'] ?? null ) && $base['status_msg'] !== ''
+            ? $base['status_msg']
+            : 'MiniMax error ' . $code;
+
+        $this->throw( self::ERRORS[$code] ?? 500, $msg, $response );
+    }
+
+
+    /**
      * Returns supported MiniMax subject reference URLs.
      *
      * @param array<string, mixed> $media Input media by semantic role
@@ -172,6 +224,8 @@ class Minimax extends Base implements Imagine
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
+        $this->status( $data, $response );
+
         /** @var array<string, mixed> $file */
         $file = is_array( $data['file'] ?? null ) ? $data['file'] : [];
         $url = $file['download_url'] ?? null;

@@ -106,6 +106,21 @@ class IdeogramTest extends TestCase
     }
 
 
+    public function testResume() : void
+    {
+        $config = ['api_key' => $_ENV['IDEOGRAM_API_KEY']];
+        $pending = Prisma::image()->using( 'ideogram', $config )
+            ->imagine( 'A watercolor painting of a cat sitting beside a vase of flowers', [], ['async' => true] );
+
+        // queued job: resume the pending job with a new provider instance
+        $jobId = $pending->jobId();
+        $response = Prisma::image()->using( 'ideogram', $config )->ensure( 'resume' )->resume( (string) $jobId );
+
+        $this->assertGreaterThan( 0, strlen( (string) $response->binary() ) );
+        $this->assertSame( 'completed', $response->meta()['status'] );
+    }
+
+
     #[TestWith( [false] )]
     #[TestWith( [true] )]
     public function testImagineTransparent( bool $async ) : void

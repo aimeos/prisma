@@ -159,4 +159,19 @@ class LumaTest extends TestCase
             0
         );
     }
+
+
+    public function testOutputWithoutType() : void
+    {
+        $this->prisma( 'video', 'luma', ['api_key' => 'test'] )->response( ['state' => 'completed', 'output' => [
+            ['url' => 'https://example.com/unknown.bin'],
+            ['type' => 'video', 'url' => 'https://example.com/video.mp4'],
+        ]] );
+
+        $response = $this->provider()->resume( 'generation-1' );
+
+        // outputs without type aren't videos
+        $this->assertTrue( $response->ready() );
+        $this->assertSame( ['https://example.com/video.mp4'], array_map( fn( $video ) => $video->url(), $response->files() ) );
+    }
 }

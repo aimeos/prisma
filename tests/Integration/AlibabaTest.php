@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
@@ -51,13 +52,29 @@ class AlibabaTest extends TestCase
     }
 
 
+    public function testCancelVideo() : void
+    {
+        $config = ['api_key' => $_ENV['ALIBABA_API_KEY']];
+        $pending = Prisma::video()->using( 'alibaba', $config )
+            ->imagine( 'A paper boat crossing a rain-filled city street' );
+
+        // only queued tasks can be canceled, so cancel right after submitting
+        Prisma::video()->using( 'alibaba', $config )->ensure( 'cancel' )->cancel( (string) $pending->jobId() );
+
+        $this->expectException( FailedException::class );
+        Prisma::video()->using( 'alibaba', $config )->resume( (string) $pending->jobId() )->ready();
+    }
+
+
     public function testImagineVideo() : void
     {
-        $response = Prisma::video()
-            ->using( 'alibaba', ['api_key' => $_ENV['ALIBABA_API_KEY']] )
+        $config = ['api_key' => $_ENV['ALIBABA_API_KEY']];
+        $pending = Prisma::video()->using( 'alibaba', $config )
             ->ensure( 'imagine' )
             ->imagine( 'A paper boat crossing a rain-filled city street' );
 
+        // queued job: continue polling with a new provider instance
+        $response = Prisma::video()->using( 'alibaba', $config )->ensure( 'resume' )->resume( (string) $pending->jobId() );
         $video = $response->first();
 
         $this->assertInstanceOf( Video::class, $video );

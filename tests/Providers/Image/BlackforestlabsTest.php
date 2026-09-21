@@ -2,6 +2,8 @@
 
 namespace Tests\Providers\Image;
 
+use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
@@ -18,7 +20,7 @@ class BlackforestlabsTest extends TestCase
         $prisma->response( '{
             "id": "image_1234567890",
             "status": "Processing",
-            "polling_url": "https://localhost/poll"
+            "polling_url": "https://api.bfl.ai/v1/get_result?id=1"
         }' );
         $prisma->response( '{
             "id": "image_1234567890",
@@ -43,10 +45,39 @@ class BlackforestlabsTest extends TestCase
     }
 
 
+    public function testImagineNotFound() : void
+    {
+        $prisma = $this->prisma( 'image', 'blackforestlabs', ['api_key' => 'test'] );
+        $prisma->response( ['id' => 'image_1', 'polling_url' => 'https://api.bfl.ai/v1/get_result?id=1'] );
+        $prisma->response( ['id' => 'image_1', 'status' => 'Task not found'] );
+        $file = $prisma->response( ['id' => 'image_1', 'status' => 'Pending'] )->imagine( 'prompt' );
+
+        try {
+            $file->ready();
+            $this->fail( 'NotFoundException expected' );
+        } catch( NotFoundException $e ) {
+            $this->assertNotInstanceOf( FailedException::class, $e );
+        }
+
+        // an unknown job isn't a failed one, so the caller decides if it's polled again
+        $this->assertFalse( $file->ready() );
+    }
+
+
+    public function testImagineNoPollingUrl() : void
+    {
+        $this->expectException( FailedException::class );
+
+        $this->prisma( 'image', 'blackforestlabs', ['api_key' => 'test'] )
+            ->response( ['id' => 'image_1'] )
+            ->imagine( 'prompt' );
+    }
+
+
     public function testRepaint() : void
     {
         $mock = $this->prisma( 'image', 'blackforestlabs', ['api_key' => 'test'] );
-        $mock->response( ['polling_url' => 'https://api.bfl.ai/poll', 'cost' => 4] );
+        $mock->response( ['polling_url' => 'https://api.bfl.ai/v1/get_result?id=1', 'cost' => 4] );
         $file = $mock->response( ['status' => 'Ready', 'result' => ['sample' => 'https://example.com/edited.png']] )
             ->model( 'flux-2-pro' )->ensure( 'repaint' )
             ->repaint( Image::fromBinary( 'PNG', 'image/png' ), 'Winter', ['seed' => 0, 'unknown' => true, 'prompt' => 'ignored'] );
@@ -69,7 +100,7 @@ class BlackforestlabsTest extends TestCase
         $prisma->response( '{
             "id": "image_1234567890",
             "status": "processing",
-            "polling_url": "https://localhost/poll"
+            "polling_url": "https://api.bfl.ai/v1/get_result?id=1"
         }' );
         $prisma->response( '{
             "id": "image_1234567890",
@@ -102,7 +133,7 @@ class BlackforestlabsTest extends TestCase
         $prisma->response( '{
             "id": "image_1234567890",
             "status": "Processing",
-            "polling_url": "https://localhost/poll"
+            "polling_url": "https://api.bfl.ai/v1/get_result?id=1"
         }' );
         $prisma->response( '{
             "id": "image_1234567890",

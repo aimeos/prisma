@@ -3,14 +3,16 @@
 namespace Aimeos\Prisma\Providers\Video;
 
 use Aimeos\Prisma\Concerns\GeneratesVideo;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Contracts\Video\Imagine;
+use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Gemini as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Veo extends Base implements Imagine
+class Veo extends Base implements Imagine, Resume
 {
     use GeneratesVideo;
 
@@ -31,7 +33,13 @@ class Veo extends Base implements Imagine
             $this->videoFailed( $data['error']['message'] ?? null );
         }
 
-        return FileResponse::fromAsync( $this->poll( $name ), 10 );
+        return $this->resume( $name );
+    }
+
+
+    public function resume( string $jobId ) : FileResponse
+    {
+        return FileResponse::fromAsync( $this->poll( $jobId ), 10, jobId: $jobId );
     }
 
 
@@ -120,15 +128,22 @@ class Veo extends Base implements Imagine
      *
      * @param string $name Operation name
      * @return \Closure Polling closure that populates the file response
+     * @throws BadRequestException If the name isn't an operation name
      */
     protected function poll( string $name ) : \Closure
     {
+        // Operation names only, they can't be dot segments or add queries to reach other endpoints
+        if( !preg_match( '#^(models/\w[\w.-]*/)?operations/\w[\w.-]*$#D', $name ) ) {
+            throw new BadRequestException( 'Invalid Veo operation name' );
+        }
+
         return function( FileResponse $result ) use ( $name ) : bool {
-            $response = $this->client()->get( 'v1beta/' . ltrim( $name, '/' ) );
+            $response = $this->client()->get( 'v1beta/' . $name );
             $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
+            $result->withMeta( ['operation' => $name] + $data );
 
             if( isset( $data['error'] ) ) {
                 $this->videoFailed( $data['error']['message'] ?? null );
@@ -155,7 +170,6 @@ class Veo extends Base implements Imagine
                 $this->videoFailed();
             }
 
-            $result->withMeta( ['operation' => $name] );
             return true;
         };
     }

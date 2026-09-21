@@ -3,7 +3,7 @@
 namespace Aimeos\Prisma\Concerns;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
-use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Files\File;
 
 
@@ -77,7 +77,7 @@ trait GeneratesVideo
      */
     protected function videoFailed( mixed $message = null ) : never
     {
-        throw new PrismaException( is_string( $message ) && $message !== ''
+        throw new FailedException( is_string( $message ) && $message !== ''
             ? $message
             : 'Video generation failed' );
     }

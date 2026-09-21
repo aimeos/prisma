@@ -6,6 +6,10 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
+use Aimeos\Prisma\Contracts\Resume;
+use Aimeos\Prisma\Exceptions\BadRequestException;
+use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
@@ -13,8 +17,11 @@ use Aimeos\Prisma\Responses\FileResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
-class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
+class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume, Uncrop
 {
+    private const RESULT = '#/v\d+/get_result$#D';
+
+
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -92,6 +99,19 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
     }
 
 
+    /**
+     * Resumes polling a job.
+     *
+     * @param string $jobId Polling URL of the job returned by jobId()
+     * @return FileResponse Asynchronous image response
+     * @throws BadRequestException If the URL isn't a result URL of Black Forest Labs
+     */
+    public function resume( string $jobId ) : FileResponse
+    {
+        return FileResponse::fromAsync( $this->poll( $jobId ), 2, jobId: $jobId );
+    }
+
+
     public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
         $model = $this->modelName( 'flux-pro-1.0-expand' );
@@ -114,28 +134,43 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
     }
 
 
-    protected function download( string $url ) : \Closure
+    protected function poll( string $url ) : \Closure
     {
-        $client = $this->client();
+        // Never send the API key to hosts outside of Black Forest Labs, e.g. regional ones like api.eu1.bfl.ai,
+        // or to other endpoints than the result endpoint
+        $uri = $this->jobUrl( $url, self::RESULT, '#^api(\.[a-z0-9-]+)?\.bfl\.ai$#D', 'Invalid Black Forest Labs polling URL' );
 
-        return function( FileResponse $fr ) use ( $client, $url ) : bool {
+        return function( FileResponse $fr ) use ( $uri ) : bool {
 
-            $response = $client->get( $url );
-
-            if( $response->getStatusCode() !== 200 ) {
-                throw new PrismaException( $response->getReasonPhrase() );
-            }
+            $response = $this->client()->get( $uri, ['allow_redirects' => false] );
+            $this->validate( $response );
 
             $data = $this->fromJson( $response );
+            $fr->withMeta( $data );
+            $status = $data['status'] ?? null;
 
-            if( @$data['status'] !== 'Ready' ) {
+            // the final result contains the settled cost, which is also available for resumed jobs
+            if( is_numeric( $data['cost'] ?? null ) ) {
+                $fr->withUsage( (float) $data['cost'] );
+            }
+
+            // results are kept for ten minutes only, but an unknown ID isn't reported as failed job
+            if( $status === 'Task not found' ) {
+                throw new NotFoundException( 'Black Forest Labs job not found or expired' );
+            }
+
+            if( in_array( $status, ['Error', 'Content Moderated', 'Request Moderated'], true ) ) {
+                throw new FailedException( 'Black Forest Labs job failed: ' . $status );
+            }
+
+            if( $status !== 'Ready' ) {
                 return false;
             }
 
             $sample = $data['result']['sample'] ?? $data['sample'] ?? null;
 
             if( !is_string( $sample ) || $sample === '' ) {
-                throw new PrismaException( 'Invalid response: ' . $response->getBody()->getContents() );
+                throw new FailedException( 'No image data found in response' );
             }
 
             $fr->add( Image::fromUrl( $sample ) );
@@ -150,13 +185,13 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Uncrop
         $this->validate( $response );
         $data = $this->fromJson( $response );
 
-        if( !isset( $data['polling_url'] ) || !is_string( $data['polling_url'] ) ) {
-            throw new PrismaException( 'Invalid response' );
+        if( !is_string( $data['polling_url'] ?? null ) || $data['polling_url'] === '' ) {
+            throw new FailedException( 'No polling URL in response' );
         }
 
         $cost = $data['cost'] ?? 0;
 
-        return FileResponse::fromAsync( $this->download( $data['polling_url'] ), 2 )
+        return $this->resume( $data['polling_url'] )
             ->withUsage( is_numeric( $cost ) ? (float) $cost : 0 );
     }
 }
