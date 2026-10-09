@@ -26,6 +26,7 @@ class ValidateTest extends TestCase
     #[TestWith( [404, NotFoundException::class] )]
     #[TestWith( [429, RateLimitException::class] )]
     #[TestWith( [503, OverloadedException::class] )]
+    #[TestWith( [529, OverloadedException::class] )]
     public function testNonJsonErrorBody( int $status, string $exception ) : void
     {
         // gateways and proxies in front of the provider answer with HTML pages instead of JSON

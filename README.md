@@ -74,6 +74,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#text-api">Text API</a></div>
 <ul class="method-list">
+    <li><a href="#decide">decide</a><span>: Answer typed questions with probabilities</span></li>
     <li><a href="#stream">stream</a><span>: Stream text deltas as they arrive</span></li>
     <li><a href="#structure">structure</a><span>: Generate structured output from a prompt and schema</span></li>
     <li><a href="#translate">translate</a><span>: Translate texts from one language to another</span></li>
@@ -132,6 +133,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Replicate](https://replicate.com/docs)
 - [Runway](https://docs.dev.runwayml.com/)
 - [StabilityAI](https://platform.stability.ai/)
+- [TypeSafe](https://docs.typesafe.ai/)
 - [VoyageAI](https://docs.voyageai.com/)
 - [xAI](https://docs.x.ai/)
 - [Z.AI](https://docs.z.ai/api-reference)
@@ -180,28 +182,29 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Text
 
-|                       | stream | structure | translate | vectorize | write | citations | custom tools | provider tools | system prompt | thinking budget |
-| :---                  | :---: | :---:      | :---:     | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
-| **Alibaba**           | yes   | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
-| **Anthropic**         | yes   | yes        |           | -         | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Azure**             | beta  | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
-| **Bedrock**           | -     | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
-| **Cohere**            | -     | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
-| **Deepseek**          | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
-| **DeepL**             |       |            | yes       |           |       |           |              |                |               |                 |
-| **Google Gemini**     | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Google**            |       |            | yes       |           |       |           |              |                |               |                 |
-| **Groq**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
-| **Kimi**              | yes   | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
-| **Mistral**           | yes   | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
-| **Ollama**            | beta  | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
-| **OpenAI**            | yes   | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Openrouter**        | yes   | yes        |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
-| **Perplexity**        | beta  | beta       |           | -         | beta  | yes       | yes          |                | yes           | yes             |
-| **Requesty**          | yes   | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
-| **Vertexai**          | beta  | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
-| **xAI**               | beta  | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
-| **Z.AI**              | yes   | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
+|                       | stream | decide | structure | translate | vectorize | write | citations | custom tools | provider tools | system prompt | thinking budget |
+| :---                  | :---: | :---:  | :---:      | :---:     | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
+| **Alibaba**           | yes   |        | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
+| **Anthropic**         | yes   |        | yes        |           | -         | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Azure**             | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
+| **Bedrock**           | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
+| **Cohere**            | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
+| **Deepseek**          | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
+| **DeepL**             |       |        |            | yes       |           |       |           |              |                |               |                 |
+| **Google Gemini**     | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Google**            |       |        |            | yes       |           |       |           |              |                |               |                 |
+| **Groq**              | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
+| **Kimi**              | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
+| **Mistral**           | yes   |        | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
+| **Ollama**            | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
+| **OpenAI**            | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
+| **Openrouter**        | yes   |        | yes        |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
+| **Perplexity**        | beta  |        | beta       |           | -         | beta  | yes       | yes          |                | yes           | yes             |
+| **Requesty**          | yes   |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
+| **TypeSafe**          |       | beta   |            |           |           |       |           |              |                |               |                 |
+| **Vertexai**          | beta  |        | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
+| **xAI**               | beta  |        | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
+| **Z.AI**              | yes   |        | -          |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
 
 Thinking-budget entries indicate request mapping in Prisma. The selected model
 must accept the mapped token budget or effort level; see [withThinkingBudget](#withthinkingbudget).
@@ -360,7 +363,7 @@ public function withClientRetry( int $maxAttempts = 3, \Closure|int $delayMs = 1
 * @param **\Closure|null** `$when` Retry condition: fn(ResponseInterface $response, int $attempt): bool
 * @return **self** Provider interface
 
-By default, retries HTTP responses with status codes 429, 500, 502, 503 and 504.
+By default, retries HTTP responses with status codes 429, 500, 502, 503, 504 and 529.
 Connection failures without an HTTP response are not retried. Configure retry
 and client options before the provider's first request.
 
@@ -535,8 +538,26 @@ $thinking = $response->meta()->thinking();
 
 ### Response objects
 
-The methods return a *FileResponse*, *TextResponse* or *VectorResponse* object that
+The methods return a *DecisionResponse*, *FileResponse*, *TextResponse* or *VectorResponse* object that
 contains the returned data with optional meta/usage/description information.
+
+**DecisionResponse** objects:
+
+```php
+$answer = $response->answer( 'team' ); // answer for the question ID or NULL
+$answers = $response->answers(); // all answers by question ID
+
+$answer->type(); // provider specific question type or NULL
+$answer->value(); // selected outcome, probability or rating depending on the question type
+$answer->probabilities(); // probability per possible outcome, empty if not reported
+$answer->confidence(); // certainty between 0 and 1 or NULL if not reported
+$raw = $answer['legend'] ?? []; // provider specific keys stay reachable by subscript
+
+// loop over all answers
+foreach( $response as $id => $answer ) {
+    echo $id . ': ' . $answer->value();
+}
+```
 
 **FileResponse** objects:
 
@@ -1963,6 +1984,55 @@ $vectors = $vectorResponse->vectors();
 ```
 
 ## Text API
+
+### decide
+
+Answers typed questions about the given state with probabilities instead of generated text,
+e.g. yes/no questions, choices between options or ratings along levels.
+
+```php
+public function decide( string|array $state, array $questions, array $options = [] ) : DecisionResponse
+```
+
+* @param **string&#124;array&#60;int&#124;string, mixed&#62;** `$state` Text or structured data (e.g. chat logs, records) to evaluate
+* @param **array&#60;string, array&#60;string, mixed&#62;&#62;** `$questions` Map of question ID to question definition in the provider format
+* @param **array&#60;string, mixed&#62;** `$options` Provider specific options
+* @return **DecisionResponse** One typed answer per question ID
+
+Ask all questions about the same state in one call so the state is only sent once.
+The answers are probabilistic decisions, so check `confidence()` or the probabilities
+before acting on consequential answers. Pin a versioned model instead of an alias if
+you tuned thresholds for a specific model version.
+
+**Question formats:**
+
+* [TypeSafe](https://docs.typesafe.ai/api#question-types): `noul` (yes/no, value is the probability of yes), `choice` (one of up to 255 options) and `score` (rating along 2 to 10 ordered levels)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$response = Prisma::text()
+    ->using( 'typesafe', ['api_key' => 'xxx'] )
+    ->ensure( 'decide' )
+    ->decide( 'Help! My payouts have been failing for 3 days.', [
+        'urgent' => ['type' => 'noul', 'instructions' => 'Does this convey urgency?'],
+        'team' => ['type' => 'choice', 'instructions' => 'Which team should handle this?', 'criteria' => [
+            'billing' => 'Payments, invoicing, refunds',
+            'technical' => 'Bugs, outages, integrations',
+        ]],
+        'anger' => ['type' => 'score', 'instructions' => 'How frustrated is the customer?', 'criteria' => [
+            'Calm', 'Frustrated', 'Very angry'
+        ]],
+    ] );
+
+$team = $response->answer( 'team' );
+
+if( $team->confidence() > 0.7 ) {
+    route( $team->value() ); // 'billing'
+}
+```
 
 ### stream
 

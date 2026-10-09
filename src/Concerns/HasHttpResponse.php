@@ -244,6 +244,7 @@ trait HasHttpResponse
                 ->withRetryAfter( $response ? $this->retryHeader( $response ) : null );
             case 502:
             case 504:
+            case 529: // Anthropic and TypeSafe report overload with 529
             case 503: throw new \Aimeos\Prisma\Exceptions\OverloadedException( $message );
             default: throw new \Aimeos\Prisma\Exceptions\PrismaException( $message );
         }
