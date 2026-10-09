@@ -79,7 +79,7 @@ trait HasHttpClient
 
             return $when
                 ? (bool) $when( $response, $retries + 1 )
-                : in_array( $response->getStatusCode(), [429, 500, 502, 503, 504] );
+                : in_array( $response->getStatusCode(), [429, 500, 502, 503, 504, 529] );
         };
 
         $delay = function( int $retries, ?ResponseInterface $response ) use ( $delayMs ) : int {
