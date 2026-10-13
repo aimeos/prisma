@@ -2071,7 +2071,7 @@ Iterating `$response->stream()` yields:
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/model-api-reference/)
 * [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
-* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-chat-completion)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
@@ -2196,7 +2196,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/developer-reference/api-details)
 * [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/structured-output)
-* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-chat-completion)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
@@ -2315,7 +2315,7 @@ public function vectorize( array $texts, ?int $size = null, array $options = [] 
 **Supported options:**
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/embedding-api-details)
-* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#embeddings)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-embedding)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html)
 * [Cohere](https://docs.cohere.com/reference/embed)
 * [Google Gemini](https://ai.google.dev/api/embeddings)

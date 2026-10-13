@@ -59,7 +59,7 @@ class AzureTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
-                'https://myres.openai.azure.com/openai/deployments/gpt-5.6-sol/chat/completions?api-version=2024-10-21',
+                'https://myres.openai.azure.com/openai/v1/chat/completions',
                 (string) $request->getUri()
             );
             $this->assertEquals( 'test', $request->getHeaderLine( 'api-key' ) );
@@ -72,9 +72,9 @@ class AzureTest extends TestCase
     }
 
 
-    public function testWriteWithDeploymentAndVersion() : void
+    public function testWriteWithUrlAndDeployment() : void
     {
-        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://custom.example.com', 'api_version' => '2025-01-01'] )
+        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://custom.example.com/'] )
             ->response( ['choices' => [['message' => ['content' => 'ok']]]] )
             ->model( 'my-deployment' )
             ->ensure( 'write' )
@@ -82,9 +82,12 @@ class AzureTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
-                'https://custom.example.com/openai/deployments/my-deployment/chat/completions?api-version=2025-01-01',
+                'https://custom.example.com/openai/v1/chat/completions',
                 (string) $request->getUri()
             );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( 'my-deployment', $body['model'] );
         } );
     }
 
@@ -104,7 +107,7 @@ class AzureTest extends TestCase
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
-                'https://myres.openai.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2024-10-21',
+                'https://myres.openai.azure.com/openai/v1/embeddings',
                 (string) $request->getUri()
             );
             $body = json_decode( $request->getBody()->getContents(), true );
