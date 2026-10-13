@@ -2,7 +2,7 @@
 #
 # Check https://circleci.com/docs/2.0/language-php/ for more details
 #
-version: 2
+version: 2.1
 
 jobs:
   "php-8.2":
@@ -76,7 +76,6 @@ jobs:
       - run: ./vendor/bin/phpstan
 
 workflows:
-  version: 2
   unittest:
     jobs:
       - "php-8.2"
