@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Schema\Schema;
@@ -11,6 +12,30 @@ use PHPUnit\Framework\TestCase;
 
 class MetaTest extends TestCase
 {
+    public function testImagine() : void
+    {
+        $response = Prisma::image()
+            ->using( 'meta', ['api_key' => $_ENV['META_API_KEY']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'A red fox trotting through fresh snow', [], ['reasoning_strength' => 'low'] );
+
+        $this->assertNotEmpty( $response->binary() );
+    }
+
+
+    public function testRepaint() : void
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+
+        $response = Prisma::image()
+            ->using( 'meta', ['api_key' => $_ENV['META_API_KEY']] )
+            ->ensure( 'repaint' )
+            ->repaint( $image, 'Add a small red wool hat', ['reasoning_strength' => 'low'] );
+
+        $this->assertNotEmpty( $response->binary() );
+    }
+
+
     public function testStream() : void
     {
         $deltas = [];
