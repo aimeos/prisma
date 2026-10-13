@@ -5,6 +5,7 @@ namespace Aimeos\Prisma\Providers;
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\Video;
 
 
 class Meta extends Base
@@ -60,6 +61,31 @@ class Meta extends Base
         }
 
         return $params;
+    }
+
+
+    /**
+     * Builds Meta chat content with video support.
+     *
+     * @param string $prompt Text prompt
+     * @param array<int, \Aimeos\Prisma\Files\File> $files Input media files
+     * @return array<int, array<string, mixed>> Content blocks
+     */
+    protected function content( string $prompt, array $files ) : array
+    {
+        $content = [];
+
+        foreach( $files as $file )
+        {
+            $type = $file instanceof Video ? 'video_url' : 'image_url';
+            $url = $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() );
+
+            $content[] = ['type' => $type, $type => ['url' => $url]];
+        }
+
+        $content[] = ['type' => 'text', 'text' => $prompt];
+
+        return $content;
     }
 
 

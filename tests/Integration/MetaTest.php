@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Schema\Schema;
@@ -22,6 +23,18 @@ class MetaTest extends TestCase
             ->describe( $audio );
 
         $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
+    public function testDescribeVideo() : void
+    {
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4', 'video/mp4' );
+        $response = Prisma::video()
+            ->using( 'meta', ['api_key' => $_ENV['META_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $video );
+
+        $this->assertStringContainsStringIgnoringCase( 'flower', $response->text() );
     }
 
 
