@@ -168,6 +168,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
 | **Ideogram**          | yes        | -      | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | -      | yes     | -         |
+| **Meta**              | -          |        | -        | -      | -     | beta    | -       | -       | -         | -        | beta    |        | -      | -       | -         |
 | **Mistral**           | -          |        | -        | -      | -     | -       | -       | -       | yes       | -        | -       |        | -      | -       | -         |
 | **ModelsLab**         | -          | -      | -        | -      | -     | beta    | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
 | **OpenAI**            | -          |        | yes      | -      | -     | yes     | yes     | -       | -         | -        | -       |        | -      | -       | -         |
@@ -1554,6 +1555,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * Clipdrop
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/generate-images/generate-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/generate-images/generate-v3))
+* [Meta Muse Image](https://dev.meta.ai/docs/api-reference/images/create-image) ([Editing](https://dev.meta.ai/docs/api-reference/images/edit-image))
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
@@ -1803,6 +1805,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 * [Black Forest Labs](https://docs.bfl.ai/flux_2/flux2_image_editing)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
+* [Meta Muse Image](https://dev.meta.ai/docs/api-reference/images/edit-image)
 * Openrouter
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/edit-with-ai)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-to-image)
