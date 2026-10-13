@@ -4,16 +4,38 @@ namespace Aimeos\Prisma\Providers\Text;
 
 use Aimeos\Prisma\Contracts\Text\Stream;
 use Aimeos\Prisma\Contracts\Text\Structure;
+use Aimeos\Prisma\Contracts\Text\Translate;
 use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Azure as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Responses\VectorResponse;
 use Aimeos\Prisma\Schema\Schema;
 
 
-class Azure extends Base implements Stream, Structure, Vectorize, Write
+class Azure extends Base implements Stream, Structure, Translate, Vectorize, Write
 {
+    /** @var array<string, string> */
+    private array $translatorHeaders;
+    private string $translatorUrl;
+
+
+    public function __construct( array $config )
+    {
+        parent::__construct( $config );
+
+        $resource = $this->config( $config, 'resource' );
+        $default = $resource ? 'https://' . $resource . '.cognitiveservices.azure.com/translator/text/v3.0' : '';
+
+        $this->translatorUrl = rtrim( $this->config( $config, 'translator_url', $default ), '/' );
+        $this->translatorHeaders = array_filter( [
+            'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
+            'Ocp-Apim-Subscription-Region' => $this->config( $config, 'region' ),
+        ] );
+    }
+
+
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
@@ -35,6 +57,34 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
             'chat/completions', $model,
             $prompt, $files, $schema, $options, $mode
         );
+    }
+
+
+    public function translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] ) : TextResponse
+    {
+        if( !$this->translatorUrl ) {
+            throw new PrismaException( 'No Azure resource name or translator URL' );
+        }
+
+        $query = ['api-version' => '3.0', 'to' => $to, 'from' => $from] + $this->allowed( $options, [
+            'allowFallback', 'category', 'fromScript', 'profanityAction',
+            'profanityMarker', 'suggestedFrom', 'textType', 'toScript',
+        ] );
+
+        $response = $this->client()->post( $this->translatorUrl . '/translate', [
+            'json' => array_map( fn( $text ) => ['Text' => $text], array_values( $texts ) ),
+            'query' => array_map( fn( $value ) => is_bool( $value ) ? var_export( $value, true ) : $value, $query ),
+            'headers' => $this->translatorHeaders,
+        ] );
+
+        $this->validate( $response );
+
+        /** @var array<int, array<string, mixed>> $data */
+        $data = $this->fromJson( $response );
+        /** @var array<int, string|null> $translated */
+        $translated = array_map( fn( $item ) => $item['translations'][0]['text'] ?? '', $data );
+
+        return TextResponse::fromTexts( $translated );
     }
 
 

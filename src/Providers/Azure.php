@@ -19,7 +19,7 @@ class Azure extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        if( !isset( $config['url'] ) && !isset( $config['resource'] ) ) {
+        if( !isset( $config['url'] ) && !isset( $config['resource'] ) && !isset( $config['translator_url'] ) ) {
             throw new PrismaException( 'No Azure resource name or URL' );
         }
 

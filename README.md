@@ -189,7 +189,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | :---                  | :---: | :---:  | :---:      | :---:     | :---:     | :---: | :---:     | :---:        | :---:          | :---:         | :---:           |
 | **Alibaba**           | yes   |        | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
 | **Anthropic**         | yes   |        | yes        |           | -         | yes   | yes       | yes          | yes            | yes           | yes             |
-| **Azure**             | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
+| **Azure**             | beta  |        | beta       | beta      | beta      | beta  | -         | yes          |                | yes           | yes             |
 | **Bedrock**           | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Deepseek**          | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
@@ -2283,6 +2283,7 @@ public function translate( array $texts, string $to, ?string $from = null, ?stri
 
 **Supported options:**
 
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/reference/v3/translate)
 * [DeepL](https://developers.deepl.com/docs/api-reference/translate/openapi-spec-for-text-translation)
 * [Google](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate#authorization)
 
@@ -2297,6 +2298,18 @@ $textResponse = Prisma::text()
     ->translate( ['Hello', 'World'], 'de', 'en' );
 
 $texts = $textResponse->texts(); // ['Hallo', 'Welt']
+```
+
+Azure uses the Translator endpoint of the configured `resource`. For a standalone
+Translator resource, pass its endpoint as `translator_url` (e.g. the global
+`https://api.cognitive.microsofttranslator.com`) and its `region` if required:
+
+```php
+Prisma::text()->using( 'azure', [
+    'api_key' => 'xxx',
+    'translator_url' => 'https://api.cognitive.microsofttranslator.com',
+    'region' => 'westeurope',
+] );
 ```
 
 ### vectorize

@@ -61,6 +61,16 @@ class AzureTest extends TestCase
     }
 
 
+    public function testTranslate() : void
+    {
+        $response = $this->provider()
+            ->ensure( 'translate' )
+            ->translate( ['Hello', 'World'], 'de', 'en' );
+
+        $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->provider()
