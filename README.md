@@ -224,6 +224,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
 | **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
+| **Meta**              |        | beta     | -      | -       | -       |        | -      | -       |
 | **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
 | **Openrouter**        | -      | yes      | -      | beta    | -       | beta   | -      | -       |
 | **Runway**            | beta   | -        | -      | beta    | beta    | beta   | -      | beta    |
@@ -2555,6 +2556,7 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
+* [Meta Muse Spark](https://dev.meta.ai/docs/video-understanding)
 * Openrouter
 
 ### extend

@@ -4,6 +4,7 @@ namespace Tests\Providers\Text;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Schema\Schema;
 use Aimeos\Prisma\Tools;
@@ -315,5 +316,22 @@ class MetaTest extends TestCase
         } );
 
         $this->assertEquals( 'Search result', $result->text() );
+    }
+
+
+    public function testWriteWithVideo() : void
+    {
+        $this->prisma( 'text', 'meta', ['api_key' => 'test'] )
+            ->response( ['choices' => [['message' => ['content' => 'A flower']]]] )
+            ->write( 'Describe this video', [Video::fromBinary( 'MP4', 'video/mp4' )] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $content = $body['messages'][0]['content'];
+
+            $this->assertEquals( 'video_url', $content[0]['type'] );
+            $this->assertStringStartsWith( 'data:video/mp4;base64,', $content[0]['video_url']['url'] );
+            $this->assertEquals( 'text', $content[1]['type'] );
+        } );
     }
 }
