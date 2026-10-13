@@ -118,6 +118,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
 - [Luma](https://docs.agents.lumalabs.ai/)
+- [Meta Model API](https://dev.meta.ai/docs/overview)
 - [MiniMax](https://platform.minimax.io/docs/)
 - [Mistral](https://docs.mistral.ai/api)
 - [ModelsLab](https://docs.modelslab.com/)
@@ -195,6 +196,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Google**            |       |        |            | yes       |           |       |           |              |                |               |                 |
 | **Groq**              | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
 | **Kimi**              | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
+| **Meta**              | beta  |        | beta       |           | -         | beta  | yes       | yes          | yes            | yes           | yes             |
 | **Mistral**           | yes   |        | yes        |           | yes       | yes   | -         | yes          | yes            | yes           | yes             |
 | **Ollama**            | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
 | **OpenAI**            | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
@@ -948,7 +950,7 @@ $provider->withToolChoice( Provider::REQUIRED );
 ```
 
 The choice applies to the first tool-loop step. Supported choices vary: Deepseek,
-Openrouter, Requesty and Z.AI only send `AUTO`; Groq and xAI omit `NONE`.
+Meta, Openrouter, Requesty and Z.AI only send `AUTO`; Groq and xAI omit `NONE`.
 
 **Limiting tool calls:**
 
@@ -977,7 +979,7 @@ $response = Prisma::text()
 
 | Tool name | Providers |
 | :--- | :--- |
-| `web_search` | Anthropic, OpenAI, Google Gemini, Vertexai, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
+| `web_search` | Anthropic, OpenAI, Google Gemini, Vertexai, Meta, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
 | `web_search_premium` | Mistral |
 | `code_execution` | Anthropic, OpenAI, Google Gemini, Vertexai, Mistral, xAI |
 | `web_fetch` | Anthropic, Google Gemini, Vertexai |
@@ -1020,8 +1022,8 @@ Unknown or unsupported options are silently ignored by each provider.
 | :--- | :--- | :--- |
 | `allowed_domains` | Only include results from these domains | Anthropic, OpenAI, OpenRouter |
 | `blocked_domains` | Exclude results from these domains | Anthropic, xAI, OpenRouter |
-| `search_context_size` | Search depth: `"low"`, `"medium"`, `"high"` | OpenAI, xAI |
-| `user_location` | User location object for localized results | OpenAI, Anthropic |
+| `search_context_size` | Search depth: `"low"`, `"medium"`, `"high"` | Meta, OpenAI, xAI |
+| `user_location` | User location object for localized results | Meta, OpenAI, Anthropic |
 
 **Provider-specific options:**
 
@@ -2065,6 +2067,7 @@ Iterating `$response->stream()` yields:
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/guide/utilize-the-streaming-output-feature-of-kimi-api)
+* [Meta](https://dev.meta.ai/docs/protocols/chat-completions)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
@@ -2191,6 +2194,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [Kimi](https://platform.kimi.ai/docs/guide/kimi-k3-quickstart#structured-output)
+* [Meta](https://dev.meta.ai/docs/structured-output)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
@@ -2351,6 +2355,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/api/chat)
+* [Meta](https://dev.meta.ai/docs/api-reference/chat-completions/create-chat-completion)
 * [Mistral](https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
