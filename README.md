@@ -149,6 +149,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ElevenLabs**        | -     | -       | -        |        | yes     | yes   | yes        |
 | **Google Gemini**     | -     | -       | yes      |        | -       | -     | -          |
 | **Groq**              | -     | -       | yes      |        | -       | yes   | yes        |
+| **Meta**              | -     | -       | beta     |        | -       | -     | beta       |
 | **Mistral**           | -     | -       | yes      |        | -       | -     | yes        |
 | **Murf**              | -     | -       | -        |        | yes     | yes   | -          |
 | **OpenAI**            | -     | -       | yes      |        | -       | yes   | yes        |
@@ -1215,6 +1216,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 * Google Gemini
 * Groq
+* Meta
 * Mistral
 * OpenAI
 * Openrouter
@@ -1323,10 +1325,13 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * Deepgram
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
 * Groq
+* [Meta Muse Voice Transcribe](https://dev.meta.ai/docs/api-reference/voice/transcribe)
 * [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 * Openrouter
 * [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
+
+*Note: Meta audio transcriptions only support mono 16-bit PCM WAV files at 16 or 24 kHz up to 10 minutes; `$lang` is mapped to the language name used by `languageBias`.*
 
 *Note: Z.AI audio transcriptions currently support only mono (single-channel) input files.*
 

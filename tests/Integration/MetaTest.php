@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Providers\Base;
@@ -12,6 +13,18 @@ use PHPUnit\Framework\TestCase;
 
 class MetaTest extends TestCase
 {
+    public function testDescribeAudio() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.wav' );
+        $response = Prisma::audio()
+            ->using( 'meta', ['api_key' => $_ENV['META_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( $audio );
+
+        $this->assertStringContainsStringIgnoringCase( 'greeting', $response->text() );
+    }
+
+
     public function testImagine() : void
     {
         $response = Prisma::image()
@@ -92,6 +105,18 @@ class MetaTest extends TestCase
 
         $this->assertNotEmpty( $response->steps() );
         $this->assertStringContainsStringIgnoringCase( 'wobbly-marmalade-1987', $response->text() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $audio = Audio::fromLocalPath( __DIR__ . '/assets/hello.wav' );
+        $response = Prisma::audio()
+            ->using( 'meta', ['api_key' => $_ENV['META_API_KEY']] )
+            ->ensure( 'transcribe' )
+            ->transcribe( $audio, 'en' );
+
+        $this->assertStringContainsStringIgnoringCase( 'Hello', $response->text() );
     }
 
 
