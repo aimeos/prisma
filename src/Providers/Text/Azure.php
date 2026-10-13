@@ -18,10 +18,9 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
     {
         $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty'] );
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
-        $endpoint = $this->endpoint( $model, 'chat/completions' );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( $endpoint, $model, $messages, $options );
+        return $this->streamCompletions( 'chat/completions', $model, $messages, $options );
     }
 
 
@@ -33,7 +32,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->structuredCompletions(
-            $this->endpoint( $model, 'chat/completions' ), $model,
+            'chat/completions', $model,
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -44,7 +43,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
         $options = $this->allowed( $options, ['encoding_format', 'user'] );
         $model = (string) $this->modelName( 'text-embedding-3-small' );
 
-        return $this->embeddings( $this->endpoint( $model, 'embeddings' ), $model, $texts, $size, $options );
+        return $this->embeddings( 'embeddings', $model, $texts, $size, $options );
     }
 
 
@@ -54,7 +53,7 @@ class Azure extends Base implements Stream, Structure, Vectorize, Write
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->completions(
-            $this->endpoint( $model, 'chat/completions' ), $model,
+            'chat/completions', $model,
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );
