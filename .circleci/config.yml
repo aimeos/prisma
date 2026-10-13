@@ -5,7 +5,7 @@
 version: 2.1
 
 jobs:
-  "php-8.2":
+  php82:
     docker:
       - image: aimeos/ci-php:8.2
     steps:
@@ -19,7 +19,7 @@ jobs:
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
 
-  "php-8.3":
+  php83:
     docker:
       - image: aimeos/ci-php:8.3
     steps:
@@ -33,7 +33,7 @@ jobs:
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
 
-  "php-8.4":
+  php84:
     docker:
       - image: aimeos/ci-php:8.4
     steps:
@@ -47,7 +47,7 @@ jobs:
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
 
-  "php-8.5":
+  php85:
     docker:
       - image: aimeos/ci-php:8.5
     steps:
@@ -61,7 +61,7 @@ jobs:
           paths: [./vendor]
       - run: ./vendor/bin/phpunit
 
-  "phpstan":
+  phpstan:
     docker:
       - image: aimeos/ci-php:8.5
     steps:
@@ -78,8 +78,8 @@ jobs:
 workflows:
   unittest:
     jobs:
-      - "php-8.2"
-      - "php-8.3"
-      - "php-8.4"
-      - "php-8.5"
-      - "phpstan"
+      - php82
+      - php83
+      - php84
+      - php85
+      - phpstan
