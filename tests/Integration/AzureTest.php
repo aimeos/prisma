@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -9,6 +10,26 @@ use PHPUnit\Framework\TestCase;
 
 class AzureTest extends TestCase
 {
+    public function testDescribeAudio() : void
+    {
+        $response = $this->audio()
+            ->ensure( 'describe' )
+            ->describe( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ) );
+
+        $this->assertNotEmpty( $response->text() );
+    }
+
+
+    public function testSpeak() : void
+    {
+        $response = $this->audio()
+            ->ensure( 'speak' )
+            ->speak( 'This is a test.' );
+
+        $this->assertNotEmpty( $response->binary() );
+    }
+
+
     public function testStream() : void
     {
         $deltas = [];
@@ -61,6 +82,16 @@ class AzureTest extends TestCase
     }
 
 
+    public function testTranscribe() : void
+    {
+        $response = $this->audio()
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ) );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
     public function testTranslate() : void
     {
         $response = $this->provider()
@@ -78,6 +109,17 @@ class AzureTest extends TestCase
             ->write( 'What is the capital of France? Reply with only the city name.' );
 
         $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+    }
+
+
+    /**
+     * Builds an Azure audio provider configured from the environment.
+     *
+     * @return \Aimeos\Prisma\Contracts\Provider Configured Azure provider
+     */
+    protected function audio() : \Aimeos\Prisma\Contracts\Provider
+    {
+        return Prisma::audio()->using( 'azure', ['api_key' => $_ENV['AZURE_API_KEY'], 'url' => $_ENV['AZURE_URL']] );
     }
 
 

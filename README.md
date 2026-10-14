@@ -145,6 +145,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | :---                  | :---: | :---:   | :---:    | :---:  | :---:   | :---: | :---:      |
 | **Alibaba**           | -     | -       | -        |        | -       | yes   | -          |
 | **AudioPod**          | yes   | yes     | -        | yes    | yes     | yes   | yes        |
+| **Azure**             | -     | -       | beta     |        | -       | beta  | beta       |
 | **Deepgram**          | -     | -       | -        |        | -       | yes   | yes        |
 | **ElevenLabs**        | -     | -       | -        |        | yes     | yes   | yes        |
 | **Google Gemini**     | -     | -       | yes      |        | -       | -     | -          |
@@ -1215,6 +1216,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 **Supported options:**
 
+* Azure
 * Google Gemini
 * Groq
 * Meta
@@ -1300,6 +1302,7 @@ public function speak( string $text, ?string $voice = null, array $options = [] 
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/qwen-tts-api)
 * [AudioPod](https://docs.audiopod.ai/api-reference/text-to-speech#generate-speech)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
 * Groq
@@ -1323,6 +1326,7 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 **Supported options:**
 
 * [AudioPod](https://docs.audiopod.ai/api-reference/speech-to-text)
+* [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-transcription)
 * Deepgram
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
 * Groq
