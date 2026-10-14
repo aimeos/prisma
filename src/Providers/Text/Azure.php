@@ -7,7 +7,6 @@ use Aimeos\Prisma\Contracts\Text\Structure;
 use Aimeos\Prisma\Contracts\Text\Translate;
 use Aimeos\Prisma\Contracts\Text\Vectorize;
 use Aimeos\Prisma\Contracts\Text\Write;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Providers\Azure as Base;
 use Aimeos\Prisma\Responses\TextResponse;
 use Aimeos\Prisma\Responses\VectorResponse;
@@ -25,10 +24,9 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
     {
         parent::__construct( $config );
 
-        $resource = $this->config( $config, 'resource' );
-        $default = $resource ? 'https://' . $resource . '.cognitiveservices.azure.com/translator/text/v3.0' : '';
+        $default = 'https://' . $this->config( $config, 'resource' ) . '.cognitiveservices.azure.com/translator/text/v3.0';
 
-        $this->translatorUrl = rtrim( $this->config( $config, 'translator_url', $default ), '/' );
+        $this->translatorUrl = rtrim( $this->config( $config, 'url', $default ), '/' );
         $this->translatorHeaders = array_filter( [
             'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
             'Ocp-Apim-Subscription-Region' => $this->config( $config, 'region' ),
@@ -62,10 +60,6 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
 
     public function translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] ) : TextResponse
     {
-        if( !$this->translatorUrl ) {
-            throw new PrismaException( 'No Azure resource name or translator URL' );
-        }
-
         $query = ['api-version' => '3.0', 'to' => $to, 'from' => $from] + $this->allowed( $options, [
             'allowFallback', 'category', 'fromScript', 'profanityAction',
             'profanityMarker', 'suggestedFrom', 'textType', 'toScript',

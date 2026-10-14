@@ -130,17 +130,6 @@ class AzureTest extends TestCase
     }
 
 
-    public function testTranslateNoTranslatorUrl() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://custom.example.com'] )
-            ->response( [] )
-            ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
-    }
-
-
     public function testTranslateWithOptions() : void
     {
         $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'myres'] )
@@ -162,9 +151,9 @@ class AzureTest extends TestCase
     }
 
 
-    public function testTranslateWithTranslatorUrl() : void
+    public function testTranslateWithUrl() : void
     {
-        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'translator_url' => 'https://api.cognitive.microsofttranslator.com/', 'region' => 'westeurope'] )
+        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://api.cognitive.microsofttranslator.com/', 'region' => 'westeurope'] )
             ->response( [['translations' => [['text' => 'Hallo', 'to' => 'de']]]] )
             ->ensure( 'translate' )
             ->translate( ['Hello'], 'de' );
