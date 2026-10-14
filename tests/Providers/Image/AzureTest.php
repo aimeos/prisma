@@ -64,6 +64,22 @@ class AzureTest extends TestCase
     }
 
 
+    public function testRecognizeCustomUrl() : void
+    {
+        $this->prisma( 'image', 'azure', ['api_key' => 'test', 'url' => 'https://myvision.cognitiveservices.azure.com/'] )
+            ->response( json_encode( ['readResult' => ['blocks' => []]] ) )
+            ->ensure( 'recognize' )
+            ->recognize( Image::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://myvision.cognitiveservices.azure.com/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read',
+                (string) $request->getUri()
+            );
+        } );
+    }
+
+
     public function testRecognizeUrl() : void
     {
         $response = $this->prisma( 'image', 'azure', ['api_key' => 'test'] )

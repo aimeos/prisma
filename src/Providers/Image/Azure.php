@@ -11,30 +11,29 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Azure extends Base implements Recognize
 {
-    private string $region;
-
-
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( 'No API key' );
         }
 
-        $this->region = $this->config( $config, 'region', 'eastus' );
+        $region = $this->config( $config, 'region', 'eastus' );
+        $url = $this->config( $config, 'url', 'https://' . $region . '.api.cognitive.microsoft.com' );
+
         $this->header( 'Ocp-Apim-Subscription-Key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( rtrim( $url, '/' ) . '/' );
     }
 
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
         $query = ['api-version' => '2024-02-01', 'features' => 'read'] + $this->allowed( $options, ['model-version'] );
-        $url = 'https://' . $this->region . '.api.cognitive.microsoft.com/computervision/imageanalysis:analyze';
 
         $request = $image->url()
             ? ['json' => ['url' => $image->url()]]
             : ['headers' => ['Content-Type' => 'application/octet-stream'], 'body' => $image->binary()];
 
-        $response = $this->client()->post( $url, ['query' => $query] + $request );
+        $response = $this->client()->post( 'computervision/imageanalysis:analyze', ['query' => $query] + $request );
 
         $this->validate( $response );
 

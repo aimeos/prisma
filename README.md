@@ -1340,6 +1340,17 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 
 *Note: Z.AI audio transcriptions currently support only mono (single-channel) input files.*
 
+Azure uses the regional endpoint `https://{region}.api.cognitive.microsoft.com` of the
+`region` passed in the configuration (default: `eastus`). Use the endpoint of your Speech resource as
+`url` instead if required:
+
+```php
+Prisma::audio()->using( 'azure', [
+    'api_key' => 'xxx',
+    'url' => 'https://myres.cognitiveservices.azure.com',
+] );
+```
+
 ## Image API
 
 Most methods require an image object as input which contains a reference to the image that
@@ -1760,6 +1771,17 @@ $textResponse = Prisma::image()
     ->recognize( $image );
 
 $text = $textResponse->text();
+```
+
+Azure uses the regional endpoint `https://{region}.api.cognitive.microsoft.com` of the
+`region` passed in the configuration (default: `eastus`). Use the endpoint of your Vision
+resource as `url` instead if required:
+
+```php
+Prisma::image()->using( 'azure', [
+    'api_key' => 'xxx',
+    'url' => 'https://myres.cognitiveservices.azure.com',
+] );
 ```
 
 ### relocate
@@ -2307,12 +2329,12 @@ $texts = $textResponse->texts(); // ['Hallo', 'Welt']
 
 Azure uses the global Translator endpoint `https://api.cognitive.microsofttranslator.com`
 by default. Pass the `region` of your resource if required or use the endpoint of your
-resource as `url` instead:
+resource as `translate_url` instead:
 
 ```php
 Prisma::text()->using( 'azure', [
     'api_key' => 'xxx',
-    'url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
+    'translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
 ] );
 ```
 

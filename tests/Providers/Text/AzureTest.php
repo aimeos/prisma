@@ -145,7 +145,12 @@ class AzureTest extends TestCase
 
     public function testTranslateWithUrl() : void
     {
-        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/', 'region' => 'westeurope'] )
+        $this->prisma( 'text', 'azure', [
+            'api_key' => 'test',
+            'url' => 'https://myres.openai.azure.com',
+            'translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/',
+            'region' => 'westeurope',
+        ] )
             ->response( [['translations' => [['text' => 'Hallo', 'to' => 'de']]]] )
             ->ensure( 'translate' )
             ->translate( ['Hello'], 'de' );
