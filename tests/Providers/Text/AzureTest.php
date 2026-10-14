@@ -145,16 +145,17 @@ class AzureTest extends TestCase
 
     public function testTranslateWithUrl() : void
     {
-        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/', 'region' => 'westeurope'] )
+        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.openai.azure.com', 'region' => 'westeurope'] )
             ->response( [['translations' => [['text' => 'Hallo', 'to' => 'de']]]] )
             ->ensure( 'translate' )
-            ->translate( ['Hello'], 'de' );
+            ->translate( ['Hello'], 'de', null, null, ['translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals(
                 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/translate?api-version=3.0&to=de',
                 (string) $request->getUri()
             );
+            $this->assertStringNotContainsString( 'translate_url', $request->getUri()->getQuery() );
             $this->assertEquals( 'westeurope', $request->getHeaderLine( 'Ocp-Apim-Subscription-Region' ) );
         } );
     }

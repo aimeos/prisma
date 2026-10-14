@@ -13,17 +13,17 @@ use Aimeos\Prisma\Responses\TextResponse;
 
 class Azure extends Base implements Speak, Transcribe
 {
-    private string $region;
-
-
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( 'No API key' );
         }
 
-        $this->region = $this->config( $config, 'region', 'eastus' );
+        $region = $this->config( $config, 'region', 'eastus' );
+        $url = $this->config( $config, 'url', 'https://' . $region . '.api.cognitive.microsoft.com' );
+
         $this->header( 'Ocp-Apim-Subscription-Key', $this->config( $config, 'api_key' ) );
+        $this->baseUrl( rtrim( $url, '/' ) . '/' );
     }
 
 
@@ -32,7 +32,7 @@ class Azure extends Base implements Speak, Transcribe
         $selected = $voice ?: 'en-US-AvaMultilingualNeural';
         $format = $this->config( $options, 'format', 'audio-24khz-48kbitrate-mono-mp3' );
 
-        $response = $this->client()->post( 'https://' . $this->region . '.tts.speech.microsoft.com/cognitiveservices/v1', [
+        $response = $this->client()->post( 'tts/cognitiveservices/v1', [
             'headers' => [
                 'Content-Type' => 'application/ssml+xml',
                 'X-Microsoft-OutputFormat' => $format,
@@ -55,9 +55,8 @@ class Azure extends Base implements Speak, Transcribe
             $definition['locales'] = [$lang];
         }
 
-        $url = 'https://' . $this->region . '.api.cognitive.microsoft.com/speechtotext/transcriptions:transcribe?api-version=2024-11-15';
         $request = $this->payload( ['definition' => json_encode( $definition ?: new \stdClass() )], ['audio' => $audio] );
-        $response = $this->client()->post( $url, ['multipart' => $request] );
+        $response = $this->client()->post( 'speechtotext/transcriptions:transcribe?api-version=2024-11-15', ['multipart' => $request] );
 
         $this->validate( $response );
 

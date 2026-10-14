@@ -97,7 +97,7 @@ class AzureTest extends TestCase
     {
         $response = $this->provider()
             ->ensure( 'translate' )
-            ->translate( ['Hello', 'World'], 'de', 'en' );
+            ->translate( ['Hello', 'World'], 'de', 'en', null, array_filter( ['translate_url' => $_ENV['AZURE_TRANSLATE_URL'] ?? null] ) );
 
         $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
     }
@@ -150,7 +150,11 @@ class AzureTest extends TestCase
      */
     protected function provider() : \Aimeos\Prisma\Contracts\Provider
     {
-        $config = ['api_key' => $_ENV['AZURE_API_KEY'], 'url' => $_ENV['AZURE_URL']];
+        $config = [
+            'api_key' => $_ENV['AZURE_API_KEY'],
+            'url' => $_ENV['AZURE_URL'],
+            'region' => $_ENV['AZURE_REGION'] ?? '',
+        ];
 
         return Prisma::text()->using( 'azure', $config )->model( $_ENV['AZURE_DEPLOYMENT'] ?? 'gpt-5.6-sol' );
     }

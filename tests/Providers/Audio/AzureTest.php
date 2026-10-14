@@ -29,7 +29,7 @@ class AzureTest extends TestCase
             ->speak( 'Fish & <chips>', 'de-DE-KatjaNeural', ['format' => 'audio-16khz-32kbitrate-mono-mp3'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1', (string) $request->getUri() );
+            $this->assertEquals( 'https://westeurope.api.cognitive.microsoft.com/tts/cognitiveservices/v1', (string) $request->getUri() );
             $this->assertEquals( 'test', $request->getHeaderLine( 'Ocp-Apim-Subscription-Key' ) );
             $this->assertEquals( 'application/ssml+xml', $request->getHeaderLine( 'Content-Type' ) );
             $this->assertEquals( 'audio-16khz-32kbitrate-mono-mp3', $request->getHeaderLine( 'X-Microsoft-OutputFormat' ) );
@@ -45,6 +45,19 @@ class AzureTest extends TestCase
     }
 
 
+    public function testSpeakCustomUrl() : void
+    {
+        $this->prisma( 'audio', 'azure', ['api_key' => 'test', 'url' => 'https://myspeech.cognitiveservices.azure.com/'] )
+            ->response( 'MP3' )
+            ->ensure( 'speak' )
+            ->speak( 'Hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://myspeech.cognitiveservices.azure.com/tts/cognitiveservices/v1', (string) $request->getUri() );
+        } );
+    }
+
+
     public function testSpeakDefaults() : void
     {
         $this->prisma( 'audio', 'azure', ['api_key' => 'test'] )
@@ -53,7 +66,7 @@ class AzureTest extends TestCase
             ->speak( 'Hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://eastus.tts.speech.microsoft.com/cognitiveservices/v1', (string) $request->getUri() );
+            $this->assertEquals( 'https://eastus.api.cognitive.microsoft.com/tts/cognitiveservices/v1', (string) $request->getUri() );
             $this->assertEquals( 'audio-24khz-48kbitrate-mono-mp3', $request->getHeaderLine( 'X-Microsoft-OutputFormat' ) );
             $this->assertStringContainsString( 'xml:lang="en-US"><voice name="en-US-AvaMultilingualNeural">', $request->getBody()->getContents() );
         } );
@@ -107,6 +120,22 @@ class AzureTest extends TestCase
         } );
 
         $this->assertEquals( "Hello.\nHi.", $response->text() );
+    }
+
+
+    public function testTranscribeCustomUrl() : void
+    {
+        $this->prisma( 'audio', 'azure', ['api_key' => 'test', 'url' => 'https://myspeech.cognitiveservices.azure.com'] )
+            ->response( json_encode( ['combinedPhrases' => [], 'phrases' => []] ) )
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromBinary( 'WAV', 'audio/wav' ) );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://myspeech.cognitiveservices.azure.com/speechtotext/transcriptions:transcribe?api-version=2024-11-15',
+                (string) $request->getUri()
+            );
+        } );
     }
 
 

@@ -61,7 +61,9 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
             'profanityMarker', 'suggestedFrom', 'textType', 'toScript',
         ] );
 
-        $response = $this->client()->post( 'translate', [
+        $url = $this->config( $options, 'translate_url', 'https://api.cognitive.microsofttranslator.com' );
+
+        $response = $this->client()->post( rtrim( $url, '/' ) . '/translate', [
             'json' => array_map( fn( $text ) => ['Text' => $text], array_values( $texts ) ),
             'query' => array_map( fn( $value ) => is_bool( $value ) ? var_export( $value, true ) : $value, $query ),
             'headers' => $this->translatorHeaders,

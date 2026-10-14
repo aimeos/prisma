@@ -19,9 +19,10 @@ class Azure extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        $url = $this->config( $config, 'url', 'https://api.cognitive.microsofttranslator.com' );
-
         $this->header( 'api-key', $this->config( $config, 'api_key' ) );
-        $this->baseUrl( rtrim( $url, '/' ) . '/' );
+
+        if( $url = $this->config( $config, 'url' ) ) {
+            $this->baseUrl( rtrim( $url, '/' ) . '/' );
+        }
     }
 }
