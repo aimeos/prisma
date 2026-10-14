@@ -21,17 +21,6 @@ class AzureTest extends TestCase
     }
 
 
-    public function testNoUrl() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'azure', ['api_key' => 'test'] )
-            ->response( [] )
-            ->ensure( 'write' )
-            ->write( 'hi' );
-    }
-
-
     public function testStructured() : void
     {
         $schema = Schema::for( 'person', ['name' => Schema::string()] );

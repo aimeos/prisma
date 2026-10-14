@@ -17,14 +17,12 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
 {
     /** @var array<string, string> */
     private array $translatorHeaders;
-    private string $translatorUrl;
 
 
     public function __construct( array $config )
     {
         parent::__construct( $config );
 
-        $this->translatorUrl = rtrim( $this->config( $config, 'url', 'https://api.cognitive.microsofttranslator.com' ), '/' );
         $this->translatorHeaders = array_filter( [
             'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
             'Ocp-Apim-Subscription-Region' => $this->config( $config, 'region' ),
@@ -38,7 +36,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( $this->endpoint( 'chat/completions' ), $model, $messages, $options );
+        return $this->streamCompletions( 'openai/v1/chat/completions', $model, $messages, $options );
     }
 
 
@@ -50,7 +48,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->structuredCompletions(
-            $this->endpoint( 'chat/completions' ), $model,
+            'openai/v1/chat/completions', $model,
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -63,7 +61,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
             'profanityMarker', 'suggestedFrom', 'textType', 'toScript',
         ] );
 
-        $response = $this->client()->post( $this->translatorUrl . '/translate', [
+        $response = $this->client()->post( 'translate', [
             'json' => array_map( fn( $text ) => ['Text' => $text], array_values( $texts ) ),
             'query' => array_map( fn( $value ) => is_bool( $value ) ? var_export( $value, true ) : $value, $query ),
             'headers' => $this->translatorHeaders,
@@ -85,7 +83,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $options = $this->allowed( $options, ['encoding_format', 'user'] );
         $model = (string) $this->modelName( 'text-embedding-3-small' );
 
-        return $this->embeddings( $this->endpoint( 'embeddings' ), $model, $texts, $size, $options );
+        return $this->embeddings( 'openai/v1/embeddings', $model, $texts, $size, $options );
     }
 
 
@@ -95,7 +93,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->completions(
-            $this->endpoint( 'chat/completions' ), $model,
+            'openai/v1/chat/completions', $model,
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );
