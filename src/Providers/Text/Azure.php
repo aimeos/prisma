@@ -24,7 +24,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
     {
         parent::__construct( $config );
 
-        $this->translatorUrl = rtrim( $this->config( $config, 'url', static::URL ), '/' );
+        $this->translatorUrl = rtrim( $this->config( $config, 'url', 'https://api.cognitive.microsofttranslator.com' ), '/' );
         $this->translatorHeaders = array_filter( [
             'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
             'Ocp-Apim-Subscription-Region' => $this->config( $config, 'region' ),
@@ -38,7 +38,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'chat/completions', $model, $messages, $options );
+        return $this->streamCompletions( $this->endpoint( 'chat/completions' ), $model, $messages, $options );
     }
 
 
@@ -50,7 +50,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->structuredCompletions(
-            'chat/completions', $model,
+            $this->endpoint( 'chat/completions' ), $model,
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -85,7 +85,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $options = $this->allowed( $options, ['encoding_format', 'user'] );
         $model = (string) $this->modelName( 'text-embedding-3-small' );
 
-        return $this->embeddings( 'embeddings', $model, $texts, $size, $options );
+        return $this->embeddings( $this->endpoint( 'embeddings' ), $model, $texts, $size, $options );
     }
 
 
@@ -95,7 +95,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
         $model = (string) $this->modelName( 'gpt-5.6-sol' );
 
         return $this->completions(
-            'chat/completions', $model,
+            $this->endpoint( 'chat/completions' ), $model,
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

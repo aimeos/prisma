@@ -13,7 +13,7 @@ class Azure extends Base
     use OpenaiApi;
 
 
-    protected const URL = 'https://api.cognitive.microsofttranslator.com';
+    private string $url;
 
 
     public function __construct( array $config )
@@ -22,7 +22,28 @@ class Azure extends Base
             throw new PrismaException( 'No API key' );
         }
 
+        $this->url = rtrim( $this->config( $config, 'url' ), '/' );
+
         $this->header( 'api-key', $this->config( $config, 'api_key' ) );
-        $this->baseUrl( rtrim( $this->config( $config, 'url', static::URL ), '/' ) . '/openai/v1/' );
+        $this->baseUrl( $this->url ? $this->url . '/openai/v1/' : null );
+    }
+
+
+    /**
+     * Returns the path of an Azure OpenAI v1 API operation.
+     *
+     * Azure OpenAI has no global endpoint, so the URL of the resource is required.
+     *
+     * @param string $path Operation path (e.g. "chat/completions")
+     * @return string Endpoint path relative to the base URL
+     * @throws PrismaException If no Azure URL is configured
+     */
+    protected function endpoint( string $path ) : string
+    {
+        if( !$this->url ) {
+            throw new PrismaException( 'No Azure URL' );
+        }
+
+        return $path;
     }
 }
