@@ -2300,15 +2300,14 @@ $textResponse = Prisma::text()
 $texts = $textResponse->texts(); // ['Hallo', 'Welt']
 ```
 
-Azure uses the Translator endpoint of the configured `resource`. For a standalone
-Translator resource, pass its endpoint as `url` (e.g. the global
-`https://api.cognitive.microsofttranslator.com`) and its `region` if required:
+Azure uses the global Translator endpoint `https://api.cognitive.microsofttranslator.com`
+by default. Pass the `region` of your resource if required or use the endpoint of your
+resource as `url` instead:
 
 ```php
 Prisma::text()->using( 'azure', [
     'api_key' => 'xxx',
-    'url' => 'https://api.cognitive.microsofttranslator.com',
-    'region' => 'westeurope',
+    'url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
 ] );
 ```
 

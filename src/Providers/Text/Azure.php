@@ -24,9 +24,7 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
     {
         parent::__construct( $config );
 
-        $default = 'https://' . $this->config( $config, 'resource' ) . '.cognitiveservices.azure.com/translator/text/v3.0';
-
-        $this->translatorUrl = rtrim( $this->config( $config, 'url', $default ), '/' );
+        $this->translatorUrl = rtrim( $this->config( $config, 'url', static::URL ), '/' );
         $this->translatorHeaders = array_filter( [
             'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
             'Ocp-Apim-Subscription-Region' => $this->config( $config, 'region' ),
