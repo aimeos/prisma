@@ -61,6 +61,16 @@ class AzureTest extends TestCase
     }
 
 
+    public function testTranslate() : void
+    {
+        $response = $this->provider()
+            ->ensure( 'translate' )
+            ->translate( ['Hello', 'World'], 'de', 'en' );
+
+        $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
+    }
+
+
     public function testWrite() : void
     {
         $response = $this->provider()
@@ -78,7 +88,7 @@ class AzureTest extends TestCase
      */
     protected function provider() : \Aimeos\Prisma\Contracts\Provider
     {
-        $config = ['api_key' => $_ENV['AZURE_API_KEY'], 'resource' => $_ENV['AZURE_RESOURCE']];
+        $config = ['api_key' => $_ENV['AZURE_API_KEY'], 'url' => $_ENV['AZURE_URL']];
 
         return Prisma::text()->using( 'azure', $config )->model( $_ENV['AZURE_DEPLOYMENT'] ?? 'gpt-5.6-sol' );
     }
@@ -88,8 +98,8 @@ class AzureTest extends TestCase
     {
         \Dotenv\Dotenv::createImmutable( dirname( __DIR__, 2 ) )->load();
 
-        if( empty( $_ENV['AZURE_API_KEY'] ) || empty( $_ENV['AZURE_RESOURCE'] ) ) {
-            $this->markTestSkipped( 'AZURE_API_KEY / AZURE_RESOURCE are not defined in the environment' );
+        if( empty( $_ENV['AZURE_API_KEY'] ) || empty( $_ENV['AZURE_URL'] ) ) {
+            $this->markTestSkipped( 'AZURE_API_KEY / AZURE_URL are not defined in the environment' );
         }
     }
 }

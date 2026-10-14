@@ -19,12 +19,9 @@ class Azure extends Base
             throw new PrismaException( 'No API key' );
         }
 
-        if( !isset( $config['url'] ) && !isset( $config['resource'] ) ) {
-            throw new PrismaException( 'No Azure resource name or URL' );
-        }
+        $url = $this->config( $config, 'url', 'https://api.cognitive.microsofttranslator.com' );
 
         $this->header( 'api-key', $this->config( $config, 'api_key' ) );
-        $url = $this->config( $config, 'url' ) ?: 'https://' . $this->config( $config, 'resource' ) . '.openai.azure.com';
-        $this->baseUrl( rtrim( $url, '/' ) . '/openai/v1/' );
+        $this->baseUrl( rtrim( $url, '/' ) . '/' );
     }
 }

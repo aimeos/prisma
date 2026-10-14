@@ -17,15 +17,7 @@ class AzureTest extends TestCase
     {
         $this->expectException( PrismaException::class );
 
-        $this->prisma( 'text', 'azure', ['resource' => 'r'] );
-    }
-
-
-    public function testNoResource() : void
-    {
-        $this->expectException( PrismaException::class );
-
-        $this->prisma( 'text', 'azure', ['api_key' => 'test'] );
+        $this->prisma( 'text', 'azure', [] );
     }
 
 
@@ -33,7 +25,7 @@ class AzureTest extends TestCase
     {
         $schema = Schema::for( 'person', ['name' => Schema::string()] );
 
-        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'r'] )
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.openai.azure.com'] )
             ->response( [
                 'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"name":"Jane"}']]],
                 'usage' => ['total_tokens' => 5],
@@ -52,7 +44,7 @@ class AzureTest extends TestCase
 
     public function testWrite() : void
     {
-        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'myres'] )
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.openai.azure.com'] )
             ->response( ['choices' => [['message' => ['content' => 'Hello']]], 'usage' => ['total_tokens' => 5]] )
             ->ensure( 'write' )
             ->write( 'Say hi' );
@@ -92,9 +84,85 @@ class AzureTest extends TestCase
     }
 
 
+    public function testTranslate() : void
+    {
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test'] )
+            ->response( [
+                ['translations' => [['text' => 'Hallo', 'to' => 'de']]],
+                ['translations' => [['text' => 'Welt', 'to' => 'de']]],
+            ] )
+            ->ensure( 'translate' )
+            ->translate( ['Hello', 'World'], 'de' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=de',
+                (string) $request->getUri()
+            );
+            $this->assertEquals( 'POST', $request->getMethod() );
+            $this->assertEquals( 'test', $request->getHeaderLine( 'Ocp-Apim-Subscription-Key' ) );
+            $this->assertFalse( $request->hasHeader( 'Ocp-Apim-Subscription-Region' ) );
+
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( [['Text' => 'Hello'], ['Text' => 'World']], $body );
+        } );
+
+        $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
+    }
+
+
+    public function testTranslateError() : void
+    {
+        $this->expectException( PrismaException::class );
+
+        $this->prisma( 'text', 'azure', ['api_key' => 'test'] )
+            ->response( ['error' => ['code' => 401000, 'message' => 'Unauthorized']], status: 401, reason: 'Unauthorized' )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'de' );
+    }
+
+
+    public function testTranslateWithOptions() : void
+    {
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test'] )
+            ->response( [['translations' => [['text' => '<b>Bonjour</b>', 'to' => 'fr']]]] )
+            ->ensure( 'translate' )
+            ->translate( ['<b>Hello</b>'], 'fr', 'en', null, ['textType' => 'html', 'allowFallback' => false, 'unknown' => 'ignored'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            parse_str( $request->getUri()->getQuery(), $query );
+
+            $this->assertEquals( 'en', $query['from'] );
+            $this->assertEquals( 'fr', $query['to'] );
+            $this->assertEquals( 'html', $query['textType'] );
+            $this->assertEquals( 'false', $query['allowFallback'] );
+            $this->assertArrayNotHasKey( 'unknown', $query );
+        } );
+
+        $this->assertEquals( ['<b>Bonjour</b>'], $response->texts() );
+    }
+
+
+    public function testTranslateWithUrl() : void
+    {
+        $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0/', 'region' => 'westeurope'] )
+            ->response( [['translations' => [['text' => 'Hallo', 'to' => 'de']]]] )
+            ->ensure( 'translate' )
+            ->translate( ['Hello'], 'de' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals(
+                'https://myres.cognitiveservices.azure.com/translator/text/v3.0/translate?api-version=3.0&to=de',
+                (string) $request->getUri()
+            );
+            $this->assertEquals( 'westeurope', $request->getHeaderLine( 'Ocp-Apim-Subscription-Region' ) );
+        } );
+    }
+
+
     public function testVectorize() : void
     {
-        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'resource' => 'myres'] )
+        $response = $this->prisma( 'text', 'azure', ['api_key' => 'test', 'url' => 'https://myres.openai.azure.com'] )
             ->response( [
                 'object' => 'list',
                 'data' => [
