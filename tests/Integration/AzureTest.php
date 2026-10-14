@@ -97,7 +97,7 @@ class AzureTest extends TestCase
     {
         $response = $this->provider()
             ->ensure( 'translate' )
-            ->translate( ['Hello', 'World'], 'de', 'en' );
+            ->translate( ['Hello', 'World'], 'de', 'en', null, array_filter( ['translate_url' => $_ENV['AZURE_TRANSLATE_URL'] ?? null] ) );
 
         $this->assertEquals( ['Hallo', 'Welt'], $response->texts() );
     }
@@ -153,7 +153,6 @@ class AzureTest extends TestCase
         $config = [
             'api_key' => $_ENV['AZURE_API_KEY'],
             'url' => $_ENV['AZURE_URL'],
-            'translate_url' => $_ENV['AZURE_TRANSLATE_URL'] ?? null,
             'region' => $_ENV['AZURE_REGION'] ?? '',
         ];
 

@@ -15,8 +15,6 @@ use Aimeos\Prisma\Schema\Schema;
 
 class Azure extends Base implements Stream, Structure, Translate, Vectorize, Write
 {
-    private string $translateUrl;
-
     /** @var array<string, string> */
     private array $translatorHeaders;
 
@@ -24,8 +22,6 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
     public function __construct( array $config )
     {
         parent::__construct( $config );
-
-        $this->translateUrl = $this->config( $config, 'translate_url', 'https://api.cognitive.microsofttranslator.com' );
 
         $this->translatorHeaders = array_filter( [
             'Ocp-Apim-Subscription-Key' => $this->config( $config, 'api_key' ),
@@ -65,7 +61,9 @@ class Azure extends Base implements Stream, Structure, Translate, Vectorize, Wri
             'profanityMarker', 'suggestedFrom', 'textType', 'toScript',
         ] );
 
-        $response = $this->client()->post( rtrim( $this->translateUrl, '/' ) . '/translate', [
+        $url = $this->config( $options, 'translate_url', 'https://api.cognitive.microsofttranslator.com' );
+
+        $response = $this->client()->post( rtrim( $url, '/' ) . '/translate', [
             'json' => array_map( fn( $text ) => ['Text' => $text], array_values( $texts ) ),
             'query' => array_map( fn( $value ) => is_bool( $value ) ? var_export( $value, true ) : $value, $query ),
             'headers' => $this->translatorHeaders,

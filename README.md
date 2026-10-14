@@ -2329,13 +2329,14 @@ $texts = $textResponse->texts(); // ['Hallo', 'Welt']
 
 Azure uses the global Translator endpoint `https://api.cognitive.microsofttranslator.com`
 by default. Pass the `region` of your resource if required or use the endpoint of your
-resource as `translate_url` instead:
+resource as `translate_url` option instead:
 
 ```php
-Prisma::text()->using( 'azure', [
-    'api_key' => 'xxx',
-    'translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
-] );
+Prisma::text()
+    ->using( 'azure', ['api_key' => 'xxx', 'region' => 'westeurope'] )
+    ->translate( ['Hello'], 'de', null, null, [
+        'translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
+    ] );
 ```
 
 ### vectorize
