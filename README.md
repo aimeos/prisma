@@ -163,6 +163,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | :---                  | :---:      | :---:  | :---:    | :---:  | :---: | :---:   | :---:   | :---:   | :---:     | :---:    | :---:   | :---:  | :---:  | :---:   | :---:     |
 | **Adobe Firefly**     | beta       | beta   | -        | -      | -     | beta    | beta    | -       | -         | beta     | beta    | beta   | beta   | beta    | -         |
 | **Alibaba**           | -          |        | -        | -      | -     | yes     | -       | -       | -         | -        | -       |        | -      | -       | yes       |
+| **Azure**             | -          |        | -        | -      | -     | -       | -       | -       | beta      | -        | -       |        | -      | -       | -         |
 | **Bedrock Titan**     | -          |        | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       |        | -      | -       | yes       |
 | **Black Forest Labs** | -          | -      | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | beta   | -       | -         |
 | **Clipdrop**          | yes        |        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       |        | yes    | yes     | -         |
@@ -1742,6 +1743,7 @@ public function recognize( Image $image, array $options = [] ) : TextResponse;
 
 **Supported options:**
 
+* [Azure](https://learn.microsoft.com/en-us/rest/api/computervision/image-analysis/analyze-image)
 * [Mistral](https://docs.mistral.ai/api/endpoint/ocr#operation-ocr_v1_ocr_post)
 * Openrouter
 

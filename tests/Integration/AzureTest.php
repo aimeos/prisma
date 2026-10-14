@@ -3,6 +3,7 @@
 namespace Tests\Integration;
 
 use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Prisma;
 use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\TestCase;
@@ -10,6 +11,16 @@ use PHPUnit\Framework\TestCase;
 
 class AzureTest extends TestCase
 {
+    public function testRecognize() : void
+    {
+        $response = $this->image()
+            ->ensure( 'recognize' )
+            ->recognize( Image::fromLocalPath( __DIR__ . '/assets/text.png' ) );
+
+        $this->assertStringContainsString( 'This is text', $response->text() );
+    }
+
+
     public function testSpeak() : void
     {
         $response = $this->audio()
@@ -114,6 +125,21 @@ class AzureTest extends TestCase
         }
 
         return Prisma::audio()->using( 'azure', ['api_key' => $_ENV['AZURE_API_KEY'], 'region' => $_ENV['AZURE_REGION']] );
+    }
+
+
+    /**
+     * Builds an Azure image provider configured from the environment.
+     *
+     * @return \Aimeos\Prisma\Contracts\Provider Configured Azure provider
+     */
+    protected function image() : \Aimeos\Prisma\Contracts\Provider
+    {
+        if( empty( $_ENV['AZURE_REGION'] ) ) {
+            $this->markTestSkipped( 'AZURE_REGION is not defined in the environment' );
+        }
+
+        return Prisma::image()->using( 'azure', ['api_key' => $_ENV['AZURE_API_KEY'], 'region' => $_ENV['AZURE_REGION']] );
     }
 
 
