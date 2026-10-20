@@ -115,6 +115,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
 - [Google VertexAI](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [Groq](https://groq.com/)
+- [Hydracept](https://hydracept.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
 - [Luma](https://docs.agents.lumalabs.ai/)
@@ -150,6 +151,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ElevenLabs**        | -     | -       | -        |        | yes     | yes   | yes        |
 | **Google Gemini**     | -     | -       | yes      |        | -       | -     | -          |
 | **Groq**              | -     | -       | yes      |        | -       | yes   | yes        |
+| **Hydracept**         | -     | -       | -        | yes    | -       | yes   | -          |
 | **Meta**              | -     | -       | beta     |        | -       | -     | beta       |
 | **Mistral**           | -     | -       | yes      |        | -       | -     | yes        |
 | **Murf**              | -     | -       | -        |        | yes     | yes   | -          |
@@ -170,6 +172,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
+| **Hydracept**         | -          | -      | -        | -      | -     | yes     | -       | -       | -         | -        | -       | yes    | -      | -       | -         |
 | **Ideogram**          | yes        | -      | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | -      | yes     | -         |
 | **Meta**              | -          |        | -        | -      | -     | beta    | -       | -       | -         | -        | beta    |        | -      | -       | -         |
 | **Mistral**           | -          |        | -        | -      | -     | -       | -       | -       | yes       | -        | -       |        | -      | -       | -         |
@@ -225,6 +228,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
+| **Hydracept**         | -      | -        | -      | beta    | -       | beta   | -      | -       |
 | **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
 | **Meta**              |        | beta     | -      | -       | -       |        | -      | -       |
 | **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
@@ -1305,6 +1309,7 @@ public function speak( string $text, ?string $voice = null, array $options = [] 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech#convert-text-to-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
+* [Hydracept](https://docs.hydracept.com): `audio.voice.generate.v1`; requires `$voice`; options use Hydracept field names such as `outputFormatPreference` and `voiceSettings`
 * Groq
 * [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/stream)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
@@ -1335,6 +1340,21 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 * Openrouter
 * [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
+
+#### Hydracept sound effects and music
+
+The Hydracept audio provider also exposes capability-specific helpers that are not part of the shared audio contracts:
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$provider = Prisma::audio()->using( 'hydracept', config( 'services.hydracept' ) );
+
+$sfx = $provider->sfx( 'Thunder rumble', ['outputFormatPreference' => 'mp3_44100_128'] );
+$music = $provider->music( 'Calm piano', ['durationMs' => 30000, 'outputFormatPreference' => 'mp3_44100_128'] );
+```
+
+Each call quotes the capability, submits a durable job, polls until it succeeds, and returns artifact bytes in a `FileResponse`. Completed responses include Hydracept `receiptId` and related job fields in `meta()`.
 
 *Note: Meta audio transcriptions only support mono 16-bit PCM WAV files at 16 or 24 kHz up to 10 minutes; `$lang` is mapped to the language name used by `languageBias`.*
 
@@ -1586,6 +1606,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/create-any-image)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#generate-image)
 * [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
+* [Hydracept](https://docs.hydracept.com): `image.generate.v1`; quotes before job submission; options follow the live capability descriptor (`width`, `height`, `quality`, `model`, …)
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
@@ -1879,6 +1900,7 @@ public function resume( string $jobId ) : FileResponse
 * Ideogram: Only for `imagine()` with the `async` option
 * ModelsLab: Only for queued generations; the job ID is the fetch URL of the `modelslab.com` HTTPS host or the configured API host
 * Replicate: Only for predictions not finished while the request was open; the job ID is the prediction URL of the `api.replicate.com` HTTPS host or the configured API host
+* Hydracept: Durable capability jobs for `imagine()`; the job ID is the Hydracept `jobId` string
 
 **Example:**
 
@@ -2521,6 +2543,7 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
+* [Hydracept](https://docs.hydracept.com): `video.generate.v1` (Veo, up to 8 seconds); maps common `duration` to `durationSeconds`
 * Openrouter
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)

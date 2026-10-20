@@ -30,6 +30,7 @@ class ResumeTest extends TestCase
             'veo' => ['veo', 'models/veo-3.1-generate-preview/operations/op-1',
                 'https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview/operations/op-1'],
             'xai' => ['xai', 'video-1', 'https://api.x.ai/v1/videos/video-1'],
+            'hydracept' => ['hydracept', 'job-42', 'https://api.hydracept.com/v1/jobs/job-42', ['status' => 'running']],
         ];
     }
 

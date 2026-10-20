@@ -42,6 +42,7 @@ class ResumeTest extends TestCase
                 'https://modelslab.com/api/v6/images/fetch/123', ['status' => 'processing']],
             'replicate' => ['replicate', 'https://api.replicate.com/v1/predictions/p1',
                 'https://api.replicate.com/v1/predictions/p1', ['status' => 'processing']],
+            'hydracept' => ['hydracept', 'job-42', 'https://api.hydracept.com/v1/jobs/job-42', ['status' => 'running']],
         ];
     }
 
