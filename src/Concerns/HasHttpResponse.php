@@ -127,11 +127,37 @@ trait HasHttpResponse
 
 
     /**
+     * Extracts rate limit information from HTTP response headers.
+     *
+     * @param ResponseInterface $response HTTP response
+     * @return \Aimeos\Prisma\Values\RateLimit|null Rate limit info
+     */
+    protected function getRateLimit( ResponseInterface $response ) : ?\Aimeos\Prisma\Values\RateLimit
+    {
+        $limit = $response->getHeaderLine( 'x-ratelimit-limit' );
+        $remaining = $response->getHeaderLine( 'x-ratelimit-remaining' );
+        $reset = $response->getHeaderLine( 'x-ratelimit-reset' );
+        $retryAfter = $this->retryHeader( $response );
+
+        if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === null ) {
+            return null;
+        }
+
+        return new \Aimeos\Prisma\Values\RateLimit(
+            $limit !== '' ? (int) $limit : null,
+            $remaining !== '' ? (int) $remaining : null,
+            $reset !== '' ? $reset : null,
+            $retryAfter,
+        );
+    }
+
+
+    /**
      * Reads a response body into a string, bounded by the configured maximum size.
      *
-     * A non-streamed response is read in full to be JSON decoded. When the body length is known up
+     * Used for JSON responses and binary downloads. When the body length is known up
      * front (a buffered response) it is read in a single call and an oversized body is rejected
-     * before any of it is read; a length-unknown body (e.g. a streamed error response) is read in
+     * before any of it is read; a length-unknown body (e.g. a streamed response) is read in
      * bounded chunks and rejected once it passes the limit. Either way a runaway or hostile response
      * cannot be pulled into an unbounded string - the same ceiling the streaming reader enforces.
      *
@@ -140,7 +166,7 @@ trait HasHttpResponse
      * @throws \Aimeos\Prisma\Exceptions\PrismaException When the body exceeds the maximum size
      * @throws \RuntimeException When the body can't be read, e.g. if the connection was reset
      */
-    private function readBody( ResponseInterface $response ) : string
+    protected function readBody( ResponseInterface $response ) : string
     {
         $stream = $response->getBody();
 
@@ -170,32 +196,6 @@ trait HasHttpResponse
         }
 
         return $body;
-    }
-
-
-    /**
-     * Extracts rate limit information from HTTP response headers.
-     *
-     * @param ResponseInterface $response HTTP response
-     * @return \Aimeos\Prisma\Values\RateLimit|null Rate limit info
-     */
-    protected function getRateLimit( ResponseInterface $response ) : ?\Aimeos\Prisma\Values\RateLimit
-    {
-        $limit = $response->getHeaderLine( 'x-ratelimit-limit' );
-        $remaining = $response->getHeaderLine( 'x-ratelimit-remaining' );
-        $reset = $response->getHeaderLine( 'x-ratelimit-reset' );
-        $retryAfter = $this->retryHeader( $response );
-
-        if( $limit === '' && $remaining === '' && $reset === '' && $retryAfter === null ) {
-            return null;
-        }
-
-        return new \Aimeos\Prisma\Values\RateLimit(
-            $limit !== '' ? (int) $limit : null,
-            $remaining !== '' ? (int) $remaining : null,
-            $reset !== '' ? $reset : null,
-            $retryAfter,
-        );
     }
 
 
