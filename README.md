@@ -1354,7 +1354,24 @@ $sfx = $provider->sfx( 'Thunder rumble', ['outputFormatPreference' => 'mp3_44100
 $music = $provider->music( 'Calm piano', ['durationMs' => 30000, 'outputFormatPreference' => 'mp3_44100_128'] );
 ```
 
-Each call quotes the capability, submits a durable job, polls until it succeeds, and returns artifact bytes in a `FileResponse`. Completed responses include Hydracept `receiptId` and related job fields in `meta()`.
+Configure the provider in `config/services.php`:
+
+```php
+'hydracept' => [
+    'api_key' => env( 'HYDRACEPT_API_KEY' ),
+    'project_id' => env( 'HYDRACEPT_PROJECT' ),
+    'url' => env( 'HYDRACEPT_API_URL' ), // optional; no /v1 suffix
+    'poll_timeout' => 900,               // seconds; 0 disables the deadline
+],
+```
+
+Each call quotes the capability, submits a durable job, polls until it succeeds, and returns artifact bytes in a `FileResponse`. Completed responses include the Hydracept `receiptId`, `pricing` (including `charge.customerCharge` and `providerCost`), and related job fields in `meta()`/`usage()`.
+
+Hydracept returns Ogg by default for every audio capability. Pass `outputFormatPreference` (for example
+`mp3_44100_128`, which returns `audio/mpeg` with an `.mp3` filename) when the caller needs MP3. The accepted
+voice models are `eleven_v4` (default), `eleven_multilingual_v2`, `eleven_turbo_v2_5`, and
+`eleven_flash_v2_5`; music accepts `music_v2` (default) and `music_v1`; SFX accepts
+`eleven_text_to_sound_v2`. `poll_timeout` (seconds, default 900) bounds the wait for the durable job.
 
 *Note: Meta audio transcriptions only support mono 16-bit PCM WAV files at 16 or 24 kHz up to 10 minutes; `$lang` is mapped to the language name used by `languageBias`.*
 
@@ -1606,7 +1623,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/create-any-image)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#generate-image)
 * [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
-* [Hydracept](https://docs.hydracept.com): `image.generate.v1`; quotes before job submission; options follow the live capability descriptor (`width`, `height`, `quality`, `model`, …)
+* [Hydracept](https://docs.hydracept.com): `image.generate.v1`; quotes before job submission; options follow the live capability descriptor (`width`, `height`, `quality`, `model`, …). The Hydracept image models are `gpt-image-2.5-flare` (default) and `gpt-image-2.5-sunburst`
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)

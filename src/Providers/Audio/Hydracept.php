@@ -24,7 +24,7 @@ class Hydracept extends Base implements Speak
 
         $input = ['text' => $text, 'voiceId' => $voice] + $this->capabilityOptions( $options, [
             'modelId', 'variantCount', 'diversityMode', 'seed', 'outputFormatPreference',
-            'voiceSettings', 'providerExtensions',
+            'voiceSettings', 'providerOptions',
         ] );
 
         if( $model = $this->modelName() ) {
@@ -47,7 +47,7 @@ class Hydracept extends Base implements Speak
     {
         $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
             'durationMs', 'variantCount', 'diversityMode', 'promptInfluence', 'modelId',
-            'outputFormatPreference', 'providerExtensions',
+            'outputFormatPreference', 'providerOptions',
         ] );
 
         if( $model = $this->modelName() ) {
@@ -70,7 +70,7 @@ class Hydracept extends Base implements Speak
     {
         $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
             'durationMs', 'variantCount', 'forceInstrumental', 'modelId',
-            'outputFormatPreference', 'providerExtensions',
+            'outputFormatPreference', 'providerOptions',
         ] );
 
         if( $model = $this->modelName() ) {

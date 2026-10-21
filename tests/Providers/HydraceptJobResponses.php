@@ -35,6 +35,14 @@ trait HydraceptJobResponses
             'status' => 'succeeded',
             'receiptId' => 'rcpt-1',
             'actualCost' => 0.12,
+            'pricing' => [
+                'charge' => ['customerCharge' => [
+                    'amountMicros' => 150000, 'amountMinor' => 15, 'currency' => 'USD', 'display' => 'US$0.15',
+                ]],
+                'providerCost' => ['amount' => [
+                    'amountMicros' => 120000, 'amountMinor' => 12, 'currency' => 'USD', 'display' => 'US$0.12',
+                ], 'status' => 'known', 'basis' => 'provider-reported'],
+            ],
             'artifacts' => [['artifactId' => 'art-1', 'mediaType' => $mediaType, 'kind' => 'primary']],
         ] + $jobMeta );
         $this->response( $binary, ['Content-Type' => $mediaType] );

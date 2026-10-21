@@ -24,6 +24,7 @@ class HydraceptTest extends TestCase
             'quality' => 'high',
             'outputFormatPreference' => 'ignored',
             'idempotency_key' => 'idem-1',
+            'billing_mode' => 'managed',
         ] );
 
         $quote = json_decode( (string) $this->requests()[0]->getBody(), true );
@@ -40,6 +41,7 @@ class HydraceptTest extends TestCase
         $this->assertArrayHasKey( 'referenceImages', $quote['input'] );
         $this->assertSame( 'idem-1', $job['idempotencyKey'] );
         $this->assertSame( 'quote-1', $job['execution']['quoteId'] );
+        $this->assertSame( 'managed', $job['execution']['billingMode'] );
         $this->assertArrayNotHasKey( 'outputFormatPreference', $quote['input'] );
 
         $this->assertSame( 'PNG', $response->binary() );
@@ -47,5 +49,7 @@ class HydraceptTest extends TestCase
         $this->assertSame( 'rcpt-1', $response->meta()['receiptId'] );
         $this->assertSame( 'quote-1', $response->meta()['quoteId'] );
         $this->assertSame( 0.12, $response->usage()['used'] );
+        $this->assertSame( 150000, $response->usage()['customerCharge']['amountMicros'] );
+        $this->assertSame( 120000, $response->usage()['providerCost']['amountMicros'] );
     }
 }

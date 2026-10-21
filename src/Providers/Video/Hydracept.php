@@ -20,7 +20,7 @@ class Hydracept extends Base implements Imagine
     public function imagine( string $prompt, array $media = [], array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
     {
         $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
-            'durationSeconds', 'aspectRatio', 'features', 'providerExtensions',
+            'durationSeconds', 'aspectRatio', 'features', 'providerOptions',
         ] );
 
         if( isset( $options['duration'] ) && !isset( $input['durationSeconds'] ) ) {

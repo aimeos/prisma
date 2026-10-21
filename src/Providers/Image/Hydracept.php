@@ -18,7 +18,7 @@ class Hydracept extends Base implements Imagine
         $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
             'width', 'height', 'quality', 'variantCount', 'requestTransparentOutput',
             'transparencyMethod', 'transparentRegions', 'keyColor', 'sheet', 'adapters',
-            'providerExtensions',
+            'providerOptions',
         ] );
 
         if( $model = $this->modelName() ) {

@@ -17,10 +17,10 @@ abstract class Hydracept extends Base implements Resume
     private string $projectId = '';
 
     /** @var array<int, string> */
-    private const TERMINAL_FAILURE = ['failed', 'canceled', 'canceling'];
+    private const TERMINAL_FAILURE = ['failed', 'canceled'];
 
     /** @var array<int, string> */
-    private const PENDING = ['queued', 'running', 'awaiting_approval'];
+    private const PENDING = ['queued', 'running', 'awaiting_approval', 'canceling'];
 
 
     public function __construct( array $config )
@@ -173,10 +173,12 @@ abstract class Hydracept extends Base implements Resume
      */
     protected function submit( string $capability, array $input, string $quoteId, array $options ) : string
     {
-        $body = $this->envelope( $input, $options, true ) + [
-            'idempotencyKey' => $this->idempotencyKey( $options ),
-            'execution' => ['quoteId' => $quoteId] + $this->execution( $options ),
-        ];
+        $execution = $this->execution( $options );
+        $execution['quoteId'] = $quoteId;
+
+        $body = $this->envelope( $input, $options, true );
+        $body['idempotencyKey'] = $this->idempotencyKey( $options );
+        $body['execution'] = $execution;
 
         $response = $this->client()->post( 'v1/capabilities/' . rawurlencode( $capability ) . '/jobs', [
             'json' => $body,
@@ -365,6 +367,17 @@ abstract class Hydracept extends Base implements Resume
 
         if( isset( $data['pricing'] ) && is_array( $data['pricing'] ) ) {
             $usage['pricing'] = $data['pricing'];
+            $charge = $data['pricing']['charge'] ?? null;
+
+            if( is_array( $charge ) && isset( $charge['customerCharge'] ) ) {
+                $usage['customerCharge'] = $charge['customerCharge'];
+            }
+
+            $providerCost = $data['pricing']['providerCost']['amount'] ?? null;
+
+            if( is_array( $providerCost ) ) {
+                $usage['providerCost'] = $providerCost;
+            }
         }
 
         if( isset( $data['receiptId'] ) ) {
