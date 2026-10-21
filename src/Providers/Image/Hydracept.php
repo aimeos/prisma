@@ -6,19 +6,21 @@ use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Hydracept as Base;
+use Aimeos\Prisma\Responses\FileResponse;
 
 
 class Hydracept extends Base implements Imagine
 {
+    protected const PREFIX = 'image/';
+
     private const CAPABILITY = 'image.generate.v1';
 
 
-    public function imagine( string $prompt, array $images = [], array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
+        $input = ['prompt' => $prompt] + $this->allowed( $options, [
             'width', 'height', 'quality', 'variantCount', 'requestTransparentOutput',
             'transparencyMethod', 'transparentRegions', 'keyColor', 'sheet', 'adapters',
-            'providerOptions',
         ] );
 
         if( $model = $this->modelName() ) {
@@ -33,8 +35,8 @@ class Hydracept extends Base implements Imagine
     }
 
 
-    protected function artifactFactory() : callable
+    protected function toFile( string $binary, ?string $mediaType ) : File
     {
-        return fn( string $binary, string $mediaType ) : File => Image::fromBinary( $binary, $mediaType );
+        return Image::fromBinary( $binary, $mediaType );
     }
 }

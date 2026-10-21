@@ -52,6 +52,20 @@ class ResumeTest extends TestCase
     }
 
 
+    public function testResumeHydracept() : void
+    {
+        $progress = ['phase' => 'generate', 'step' => 'render', 'percent' => 40.5, 'updatedAt' => '2026-10-21T10:00:00Z'];
+        $this->prisma( 'audio', 'hydracept', ['api_key' => 'test'] )->response( ['status' => 'running', 'progress' => $progress] );
+
+        $response = $this->provider()->ensure( 'resume' )->resume( 'job-42' );
+
+        $this->assertFalse( $response->ready() );
+        $this->assertSame( 'job-42', $response->jobId() );
+        $this->assertSame( $progress, $response->meta()['progress'] );
+        $this->assertSame( 'https://api.hydracept.com/v1/jobs/job-42', (string) $this->requests()[0]->getUri() );
+    }
+
+
     public function testResumeLowerCaseStatus() : void
     {
         // text to speech jobs report their status in lower case

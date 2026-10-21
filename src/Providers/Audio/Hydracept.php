@@ -2,87 +2,96 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
+use Aimeos\Prisma\Contracts\Audio\Compose;
 use Aimeos\Prisma\Contracts\Audio\Speak;
+use Aimeos\Prisma\Contracts\Audio\Synthesize;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Hydracept as Base;
+use Aimeos\Prisma\Responses\FileResponse;
 
 
-class Hydracept extends Base implements Speak
+class Hydracept extends Base implements Compose, Speak, Synthesize
 {
-    private const VOICE = 'audio.voice.generate.v1';
-    private const SFX = 'audio.sfx.generate.v1';
+    protected const PREFIX = 'audio/';
+
     private const MUSIC = 'audio.music.generate.v1';
+    private const SFX = 'audio.sfx.generate.v1';
+    private const VOICE = 'audio.voice.generate.v1';
 
 
-    public function speak( string $text, ?string $voice = null, array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
+    public function compose( string $prompt, array $options = [] ) : FileResponse
+    {
+        $input = ['prompt' => $prompt] + $this->allowed( $options, [
+            'durationMs', 'variantCount', 'forceInstrumental', 'modelId',
+            'outputFormatPreference', 'providerExtensions',
+        ] ) + $this->duration( $options );
+
+        return $this->audio( self::MUSIC, $input, $options );
+    }
+
+
+    public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         if( $voice === null || $voice === '' ) {
             throw new BadRequestException( 'Voice ID required for Hydracept speech synthesis' );
         }
 
-        $input = ['text' => $text, 'voiceId' => $voice] + $this->capabilityOptions( $options, [
+        $input = ['text' => $text, 'voiceId' => $voice] + $this->allowed( $options, [
             'modelId', 'variantCount', 'diversityMode', 'seed', 'outputFormatPreference',
-            'voiceSettings', 'providerOptions',
+            'voiceSettings', 'providerExtensions',
         ] );
 
-        if( $model = $this->modelName() ) {
-            $input['modelId'] = $model;
-        }
-
-        return $this->generate( self::VOICE, $input, $options );
+        return $this->audio( self::VOICE, $input, $options );
     }
 
 
-    /**
-     * Generates sound effects from a text prompt.
-     *
-     * Hydracept capability `audio.sfx.generate.v1`; not part of the shared Speak contract.
-     *
-     * @param string $prompt Effect description
-     * @param array<string, mixed> $options Capability and envelope options
-     */
-    public function sfx( string $prompt, array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
+    public function synthesize( string $prompt, array $options = [] ) : FileResponse
     {
-        $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
+        $input = ['prompt' => $prompt] + $this->allowed( $options, [
             'durationMs', 'variantCount', 'diversityMode', 'promptInfluence', 'modelId',
-            'outputFormatPreference', 'providerOptions',
-        ] );
+            'outputFormatPreference', 'providerExtensions',
+        ] ) + $this->duration( $options );
 
-        if( $model = $this->modelName() ) {
-            $input['modelId'] = $model;
-        }
+        return $this->audio( self::SFX, $input, $options );
+    }
 
-        return $this->generate( self::SFX, $input, $options );
+
+    protected function toFile( string $binary, ?string $mediaType ) : File
+    {
+        return Audio::fromBinary( $binary, $mediaType );
     }
 
 
     /**
-     * Generates music from a text prompt.
+     * Generates audio using the model set by model() if any.
      *
-     * Hydracept capability `audio.music.generate.v1`; not part of the shared Speak contract.
-     *
-     * @param string $prompt Music description
-     * @param array<string, mixed> $options Capability and envelope options
+     * @param string $capability Capability key
+     * @param array<string, mixed> $input Capability input object
+     * @param array<string, mixed> $options Caller options
+     * @return FileResponse Asynchronous file response
      */
-    public function music( string $prompt, array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
+    private function audio( string $capability, array $input, array $options ) : FileResponse
     {
-        $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
-            'durationMs', 'variantCount', 'forceInstrumental', 'modelId',
-            'outputFormatPreference', 'providerOptions',
-        ] );
-
         if( $model = $this->modelName() ) {
             $input['modelId'] = $model;
         }
 
-        return $this->generate( self::MUSIC, $input, $options );
+        return $this->generate( $capability, $input, $options );
     }
 
 
-    protected function artifactFactory() : callable
+    /**
+     * Maps the common duration option in seconds to the Hydracept duration in milliseconds.
+     *
+     * @param array<string, mixed> $options Caller options
+     * @return array<string, int> Duration input field or empty if not passed
+     */
+    private function duration( array $options ) : array
     {
-        return fn( string $binary, string $mediaType ) : File => Audio::fromBinary( $binary, $mediaType );
+        $duration = $options['duration'] ?? null;
+
+        return is_numeric( $duration ) ? ['durationMs' => (int) round( $duration * 1000 )] : [];
     }
 }

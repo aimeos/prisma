@@ -46,12 +46,14 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 </ul>
 <div class="method-header"><a href="#audio-api">Audio API</a></div>
 <ul class="method-list">
+    <li><a href="#compose">compose</a><span>: Generate music from a prompt</span></li>
     <li><a href="#demix">demix</a><span>: Separate an audio file into its individual tracks</span></li>
     <li><a href="#denoise">denoise</a><span>: Remove noise from an audio file</span></li>
     <li><a href="#describe">describe</a><span>: Describe the content of an audio file</span></li>
     <li><a href="#resume">resume</a><span>: Continue polling an audio job in another process</span></li>
     <li><a href="#revoice">revoice</a><span>: Exchange the voice in an audio file</span></li>
     <li><a href="#speak">speak</a><span>: Convert text to speech in an audio file</span></li>
+    <li><a href="#synthesize">synthesize</a><span>: Generate sound effects from a prompt</span></li>
     <li><a href="#transcribe">transcribe</a><span>: Converts speech of an audio file to text</span></li>
 </ul>
 <div class="method-header"><a href="#image-api">Image API</a></div>
@@ -142,22 +144,22 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 
 ### Audio
 
-|                       | demix | denoise | describe | resume | revoice | speak | transcribe |
-| :---                  | :---: | :---:   | :---:    | :---:  | :---:   | :---: | :---:      |
-| **Alibaba**           | -     | -       | -        |        | -       | yes   | -          |
-| **AudioPod**          | yes   | yes     | -        | yes    | yes     | yes   | yes        |
-| **Azure**             | -     | -       | -        |        | -       | beta  | beta       |
-| **Deepgram**          | -     | -       | -        |        | -       | yes   | yes        |
-| **ElevenLabs**        | -     | -       | -        |        | yes     | yes   | yes        |
-| **Google Gemini**     | -     | -       | yes      |        | -       | -     | -          |
-| **Groq**              | -     | -       | yes      |        | -       | yes   | yes        |
-| **Hydracept**         | -     | -       | -        | yes    | -       | yes   | -          |
-| **Meta**              | -     | -       | beta     |        | -       | -     | beta       |
-| **Mistral**           | -     | -       | yes      |        | -       | -     | yes        |
-| **Murf**              | -     | -       | -        |        | yes     | yes   | -          |
-| **OpenAI**            | -     | -       | yes      |        | -       | yes   | yes        |
-| **Openrouter**        | -     | -       | yes      |        | -       | yes   | yes        |
-| **Z.AI**              | -     | -       | -        |        | -       | -     | yes        |
+|                       | compose | demix | denoise | describe | resume | revoice | speak | synthesize | transcribe |
+| :---                  | :---:   | :---: | :---:   | :---:    | :---:  | :---:   | :---: | :---:      | :---:      |
+| **Alibaba**           | -       | -     | -       | -        |        | -       | yes   | -          | -          |
+| **AudioPod**          | -       | yes   | yes     | -        | yes    | yes     | yes   | -          | yes        |
+| **Azure**             | -       | -     | -       | -        |        | -       | beta  | -          | beta       |
+| **Deepgram**          | -       | -     | -       | -        |        | -       | yes   | -          | yes        |
+| **ElevenLabs**        | -       | -     | -       | -        |        | yes     | yes   | -          | yes        |
+| **Google Gemini**     | -       | -     | -       | yes      |        | -       | -     | -          | -          |
+| **Groq**              | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
+| **Hydracept**         | beta    | -     | -       | -        | beta   | -       | beta  | beta       | -          |
+| **Meta**              | -       | -     | -       | beta     |        | -       | -     | -          | beta       |
+| **Mistral**           | -       | -     | -       | yes      |        | -       | -     | -          | yes        |
+| **Murf**              | -       | -     | -       | -        |        | yes     | yes   | -          | -          |
+| **OpenAI**            | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
+| **Openrouter**        | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
+| **Z.AI**              | -       | -     | -       | -        |        | -       | -     | -          | yes        |
 
 ### Image
 
@@ -172,7 +174,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
-| **Hydracept**         | -          | -      | -        | -      | -     | yes     | -       | -       | -         | -        | -       | yes    | -      | -       | -         |
+| **Hydracept**         | -          | beta   | -        | -      | -     | beta    | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
 | **Ideogram**          | yes        | -      | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | -      | yes     | -         |
 | **Meta**              | -          |        | -        | -      | -     | beta    | -       | -       | -         | -        | beta    |        | -      | -       | -         |
 | **Mistral**           | -          |        | -        | -      | -     | -       | -       | -       | yes       | -        | -       |        | -      | -       | -         |
@@ -228,7 +230,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
-| **Hydracept**         | -      | -        | -      | beta    | -       | beta   | -      | -       |
+| **Hydracept**         | beta   | -        | -      | beta    | -       | beta   | -      | -       |
 | **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
 | **Meta**              |        | beta     | -      | -       | -       |        | -      | -       |
 | **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
@@ -1173,6 +1175,36 @@ Decorators delegate all `Adapter` interface methods to the wrapped tool. Overrid
 
 ## Audio API
 
+### compose
+
+Generate music from a prompt.
+
+```php
+public function compose( string $prompt, array $options = [] ) : FileResponse;
+```
+
+* @param **string** `$prompt` Prompt describing the music
+* @param **array&#60;string, mixed&#62;** `$options` Common and provider-specific options
+* @return **FileResponse** Audio file response
+
+The common option is `duration` (seconds). A provider maps the options it supports and
+ignores the rest. Provider-native options can be supplied in the same array.
+
+**Supported options:**
+
+* [Hydracept](https://docs.hydracept.com)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$audio = Prisma::audio()
+    ->using( 'hydracept', ['api_key' => 'xxx'] )
+    ->ensure( 'compose' )
+    ->compose( 'Calm piano with soft strings', ['duration' => 30] );
+```
+
 ### demix
 
 Separate an audio file into its individual tracks.
@@ -1242,6 +1274,7 @@ public function resume( string $jobId ) : FileResponse|TextResponse
 **Supported providers:**
 
 * AudioPod: Only for `demix()`, `denoise()`, `revoice()`, `speak()` and `transcribe()`; the job ID is the status path
+* Hydracept: Only for `compose()`, `speak()` and `synthesize()`; the job ID is the Hydracept job ID
 
 **Example:**
 
@@ -1309,11 +1342,43 @@ public function speak( string $text, ?string $voice = null, array $options = [] 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech#convert-text-to-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
-* [Hydracept](https://docs.hydracept.com): `audio.voice.generate.v1`; requires `$voice`; options use Hydracept field names such as `outputFormatPreference` and `voiceSettings`
 * Groq
+* [Hydracept](https://docs.hydracept.com)
 * [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/stream)
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 * Openrouter
+
+### synthesize
+
+Generate sound effects from a prompt.
+
+```php
+public function synthesize( string $prompt, array $options = [] ) : FileResponse;
+```
+
+* @param **string** `$prompt` Prompt describing the sound effect
+* @param **array&#60;string, mixed&#62;** `$options` Common and provider-specific options
+* @return **FileResponse** Audio file response
+
+The common option is `duration` (seconds). A provider maps the options it supports and
+ignores the rest. Provider-native options can be supplied in the same array.
+
+**Supported options:**
+
+* [Hydracept](https://docs.hydracept.com)
+
+**Example:**
+
+```php
+use Aimeos\Prisma\Prisma;
+
+$audio = Prisma::audio()
+    ->using( 'hydracept', ['api_key' => 'xxx'] )
+    ->ensure( 'synthesize' )
+    ->synthesize( 'Thunder rumbling in the distance', ['duration' => 5] );
+```
+
+*Note: Hydracept returns Ogg audio by default; pass `outputFormatPreference`, e.g. `mp3_44100_128`, to get MP3 instead.*
 
 ### transcribe
 
@@ -1340,38 +1405,6 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * [OpenAI](https://platform.openai.com/docs/api-reference/audio/createTranscription)
 * Openrouter
 * [Z.AI](https://docs.z.ai/api-reference/audio/audio-transcriptions)
-
-#### Hydracept sound effects and music
-
-The Hydracept audio provider also exposes capability-specific helpers that are not part of the shared audio contracts:
-
-```php
-use Aimeos\Prisma\Prisma;
-
-$provider = Prisma::audio()->using( 'hydracept', config( 'services.hydracept' ) );
-
-$sfx = $provider->sfx( 'Thunder rumble', ['outputFormatPreference' => 'mp3_44100_128'] );
-$music = $provider->music( 'Calm piano', ['durationMs' => 30000, 'outputFormatPreference' => 'mp3_44100_128'] );
-```
-
-Configure the provider in `config/services.php`:
-
-```php
-'hydracept' => [
-    'api_key' => env( 'HYDRACEPT_API_KEY' ),
-    'project_id' => env( 'HYDRACEPT_PROJECT' ),
-    'url' => env( 'HYDRACEPT_API_URL' ), // optional; no /v1 suffix
-    'poll_timeout' => 900,               // seconds; 0 disables the deadline
-],
-```
-
-Each call quotes the capability, submits a durable job, polls until it succeeds, and returns artifact bytes in a `FileResponse`. Completed responses include the Hydracept `receiptId`, `pricing` (including `charge.customerCharge` and `providerCost`), and related job fields in `meta()`/`usage()`.
-
-Hydracept returns Ogg by default for every audio capability. Pass `outputFormatPreference` (for example
-`mp3_44100_128`, which returns `audio/mpeg` with an `.mp3` filename) when the caller needs MP3. The accepted
-voice models are `eleven_v4` (default), `eleven_multilingual_v2`, `eleven_turbo_v2_5`, and
-`eleven_flash_v2_5`; music accepts `music_v2` (default) and `music_v1`; SFX accepts
-`eleven_text_to_sound_v2`. `poll_timeout` (seconds, default 900) bounds the wait for the durable job.
 
 *Note: Meta audio transcriptions only support mono 16-bit PCM WAV files at 16 or 24 kHz up to 10 minutes; `$lang` is mapped to the language name used by `languageBias`.*
 
@@ -1466,6 +1499,7 @@ public function cancel( string $jobId ) : void
 **Supported providers:**
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/): Pending and running jobs; the job ID is the status URL
+* [Hydracept](https://docs.hydracept.com): Pending and running jobs; the job ID is the Hydracept job ID
 * [Replicate](https://replicate.com/docs/reference/http#predictions.cancel): Starting and processing predictions; the job ID is the prediction URL
 
 **Example:**
@@ -1612,6 +1646,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
+* [Hydracept](https://docs.hydracept.com)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/generate-images/generate-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/generate-images/generate-v3))
 * [Meta Muse Image](https://dev.meta.ai/docs/api-reference/images/create-image) ([Editing](https://dev.meta.ai/docs/api-reference/images/edit-image))
 * [ModelsLab](https://docs.modelslab.com/image-generation/community-models/text2img)
@@ -1623,12 +1658,25 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/create-any-image)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#generate-image)
 * [Replicate](https://replicate.com/docs/topics/predictions/create-a-prediction)
-* [Hydracept](https://docs.hydracept.com): `image.generate.v1`; quotes before job submission; options follow the live capability descriptor (`width`, `height`, `quality`, `model`, …). The Hydracept image models are `gpt-image-2.5-flare` (default) and `gpt-image-2.5-sunburst`
 * [StabilityAI Core](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post)
 * [StabilityAI Stable Diffusion 3.5](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1sd3/post)
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations) ([Multi-image editing](https://docs.x.ai/developers/model-capabilities/images/multi-image-editing))
 * [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
+
+Hydracept jobs belong to the `project_id` passed in the configuration and are polled for up to
+900 seconds by default; set `poll_timeout` to another number of seconds or `0` to disable the
+deadline. This applies to Hydracept audio and video jobs too:
+
+```php
+Prisma::image()->using( 'hydracept', [
+    'api_key' => 'xxx',
+    'project_id' => 'proj-1',
+    'poll_timeout' => 300,
+] );
+```
+
+*Note: The Hydracept `billingMode`, `credentialSource`, `executionPreference` and `maximumCharge` options control billing and execution of a job, so don't pass end-user input to them unfiltered.*
 
 **Example:**
 
@@ -1914,10 +1962,10 @@ public function resume( string $jobId ) : FileResponse
 
 * Adobe Firefly: The job ID is the status URL and must point to a `firefly-*.adobe.io` HTTPS host or the configured API host
 * Black Forest Labs: The job ID is the polling URL and must be an HTTPS URL of `api.bfl.ai` or a regional host like `api.eu1.bfl.ai`
+* Hydracept: The job ID is the Hydracept job ID
 * Ideogram: Only for `imagine()` with the `async` option
 * ModelsLab: Only for queued generations; the job ID is the fetch URL of the `modelslab.com` HTTPS host or the configured API host
 * Replicate: Only for predictions not finished while the request was open; the job ID is the prediction URL of the `api.replicate.com` HTTPS host or the configured API host
-* Hydracept: Durable capability jobs for `imagine()`; the job ID is the Hydracept `jobId` string
 
 **Example:**
 
@@ -2527,6 +2575,7 @@ forwards audio-only references; the selected model determines whether they are a
 | BytePlus Seedance | image | image | image, video, audio; audio requires a visual reference |
 | Google Omni       | image | -     | image    |
 | Google Veo        | image | image | image    |
+| Hydracept         | -     | -     | image    |
 | Luma Ray          | image | image | -        |
 | MiniMax Hailuo    | image | image | image    |
 | Openrouter        | image | image | image, video, audio |
@@ -2546,7 +2595,7 @@ and the `RateLimitException` is thrown. Use `ready()` to perform one non-blockin
 poll; providers returning video data immediately are ready without polling. To continue
 polling in another process, e.g. a queue job, see [resume()](#resume-2).
 
-Alibaba and Openrouter video polling stop after 900 seconds by default. Set
+Alibaba, Hydracept and Openrouter video polling stop after 900 seconds by default. Set
 `poll_timeout` in the provider configuration to another number of seconds, or to
 `0` to disable the deadline. For changes to `fromAsync()` in custom providers,
 see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
@@ -2558,9 +2607,9 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/1366799)
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
 * [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
+* [Hydracept](https://docs.hydracept.com)
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
-* [Hydracept](https://docs.hydracept.com): `video.generate.v1` (Veo, up to 8 seconds); maps common `duration` to `durationSeconds`
 * Openrouter
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
@@ -2568,6 +2617,8 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 Amazon Nova Reel also requires an S3 destination in the provider configuration:
 `['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`. The video is stored there
 and the response contains its `s3://` URL, see [resume()](#resume-2) for copying it.
+
+*Note: Hydracept videos are limited to 8 seconds and reference images are only used if the selected execution target supports them.*
 
 ### cancel
 
@@ -2583,6 +2634,7 @@ public function cancel( string $jobId ) : void
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/manage-asynchronous-tasks): Only queued tasks, running tasks can't be canceled
 * [BytePlus](https://docs.byteplus.com/en/docs/ModelArk/1521720): Only queued tasks, finished tasks are deleted instead
+* [Hydracept](https://docs.hydracept.com): Pending and running jobs; the job ID is the Hydracept job ID
 * [Runway](https://docs.dev.runwayml.com/api/): Pending and running tasks, finished tasks are deleted instead
 
 **Example:**
@@ -2853,11 +2905,12 @@ response returns the polling interval of the provider in seconds, the seconds of
 exceptions like network errors may be temporary too and the queue retries them.
 Released and failed attempts count as attempts in Laravel, so limit the total polling
 time with `retryUntil()` instead of `$tries`. The provider `poll_timeout` of Alibaba,
-Ideogram and Openrouter starts again with each `resume()` call, so it doesn't limit the
-total polling time in the queue.
+Hydracept, Ideogram and Openrouter starts again with each `resume()` call, so it doesn't
+limit the total polling time in the queue.
 
 While a job is pending, `meta()` contains the data of the latest status response,
-e.g. `progress` from 0.0 to 1.0 for Runway.
+e.g. `progress` from 0.0 to 1.0 for Runway or a `progress` array with `phase`, `step` and
+optional `percent` and `etaSeconds` for Hydracept.
 
 `stream()` downloads the file into a temporary stream, which uses a temporary file for
 larger downloads instead of memory, and downloads it again on each call. `binary()` and

@@ -2,25 +2,30 @@
 
 namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Resume;
-use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\FileResponse;
 
 
-abstract class Hydracept extends Base implements Resume
+abstract class Hydracept extends Base implements Cancel, Resume
 {
-    protected int $pollTimeout = 900;
+    /** @var array<int, string> */
+    private const META = ['capabilityKey', 'jobId', 'progress', 'status'];
+
+    /** @var array<int, string> */
+    private const STOP = ['inspect_error', 'retry_new', 'stop'];
+
+    /** Default polling interval in seconds */
+    private const RETRY = 5;
+
+    /** Media type prefix of the artifacts returned by the provider */
+    protected const PREFIX = '';
 
     private string $projectId = '';
-
-    /** @var array<int, string> */
-    private const TERMINAL_FAILURE = ['failed', 'canceled'];
-
-    /** @var array<int, string> */
-    private const PENDING = ['queued', 'running', 'awaiting_approval', 'canceling'];
 
 
     public function __construct( array $config )
@@ -31,15 +36,18 @@ abstract class Hydracept extends Base implements Resume
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.hydracept.com' ) );
-        $this->projectId = $this->config( $config, 'project_id', $this->config( $config, 'projectId', '' ) );
+        $this->projectId = $this->config( $config, 'project_id' );
 
-        $timeout = $config['poll_timeout'] ?? null;
+        $this->pollTimeout( $config );
+    }
 
-        if( is_int( $timeout ) && $timeout >= 0 ) {
-            $this->pollTimeout = $timeout;
-        } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
-            $this->pollTimeout = (int) $timeout;
-        }
+
+    public function cancel( string $jobId ) : void
+    {
+        $jobId = $this->jobId( $jobId );
+
+        $response = $this->client()->post( 'v1/jobs/' . rawurlencode( $jobId ) . '/cancel' );
+        $this->validate( $response );
     }
 
 
@@ -47,79 +55,187 @@ abstract class Hydracept extends Base implements Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
+        return FileResponse::fromAsync( $this->poll( $jobId ), self::RETRY, $this->pollTimeout, $jobId );
     }
 
 
     /**
-     * Quotes, submits, and polls a Hydracept capability job.
+     * Downloads an artifact of a succeeded job.
+     *
+     * @param string $jobId Hydracept job identifier
+     * @param mixed $artifact Artifact data of the job
+     * @return File|null Downloaded file or NULL if it's of another media type, e.g. metadata
+     *  (artifacts without or with a generic media type are downloaded too)
+     */
+    protected function artifact( string $jobId, mixed $artifact ) : ?File
+    {
+        $artifactId = is_array( $artifact ) ? $artifact['artifactId'] ?? null : null;
+        $mediaType = is_array( $artifact ) ? $artifact['mediaType'] ?? null : null;
+        $mediaType = is_string( $mediaType ) ? strtolower( $mediaType ) : $mediaType; // media types are case-insensitive
+        $generic = in_array( $mediaType, [null, '', 'application/octet-stream'], true );
+
+        // dot segments would escape the artifact endpoint when the URL is resolved
+        if( !is_string( $artifactId ) || trim( $artifactId, '.' ) === ''
+            || !$generic && ( !is_string( $mediaType ) || !str_starts_with( $mediaType, static::PREFIX ) )
+        ) {
+            return null;
+        }
+
+        // the media type of untyped or generic artifacts is detected from their content
+        return $this->toFile( $this->download( $jobId, $artifactId ), $generic ? null : $mediaType );
+    }
+
+
+    /**
+     * Downloads the artifacts of a succeeded job.
+     *
+     * All artifacts are downloaded before any is returned, so a failed download doesn't leave
+     * a partially populated response behind which the next poll would add the files to again.
+     *
+     * @param string $jobId Hydracept job identifier
+     * @param array<string, mixed> $data Job status data
+     * @return array<int, File> Downloaded files
+     */
+    protected function artifacts( string $jobId, array $data ) : array
+    {
+        $artifacts = is_array( $data['artifacts'] ?? null ) ? $data['artifacts'] : [];
+        $files = [];
+
+        foreach( $artifacts as $artifact )
+        {
+            if( $file = $this->artifact( $jobId, $artifact ) ) {
+                $files[] = $file;
+            }
+        }
+
+        return $files;
+    }
+
+
+    /**
+     * Builds the request body of a capability job.
+     *
+     * @param array<string, mixed> $input Capability input object
+     * @param array<string, mixed> $options Caller options
+     * @return array<string, mixed> Request body
+     */
+    protected function body( array $input, array $options ) : array
+    {
+        $body = ['input' => $input] + $this->allowed( $options, ['externalRef', 'metadata', 'tags'] );
+        if( $this->projectId !== '' ) {
+            $body['context'] = ['projectId' => $this->projectId];
+        }
+
+        if( $execution = $this->allowed( $options, ['billingMode', 'credentialSource', 'executionPreference', 'maximumCharge'] ) ) {
+            $body['execution'] = $execution;
+        }
+
+        $body['idempotencyKey'] = is_string( $options['idempotencyKey'] ?? null ) && $options['idempotencyKey'] !== ''
+            ? $options['idempotencyKey']
+            : bin2hex( random_bytes( 16 ) );
+
+        return $body;
+    }
+
+
+    /**
+     * Downloads the content of an artifact.
+     *
+     * The response is streamed and reading stops after the maximum response size, so oversized
+     * artifacts are rejected without loading them into memory.
+     *
+     * @param string $jobId Hydracept job identifier
+     * @param string $artifactId Hydracept artifact identifier
+     * @return string Artifact content
+     * @throws FailedException If the artifact doesn't exist or exceeds the maximum response size
+     */
+    protected function download( string $jobId, string $artifactId ) : string
+    {
+        $response = $this->client()->get(
+            'v1/jobs/' . rawurlencode( $jobId ) . '/artifacts/' . rawurlencode( $artifactId ),
+            ['stream' => true]
+        );
+        // missing and oversized artifacts won't change, so the job fails instead of being polled again
+        try {
+            $this->validate( $response );
+        } catch( NotFoundException $e ) {
+            throw new FailedException( $e->getMessage() );
+        }
+
+        try {
+            return $this->readBody( $response );
+        } catch( PrismaException $e ) {
+            throw new FailedException( $e->getMessage() );
+        }
+    }
+
+
+    /**
+     * Submits and polls a Hydracept capability job.
      *
      * @param string $capability Capability key
      * @param array<string, mixed> $input Capability input object
      * @param array<string, mixed> $options Caller options including envelope fields
      * @return FileResponse Asynchronous file response
      */
-    protected function generate(
-        string $capability,
-        array $input,
-        array $options = []
-    ) : FileResponse {
-        $quoteId = $this->quote( $capability, $input, $options );
-        $jobId = $this->submit( $capability, $input, $quoteId, $options );
-
-        return $this->resume( $jobId )->withMeta( ['quoteId' => $quoteId] );
+    protected function generate( string $capability, array $input, array $options = [] ) : FileResponse
+    {
+        return $this->resume( $this->submit( $capability, $input, $options ) );
     }
 
 
     /**
-     * Returns a factory that builds file objects from downloaded artifact bytes.
+     * Throws the failure reported for a job.
      *
-     * @return callable(string, string): File File factory
+     * @param array<string, mixed> $data Job status data
+     * @return never
+     * @throws FailedException Always
      */
-    abstract protected function artifactFactory() : callable;
+    protected function jobFailed( array $data ) : never
+    {
+        throw new FailedException( $this->errorMessage( $data ) ?: 'Hydracept job failed' );
+    }
 
 
     /**
      * Returns a polling closure for a Hydracept job.
+     *
+     * Statuses other than succeeded and the failed ones are considered pending, so the polling
+     * deadline applies to new statuses too. Pending jobs are polled again after the interval
+     * Hydracept asks for.
      *
      * @param string $jobId Hydracept job identifier
      * @return \Closure Polling closure
      */
     protected function poll( string $jobId ) : \Closure
     {
-        $factory = $this->artifactFactory();
-
-        return function( FileResponse $result ) use ( $jobId, $factory ) : bool {
+        return function( FileResponse $result ) use ( $jobId ) : bool {
             $response = $this->client()->get( 'v1/jobs/' . rawurlencode( $jobId ) );
             $this->validate( $response );
 
             /** @var array<string, mixed> $data */
             $data = $this->fromJson( $response );
-            $result->withMeta( $this->jobMeta( $data ) + $result->meta()->all() );
-            $this->applyUsage( $result, $data );
+            $result->withMeta( $this->allowed( $data, self::META ) + $result->meta()->all() );
+            $this->usage( $result, $data );
 
-            $status = $data['status'] ?? null;
-
-            if( $status === 'needs_attention' ) {
-                throw new PrismaException( $this->errorMessage( $data ) ?: 'Hydracept job needs attention' );
-            }
-
-            if( in_array( $status, self::TERMINAL_FAILURE, true ) ) {
+            if( $this->failed( $data ) ) {
                 $this->jobFailed( $data );
             }
 
-            if( !in_array( $status, [...self::PENDING, 'succeeded'], true ) ) {
-                throw new PrismaException( $this->errorMessage( $data ) ?: 'Unknown Hydracept job status' );
-            }
+            if( ( $data['status'] ?? null ) !== 'succeeded' ) {
+                // the interval Hydracept asks for only applies to the next poll
+                $wait = is_numeric( $data['pollAfterSeconds'] ?? null ) ? (int) $data['pollAfterSeconds'] : 0;
+                $result->withRetry( $wait > 0 ? $wait : self::RETRY );
 
-            if( $status !== 'succeeded' ) {
                 return false;
             }
 
-            $this->attachArtifacts( $result, $jobId, $data, $factory );
-
-            if( $result->empty() ) {
+            if( !( $files = $this->artifacts( $jobId, $data ) ) ) {
                 $this->jobFailed( $data );
+            }
+
+            foreach( $files as $file ) {
+                $result->add( $file );
             }
 
             return true;
@@ -128,60 +244,41 @@ abstract class Hydracept extends Base implements Resume
 
 
     /**
-     * Requests a retail quote before job submission.
+     * Encodes reference images for the capability input.
      *
-     * @param string $capability Capability key
-     * @param array<string, mixed> $input Capability input object
-     * @param array<string, mixed> $options Caller options
-     * @return string Quote identifier for sealed admission
+     * @param array<int, \Aimeos\Prisma\Files\Image> $images Reference images
+     * @return array<int, array<string, mixed>> Hydracept reference image entries
      */
-    protected function quote( string $capability, array $input, array $options ) : string
+    protected function referenceImages( array $images ) : array
     {
-        $response = $this->client()->post( 'v1/capabilities/' . rawurlencode( $capability ) . '/quote', [
-            'json' => $this->envelope( $input, $options, false ),
-        ] );
-        $this->validate( $response );
+        $references = [];
 
-        /** @var array<string, mixed> $data */
-        $data = $this->fromJson( $response );
-
-        if( ( $data['status'] ?? 'ok' ) !== 'ok' ) {
-            $missing = is_array( $data['missing'] ?? null ) ? implode( ', ', $data['missing'] ) : '';
-            throw new PrismaException( $missing !== ''
-                ? 'Hydracept quote requires: ' . $missing
-                : 'Hydracept quote unavailable' );
+        foreach( $images as $image )
+        {
+            $references[] = [
+                'dataBase64' => (string) $image->base64(),
+                'mimeType' => $image->mimeType() ?? 'image/png',
+            ] + ( $image->filename() ? ['filename' => $image->filename()] : [] );
         }
 
-        $quoteId = $data['quoteId'] ?? $data['estimateId'] ?? null;
-
-        if( !is_string( $quoteId ) || $quoteId === '' ) {
-            throw new PrismaException( 'No Hydracept quote ID in response' );
-        }
-
-        return $quoteId;
+        return $references;
     }
 
 
     /**
-     * Submits a capability job with sealed quote admission.
+     * Submits a capability job.
+     *
+     * Hydracept prices the job when admitting it, so no quote is requested before.
      *
      * @param string $capability Capability key
      * @param array<string, mixed> $input Capability input object
-     * @param string $quoteId Quote identifier from quote()
      * @param array<string, mixed> $options Caller options
      * @return string Hydracept job identifier
      */
-    protected function submit( string $capability, array $input, string $quoteId, array $options ) : string
+    protected function submit( string $capability, array $input, array $options ) : string
     {
-        $execution = $this->execution( $options );
-        $execution['quoteId'] = $quoteId;
-
-        $body = $this->envelope( $input, $options, true );
-        $body['idempotencyKey'] = $this->idempotencyKey( $options );
-        $body['execution'] = $execution;
-
         $response = $this->client()->post( 'v1/capabilities/' . rawurlencode( $capability ) . '/jobs', [
-            'json' => $body,
+            'json' => $this->body( $input, $options ),
         ] );
         $this->validate( $response );
 
@@ -198,256 +295,48 @@ abstract class Hydracept extends Base implements Resume
 
 
     /**
-     * Builds the Hydracept capability request envelope.
+     * Creates a file object from downloaded artifact bytes.
      *
-     * @param array<string, mixed> $input Capability input object
-     * @param array<string, mixed> $options Caller options
-     * @param bool $withCorrelation Whether to include correlation fields on the job body
-     * @return array<string, mixed> Request envelope
+     * @param string $binary Artifact content
+     * @param string|null $mediaType Artifact media type or NULL to detect it from the content
+     * @return File File object
      */
-    protected function envelope( array $input, array $options, bool $withCorrelation ) : array
-    {
-        $request = ['input' => $input];
-        $context = $this->context( $options );
-
-        if( !empty( $context ) ) {
-            $request['context'] = $context;
-        }
-
-        $execution = $this->execution( $options );
-
-        if( !empty( $execution ) ) {
-            $request['execution'] = $execution;
-        }
-
-        if( !$withCorrelation ) {
-            return $request;
-        }
-
-        foreach( ['externalRef' => 'external_ref', 'tags' => 'tags', 'metadata' => 'metadata'] as $target => $source )
-        {
-            if( isset( $options[$source] ) ) {
-                $request[$target] = $options[$source];
-            } elseif( isset( $options[$target] ) ) {
-                $request[$target] = $options[$target];
-            }
-        }
-
-        return $request;
-    }
+    abstract protected function toFile( string $binary, ?string $mediaType ) : File;
 
 
     /**
-     * @param array<string, mixed> $options Caller options
-     * @return array<string, mixed> Capability context
-     */
-    protected function context( array $options ) : array
-    {
-        $projectId = $options['project_id'] ?? $options['projectId'] ?? $this->projectId;
-
-        return is_string( $projectId ) && $projectId !== '' ? ['projectId' => $projectId] : [];
-    }
-
-
-    /**
-     * @param array<string, mixed> $options Caller options
-     * @return array<string, mixed> Execution options
-     */
-    protected function execution( array $options ) : array
-    {
-        $execution = [];
-        $map = [
-            'billing_mode' => 'billingMode',
-            'billingMode' => 'billingMode',
-            'execution_preference' => 'executionPreference',
-            'executionPreference' => 'executionPreference',
-            'credential_source' => 'credentialSource',
-            'credentialSource' => 'credentialSource',
-            'maximum_charge' => 'maximumCharge',
-            'maximumCharge' => 'maximumCharge',
-        ];
-
-        foreach( $map as $source => $target )
-        {
-            if( isset( $options[$source] ) ) {
-                $execution[$target] = $options[$source];
-            }
-        }
-
-        return $execution;
-    }
-
-
-    /**
-     * @param array<string, mixed> $options Caller options
-     * @return string Idempotency key
-     */
-    protected function idempotencyKey( array $options ) : string
-    {
-        $key = $options['idempotency_key'] ?? $options['idempotencyKey'] ?? null;
-
-        if( is_string( $key ) && $key !== '' ) {
-            return $key;
-        }
-
-        return bin2hex( random_bytes( 16 ) );
-    }
-
-
-    /**
-     * Removes envelope keys from capability options.
+     * Adds the costs and pricing of the job to the response.
      *
-     * @param array<string, mixed> $options All options
-     * @param array<int, string> $allowed Allowed capability input keys
-     * @return array<string, mixed> Capability input options
-     */
-    protected function capabilityOptions( array $options, array $allowed ) : array
-    {
-        return $this->allowed( $options, $allowed );
-    }
-
-
-    /**
-     * @param array<int, \Aimeos\Prisma\Files\Image> $images Reference images
-     * @return array<int, array<string, mixed>> Hydracept reference image entries
-     */
-    protected function referenceImages( array $images ) : array
-    {
-        $references = [];
-
-        foreach( $images as $index => $image )
-        {
-            $entry = [
-                'dataBase64' => (string) $image->base64(),
-                'mimeType' => $image->mimeType() ?? 'image/png',
-            ];
-
-            if( $name = $image->filename() ) {
-                $entry['filename'] = $name;
-            } else {
-                $entry['filename'] = 'reference-' . $index . '.png';
-            }
-
-            $references[] = $entry;
-        }
-
-        return $references;
-    }
-
-
-    /**
-     * @param array<string, mixed> $data Job status data
-     * @return array<string, mixed> Metadata for the response
-     */
-    protected function jobMeta( array $data ) : array
-    {
-        $meta = $data;
-        unset( $meta['artifacts'] );
-
-        return $meta;
-    }
-
-
-    /**
      * @param FileResponse $result Response being populated
      * @param array<string, mixed> $data Job status data
      */
-    protected function applyUsage( FileResponse $result, array $data ) : void
+    protected function usage( FileResponse $result, array $data ) : void
     {
         $used = $data['actualCost'] ?? null;
-        $usage = [];
-
-        if( isset( $data['actualCost'] ) ) {
-            $usage['actualCost'] = $data['actualCost'];
-        }
-
-        if( isset( $data['estimatedCost'] ) ) {
-            $usage['estimatedCost'] = $data['estimatedCost'];
-        }
-
-        if( isset( $data['pricing'] ) && is_array( $data['pricing'] ) ) {
-            $usage['pricing'] = $data['pricing'];
-            $charge = $data['pricing']['charge'] ?? null;
-
-            if( is_array( $charge ) && isset( $charge['customerCharge'] ) ) {
-                $usage['customerCharge'] = $charge['customerCharge'];
-            }
-
-            $providerCost = $data['pricing']['providerCost']['amount'] ?? null;
-
-            if( is_array( $providerCost ) ) {
-                $usage['providerCost'] = $providerCost;
-            }
-        }
-
-        if( isset( $data['receiptId'] ) ) {
-            $usage['receiptId'] = $data['receiptId'];
-        }
+        $usage = $this->allowed( $data, ['actualCost', 'estimatedCost', 'pricing', 'receiptId'] );
 
         $result->withUsage( is_numeric( $used ) ? (float) $used : null, $usage );
     }
 
 
     /**
-     * @param FileResponse $result Response being populated
-     * @param string $jobId Hydracept job identifier
+     * Returns whether the job failed or won't finish anymore.
+     *
+     * Jobs needing attention are only polled again if Hydracept asks for it and jobs in other
+     * pending states fail if Hydracept advises to stop polling.
+     *
      * @param array<string, mixed> $data Job status data
-     * @param callable(string, string): File|null $factory File factory
+     * @return bool True if the job failed
      */
-    protected function attachArtifacts(
-        FileResponse $result,
-        string $jobId,
-        array $data,
-        ?callable $factory
-    ) : void {
-        if( !$factory ) {
-            throw new BadRequestException( 'Missing Hydracept artifact factory' );
-        }
-
-        /** @var array<int, mixed> $artifacts */
-        $artifacts = is_array( $data['artifacts'] ?? null ) ? $data['artifacts'] : [];
-
-        foreach( $artifacts as $artifact )
-        {
-            if( !is_array( $artifact ) ) {
-                continue;
-            }
-
-            $artifactId = $artifact['artifactId'] ?? null;
-
-            if( !is_string( $artifactId ) || $artifactId === '' ) {
-                continue;
-            }
-
-            $mediaType = is_string( $artifact['mediaType'] ?? null ) && $artifact['mediaType'] !== ''
-                ? $artifact['mediaType']
-                : 'application/octet-stream';
-
-            $response = $this->client()->get(
-                'v1/jobs/' . rawurlencode( $jobId ) . '/artifacts/' . rawurlencode( $artifactId )
-            );
-            $this->validate( $response );
-
-            $binary = $response->getBody()->getContents();
-            $file = $factory( $binary, $mediaType );
-
-            $filename = $artifact['filename'] ?? null;
-
-            if( is_string( $filename ) && $filename !== '' ) {
-                $file->as( $filename );
-            }
-
-            $result->add( $file );
-        }
-    }
-
-
-    /**
-     * @param array<string, mixed> $data Job status data
-     * @return never
-     */
-    protected function jobFailed( array $data ) : never
+    private function failed( array $data ) : bool
     {
-        throw new FailedException( $this->errorMessage( $data ) ?: 'Hydracept job failed' );
+        $next = $data['nextAction'] ?? null;
+
+        return match( $data['status'] ?? null ) {
+            'succeeded' => false,
+            'canceled', 'failed' => true,
+            'needs_attention' => $next !== 'poll',
+            default => in_array( $next, self::STOP, true ),
+        };
     }
 }

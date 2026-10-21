@@ -21,6 +21,7 @@ class CancelTest extends TestCase
         return [
             'alibaba' => ['alibaba', 'POST', 'https://dashscope-intl.aliyuncs.com/api/v1/tasks/task%2F1/cancel', 200],
             'byteplus' => ['byteplus', 'DELETE', 'https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/task%2F1', 200],
+            'hydracept' => ['hydracept', 'POST', 'https://api.hydracept.com/v1/jobs/task%2F1/cancel', 200],
             'runway' => ['runway', 'DELETE', 'https://api.dev.runwayml.com/v1/tasks/task%2F1', 204],
         ];
     }
@@ -40,6 +41,7 @@ class CancelTest extends TestCase
 
     #[TestWith( ['alibaba'] )]
     #[TestWith( ['byteplus'] )]
+    #[TestWith( ['hydracept'] )]
     #[TestWith( ['runway'] )]
     public function testCancelInvalidJobId( string $name ) : void
     {

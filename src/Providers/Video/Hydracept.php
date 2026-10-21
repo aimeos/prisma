@@ -2,37 +2,31 @@
 
 namespace Aimeos\Prisma\Providers\Video;
 
-use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Hydracept as Base;
+use Aimeos\Prisma\Responses\FileResponse;
 
 
 class Hydracept extends Base implements Imagine
 {
-    use GeneratesVideo;
+    protected const PREFIX = 'video/';
 
     private const CAPABILITY = 'video.generate.v1';
 
 
-    public function imagine( string $prompt, array $media = [], array $options = [] ) : \Aimeos\Prisma\Responses\FileResponse
+    public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        $input = ['prompt' => $prompt] + $this->capabilityOptions( $options, [
-            'durationSeconds', 'aspectRatio', 'features', 'providerOptions',
+        $input = ['prompt' => $prompt] + $this->allowed( $options, [
+            'aspectRatio', 'durationSeconds', 'features',
         ] );
 
-        if( isset( $options['duration'] ) && !isset( $input['durationSeconds'] ) ) {
-            $input['durationSeconds'] = $options['duration'];
-        }
-
-        if( isset( $options['aspectRatio'] ) && !isset( $input['aspectRatio'] ) ) {
-            $input['aspectRatio'] = $options['aspectRatio'];
-        }
+        $input += is_numeric( $options['duration'] ?? null ) ? ['durationSeconds' => (int) round( (float) $options['duration'] )] : [];
 
         $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
-        $images = array_values( array_filter( $references, fn( mixed $file ) : bool => $file instanceof Image ) );
+        $images = array_filter( $references, fn( mixed $file ) : bool => $file instanceof Image );
 
         if( $encoded = $this->referenceImages( $images ) ) {
             $input['referenceImages'] = $encoded;
@@ -42,8 +36,8 @@ class Hydracept extends Base implements Imagine
     }
 
 
-    protected function artifactFactory() : callable
+    protected function toFile( string $binary, ?string $mediaType ) : File
     {
-        return fn( string $binary, string $mediaType ) : File => Video::fromBinary( $binary, $mediaType );
+        return Video::fromBinary( $binary, $mediaType );
     }
 }
