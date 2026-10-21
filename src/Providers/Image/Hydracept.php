@@ -1,0 +1,42 @@
+<?php
+
+namespace Aimeos\Prisma\Providers\Image;
+
+use Aimeos\Prisma\Contracts\Image\Imagine;
+use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Providers\Hydracept as Base;
+use Aimeos\Prisma\Responses\FileResponse;
+
+
+class Hydracept extends Base implements Imagine
+{
+    protected const PREFIX = 'image/';
+
+    private const CAPABILITY = 'image.generate.v1';
+
+
+    public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
+    {
+        $input = ['prompt' => $prompt] + $this->allowed( $options, [
+            'width', 'height', 'quality', 'variantCount', 'requestTransparentOutput',
+            'transparencyMethod', 'transparentRegions', 'keyColor', 'sheet', 'adapters',
+        ] );
+
+        if( $model = $this->modelName() ) {
+            $input['model'] = $model;
+        }
+
+        if( $references = $this->referenceImages( $images ) ) {
+            $input['referenceImages'] = $references;
+        }
+
+        return $this->generate( self::CAPABILITY, $input, $options );
+    }
+
+
+    protected function toFile( string $binary, ?string $mediaType ) : File
+    {
+        return Image::fromBinary( $binary, $mediaType );
+    }
+}
