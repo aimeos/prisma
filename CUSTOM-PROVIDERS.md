@@ -109,11 +109,13 @@ provider types and live in `Aimeos\Prisma\Contracts` instead of the type namespa
 
 | Contract | Method | Returns |
 |----------|--------|---------|
+| Compose | `compose( string $prompt, array $options = [] )` | FileResponse |
 | Demix | `demix( Audio $audio, int $stems, array $options = [] )` | FileResponse |
 | Denoise | `denoise( Audio $audio, array $options = [] )` | FileResponse |
 | Describe | `describe( Audio $audio, ?string $lang = null, array $options = [] )` | TextResponse |
 | Revoice | `revoice( Audio $audio, string $voice, array $options = [] )` | FileResponse |
 | Speak | `speak( string $text, ?string $voice = null, array $options = [] )` | FileResponse |
+| Synthesize | `synthesize( string $prompt, array $options = [] )` | FileResponse |
 | Transcribe | `transcribe( Audio $audio, ?string $lang = null, array $options = [] )` | TextResponse |
 | Vectorize | `vectorize( array $audio, ?int $size = null, array $options = [] )` | VectorResponse |
 

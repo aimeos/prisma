@@ -20,19 +20,10 @@ class Openrouter extends Base implements Describe, Imagine, Resume
     use GeneratesVideo;
 
 
-    protected int $pollTimeout = 900;
-
-
     public function __construct( array $config )
     {
         parent::__construct( $config );
-        $timeout = $config['poll_timeout'] ?? null;
-
-        if( is_int( $timeout ) && $timeout >= 0 ) {
-            $this->pollTimeout = $timeout;
-        } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
-            $this->pollTimeout = (int) $timeout;
-        }
+        $this->pollTimeout( $config );
     }
 
 
