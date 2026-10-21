@@ -26,9 +26,6 @@ class Ideogram
     extends Base
     implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Repaint, Resume, Upscale
 {
-    protected int $pollTimeout = 900;
-
-
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
@@ -38,13 +35,7 @@ class Ideogram
         $this->header( 'Api-Key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( 'https://api.ideogram.ai' );
 
-        $timeout = $config['poll_timeout'] ?? null;
-
-        if( is_int( $timeout ) && $timeout >= 0 ) {
-            $this->pollTimeout = $timeout;
-        } elseif( is_string( $timeout ) && preg_match( '/^\d+$/D', $timeout ) ) {
-            $this->pollTimeout = (int) $timeout;
-        }
+        $this->pollTimeout( $config );
     }
 
 

@@ -44,6 +44,9 @@ abstract class Base implements Provider
     /** @var array<string, array<string, mixed>> */
     protected const PROVIDER_TOOL_MAP = [];
 
+    /** Maximum polling time of asynchronous jobs in seconds, 0 for no limit */
+    protected int $pollTimeout = 900;
+
 
     /**
      * Create a new provider instance with the given configuration.
@@ -294,6 +297,23 @@ abstract class Base implements Provider
         };
 
         return 'audio.' . $extension;
+    }
+
+
+    /**
+     * Sets the polling timeout from the "poll_timeout" configuration in seconds.
+     *
+     * @param array<string, mixed> $config Provider configuration
+     */
+    protected function pollTimeout( array $config ) : void
+    {
+        $value = $config['poll_timeout'] ?? null;
+
+        if( is_int( $value ) && $value >= 0 ) {
+            $this->pollTimeout = $value;
+        } elseif( is_string( $value ) && preg_match( '/^\d+$/D', $value ) ) {
+            $this->pollTimeout = (int) $value;
+        }
     }
 
 
