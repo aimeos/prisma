@@ -45,7 +45,7 @@ class Murf extends Base implements Revoice, Speak
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
         $selected = $voice ?: 'en-US-natalie';
-        $model = $this->modelName( 'falcon-2' );
+        $model = $this->modelName( 'FALCON' );
 
         $allowed = $this->allowed( $options, [
             'channelType', 'format', 'locale', 'pitch', 'rate', 'sampleRate', 'style'

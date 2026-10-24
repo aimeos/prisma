@@ -21,7 +21,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
         $response = $this->client()->post( 'v1/responses', ['json' => [
-            'model' => $this->modelName( 'gpt-5.6' ),
+            'model' => $this->modelName( 'gpt-6.1-sol' ),
             'input' => [[
                 'role' => 'user',
                 'content' => [[

@@ -18,7 +18,7 @@ class GroqTest extends TestCase
             ->response( '{
                 "id": "resp_abc123",
                 "status": "completed",
-                "model": "qwen/qwen3.6-27b",
+                "model": "qwen/qwen3.8-27b",
                 "output": [{
                     "type": "message",
                     "role": "assistant",
@@ -37,7 +37,7 @@ class GroqTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.groq.com/openai/v1/responses', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'qwen/qwen3.6-27b', $body['model'] );
+            $this->assertEquals( 'qwen/qwen3.8-27b', $body['model'] );
             $this->assertEquals( 'input_image', $body['input'][0]['content'][1]['type'] );
         } );
 

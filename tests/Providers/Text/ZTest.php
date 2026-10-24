@@ -41,7 +41,7 @@ class ZTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.z.ai/api/paas/v4/chat/completions', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'glm-5.2', $body['model'] );
+            $this->assertEquals( 'glm-5.3', $body['model'] );
             $this->assertTrue( $body['stream'] );
         } );
 
@@ -70,7 +70,7 @@ class ZTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'glm-5.2', $body['model'] );
+            $this->assertEquals( 'glm-5.3', $body['model'] );
             $this->assertEquals( 'Say hello', $body['messages'][0]['content'][0]['text'] );
             $this->assertCount( 1, $body['messages'] );
         } );

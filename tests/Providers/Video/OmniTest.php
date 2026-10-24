@@ -38,7 +38,7 @@ class OmniTest extends TestCase
 
         $this->assertPrismaRequest( function( $request ) {
             $body = json_decode( (string) $request->getBody(), true );
-            $this->assertSame( 'gemini-omni-flash-preview', $body['model'] );
+            $this->assertSame( 'gemini-omni-1.1-flash', $body['model'] );
             $this->assertSame( 'image_to_video', $body['generation_config']['video_config']['task'] );
             $this->assertCount( 2, $body['input'] );
             $this->assertSame( base64_encode( 'START' ), $body['input'][0]['data'] );
@@ -76,7 +76,7 @@ class OmniTest extends TestCase
             $body = json_decode( (string) $request->getBody(), true );
 
             $this->assertSame( 'https://generativelanguage.googleapis.com/v1beta/interactions', (string) $request->getUri() );
-            $this->assertSame( 'gemini-omni-flash-preview', $body['model'] );
+            $this->assertSame( 'gemini-omni-1.1-flash', $body['model'] );
             $this->assertSame( 'edit', $body['generation_config']['video_config']['task'] );
             $this->assertSame( 'video', $body['input'][0]['type'] );
             $this->assertSame( base64_encode( 'MP4' ), $body['input'][0]['data'] );

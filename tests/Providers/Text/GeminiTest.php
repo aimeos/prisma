@@ -66,7 +66,7 @@ class GeminiTest extends TestCase
         }
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?alt=sse', (string) $request->getUri() );
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'Say hello', $body['contents'][0]['parts'][0]['text'] );
         } );
@@ -226,7 +226,7 @@ class GeminiTest extends TestCase
             $body = json_decode( $request->getBody()->getContents(), true );
             $format = $body['generationConfig']['responseFormat']['text'];
 
-            $this->assertStringContainsString( 'gemini-3.7-flash:generateContent', (string) $request->getUri() );
+            $this->assertStringContainsString( 'gemini-flash-latest:generateContent', (string) $request->getUri() );
             $this->assertEquals( 'APPLICATION_JSON', $format['mimeType'] );
             $this->assertArrayNotHasKey( 'responseMimeType', $body['generationConfig'] );
             $this->assertArrayNotHasKey( 'responseSchema', $body['generationConfig'] );
@@ -695,7 +695,7 @@ class GeminiTest extends TestCase
             ->write( 'Say hello' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent', (string) $request->getUri() );
+            $this->assertEquals( 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', (string) $request->getUri() );
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'test', $request->getHeaderLine( 'x-goog-api-key' ) );
 

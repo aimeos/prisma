@@ -30,7 +30,7 @@ class OpenrouterTest extends TestCase
             $content = $body['messages'][0]['content'];
 
             $this->assertSame( 'https://openrouter.ai/api/v1/chat/completions', (string) $request->getUri() );
-            $this->assertSame( 'google/gemini-3.7-flash', $body['model'] );
+            $this->assertSame( '~google/gemini-flash-latest', $body['model'] );
             $this->assertSame( 'input_audio', $content[0]['type'] );
             $this->assertSame( base64_encode( 'WAV' ), $content[0]['input_audio']['data'] );
             $this->assertSame( 'wav', $content[0]['input_audio']['format'] );

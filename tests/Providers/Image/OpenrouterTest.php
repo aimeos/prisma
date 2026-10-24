@@ -27,7 +27,7 @@ class OpenrouterTest extends TestCase
             $body = json_decode( (string) $request->getBody(), true );
             $content = $body['messages'][0]['content'];
 
-            $this->assertSame( 'google/gemini-3.7-flash', $body['model'] );
+            $this->assertSame( '~google/gemini-flash-latest', $body['model'] );
             $this->assertSame( 'image_url', $content[0]['type'] );
             $this->assertSame( 'data:image/png;base64,' . base64_encode( 'PNG' ), $content[0]['image_url']['url'] );
         } );

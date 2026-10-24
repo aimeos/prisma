@@ -15,7 +15,7 @@ class Z extends Base implements Stream, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'do_sample', 'tool_stream', 'reasoning_effort'] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'api/paas/v4/chat/completions', 'glm-5.2', $messages, $options );
+        return $this->streamCompletions( 'api/paas/v4/chat/completions', 'glm-5.3', $messages, $options );
     }
 
 
@@ -24,7 +24,7 @@ class Z extends Base implements Stream, Write
         $options = $this->allowed( $options, ['temperature', 'top_p', 'do_sample', 'tool_stream', 'reasoning_effort'] );
 
         return $this->completions(
-            'api/paas/v4/chat/completions', 'glm-5.2',
+            'api/paas/v4/chat/completions', 'glm-5.3',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

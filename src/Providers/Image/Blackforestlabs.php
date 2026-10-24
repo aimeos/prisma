@@ -36,7 +36,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = (string) $this->modelName( 'flux-2-pro-preview' );
+        $model = (string) $this->modelName( 'flux-2-pro' );
         $names = match( $model ) {
             'flux-2-pro', 'flux-2-pro-preview' => ['seed', 'width', 'height', 'safety_tolerance', 'output_format', 'webhook_url', 'webhook_secret'],
             'flux-2-flex' => ['prompt_upsampling', 'input_image_blob_path', 'seed', 'width', 'height', 'guidance', 'steps', 'safety_tolerance', 'output_format', 'webhook_url', 'webhook_secret'],

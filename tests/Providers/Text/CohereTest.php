@@ -307,7 +307,7 @@ class CohereTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.cohere.ai/v2/embed', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'embed-v4.0', $body['model'] );
+            $this->assertEquals( 'embed-v5.0-pro', $body['model'] );
             $this->assertEquals( ['Hello world'], $body['texts'] );
             $this->assertEquals( 'search_document', $body['input_type'] );
             $this->assertEquals( 256, $body['output_dimension'] );

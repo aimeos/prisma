@@ -84,7 +84,7 @@ class Omni extends Base implements Imagine, Repaint
         $input[] = ['type' => 'text', 'text' => $prompt];
 
         return [
-            'model' => $this->modelName( 'gemini-omni-flash-preview' ),
+            'model' => $this->modelName( 'gemini-omni-1.1-flash' ),
             'input' => $input,
             'response_format' => ['type' => 'video'],
             'generation_config' => ['video_config' => ['task' => 'edit']],
@@ -178,7 +178,7 @@ class Omni extends Base implements Imagine, Repaint
 
         $input[] = ['type' => 'text', 'text' => $prompt];
         $request = [
-            'model' => $this->modelName( 'gemini-omni-flash-preview' ),
+            'model' => $this->modelName( 'gemini-omni-1.1-flash' ),
             'input' => count( $input ) === 1 ? $prompt : $input,
             'response_format' => ['type' => 'video'],
         ];
