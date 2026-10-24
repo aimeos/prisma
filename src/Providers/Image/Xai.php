@@ -43,7 +43,7 @@ class Xai extends Base implements Imagine, Repaint
         }
 
         $request = [
-            'model' => $this->modelName( $sources ? 'grok-imagine-image-2.0' : 'grok-imagine-image-quality' ),
+            'model' => $this->modelName( 'grok-imagine-image-2.0' ),
             'prompt' => $prompt,
         ] + $this->allowed( $options, ['n', 'response_format', 'user', 'aspect_ratio', 'quality'] );
 

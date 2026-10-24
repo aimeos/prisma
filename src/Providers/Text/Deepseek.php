@@ -20,7 +20,7 @@ class Deepseek extends Base implements Stream, Structure, Write
         ] );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'v1/chat/completions', 'deepseek-v4-flash', $messages, $options );
+        return $this->streamCompletions( 'v1/chat/completions', 'deepseek-flash', $messages, $options );
     }
 
 
@@ -32,7 +32,7 @@ class Deepseek extends Base implements Stream, Structure, Write
             'thinking', 'reasoning_effort', 'stop'
         ] );
 
-        return $this->structuredCompletions( 'v1/chat/completions', 'deepseek-v4-flash', $prompt, $files, $schema, $options, 'json' );
+        return $this->structuredCompletions( 'v1/chat/completions', 'deepseek-flash', $prompt, $files, $schema, $options, 'json' );
     }
 
 
@@ -44,7 +44,7 @@ class Deepseek extends Base implements Stream, Structure, Write
         ] );
 
         return $this->completions(
-            'v1/chat/completions', 'deepseek-v4-flash',
+            'v1/chat/completions', 'deepseek-flash',
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );

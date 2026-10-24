@@ -167,7 +167,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      */
     private function generate( array $contents, array $options ) : TextResponse
     {
-        $endpoint = $this->generateEndpoint( $this->modelName( 'gemini-3.7-flash' ) );
+        $endpoint = $this->generateEndpoint( $this->modelName( 'gemini-flash-latest' ) );
 
         return TextResponse::fromStream( fn( TextResponse $res ) => $this->runGenerate( $res, $endpoint, $contents, $options, false, $this->toolsParam() ) )->resolve();
     }
@@ -184,7 +184,7 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
      */
     private function streamGenerate( array $contents, array $options ) : TextResponse
     {
-        $endpoint = $this->streamEndpoint( $this->modelName( 'gemini-3.7-flash' ) );
+        $endpoint = $this->streamEndpoint( $this->modelName( 'gemini-flash-latest' ) );
         $toolsParam = $this->toolsParam();
         $system = ( $prompt = $this->systemPrompt() ) ? [
             'systemInstruction' => ['parts' => [['text' => $prompt]]]

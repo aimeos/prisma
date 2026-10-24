@@ -33,7 +33,7 @@ class Ollama extends Base implements Stream, Structure, Vectorize, Write
 
     public function vectorize( array $texts, ?int $size = null, array $options = [] ) : VectorResponse
     {
-        return $this->embeddings( 'v1/embeddings', 'nomic-embed-text', $texts, $size, [] );
+        return $this->embeddings( 'v1/embeddings', 'nomic-embed-text-v2-moe', $texts, $size, [] );
     }
 
 

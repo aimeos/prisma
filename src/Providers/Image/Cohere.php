@@ -14,7 +14,7 @@ class Cohere extends CohereBase implements Vectorize
     {
         $allowed = $this->allowed( $options, ['embedding_types', 'max_tokens', 'truncate', 'priority'] );
         $request = [
-            'model' => $this->modelName( 'embed-v4.0' ),
+            'model' => $this->modelName( 'embed-v5.0-pro' ),
             'inputs' => [],
             'input_type' => 'image',
             'output_dimension' => $size ?: 1536,

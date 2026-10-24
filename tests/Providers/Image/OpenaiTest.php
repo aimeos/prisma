@@ -38,7 +38,7 @@ class OpenaiTest extends TestCase
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'gpt-5.6', $body['model'] );
+            $this->assertEquals( 'gpt-6.1-sol', $body['model'] );
         } );
 
         $this->assertEquals( 'an image description', $response->text() );

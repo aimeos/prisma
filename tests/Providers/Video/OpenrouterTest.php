@@ -32,7 +32,7 @@ class OpenrouterTest extends TestCase
             $content = $body['messages'][0]['content'];
 
             $this->assertSame( 'https://openrouter.ai/api/v1/chat/completions', (string) $request->getUri() );
-            $this->assertSame( 'google/gemini-3.7-flash', $body['model'] );
+            $this->assertSame( '~google/gemini-flash-latest', $body['model'] );
             $this->assertSame( 'video_url', $content[0]['type'] );
             $this->assertSame( 'data:video/mp4;base64,' . base64_encode( 'MP4' ), $content[0]['video_url']['url'] );
             $this->assertStringContainsString( '"fr"', $content[1]['text'] );

@@ -57,7 +57,7 @@ class AzureTest extends TestCase
             $this->assertEquals( 'test', $request->getHeaderLine( 'api-key' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'gpt-5.6-sol', $body['model'] );
+            $this->assertEquals( 'gpt-6.1-sol', $body['model'] );
         } );
 
         $this->assertEquals( 'Hello', $response->text() );

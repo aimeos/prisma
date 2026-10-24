@@ -32,7 +32,7 @@ class XaiTest extends TestCase
             $this->assertStringContainsString( 'Bearer test', $request->getHeaderLine( 'authorization' ) );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'grok-imagine-image-quality', $body['model'] );
+            $this->assertEquals( 'grok-imagine-image-2.0', $body['model'] );
             $this->assertEquals( 'a fox', $body['prompt'] );
             $this->assertEquals( 2, $body['n'] );
             $this->assertEquals( 'b64_json', $body['response_format'] );
@@ -107,7 +107,7 @@ class XaiTest extends TestCase
         $binary = Image::fromBinary( 'PNG', 'image/png' );
         return [
             'repaint URL' => ['repaint', [$url], null],
-            'repaint binary' => ['repaint', [$binary], 'grok-imagine-image-quality'],
+            'repaint binary' => ['repaint', [$binary], 'grok-imagine-image-2.0'],
             'single reference' => ['imagine', [$url], null],
             'mixed references' => ['imagine', [2 => $url, 4 => $binary], null],
             'five references' => ['imagine', array_fill( 0, 5, $url ), null],

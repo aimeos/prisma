@@ -34,7 +34,7 @@ class Cohere extends CohereBase implements Structure, Vectorize, Write
     {
         $allowed = $this->allowed( $options, ['input_type', 'embedding_types', 'truncate', 'max_tokens'] );
         $request = [
-            'model' => $this->modelName( 'embed-v4.0' ),
+            'model' => $this->modelName( 'embed-v5.0-pro' ),
             'texts' => array_values( $texts ),
             'input_type' => 'search_document',
             'output_dimension' => $size ?: 1536,

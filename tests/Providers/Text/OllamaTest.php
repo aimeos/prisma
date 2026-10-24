@@ -384,7 +384,7 @@ class OllamaTest extends TestCase
                 'data' => [
                     ['object' => 'embedding', 'index' => 0, 'embedding' => [0.1, 0.2, 0.3]],
                 ],
-                'model' => 'nomic-embed-text',
+                'model' => 'nomic-embed-text-v2-moe',
                 'usage' => ['prompt_tokens' => 5, 'total_tokens' => 5],
             ] )
             ->ensure( 'vectorize' )
@@ -393,7 +393,7 @@ class OllamaTest extends TestCase
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'http://localhost:11434/v1/embeddings', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'nomic-embed-text', $body['model'] );
+            $this->assertEquals( 'nomic-embed-text-v2-moe', $body['model'] );
             $this->assertEquals( ['Hello world'], $body['input'] );
             $this->assertArrayNotHasKey( 'dimensions', $body );
         } );

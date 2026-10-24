@@ -34,7 +34,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
         $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
 
         return $this->completions(
-            'api/v1/chat/completions', 'google/gemini-3.7-flash',
+            'api/v1/chat/completions', '~google/gemini-flash-latest',
             $this->messages( $this->content( $prompt, [$video] ) ),
             $options
         );

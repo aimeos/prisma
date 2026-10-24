@@ -42,7 +42,7 @@ class MurfTest extends TestCase
             $this->assertEquals( 'https://global.api.murf.ai/v1/speech/stream', (string) $request->getUri() );
 
             $body = json_decode( $request->getBody()->getContents(), true );
-            $this->assertEquals( 'falcon-2', $body['model'] );
+            $this->assertEquals( 'FALCON', $body['model'] );
             $this->assertEquals( 'en-US', $body['locale'] );
             $this->assertArrayNotHasKey( 'multiNativeLocale', $body );
             $this->assertArrayNotHasKey( 'modelVersion', $body );
