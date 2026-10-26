@@ -153,7 +153,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **ElevenLabs**        | -       | -     | -       | -        |        | yes     | yes   | -          | yes        |
 | **Google Gemini**     | -       | -     | -       | yes      |        | -       | -     | -          | -          |
 | **Groq**              | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
-| **Hydracept**         | beta    | -     | -       | -        | beta   | -       | beta  | beta       | -          |
+| **Hydracept**         | yes     | -     | -       | -        | yes    | -       | yes   | yes        | -          |
 | **Meta**              | -       | -     | -       | beta     |        | -       | -     | -          | beta       |
 | **Mistral**           | -       | -     | -       | yes      |        | -       | -     | -          | yes        |
 | **Murf**              | -       | -     | -       | -        |        | yes     | yes   | -          | -          |
@@ -174,7 +174,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
-| **Hydracept**         | -          | beta   | -        | -      | -     | beta    | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
+| **Hydracept**         | -          | yes    | -        | -      | -     | yes     | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
 | **Ideogram**          | yes        | -      | yes      | yes    | yes   | yes     | yes     | yes     | -         | -        | yes     | yes    | -      | yes     | -         |
 | **Meta**              | -          |        | -        | -      | -     | beta    | -       | -       | -         | -        | beta    |        | -      | -       | -         |
 | **Mistral**           | -          |        | -        | -      | -     | -       | -       | -       | yes       | -        | -       |        | -      | -       | -         |
@@ -230,7 +230,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
-| **Hydracept**         | beta   | -        | -      | beta    | -       | beta   | -      | -       |
+| **Hydracept**         | yes    | -        | -      | yes     | -       | yes    | -      | -       |
 | **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
 | **Meta**              |        | beta     | -      | -       | -       |        | -      | -       |
 | **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
