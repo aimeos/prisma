@@ -1,11 +1,13 @@
 <?php
 
-namespace Aimeos\Prisma\Concerns;
+namespace Aimeos\Prisma\Providers;
 
+use Aimeos\Prisma\Contracts\Cancel;
+use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 use GuzzleHttp\Psr7\Uri;
@@ -18,16 +20,30 @@ use GuzzleHttp\Psr7\Uri;
  * and cancel URLs are derived from it because they contain the owner and app of the model only,
  * not the full endpoint path the request has been submitted to.
  */
-trait FalApi
+abstract class Fal extends Base implements Cancel, Resume
 {
-    /**
-     * Builds a response file from an output file URL of fal.
-     *
-     * @param string $url File URL returned by fal
-     * @param string|null $mimeType Content type of the file if known
-     * @return File Response file
-     */
-    abstract protected function falFile( string $url, ?string $mimeType ) : File;
+    /** @var class-string<File> File class of the output files */
+    protected const FILE = File::class;
+
+    /** Maximum size of the downloaded output files in bytes */
+    protected const MAX_BYTES = 64 * 1024 * 1024;
+
+    /** @var array<int, string> */
+    private array $downloadHosts;
+
+
+    public function __construct( array $config )
+    {
+        if( !isset( $config['api_key'] ) ) {
+            throw new PrismaException( 'No API key' );
+        }
+
+        $hosts = $config['download_hosts'] ?? ['fal.media'];
+        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
+
+        $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
+        $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
+    }
 
 
     /**
@@ -39,7 +55,7 @@ trait FalApi
      */
     public function cancel( string $jobId ) : void
     {
-        $uri = $this->falUrl( $jobId );
+        $uri = $this->requestUrl( $jobId );
         $response = $this->client()->put( $uri->withPath( $uri->getPath() . '/cancel' ), ['allow_redirects' => false] );
 
         $this->validate( $response );
@@ -55,7 +71,26 @@ trait FalApi
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->falPoll( $this->falUrl( $jobId ) ), 3, jobId: $jobId );
+        return FileResponse::fromAsync( $this->poll( $this->requestUrl( $jobId ) ), 3, jobId: $jobId );
+    }
+
+
+    /**
+     * Builds a lazy file whose eventual download stays on the fal CDN.
+     *
+     * @param string $url File URL returned by fal
+     * @param string|null $mimeType Content type of the file if known
+     * @return File Response file
+     */
+    protected function file( string $url, ?string $mimeType ) : File
+    {
+        $class = static::FILE;
+
+        $file = $class::fromUrl( $url, $mimeType );
+        $file->restrictHosts( $this->downloadHosts );
+        $file->maxSize( static::MAX_BYTES );
+
+        return $file;
     }
 
 
@@ -69,18 +104,18 @@ trait FalApi
      * @param FileResponse $result File response to add the files to
      * @return array<int, string> Output names of the added files
      */
-    protected function falFiles( array $data, FileResponse $result ) : array
+    protected function files( array $data, FileResponse $result ) : array
     {
         $keys = [];
 
         foreach( $data as $key => $value )
         {
-            if( $this->falObject( $value ) ) {
-                $result->add( $this->falFile( $value['url'], $this->falType( $value ) ), $key );
+            if( $this->isFile( $value ) ) {
+                $result->add( $this->file( $value['url'], $this->mimeType( $value ) ), $key );
                 $keys[] = $key;
-            } elseif( $this->falList( $value ) ) {
+            } elseif( $this->isFileList( $value ) ) {
                 foreach( $value as $item ) {
-                    $result->add( $this->falFile( $item['url'], $this->falType( $item ) ) );
+                    $result->add( $this->file( $item['url'], $this->mimeType( $item ) ) );
                 }
                 $keys[] = $key;
             }
@@ -91,16 +126,29 @@ trait FalApi
 
 
     /**
+     * Tests if the value is a fal file object.
+     *
+     * @param mixed $value Output value
+     * @return bool TRUE if the value is an array with a non-empty URL
+     * @phpstan-assert-if-true array{url: non-empty-string} $value
+     */
+    protected function isFile( mixed $value ) : bool
+    {
+        return is_array( $value ) && is_string( $value['url'] ?? null ) && $value['url'] !== '';
+    }
+
+
+    /**
      * Tests if the value is a non-empty list of fal file objects.
      *
      * @param mixed $value Output value
      * @return bool TRUE if all list items are file objects
      * @phpstan-assert-if-true non-empty-list<array{url: non-empty-string}> $value
      */
-    protected function falList( mixed $value ) : bool
+    protected function isFileList( mixed $value ) : bool
     {
         return is_array( $value ) && $value !== [] && array_is_list( $value )
-            && array_filter( $value, $this->falObject(...) ) === $value;
+            && array_filter( $value, $this->isFile(...) ) === $value;
     }
 
 
@@ -110,7 +158,7 @@ trait FalApi
      * @param File $file Input file
      * @return string URL or data URI
      */
-    protected function falMedia( File $file ) : string
+    protected function media( File $file ) : string
     {
         return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
             . ';base64,' . $file->base64();
@@ -118,15 +166,14 @@ trait FalApi
 
 
     /**
-     * Tests if the value is a fal file object.
+     * Returns the content type of a fal file object.
      *
-     * @param mixed $value Output value
-     * @return bool TRUE if the value is an array with a non-empty URL
-     * @phpstan-assert-if-true array{url: non-empty-string} $value
+     * @param array<string, mixed> $value File object
+     * @return string|null Content type or NULL if unknown
      */
-    protected function falObject( mixed $value ) : bool
+    protected function mimeType( array $value ) : ?string
     {
-        return is_array( $value ) && is_string( $value['url'] ?? null ) && $value['url'] !== '';
+        return is_string( $value['content_type'] ?? null ) && $value['content_type'] !== '' ? $value['content_type'] : null;
     }
 
 
@@ -136,7 +183,7 @@ trait FalApi
      * @param Uri $uri Validated response URL of the request
      * @return \Closure Polling closure that populates the file response
      */
-    protected function falPoll( Uri $uri ) : \Closure
+    protected function poll( Uri $uri ) : \Closure
     {
         return function( FileResponse $result ) use ( $uri ) : bool {
             $response = $this->client()->get( $uri->withPath( $uri->getPath() . '/status' ), ['allow_redirects' => false] );
@@ -157,7 +204,7 @@ trait FalApi
             $this->validate( $response );
 
             $data = $this->fromJson( $response );
-            $files = $this->falFiles( $data, $result );
+            $files = $this->files( $data, $result );
             $result->withMeta( array_diff_key( $data, array_flip( $files ) ) );
 
             if( $result->empty() ) {
@@ -176,7 +223,7 @@ trait FalApi
      * @param array<string, mixed> $input Model input
      * @return FileResponse Asynchronous file response
      */
-    protected function falQueue( string $endpoint, array $input ) : FileResponse
+    protected function queue( string $endpoint, array $input ) : FileResponse
     {
         $response = $this->client()->post( $endpoint, ['json' => $input] );
         $this->validate( $response );
@@ -193,6 +240,20 @@ trait FalApi
 
 
     /**
+     * Validates a response URL of the fal queue API.
+     *
+     * @param string $url Response URL returned by fal or passed as job ID
+     * @return Uri Validated response URL
+     * @throws BadRequestException If the URL isn't a request URL of the fal queue API
+     */
+    protected function requestUrl( string $url ) : Uri
+    {
+        // fal returns response URLs of its queue host even if the requests are sent through a gateway
+        return $this->jobUrl( $url, '#/requests/[\w-]+$#D', '#^queue\.fal\.run$#D', 'Invalid fal response URL' );
+    }
+
+
+    /**
      * Asks an LLM about the media files using a synchronous OpenRouter endpoint of fal.
      *
      * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/vision"
@@ -201,9 +262,9 @@ trait FalApi
      * @param array<string, mixed> $options Provider specific options
      * @return TextResponse Response text
      */
-    protected function falRouter( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
+    protected function router( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
     {
-        $data = $this->falRun( $endpoint, array_replace( $options, $input, [
+        $data = $this->run( $endpoint, array_replace( $options, $input, [
             'model' => $this->modelName( 'google/gemini-3.8-flash' ),
             'prompt' => $prompt,
         ] ) );
@@ -230,7 +291,7 @@ trait FalApi
      * @param array<string, mixed> $input Model input
      * @return array<string, mixed> Result data of the model endpoint
      */
-    protected function falRun( string $endpoint, array $input ) : array
+    protected function run( string $endpoint, array $input ) : array
     {
         $response = $this->client()->post( 'https://fal.run/' . $endpoint, ['json' => $input] );
         $this->validate( $response );
@@ -240,27 +301,19 @@ trait FalApi
 
 
     /**
-     * Returns the content type of a fal file object.
+     * Summarizes the media file in a few words using a synchronous OpenRouter endpoint of fal.
      *
-     * @param array<string, mixed> $value File object
-     * @return string|null Content type or NULL if unknown
+     * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/audio"
+     * @param string|null $lang ISO language code the summary should be generated in
+     * @param array<string, mixed> $input Media fields of the endpoint
+     * @param array<string, mixed> $options Provider specific options
+     * @return TextResponse Response text
      */
-    protected function falType( array $value ) : ?string
+    protected function summarize( string $endpoint, ?string $lang, array $input, array $options ) : TextResponse
     {
-        return is_string( $value['content_type'] ?? null ) && $value['content_type'] !== '' ? $value['content_type'] : null;
-    }
+        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+            . ( $lang ?? 'en' ) . '".';
 
-
-    /**
-     * Validates a response URL of the fal queue API.
-     *
-     * @param string $url Response URL returned by fal or passed as job ID
-     * @return Uri Validated response URL
-     * @throws BadRequestException If the URL isn't a request URL of the fal queue API
-     */
-    protected function falUrl( string $url ) : Uri
-    {
-        // fal returns response URLs of its queue host even if the requests are sent through a gateway
-        return $this->jobUrl( $url, '#/requests/[\w-]+$#D', '#^queue\.fal\.run$#D', 'Invalid fal response URL' );
+        return $this->router( $endpoint, $prompt, $input, $options );
     }
 }

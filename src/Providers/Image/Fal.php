@@ -2,8 +2,6 @@
 
 namespace Aimeos\Prisma\Providers\Image;
 
-use Aimeos\Prisma\Concerns\FalApi;
-use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Image\Background;
 use Aimeos\Prisma\Contracts\Image\Describe;
 use Aimeos\Prisma\Contracts\Image\Detext;
@@ -16,11 +14,9 @@ use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
-use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\BadRequestException;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
@@ -35,35 +31,16 @@ use Aimeos\Prisma\Responses\TextResponse;
  * selects the LLM, e.g. "anthropic/claude-sonnet-5".
  */
 class Fal extends Base
-    implements Background, Cancel, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Recognize, Relocate, Repaint, Resume, Uncrop, Upscale
+    implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Recognize, Relocate, Repaint, Uncrop, Upscale
 {
-    use FalApi;
-
-
-    private const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
-
-    /** @var array<int, string> */
-    private array $downloadHosts;
-
-
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $hosts = $config['download_hosts'] ?? ['fal.media'];
-        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
-
-        $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
-        $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
-    }
+    protected const FILE = Image::class;
+    protected const MAX_BYTES = 25 * 1024 * 1024;
 
 
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
             'prompt' => $prompt,
         ] ) );
     }
@@ -71,26 +48,23 @@ class Fal extends Base
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
-
-        return $this->falRouter( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->falMedia( $image )]], $options );
+        return $this->summarize( 'openrouter/router/vision', $lang, ['image_urls' => [$this->media( $image )]], $options );
     }
 
 
     public function detext( Image $image, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/image-editing/text-removal' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/image-editing/text-removal' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
         ] ) );
     }
 
 
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/eraser' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
-            'mask_url' => $this->falMedia( $mask ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/bria/eraser' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
+            'mask_url' => $this->media( $mask ),
         ] ) );
     }
 
@@ -98,21 +72,21 @@ class Fal extends Base
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         if( empty( $images ) ) {
-            return $this->falQueue( (string) $this->modelName( 'fal-ai/flux-2' ), array_replace( $options, ['prompt' => $prompt] ) );
+            return $this->queue( (string) $this->modelName( 'fal-ai/flux-2' ), array_replace( $options, ['prompt' => $prompt] ) );
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/flux-2/edit' ), array_replace( $options, [
+        return $this->queue( (string) $this->modelName( 'fal-ai/flux-2/edit' ), array_replace( $options, [
             'prompt' => $prompt,
-            'image_urls' => array_values( array_map( $this->falMedia(...), $images ) ),
+            'image_urls' => array_values( array_map( $this->media(...), $images ) ),
         ] ) );
     }
 
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/flux-pro/v1/fill' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
-            'mask_url' => $this->falMedia( $mask ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/flux-pro/v1/fill' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
+            'mask_url' => $this->media( $mask ),
             'prompt' => $prompt,
         ] ) );
     }
@@ -120,8 +94,8 @@ class Fal extends Base
 
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/birefnet/v2' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/birefnet/v2' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
         ] ) );
     }
 
@@ -130,23 +104,23 @@ class Fal extends Base
     {
         $prompt = 'Extract all visible text from the image. Return only the text in reading order.';
 
-        return $this->falRouter( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->falMedia( $image )]], $options );
+        return $this->router( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->media( $image )]], $options );
     }
 
 
     public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
-            'ref_image_url' => $this->falMedia( $bgimage ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
+            'ref_image_url' => $this->media( $bgimage ),
         ] ) );
     }
 
 
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/flux-pro/kontext' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/flux-pro/kontext' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
             'prompt' => $prompt,
         ] ) );
     }
@@ -160,8 +134,8 @@ class Fal extends Base
 
         [$width, $height] = $size;
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/expand' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/bria/expand' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
             'canvas_size' => [$width + $left + $right, $height + $top + $bottom],
             'original_image_size' => [$width, $height],
             'original_image_location' => [$left, $top],
@@ -171,27 +145,11 @@ class Fal extends Base
 
     public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/seedvr/upscale/image' ), array_replace( $options, [
-            'image_url' => $this->falMedia( $image ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/seedvr/upscale/image' ), array_replace( $options, [
+            'image_url' => $this->media( $image ),
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
         ] ) );
     }
 
-
-    /**
-     * Builds a lazy image whose eventual download stays on the fal CDN.
-     *
-     * @param string $url Image URL returned by fal
-     * @param string|null $mimeType Content type of the image if known
-     * @return Image Image file
-     */
-    protected function falFile( string $url, ?string $mimeType ) : Image
-    {
-        $image = Image::fromUrl( $url, $mimeType );
-        $image->restrictHosts( $this->downloadHosts );
-        $image->maxSize( self::MAX_DOWNLOAD_BYTES );
-
-        return $image;
-    }
 }

@@ -2,7 +2,6 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
-use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Contracts\Audio\Compose;
 use Aimeos\Prisma\Contracts\Audio\Demix;
 use Aimeos\Prisma\Contracts\Audio\Denoise;
@@ -11,11 +10,9 @@ use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Synthesize;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
-use Aimeos\Prisma\Contracts\Cancel;
-use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
 
@@ -30,29 +27,10 @@ use Aimeos\Prisma\Responses\TextResponse;
  * audio endpoint of fal and model() selects the LLM, e.g. "google/gemini-3.1-pro-preview".
  */
 class Fal extends Base
-    implements Cancel, Compose, Demix, Denoise, Describe, Resume, Revoice, Speak, Synthesize, Transcribe
+    implements Compose, Demix, Denoise, Describe, Revoice, Speak, Synthesize, Transcribe
 {
-    use FalApi;
-
-
-    private const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
-
-    /** @var array<int, string> */
-    private array $downloadHosts;
-
-
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $hosts = $config['download_hosts'] ?? ['fal.media'];
-        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
-
-        $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
-        $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
-    }
+    protected const FILE = Audio::class;
+    protected const MAX_BYTES = 100 * 1024 * 1024;
 
 
     public function compose( string $prompt, array $options = [] ) : FileResponse
@@ -63,7 +41,7 @@ class Fal extends Base
             $input['music_length_ms'] = (int) round( $options['duration'] * 1000 );
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/music' ), array_replace( $options, $input ) );
+        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/music' ), array_replace( $options, $input ) );
     }
 
 
@@ -76,33 +54,30 @@ class Fal extends Base
             default => ['model' => 'htdemucs_6s', 'stems' => ['vocals', 'drums', 'bass', 'guitar', 'piano', 'other']],
         };
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/demucs' ), array_replace( $defaults, $options, [
-            'audio_url' => $this->falMedia( $audio ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/demucs' ), array_replace( $defaults, $options, [
+            'audio_url' => $this->media( $audio ),
         ] ) );
     }
 
 
     public function denoise( Audio $audio, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/deepfilternet3' ), array_replace( $options, [
-            'audio_url' => $this->falMedia( $audio ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/deepfilternet3' ), array_replace( $options, [
+            'audio_url' => $this->media( $audio ),
         ] ) );
     }
 
 
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
-
-        return $this->falRouter( 'openrouter/router/audio', $prompt, ['audio_url' => $this->falMedia( $audio )], $options );
+        return $this->summarize( 'openrouter/router/audio', $lang, ['audio_url' => $this->media( $audio )], $options );
     }
 
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/voice-changer' ), array_replace( $options, [
-            'audio_url' => $this->falMedia( $audio ),
+        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/voice-changer' ), array_replace( $options, [
+            'audio_url' => $this->media( $audio ),
             'voice' => $voice,
         ] ) );
     }
@@ -116,7 +91,7 @@ class Fal extends Base
             $input['voice'] = $voice;
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/tts/eleven-v3' ), array_replace( $options, $input ) );
+        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/tts/eleven-v3' ), array_replace( $options, $input ) );
     }
 
 
@@ -128,19 +103,19 @@ class Fal extends Base
             $input['duration_seconds'] = (float) $options['duration'];
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/sound-effects/v2' ), array_replace( $options, $input ) );
+        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/sound-effects/v2' ), array_replace( $options, $input ) );
     }
 
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $input = ['audio_url' => $this->falMedia( $audio )];
+        $input = ['audio_url' => $this->media( $audio )];
 
         if( $lang ) {
             $input['language_code'] = $lang;
         }
 
-        $data = $this->falRun( (string) $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
+        $data = $this->run( (string) $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
 
         if( !is_string( $data['text'] ?? null ) ) {
             throw new PrismaException( 'No text found in fal response' );
@@ -154,20 +129,4 @@ class Fal extends Base
             ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
     }
 
-
-    /**
-     * Builds a lazy audio file whose eventual download stays on the fal CDN.
-     *
-     * @param string $url Audio URL returned by fal
-     * @param string|null $mimeType Content type of the audio if known
-     * @return Audio Audio file
-     */
-    protected function falFile( string $url, ?string $mimeType ) : Audio
-    {
-        $audio = Audio::fromUrl( $url, $mimeType );
-        $audio->restrictHosts( $this->downloadHosts );
-        $audio->maxSize( self::MAX_DOWNLOAD_BYTES );
-
-        return $audio;
-    }
 }
