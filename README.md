@@ -204,6 +204,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Bedrock**           | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Deepseek**          | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
+| **fal**               | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
 | **DeepL**             |       |        |            | yes       |           |       |           |              |                |               |                 |
 | **Google Gemini**     | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |       |        |            | yes       |           |       |           |              |                |               |                 |
@@ -967,7 +968,7 @@ $provider->withToolChoice( Provider::REQUIRED );
 ```
 
 The choice applies to the first tool-loop step. Supported choices vary: Deepseek,
-Meta, Openrouter, Requesty and Z.AI only send `AUTO`; Groq and xAI omit `NONE`.
+fal, Meta, Openrouter, Requesty and Z.AI only send `AUTO`; Groq and xAI omit `NONE`.
 
 **Limiting tool calls:**
 
@@ -2229,6 +2230,7 @@ Iterating `$response->stream()` yields:
 * [Anthropic](https://docs.anthropic.com/en/api/messages-streaming)
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-chat-completion)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
+* [fal](https://fal.ai/models/openrouter/router/openai/v1/chat/completions/api)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/guide/utilize-the-streaming-output-feature-of-kimi-api)
@@ -2356,6 +2358,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
+* [fal](https://fal.ai/models/openrouter/router/openai/v1/chat/completions/api)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/structured-output)
 * [Groq](https://console.groq.com/docs/api-reference#chat-create)
 * [Kimi](https://platform.kimi.ai/docs/guide/kimi-k3-quickstart#structured-output)
@@ -2487,6 +2490,7 @@ public function vectorize( array $texts, ?int $size = null, array $options = [] 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/latest#create-embedding)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html)
 * [Cohere](https://docs.cohere.com/reference/embed)
+* [fal](https://fal.ai/models/openrouter/router/openai/v1/embeddings/api)
 * [Google Gemini](https://ai.google.dev/api/embeddings)
 * [Mistral](https://docs.mistral.ai/api/#tag/embeddings)
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
@@ -2530,6 +2534,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-call.html)
 * [Cohere](https://docs.cohere.com/reference/chat)
 * [Deepseek](https://api-docs.deepseek.com/api/create-chat-completion)
+* [fal](https://fal.ai/models/openrouter/router/openai/v1/chat/completions/api)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/text-generation)
 * [Groq](https://console.groq.com/docs/text-chat)
 * [Kimi](https://platform.kimi.ai/docs/api/chat)
@@ -2556,6 +2561,8 @@ $textResponse = Prisma::text()
 
 $texts = $textResponse->texts(); // ['Renewable energy offers...']
 ```
+
+*Note: fal provides the models of OpenRouter by an OpenAI compatible API, so `model()` expects OpenRouter model IDs like `anthropic/claude-sonnet-5`. The default models are `openai/gpt-6-luna` and `openai/text-embedding-3-small` for `vectorize()`. Provider tools of OpenRouter like `web_search` aren't sent to fal.*
 
 ## Video API
 
