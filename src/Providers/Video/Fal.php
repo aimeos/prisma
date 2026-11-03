@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
 use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Resume;
+use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
@@ -16,6 +17,7 @@ use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 /**
@@ -24,9 +26,11 @@ use Aimeos\Prisma\Responses\FileResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/veo3.1". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
+ * Only describe() uses the OpenRouter video endpoint of fal synchronously and model() selects the LLM,
+ * e.g. "google/gemini-2.5-pro".
  */
 class Fal extends Base
-    implements Cancel, Extend, Imagine, Repaint, Resume, Uncrop, Upscale
+    implements Cancel, Describe, Extend, Imagine, Repaint, Resume, Uncrop, Upscale
 {
     use FalApi, GeneratesVideo;
 
@@ -46,6 +50,15 @@ class Fal extends Base
 
         $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
+    }
+
+
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+            . ( $lang ?? 'en' ) . '".';
+
+        return $this->falRouter( 'openrouter/router/video', $prompt, ['video_urls' => [$this->falMedia( $video )]], $options );
     }
 
 

@@ -6,15 +6,18 @@ use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Contracts\Audio\Compose;
 use Aimeos\Prisma\Contracts\Audio\Demix;
 use Aimeos\Prisma\Contracts\Audio\Denoise;
+use Aimeos\Prisma\Contracts\Audio\Describe;
 use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Synthesize;
+use Aimeos\Prisma\Contracts\Audio\Transcribe;
 use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Resume;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 /**
@@ -23,9 +26,11 @@ use Aimeos\Prisma\Responses\FileResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/minimax-music/v2". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
+ * describe() and transcribe() are sent synchronously and can't be resumed, describe() uses the OpenRouter
+ * audio endpoint of fal and model() selects the LLM, e.g. "google/gemini-3.1-pro-preview".
  */
 class Fal extends Base
-    implements Cancel, Compose, Demix, Denoise, Resume, Revoice, Speak, Synthesize
+    implements Cancel, Compose, Demix, Denoise, Describe, Resume, Revoice, Speak, Synthesize, Transcribe
 {
     use FalApi;
 
@@ -85,6 +90,15 @@ class Fal extends Base
     }
 
 
+    public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+            . ( $lang ?? 'en' ) . '".';
+
+        return $this->falRouter( 'openrouter/router/audio', $prompt, ['audio_url' => $this->falMedia( $audio )], $options );
+    }
+
+
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
         return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/voice-changer' ), array_replace( $options, [
@@ -115,6 +129,29 @@ class Fal extends Base
         }
 
         return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/sound-effects/v2' ), array_replace( $options, $input ) );
+    }
+
+
+    public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $input = ['audio_url' => $this->falMedia( $audio )];
+
+        if( $lang ) {
+            $input['language_code'] = $lang;
+        }
+
+        $data = $this->falRun( (string) $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
+
+        if( !is_string( $data['text'] ?? null ) ) {
+            throw new PrismaException( 'No text found in fal response' );
+        }
+
+        // Whisper based models return "chunks" instead of "words"
+        $parts = $data['words'] ?? $data['chunks'] ?? [];
+
+        return TextResponse::fromText( $data['text'] )
+            ->withStructured( is_array( $parts ) ? $parts : [] )
+            ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
     }
 
 

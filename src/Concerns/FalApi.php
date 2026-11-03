@@ -5,7 +5,9 @@ namespace Aimeos\Prisma\Concerns;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 use GuzzleHttp\Psr7\Uri;
 
 
@@ -187,6 +189,53 @@ trait FalApi
         }
 
         return $this->resume( $url );
+    }
+
+
+    /**
+     * Asks an LLM about the media files using a synchronous OpenRouter endpoint of fal.
+     *
+     * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/vision"
+     * @param string $prompt Instructions for the LLM
+     * @param array<string, mixed> $input Media fields of the endpoint
+     * @param array<string, mixed> $options Provider specific options
+     * @return TextResponse Response text
+     */
+    protected function falRouter( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
+    {
+        $data = $this->falRun( $endpoint, array_replace( $options, $input, [
+            'model' => $this->modelName( 'google/gemini-3.8-flash' ),
+            'prompt' => $prompt,
+        ] ) );
+
+        if( !is_string( $data['output'] ?? null ) ) {
+            throw new PrismaException( 'No text found in fal response' );
+        }
+
+        $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
+        $used = $usage['total_tokens'] ?? null;
+
+        return TextResponse::fromText( $data['output'] )
+            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+            ->withMeta( array_diff_key( $data, ['output' => 1, 'usage' => 1] ) );
+    }
+
+
+    /**
+     * Sends a synchronous request to a model endpoint and returns its result.
+     *
+     * Used for text results only because resume() can continue file responses only.
+     *
+     * @param string $endpoint Model endpoint ID, e.g. "fal-ai/elevenlabs/speech-to-text/scribe-v2"
+     * @param array<string, mixed> $input Model input
+     * @return array<string, mixed> Result data of the model endpoint
+     */
+    protected function falRun( string $endpoint, array $input ) : array
+    {
+        $response = $this->client()->post( 'https://fal.run/' . $endpoint, ['json' => $input] );
+        $this->validate( $response );
+
+        return $this->fromJson( $response );
     }
 
 

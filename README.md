@@ -153,7 +153,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Azure**             | -       | -     | -       | -        |        | -       | beta  | -          | beta       |
 | **Deepgram**          | -       | -     | -       | -        |        | -       | yes   | -          | yes        |
 | **ElevenLabs**        | -       | -     | -       | -        |        | yes     | yes   | -          | yes        |
-| **fal**               | beta    | beta  | beta    | -        | beta   | beta    | beta  | beta       | -          |
+| **fal**               | beta    | beta  | beta    | beta     | beta   | beta    | beta  | beta       | beta       |
 | **Google Gemini**     | -       | -     | -       | yes      |        | -       | -     | -          | -          |
 | **Groq**              | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
 | **Hydracept**         | yes     | -     | -       | -        | yes    | -       | yes   | yes        | -          |
@@ -204,7 +204,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Bedrock**           | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
 | **Cohere**            | -     |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | -               |
 | **Deepseek**          | yes   |        | yes        |           | -         | yes   | -         | yes          |                | yes           | yes             |
-| **fal**               | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
+| **fal**               | beta  |        | beta       | beta      | beta      | beta  | -         | yes          |                | yes           | yes             |
 | **DeepL**             |       |        |            | yes       |           |       |           |              |                |               |                 |
 | **Google Gemini**     | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Google**            |       |        |            | yes       |           |       |           |              |                |               |                 |
@@ -232,7 +232,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Alibaba**           | beta   | yes      | beta   | beta    | beta    | beta   | beta   | -       |
 | **Bedrock Nova**      | -      | beta     | -      | beta    | -       | beta   | -      | -       |
 | **BytePlus**          | beta   | beta     | beta   | beta    | beta    | beta   | -      | -       |
-| **fal**               | beta   | -        | beta   | beta    | beta    | beta   | beta   | beta    |
+| **fal**               | beta   | beta     | beta   | beta    | beta    | beta   | beta   | beta    |
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
@@ -1269,6 +1269,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 **Supported options:**
 
+* [fal](https://fal.ai/models/openrouter/router/audio/api) (any OpenRouter audio model via `model()`)
 * Google Gemini
 * Groq
 * Meta
@@ -1290,7 +1291,7 @@ public function resume( string $jobId ) : FileResponse|TextResponse
 **Supported providers:**
 
 * AudioPod: Only for `demix()`, `denoise()`, `revoice()`, `speak()` and `transcribe()`; the job ID is the status path
-* fal: The job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
+* fal: Not for `describe()` and `transcribe()`, which are synchronous; the job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
 * Hydracept: Only for `compose()`, `speak()` and `synthesize()`; the job ID is the Hydracept job ID
 
 **Example:**
@@ -1419,6 +1420,7 @@ public function transcribe( Audio $audio, ?string $lang = null, array $options =
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/fast-transcription-create)
 * Deepgram
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-text/convert)
+* [fal](https://fal.ai/models/fal-ai/elevenlabs/speech-to-text/scribe-v2/api) (any fal endpoint via `model()`)
 * Groq
 * [Meta Muse Voice Transcribe](https://dev.meta.ai/docs/api-reference/voice/transcribe)
 * [Mistral](https://docs.mistral.ai/api/endpoint/audio/transcriptions)
@@ -2452,6 +2454,7 @@ public function translate( array $texts, string $to, ?string $from = null, ?stri
 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/reference/v3/translate)
 * [DeepL](https://developers.deepl.com/docs/api-reference/translate/openapi-spec-for-text-translation)
+* [fal](https://fal.ai/models/openrouter/router/openai/v1/chat/completions/api)
 * [Google](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate#authorization)
 
 **Example:**
@@ -2478,6 +2481,9 @@ Prisma::text()
         'translate_url' => 'https://myres.cognitiveservices.azure.com/translator/text/v3.0',
     ] );
 ```
+
+fal translates the texts with the LLM selected by `model()` using structured output and
+accepts the same options as `structure()`, e.g. `temperature` or `mode`.
 
 ### vectorize
 
@@ -2753,6 +2759,7 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Alibaba Qwen](https://www.alibabacloud.com/help/en/model-studio/vision-model)
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
+* [fal](https://fal.ai/models/openrouter/router/video/api) (any OpenRouter video model via `model()`)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
 * [Meta Muse Spark](https://dev.meta.ai/docs/video-understanding)
 * Openrouter

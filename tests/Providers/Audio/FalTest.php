@@ -4,6 +4,7 @@ namespace Tests\Providers\Audio;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
@@ -110,6 +111,27 @@ class FalTest extends TestCase
     }
 
 
+    public function testDescribe() : void
+    {
+        $this->prisma( 'audio', 'fal', ['api_key' => 'test'] )
+            ->response( ['output' => 'Ein Hund bellt', 'usage' => ['total_tokens' => 12]] );
+
+        $response = $this->provider()->ensure( 'describe' )
+            ->describe( Audio::fromUrl( 'https://example.com/a.mp3' ), 'de', ['max_tokens' => 50] );
+
+        $this->assertSame( 'Ein Hund bellt', $response->text() );
+        $this->assertSame( 12.0, $response->usage()['used'] );
+
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+        $this->assertSame( 'https://fal.run/openrouter/router/audio', (string) $request->getUri() );
+        $this->assertSame( 'google/gemini-3.8-flash', $body['model'] );
+        $this->assertSame( 'https://example.com/a.mp3', $body['audio_url'] );
+        $this->assertSame( 50, $body['max_tokens'] );
+        $this->assertStringContainsString( '"de"', $body['prompt'] );
+    }
+
+
     #[TestWith( [1, 'htdemucs', ['vocals']] )]
     #[TestWith( [2, 'htdemucs', ['vocals', 'drums', 'bass', 'other']] )]
     #[TestWith( [6, 'htdemucs_6s', ['vocals', 'drums', 'bass', 'guitar', 'piano', 'other']] )]
@@ -164,6 +186,57 @@ class FalTest extends TestCase
         $this->provider()->model( 'fal-ai/minimax-music/v2' )->compose( 'Jazz', ['lyrics_prompt' => '[Instrumental]'] );
 
         $this->assertSame( 'https://queue.fal.run/fal-ai/minimax-music/v2', (string) $this->requests()[0]->getUri() );
+    }
+
+
+    public function testTranscribe() : void
+    {
+        $words = [['text' => 'Hallo', 'type' => 'word', 'start' => 0.1, 'end' => 0.5, 'speaker_id' => 'speaker_0']];
+
+        $this->prisma( 'audio', 'fal', ['api_key' => 'test'] )
+            ->response( ['text' => 'Hallo', 'words' => $words, 'language_code' => 'deu', 'language_probability' => 0.98] );
+
+        $response = $this->provider()->ensure( 'transcribe' )
+            ->transcribe( Audio::fromBinary( 'a', 'audio/mpeg' ), 'de', ['diarize' => false] );
+
+        $this->assertSame( 'Hallo', $response->text() );
+        $this->assertSame( $words, $response->structured() );
+        $this->assertSame( 'deu', $response->meta()['language_code'] );
+        $this->assertFalse( isset( $response->meta()['words'] ) );
+
+        $request = $this->requests()[0];
+        $this->assertSame( 'https://fal.run/fal-ai/elevenlabs/speech-to-text/scribe-v2', (string) $request->getUri() );
+        $this->assertSame( [
+            'diarize' => false,
+            'audio_url' => 'data:audio/mpeg;base64,' . base64_encode( 'a' ),
+            'language_code' => 'de',
+        ], json_decode( (string) $request->getBody(), true ) );
+    }
+
+
+    public function testTranscribeWhisper() : void
+    {
+        $chunks = [['timestamp' => [0.5, 1.2], 'text' => 'Hello']];
+
+        $this->prisma( 'audio', 'fal', ['api_key' => 'test'] )
+            ->response( ['text' => 'Hello', 'chunks' => $chunks, 'languages' => ['en']] );
+
+        $response = $this->provider()->model( 'fal-ai/wizper' )
+            ->transcribe( Audio::fromUrl( 'https://example.com/a.mp3' ) );
+
+        $this->assertSame( $chunks, $response->structured() );
+        $this->assertSame( 'https://fal.run/fal-ai/wizper', (string) $this->requests()[0]->getUri() );
+        $this->assertSame( ['audio_url' => 'https://example.com/a.mp3'], json_decode( (string) $this->requests()[0]->getBody(), true ) );
+    }
+
+
+    public function testTranscribeNoText() : void
+    {
+        $this->prisma( 'audio', 'fal', ['api_key' => 'test'] )
+            ->response( ['detail' => 'x'] );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->transcribe( Audio::fromUrl( 'https://example.com/a.mp3' ) );
     }
 
 

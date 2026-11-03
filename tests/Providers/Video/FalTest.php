@@ -159,6 +159,25 @@ class FalTest extends TestCase
     }
 
 
+    public function testDescribe() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['output' => 'A flower opens', 'usage' => ['total_tokens' => 30]] );
+
+        $response = $this->provider()->ensure( 'describe' )->model( 'google/gemini-2.5-pro' )
+            ->describe( Video::fromUrl( 'https://example.com/v.mp4' ) );
+
+        $this->assertSame( 'A flower opens', $response->text() );
+
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+        $this->assertSame( 'https://fal.run/openrouter/router/video', (string) $request->getUri() );
+        $this->assertSame( 'google/gemini-2.5-pro', $body['model'] );
+        $this->assertSame( ['https://example.com/v.mp4'], $body['video_urls'] );
+        $this->assertStringContainsString( '"en"', $body['prompt'] );
+    }
+
+
     public function testExtend() : void
     {
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )

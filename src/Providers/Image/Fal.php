@@ -74,7 +74,7 @@ class Fal extends Base
         $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
             . ( $lang ?? 'en' ) . '".';
 
-        return $this->vision( $image, $prompt, $options );
+        return $this->falRouter( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->falMedia( $image )]], $options );
     }
 
 
@@ -128,7 +128,9 @@ class Fal extends Base
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
-        return $this->vision( $image, 'Extract all visible text from the image. Return only the text in reading order.', $options );
+        $prompt = 'Extract all visible text from the image. Return only the text in reading order.';
+
+        return $this->falRouter( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->falMedia( $image )]], $options );
     }
 
 
@@ -191,37 +193,5 @@ class Fal extends Base
         $image->maxSize( self::MAX_DOWNLOAD_BYTES );
 
         return $image;
-    }
-
-
-    /**
-     * Asks a vision LLM about the image using the synchronous OpenRouter endpoint of fal.
-     *
-     * @param Image $image Input image
-     * @param string $prompt Instructions for the LLM
-     * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Response text
-     */
-    protected function vision( Image $image, string $prompt, array $options ) : TextResponse
-    {
-        $response = $this->client()->post( 'https://fal.run/openrouter/router/vision', ['json' => array_replace( $options, [
-            'model' => $this->modelName( 'google/gemini-3.8-flash' ),
-            'prompt' => $prompt,
-            'image_urls' => [$this->falMedia( $image )],
-        ] )] );
-
-        $this->validate( $response );
-
-        $data = $this->fromJson( $response );
-        $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
-        $used = $usage['total_tokens'] ?? null;
-
-        if( !is_string( $data['output'] ?? null ) ) {
-            throw new PrismaException( 'No text found in fal response' );
-        }
-
-        return TextResponse::fromText( $data['output'] )
-            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
-            ->withMeta( array_diff_key( $data, ['output' => 1, 'usage' => 1] ) );
     }
 }

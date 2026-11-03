@@ -67,6 +67,45 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslate() : void
+    {
+        $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( [
+                'id' => 'gen-1',
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"texts":["Hallo","Welt"]}']]],
+                'usage' => ['total_tokens' => 9],
+            ] )
+            ->ensure( 'translate' )
+            ->translate( ['a' => 'Hello', 'b' => 'World'], 'de', 'en', 'Greeting', ['temperature' => 0.1, 'top_k' => 5] );
+
+        $this->assertSame( ['Hallo', 'Welt'], $response->texts() );
+        $this->assertSame( 9.0, $response->usage()['used'] );
+        $this->assertSame( 'gen-1', $response->meta()['id'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $prompt = $body['messages'][0]['content'][0]['text'] ?? $body['messages'][0]['content'];
+            $this->assertSame( 'https://fal.run/openrouter/router/openai/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+            $this->assertSame( 0.1, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'top_k', $body );
+            $this->assertStringContainsString( 'from the language of ISO code "en" into the language of ISO code "de"', $prompt );
+            $this->assertStringContainsString( 'Context of the texts: Greeting', $prompt );
+            $this->assertStringContainsString( '["Hello","World"]', $prompt );
+        } );
+    }
+
+
+    public function testTranslateCountMismatch() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"texts":["Hallo"]}']]]] );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->translate( ['Hello', 'World'], 'de' );
+    }
+
+
     public function testVectorize() : void
     {
         $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
