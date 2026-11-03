@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
+use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -46,6 +47,18 @@ class FalTest extends TestCase
     }
 
 
+    #[DataProvider('videoOperations')]
+    public function testVideoOperation( string $method, array $arguments ) : void
+    {
+        $response = Prisma::video()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( $method )->$method( ...$arguments );
+
+        $this->assertNotEmpty( $response->binary() );
+
+        file_put_contents( __DIR__ . '/results/fal_' . $method . '.mp4', $response->binary() );
+    }
+
+
     public static function audioOperations() : array
     {
         $speech = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
@@ -77,6 +90,21 @@ class FalTest extends TestCase
             'repaint' => ['repaint', [$image, 'A watercolor painting']],
             'uncrop' => ['uncrop', [$image, 100, 100, 100, 100]],
             'upscale' => ['upscale', [$image, 2]],
+        ];
+    }
+
+
+    public static function videoOperations() : array
+    {
+        $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
+        $video = Video::fromLocalPath( __DIR__ . '/assets/flower.mp4' );
+
+        return [
+            'extend' => ['extend', [$video, 'The camera slowly zooms out']],
+            'imagine' => ['imagine', ['A cartoon fox running through a forest', ['start' => $image], ['duration' => 5]]],
+            'repaint' => ['repaint', [$video, 'Turn the flower blue']],
+            'uncrop' => ['uncrop', [$video, 'A garden', 0, 0.25, 0, 0.25]],
+            'upscale' => ['upscale', [$video, 2]],
         ];
     }
 }

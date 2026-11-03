@@ -231,6 +231,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Alibaba**           | beta   | yes      | beta   | beta    | beta    | beta   | beta   | -       |
 | **Bedrock Nova**      | -      | beta     | -      | beta    | -       | beta   | -      | -       |
 | **BytePlus**          | beta   | beta     | beta   | beta    | beta    | beta   | -      | -       |
+| **fal**               | beta   | -        | beta   | beta    | beta    | beta   | beta   | beta    |
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
@@ -2614,6 +2615,7 @@ forwards audio-only references; the selected model determines whether they are a
 | Alibaba Wan       | image | image | image, video, audio; frame mode may use one driving audio |
 | Bedrock Nova Reel | image | -     | -        |
 | BytePlus Seedance | image | image | image, video, audio; audio requires a visual reference |
+| fal Kling O3      | image | image | image, up to 7 |
 | Google Omni       | image | -     | image    |
 | Google Veo        | image | image | image    |
 | Hydracept         | -     | -     | image    |
@@ -2647,6 +2649,7 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-generation-api-reference)
 * [Amazon Nova Reel](https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/1366799)
+* [fal Kling O3](https://fal.ai/models/fal-ai/kling-video/o3/pro/text-to-video/api) ([image](https://fal.ai/models/fal-ai/kling-video/o3/pro/image-to-video/api) and [reference](https://fal.ai/models/fal-ai/kling-video/o3/pro/reference-to-video/api) to video, any fal endpoint via `model()`)
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
 * [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [Hydracept](https://docs.hydracept.com)
@@ -2662,6 +2665,8 @@ Amazon Nova Reel also requires an S3 destination in the provider configuration:
 and the response contains its `s3://` URL, see [resume()](#resume-2) for copying it.
 
 *Note: Kling uses `kling-3.0` for text and frame to video and `kling-3.0-omni` for reference media. A model set by `model()` is used for all three endpoints, so it must support the media passed. Kling expects an API key from the Kling console; access/secret key pairs of the legacy API aren't supported.*
+
+*Note: fal uses the Kling O3 text, image or reference to video endpoint depending on the media passed and `model()` replaces all three. Prisma maps `duration` (as string), `aspectRatio` and `audio`, all other options are passed to the endpoint unchanged. Use the native format of other models, e.g. `['duration' => '8s']` for `fal-ai/veo3.1`.*
 
 *Note: Hydracept videos are limited to 8 seconds and reference images are only used if the selected execution target supports them.*
 
@@ -2679,6 +2684,7 @@ public function cancel( string $jobId ) : void
 
 * [Alibaba](https://www.alibabacloud.com/help/en/model-studio/manage-asynchronous-tasks): Only queued tasks, running tasks can't be canceled
 * [BytePlus](https://docs.byteplus.com/en/docs/ModelArk/1521720): Only queued tasks, finished tasks are deleted instead
+* [fal](https://docs.fal.ai/model-apis/model-endpoints/queue#cancelling-a-request): Queued and running requests; the job ID is the response URL
 * [Hydracept](https://docs.hydracept.com): Pending and running jobs; the job ID is the Hydracept job ID
 * [Runway](https://docs.dev.runwayml.com/api/): Pending and running tasks, finished tasks are deleted instead
 
@@ -2769,12 +2775,15 @@ Most extension jobs are asynchronous and use the same lazy polling behavior as
 `imagine()`. Providers ignore options they don't support. `duration` is supported
 by all three providers, but Alibaba interprets it as the total output duration
 while xAI interprets it as the duration of the new continuation. BytePlus also
-supports `direction` with `forward` (default) or `backward`.
+supports `direction` with `forward` (default) or `backward`. fal uses Veo 3.1 by default,
+which continues videos of up to 8 seconds by 7 seconds and doesn't map `duration`; all
+options are passed to the endpoint unchanged.
 
 **Supported options:**
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/image-to-video-general-api-reference)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
+* [fal Veo 3.1](https://fal.ai/models/fal-ai/veo3.1/extend-video/api) (any fal endpoint via `model()`)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/extension)
 
 ### repaint
@@ -2817,6 +2826,7 @@ omitted silently. Calls using the third argument for options remain supported.
 | :---              | :---       |
 | Alibaba Wan       | image, up to 4 |
 | BytePlus Seedance | image, video, audio |
+| fal Kling O3      | image, up to 4 |
 | Google Omni       | image |
 | Kling Omni        | image, up to 4 |
 | Luma Ray          | image keyframes |
@@ -2827,12 +2837,14 @@ Luma uses the first reference at frame `0` by default. Multiple Luma references
 require `keyframeIndexes`, for example `[0, 48]`. Runway distributes references
 across the video by default; normalized positions can be supplied using
 `referencePositions`, for example `[0.0, 1.0]`. Kling keeps the original sound of
-the video if the `audio` option is `true`, generating new audio isn't supported.
+the video if the `audio` option is `true`, generating new audio isn't supported. fal
+maps `audio` to `keep_audio` of Kling O3, which keeps the original sound by default.
 
 **Supported options:**
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-editing-api-reference)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
+* [fal Kling O3](https://fal.ai/models/fal-ai/kling-video/o3/pro/video-to-video/edit/api) (any fal endpoint via `model()`)
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
 * [Kling Omni](https://kling.ai/document-api/api/video/3-0-omni/omni-video)
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
@@ -3023,7 +3035,9 @@ $url = $video->first()?->url();
 
 Each edge value is a fraction of the corresponding source dimension and is
 limited to the range from `0` to `1`. Alibaba maps these values to its outpainting
-scales. Luma maps them to the source rectangle of a `video_reframe` request.
+scales. Luma maps them to the source rectangle of a `video_reframe` request. fal
+expands all sides greater than zero by the largest of the values, because the Wan VACE
+model uses a single expansion ratio.
 At least one edge must be greater than zero. Non-finite values are rejected and
 unsupported options are ignored.
 
@@ -3034,6 +3048,7 @@ of 1080p reframing depends on the Luma account.
 **Supported options:**
 
 * [Alibaba Wan video outpainting](https://www.alibabacloud.com/help/en/model-studio/legacy-wanx-vace-api-reference)
+* [fal Wan VACE outpainting](https://fal.ai/models/fal-ai/wan-vace-14b/outpainting/api) (any fal endpoint via `model()`)
 * [Luma Ray video reframing](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 
 ### upscale
@@ -3070,9 +3085,11 @@ Runway maps factors of four or more to `4k` and lower factors to `2k`. Set
 `resolution` to `720p`, `1k`, `2k`, or `4k` to select the exact output tier.
 Other supported options are `creativity`, `sharpen`, and `smartGrain` (integers
 from 0 to 100), `flavor` (`natural` or `vivid`), and `fpsBoost` (boolean).
-Unsupported values and options are ignored. Upscaling is asynchronous and uses
-the same lazy polling behavior as other video operations.
+Unsupported values and options are ignored. fal uses SeedVR2 with factors up to
+10 by default and passes all options to the endpoint unchanged. Upscaling is
+asynchronous and uses the same lazy polling behavior as other video operations.
 
 **Supported options:**
 
+* [fal SeedVR2](https://fal.ai/models/fal-ai/seedvr/upscale/video/api) (any fal endpoint via `model()`)
 * [Runway Magnific Video Upscaler](https://dev.runwayml.com/endpoints/video_upscale?modelId=magnific_video_upscaler_creative)
