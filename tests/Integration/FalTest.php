@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Prisma;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -20,7 +21,19 @@ class FalTest extends TestCase
     }
 
 
-    #[DataProvider('operations')]
+    #[DataProvider('audioOperations')]
+    public function testAudioOperation( string $method, array $arguments ) : void
+    {
+        $response = Prisma::audio()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( $method )->$method( ...$arguments );
+
+        $this->assertNotEmpty( $response->binary() );
+
+        file_put_contents( __DIR__ . '/results/fal_' . $method . '.mp3', $response->binary() );
+    }
+
+
+    #[DataProvider('imageOperations')]
     public function testImageOperation( string $method, array $arguments ) : void
     {
         $response = Prisma::image()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
@@ -33,7 +46,23 @@ class FalTest extends TestCase
     }
 
 
-    public static function operations() : array
+    public static function audioOperations() : array
+    {
+        $speech = Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' );
+        $music = Audio::fromLocalPath( __DIR__ . '/assets/musicfox.mp3' );
+
+        return [
+            'compose' => ['compose', ['Calm piano with soft strings', ['duration' => 10]]],
+            'demix' => ['demix', [$music, 4]],
+            'denoise' => ['denoise', [$speech]],
+            'revoice' => ['revoice', [$speech, 'Rachel']],
+            'speak' => ['speak', ['Hello world']],
+            'synthesize' => ['synthesize', ['Thunder rumbling in the distance', ['duration' => 3]]],
+        ];
+    }
+
+
+    public static function imageOperations() : array
     {
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $mask = Image::fromLocalPath( __DIR__ . '/assets/mask.png' );

@@ -19,12 +19,13 @@ use GuzzleHttp\Psr7\Uri;
 trait FalApi
 {
     /**
-     * Builds the response files from the result of a completed request.
+     * Builds a response file from an output file URL of fal.
      *
-     * @param array<string, mixed> $data Result data of the model endpoint
-     * @return array<int, File> Response files
+     * @param string $url File URL returned by fal
+     * @param string|null $mimeType Content type of the file if known
+     * @return File Response file
      */
-    abstract protected function falFiles( array $data ) : array;
+    abstract protected function falFile( string $url, ?string $mimeType ) : File;
 
 
     /**
@@ -57,6 +58,51 @@ trait FalApi
 
 
     /**
+     * Adds the output files of a completed request to the response.
+     *
+     * fal returns file objects with an "url" property, either as single values whose output
+     * name becomes the file key (e.g. "audio" or the "vocals" stem) or as lists (e.g. "images").
+     *
+     * @param array<string, mixed> $data Result data of the model endpoint
+     * @param FileResponse $result File response to add the files to
+     * @return array<int, string> Output names of the added files
+     */
+    protected function falFiles( array $data, FileResponse $result ) : array
+    {
+        $keys = [];
+
+        foreach( $data as $key => $value )
+        {
+            if( $this->falObject( $value ) ) {
+                $result->add( $this->falFile( $value['url'], $this->falType( $value ) ), $key );
+                $keys[] = $key;
+            } elseif( $this->falList( $value ) ) {
+                foreach( $value as $item ) {
+                    $result->add( $this->falFile( $item['url'], $this->falType( $item ) ) );
+                }
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+
+    /**
+     * Tests if the value is a non-empty list of fal file objects.
+     *
+     * @param mixed $value Output value
+     * @return bool TRUE if all list items are file objects
+     * @phpstan-assert-if-true non-empty-list<array{url: non-empty-string}> $value
+     */
+    protected function falList( mixed $value ) : bool
+    {
+        return is_array( $value ) && $value !== [] && array_is_list( $value )
+            && array_filter( $value, $this->falObject(...) ) === $value;
+    }
+
+
+    /**
      * Returns the public URL or the base64 data URI of the file.
      *
      * @param File $file Input file
@@ -66,6 +112,19 @@ trait FalApi
     {
         return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
             . ';base64,' . $file->base64();
+    }
+
+
+    /**
+     * Tests if the value is a fal file object.
+     *
+     * @param mixed $value Output value
+     * @return bool TRUE if the value is an array with a non-empty URL
+     * @phpstan-assert-if-true array{url: non-empty-string} $value
+     */
+    protected function falObject( mixed $value ) : bool
+    {
+        return is_array( $value ) && is_string( $value['url'] ?? null ) && $value['url'] !== '';
     }
 
 
@@ -96,11 +155,8 @@ trait FalApi
             $this->validate( $response );
 
             $data = $this->fromJson( $response );
-            $result->withMeta( array_diff_key( $data, ['image' => null, 'images' => null] ) );
-
-            foreach( $this->falFiles( $data ) as $file ) {
-                $result->add( $file );
-            }
+            $files = $this->falFiles( $data, $result );
+            $result->withMeta( array_diff_key( $data, array_flip( $files ) ) );
 
             if( $result->empty() ) {
                 throw new FailedException( 'No files found in fal response' );
@@ -131,6 +187,18 @@ trait FalApi
         }
 
         return $this->resume( $url );
+    }
+
+
+    /**
+     * Returns the content type of a fal file object.
+     *
+     * @param array<string, mixed> $value File object
+     * @return string|null Content type or NULL if unknown
+     */
+    protected function falType( array $value ) : ?string
+    {
+        return is_string( $value['content_type'] ?? null ) && $value['content_type'] !== '' ? $value['content_type'] : null;
     }
 
 

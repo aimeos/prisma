@@ -153,6 +153,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Azure**             | -       | -     | -       | -        |        | -       | beta  | -          | beta       |
 | **Deepgram**          | -       | -     | -       | -        |        | -       | yes   | -          | yes        |
 | **ElevenLabs**        | -       | -     | -       | -        |        | yes     | yes   | -          | yes        |
+| **fal**               | beta    | beta  | beta    | -        | beta   | beta    | beta  | beta       | -          |
 | **Google Gemini**     | -       | -     | -       | yes      |        | -       | -     | -          | -          |
 | **Groq**              | -       | -     | -       | yes      |        | -       | yes   | -          | yes        |
 | **Hydracept**         | yes     | -     | -       | -        | yes    | -       | yes   | yes        | -          |
@@ -1196,6 +1197,7 @@ ignores the rest. Provider-native options can be supplied in the same array.
 
 **Supported options:**
 
+* [fal](https://fal.ai/models/fal-ai/elevenlabs/music/api) (any fal endpoint via `model()`)
 * [Hydracept](https://docs.hydracept.com)
 
 **Example:**
@@ -1225,6 +1227,13 @@ public function demix( Audio $audio, int $stems, array $options = [] ) : FileRes
 **Supported options:**
 
 * AudioPod
+* [fal](https://fal.ai/models/fal-ai/demucs/api) (any fal endpoint via `model()`)
+
+fal uses Demucs with four stems (vocals, drums, bass, other) for up to four `$stems`,
+six stems (plus guitar and piano) above, and returns the vocals only for one stem. The
+files of the response are keyed by the stem name, e.g. `$response->files()['vocals']`.
+Like all fal audio methods, `model()` selects another fal endpoint, all options are
+passed to it unchanged and pending requests can be stopped with `cancel()`.
 
 ### denoise
 
@@ -1241,6 +1250,7 @@ public function denoise( Audio $audio, array $options = [] ) : FileResponse
 **Supported options:**
 
 * [AudioPod](https://docs.audiopod.ai/api-reference/noise-reduction)
+* [fal](https://fal.ai/models/fal-ai/deepfilternet3/api) (any fal endpoint via `model()`)
 
 ### describe
 
@@ -1278,6 +1288,7 @@ public function resume( string $jobId ) : FileResponse|TextResponse
 **Supported providers:**
 
 * AudioPod: Only for `demix()`, `denoise()`, `revoice()`, `speak()` and `transcribe()`; the job ID is the status path
+* fal: The job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
 * Hydracept: Only for `compose()`, `speak()` and `synthesize()`; the job ID is the Hydracept job ID
 
 **Example:**
@@ -1324,6 +1335,7 @@ public function revoice( Audio $audio, string $voice, array $options = [] ) : Fi
 
 * AudioPod
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/speech-to-speech/convert)
+* [fal](https://fal.ai/models/fal-ai/elevenlabs/voice-changer/api) (any fal endpoint via `model()`)
 * [Murf](https://murf.ai/api/docs/api-reference/voice-changer/convert)
 
 ### speak
@@ -1346,6 +1358,7 @@ public function speak( string $text, ?string $voice = null, array $options = [] 
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech#convert-text-to-speech)
 * [Deepgram](https://developers.deepgram.com/reference/text-to-speech/speak-request)
 * [ElevenLabs](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
+* [fal](https://fal.ai/models/fal-ai/elevenlabs/tts/eleven-v3/api) (any fal endpoint via `model()`)
 * Groq
 * [Hydracept](https://docs.hydracept.com)
 * [Murf](https://murf.ai/api/docs/api-reference/text-to-speech/stream)
@@ -1369,6 +1382,7 @@ ignores the rest. Provider-native options can be supplied in the same array.
 
 **Supported options:**
 
+* [fal](https://fal.ai/models/fal-ai/elevenlabs/sound-effects/v2/api) (any fal endpoint via `model()`)
 * [Hydracept](https://docs.hydracept.com)
 
 **Example:**

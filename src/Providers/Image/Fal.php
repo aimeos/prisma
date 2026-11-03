@@ -139,37 +139,13 @@ class Fal extends Base
 
 
     /**
-     * Builds the output images from the result of a completed request.
-     *
-     * fal image endpoints return either a list of images or a single image object.
-     *
-     * @param array<string, mixed> $data Result data of the model endpoint
-     * @return array<int, Image> Image files
-     */
-    protected function falFiles( array $data ) : array
-    {
-        $list = is_array( $data['images'] ?? null ) ? $data['images'] : [$data['image'] ?? null];
-        $files = [];
-
-        foreach( $list as $item )
-        {
-            if( is_array( $item ) && is_string( $item['url'] ?? null ) && $item['url'] !== '' ) {
-                $files[] = $this->image( $item['url'], is_string( $item['content_type'] ?? null ) ? $item['content_type'] : null );
-            }
-        }
-
-        return $files;
-    }
-
-
-    /**
      * Builds a lazy image whose eventual download stays on the fal CDN.
      *
      * @param string $url Image URL returned by fal
      * @param string|null $mimeType Content type of the image if known
      * @return Image Image file
      */
-    private function image( string $url, ?string $mimeType ) : Image
+    protected function falFile( string $url, ?string $mimeType ) : Image
     {
         $image = Image::fromUrl( $url, $mimeType );
         $image->restrictHosts( $this->downloadHosts );
