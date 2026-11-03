@@ -39,10 +39,10 @@ class Fal extends Base
 
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/bria/background/replace', [
             'image_url' => $this->media( $image ),
             'prompt' => $prompt,
-        ] ) );
+        ], $options );
     }
 
 
@@ -54,49 +54,49 @@ class Fal extends Base
 
     public function detext( Image $image, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/image-editing/text-removal' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/image-editing/text-removal', [
             'image_url' => $this->media( $image ),
-        ] ) );
+        ], $options );
     }
 
 
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/bria/eraser' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/bria/eraser', [
             'image_url' => $this->media( $image ),
             'mask_url' => $this->media( $mask ),
-        ] ) );
+        ], $options );
     }
 
 
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
         if( empty( $images ) ) {
-            return $this->queue( (string) $this->modelName( 'fal-ai/flux-2' ), array_replace( $options, ['prompt' => $prompt] ) );
+            return $this->submit( 'fal-ai/flux-2', ['prompt' => $prompt], $options );
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/flux-2/edit' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/flux-2/edit', [
             'prompt' => $prompt,
             'image_urls' => array_values( array_map( $this->media(...), $images ) ),
-        ] ) );
+        ], $options );
     }
 
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/flux-pro/v1/fill' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/flux-pro/v1/fill', [
             'image_url' => $this->media( $image ),
             'mask_url' => $this->media( $mask ),
             'prompt' => $prompt,
-        ] ) );
+        ], $options );
     }
 
 
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/birefnet/v2' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/birefnet/v2', [
             'image_url' => $this->media( $image ),
-        ] ) );
+        ], $options );
     }
 
 
@@ -110,19 +110,19 @@ class Fal extends Base
 
     public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/bria/background/replace', [
             'image_url' => $this->media( $image ),
             'ref_image_url' => $this->media( $bgimage ),
-        ] ) );
+        ], $options );
     }
 
 
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/flux-pro/kontext' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/flux-pro/kontext', [
             'image_url' => $this->media( $image ),
             'prompt' => $prompt,
-        ] ) );
+        ], $options );
     }
 
 
@@ -134,22 +134,22 @@ class Fal extends Base
 
         [$width, $height] = $size;
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/bria/expand' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/bria/expand', [
             'image_url' => $this->media( $image ),
             'canvas_size' => [$width + $left + $right, $height + $top + $bottom],
             'original_image_size' => [$width, $height],
             'original_image_location' => [$left, $top],
-        ] ) );
+        ], $options );
     }
 
 
     public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/seedvr/upscale/image' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/seedvr/upscale/image', [
             'image_url' => $this->media( $image ),
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
-        ] ) );
+        ], $options );
     }
 
 }

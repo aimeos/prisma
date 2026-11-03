@@ -42,16 +42,16 @@ class Fal extends Base
 
     public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/veo3.1/extend-video' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/veo3.1/extend-video', [
             'video_url' => $this->media( $video ),
             'prompt' => $prompt,
-        ] ) );
+        ], $options );
     }
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        $input = array_replace( $options, $this->settings( $options ), ['prompt' => $prompt] );
+        $input = array_replace( $this->settings( $options ), ['prompt' => $prompt] );
         $images = $this->images( $media['references'] ?? [], 7 );
         $start = $media['start'] ?? null;
         $end = $media['end'] ?? null;
@@ -66,14 +66,15 @@ class Fal extends Base
         }
 
         if( !empty( $images ) ) {
-            return $this->queue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/reference-to-video' ), $input + ['image_urls' => $images] );
+            $input['image_urls'] = $images;
+            return $this->submit( 'fal-ai/kling-video/o3/pro/reference-to-video', $input, $options );
         }
 
         if( $start instanceof Image ) {
-            return $this->queue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/image-to-video' ), $input );
+            return $this->submit( 'fal-ai/kling-video/o3/pro/image-to-video', $input, $options );
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/text-to-video' ), $input );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/text-to-video', $input, $options );
     }
 
 
@@ -92,7 +93,7 @@ class Fal extends Base
             $input['keep_audio'] = $options['audio'];
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/video-to-video/edit' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/video-to-video/edit', $input, $options );
     }
 
 
@@ -101,7 +102,7 @@ class Fal extends Base
         $edges = $this->uncropEdges( $top, $right, $bottom, $left );
 
         // the model expands all selected sides by the same ratio
-        return $this->queue( (string) $this->modelName( 'fal-ai/wan-vace-14b/outpainting' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/wan-vace-14b/outpainting', [
             'video_url' => $this->media( $video ),
             'prompt' => $prompt,
             'expand_top' => $edges['top'] > 0,
@@ -109,17 +110,17 @@ class Fal extends Base
             'expand_bottom' => $edges['bottom'] > 0,
             'expand_left' => $edges['left'] > 0,
             'expand_ratio' => max( $edges ),
-        ] ) );
+        ], $options );
     }
 
 
     public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/seedvr/upscale/video' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/seedvr/upscale/video', [
             'video_url' => $this->media( $video ),
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
-        ] ) );
+        ], $options );
     }
 
 

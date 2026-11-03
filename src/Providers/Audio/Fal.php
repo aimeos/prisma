@@ -41,7 +41,7 @@ class Fal extends Base
             $input['music_length_ms'] = (int) round( $options['duration'] * 1000 );
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/music' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/music', $input, $options );
     }
 
 
@@ -54,17 +54,17 @@ class Fal extends Base
             default => ['model' => 'htdemucs_6s', 'stems' => ['vocals', 'drums', 'bass', 'guitar', 'piano', 'other']],
         };
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/demucs' ), array_replace( $defaults, $options, [
+        return $this->submit( 'fal-ai/demucs', [
             'audio_url' => $this->media( $audio ),
-        ] ) );
+        ], array_replace( $defaults, $options ) );
     }
 
 
     public function denoise( Audio $audio, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/deepfilternet3' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/deepfilternet3', [
             'audio_url' => $this->media( $audio ),
-        ] ) );
+        ], $options );
     }
 
 
@@ -76,10 +76,10 @@ class Fal extends Base
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/voice-changer' ), array_replace( $options, [
+        return $this->submit( 'fal-ai/elevenlabs/voice-changer', [
             'audio_url' => $this->media( $audio ),
             'voice' => $voice,
-        ] ) );
+        ], $options );
     }
 
 
@@ -91,7 +91,7 @@ class Fal extends Base
             $input['voice'] = $voice;
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/tts/eleven-v3' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/tts/eleven-v3', $input, $options );
     }
 
 
@@ -103,7 +103,7 @@ class Fal extends Base
             $input['duration_seconds'] = (float) $options['duration'];
         }
 
-        return $this->queue( (string) $this->modelName( 'fal-ai/elevenlabs/sound-effects/v2' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/sound-effects/v2', $input, $options );
     }
 
 

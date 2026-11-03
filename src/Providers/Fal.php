@@ -301,6 +301,20 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
+     * Submits a request to the queue of the configured or default model endpoint.
+     *
+     * @param string $default Default model endpoint ID if no model is configured
+     * @param array<string, mixed> $input Model input overwriting the provider specific options
+     * @param array<string, mixed> $options Provider specific options
+     * @return FileResponse Asynchronous file response
+     */
+    protected function submit( string $default, array $input, array $options ) : FileResponse
+    {
+        return $this->queue( (string) $this->modelName( $default ), array_replace( $options, $input ) );
+    }
+
+
+    /**
      * Summarizes the media file in a few words using a synchronous OpenRouter endpoint of fal.
      *
      * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/audio"
