@@ -117,6 +117,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Google Translate](https://cloud.google.com/translate/docs/reference/rest/v2/translate)
 - [Google VertexAI](https://cloud.google.com/vertex-ai/generative-ai/docs)
 - [Groq](https://groq.com/)
+- [fal](https://fal.ai/docs)
 - [Hydracept](https://hydracept.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
@@ -173,6 +174,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Black Forest Labs** | -          | -      | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | beta   | -       | -         |
 | **Clipdrop**          | yes        |        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       |        | yes    | yes     | -         |
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
+| **fal**               | beta       | beta   | -        | -      | beta  | beta    | beta    | beta    | -         | -        | beta    | beta   | beta   | beta    | -         |
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
 | **Hydracept**         | -          | yes    | -        | -      | -     | yes     | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
@@ -1469,6 +1471,7 @@ public function background( Image $image, string $prompt, array $options = [] ) 
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/generateObjectCompositeV3Async)
 * Clipdrop
+* [fal](https://fal.ai/models/fal-ai/bria/background/replace/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/replace-background-v3#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/ai-backgrounds)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#replace-background) ([masked background](https://www.recraft.ai/docs/api-reference/endpoints#generate-background))
@@ -1501,6 +1504,7 @@ public function cancel( string $jobId ) : void
 **Supported providers:**
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/): Pending and running jobs; the job ID is the status URL
+* [fal](https://docs.fal.ai/model-apis/model-endpoints/queue#cancelling-a-request): Queued and running requests; the job ID is the response URL
 * [Hydracept](https://docs.hydracept.com): Pending and running jobs; the job ID is the Hydracept job ID
 * [Replicate](https://replicate.com/docs/reference/http#predictions.cancel): Starting and processing predictions; the job ID is the prediction URL
 
@@ -1607,6 +1611,7 @@ to remove.
 **Supported options:**
 
 * [Clipdrop](https://clipdrop.co/apis/docs/cleanup)
+* [fal](https://fal.ai/models/fal-ai/bria/eraser/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-object#request)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#erase-region)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1erase/post)
@@ -1647,6 +1652,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
+* [fal FLUX.2](https://fal.ai/models/fal-ai/flux-2/api) ([Editing](https://fal.ai/models/fal-ai/flux-2/edit/api), any fal endpoint via `model()`)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Hydracept](https://docs.hydracept.com)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/generate-images/generate-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/generate-images/generate-v3))
@@ -1665,6 +1671,19 @@ public function imagine( string $prompt, array $images = [], array $options = []
 * [StabilityAI Ultra](https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1ultra/post)
 * [xAI Grok Image](https://docs.x.ai/docs/guides/image-generations) ([Multi-image editing](https://docs.x.ai/developers/model-capabilities/images/multi-image-editing))
 * [Z.AI](https://docs.z.ai/api-reference/image/generate-image)
+
+fal hosts hundreds of models, so each method uses a default endpoint and `model()` selects
+any other compatible fal endpoint. Prisma maps the prompt and images only and passes all
+options to the endpoint unchanged, so use the input fields documented on the model page.
+fal returns images on its `fal.media` CDN; pass `download_hosts` in the configuration if
+your requests are routed differently:
+
+```php
+Prisma::image()
+    ->using( 'fal', ['api_key' => 'xxx'] )
+    ->model( 'fal-ai/nano-banana-pro' )
+    ->imagine( 'A watercolor lighthouse at dusk', [], ['aspect_ratio' => '16:9'] );
+```
 
 Hydracept jobs belong to the `project_id` passed in the configuration and are polled for up to
 900 seconds by default; set `poll_timeout` to another number of seconds or `0` to disable the
@@ -1767,6 +1786,7 @@ to edit.
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/fillImagesV3Async)
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
+* [fal](https://fal.ai/models/fal-ai/flux-pro/v1/fill/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
 * [OpenAI Dall-e-2](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-2#customize-image-output)
 * [OpenAI Dall-e-3](https://platform.openai.com/docs/guides/image-generation?image-generation-model=dall-e-3#customize-image-output)
@@ -1807,6 +1827,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 
 * [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
+* [fal](https://fal.ai/models/fal-ai/birefnet/v2/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-background#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/hd-background-removal)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#remove-background)
@@ -1924,6 +1945,7 @@ public function repaint( Image $image, string $prompt, array $options = [] ) : F
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/firefly_image_v5_generate_async_v4)
 * [Black Forest Labs](https://docs.bfl.ai/flux_2/flux2_image_editing)
+* [fal](https://fal.ai/models/fal-ai/flux-pro/kontext/api) (any fal endpoint via `model()`)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/image-generation#optional_configurations)
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/edit-images/remix-v4) ([V3 fallback for reference and style options](https://developer.ideogram.ai/api-reference/edit-images/remix-v3))
 * [Meta Muse Image](https://dev.meta.ai/docs/api-reference/images/edit-image)
@@ -1964,6 +1986,7 @@ public function resume( string $jobId ) : FileResponse
 
 * Adobe Firefly: The job ID is the status URL and must point to a `firefly-*.adobe.io` HTTPS host or the configured API host
 * Black Forest Labs: The job ID is the polling URL and must be an HTTPS URL of `api.bfl.ai` or a regional host like `api.eu1.bfl.ai`
+* fal: The job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
 * Hydracept: The job ID is the Hydracept job ID
 * Ideogram: Only for `imagine()` with the `async` option
 * ModelsLab: Only for queued generations; the job ID is the fetch URL of the `modelslab.com` HTTPS host or the configured API host
@@ -2016,6 +2039,7 @@ public function uncrop( Image $image,  int $top, int $right, int $bottom, int $l
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/expandImagesV3Async)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/expand-an-image-by-adding-pixels-on-any-side)
 * Clipdrop
+* [fal](https://fal.ai/models/fal-ai/bria/expand/api) (any fal endpoint via `model()`)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#image-outpainting)
 * [StabilityAI](https://platform.stability.ai/docs/api-reference#tag/Edit/paths/~1v2beta~1stable-image~1edit~1outpaint/post)
 
@@ -2051,6 +2075,7 @@ public function upscale( Image $image, int $factor, array $options = [] ) : File
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/preciseUpsamplerV3Async)
 * Clipdrop
+* [fal](https://fal.ai/models/fal-ai/seedvr/upscale/image/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/upscale#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/preview-ai-upscale)
 * [Recraft](https://www.recraft.ai/docs/api-reference/endpoints#crisp-upscale) ([creative upscale](https://www.recraft.ai/docs/api-reference/endpoints#creative-upscale))
@@ -2834,7 +2859,7 @@ or store the job ID right after submitting. `withClientRetry()` repeats submit
 requests that failed with a server error too, even if the provider started the job.
 
 Job IDs are trusted input: `resume()` and `cancel()` send requests authenticated with
-your API key for any job ID they get, and Adobe, AudioPod, Black Forest Labs, Google Veo,
+your API key for any job ID they get, and Adobe, AudioPod, Black Forest Labs, fal, Google Veo,
 ModelsLab and Replicate use status paths or URLs as job IDs. Only pass job IDs from your own queue payloads
 or database, never from users, e.g. in status requests of the browser. Store the job ID
 together with the user who started the job and look it up by your own record ID, so
