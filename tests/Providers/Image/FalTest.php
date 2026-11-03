@@ -4,6 +4,7 @@ namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
@@ -72,9 +73,11 @@ class FalTest extends TestCase
 
 
     #[TestWith( ['background', 'fal-ai/bria/background/replace', ['image_url' => 'https://example.com/a.png', 'prompt' => 'beach']] )]
+    #[TestWith( ['detext', 'fal-ai/image-editing/text-removal', ['image_url' => 'https://example.com/a.png']] )]
     #[TestWith( ['erase', 'fal-ai/bria/eraser', ['image_url' => 'https://example.com/a.png', 'mask_url' => 'https://example.com/m.png']] )]
     #[TestWith( ['inpaint', 'fal-ai/flux-pro/v1/fill', ['image_url' => 'https://example.com/a.png', 'mask_url' => 'https://example.com/m.png', 'prompt' => 'beach']] )]
     #[TestWith( ['isolate', 'fal-ai/birefnet/v2', ['image_url' => 'https://example.com/a.png']] )]
+    #[TestWith( ['relocate', 'fal-ai/bria/background/replace', ['image_url' => 'https://example.com/a.png', 'ref_image_url' => 'https://example.com/m.png']] )]
     #[TestWith( ['repaint', 'fal-ai/flux-pro/kontext', ['image_url' => 'https://example.com/a.png', 'prompt' => 'beach']] )]
     #[TestWith( ['upscale', 'fal-ai/seedvr/upscale/image', ['image_url' => 'https://example.com/a.png', 'upscale_mode' => 'factor', 'upscale_factor' => 10]] )]
     public function testOperation( string $method, string $endpoint, array $expected ) : void
@@ -84,9 +87,9 @@ class FalTest extends TestCase
 
         $args = match( $method ) {
             'background', 'repaint' => [$image, 'beach'],
-            'erase' => [$image, $mask],
+            'erase', 'relocate' => [$image, $mask],
             'inpaint' => [$image, $mask, 'beach'],
-            'isolate' => [$image],
+            'detext', 'isolate' => [$image],
             'upscale' => [$image, 20],
         };
 
@@ -98,6 +101,54 @@ class FalTest extends TestCase
         $request = $this->requests()[0];
         $this->assertSame( 'https://queue.fal.run/' . $endpoint, (string) $request->getUri() );
         $this->assertSame( $expected, json_decode( (string) $request->getBody(), true ) );
+    }
+
+
+    public function testDescribe() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
+            ->response( ['output' => 'Eine Katze', 'usage' => ['total_tokens' => 42, 'cost' => 0.001], 'id' => 'x'] );
+
+        $response = $this->provider()->ensure( 'describe' )
+            ->describe( Image::fromBinary( 'i', 'image/png' ), 'de', ['temperature' => 0.2] );
+
+        $this->assertSame( 'Eine Katze', $response->text() );
+        $this->assertSame( 42.0, $response->usage()['used'] );
+        $this->assertSame( 'x', $response->meta()['id'] );
+        $this->assertFalse( isset( $response->meta()['output'] ) );
+
+        $request = $this->requests()[0];
+        $body = json_decode( (string) $request->getBody(), true );
+        $this->assertSame( 'https://fal.run/openrouter/router/vision', (string) $request->getUri() );
+        $this->assertSame( 'google/gemini-3.8-flash', $body['model'] );
+        $this->assertStringContainsString( '"de"', $body['prompt'] );
+        $this->assertSame( ['data:image/png;base64,' . base64_encode( 'i' )], $body['image_urls'] );
+        $this->assertSame( 0.2, $body['temperature'] );
+    }
+
+
+    public function testRecognize() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
+            ->response( ['output' => 'Hello'] );
+
+        $response = $this->provider()->ensure( 'recognize' )->model( 'anthropic/claude-sonnet-5' )
+            ->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+
+        $body = json_decode( (string) $this->requests()[0]->getBody(), true );
+        $this->assertSame( 'Hello', $response->text() );
+        $this->assertSame( 'anthropic/claude-sonnet-5', $body['model'] );
+        $this->assertSame( ['https://example.com/a.png'], $body['image_urls'] );
+    }
+
+
+    public function testRecognizeNoText() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
+            ->response( ['error' => 'x'] );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
     }
 
 
