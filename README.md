@@ -175,7 +175,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Black Forest Labs** | -          | -      | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | beta   | -       | -         |
 | **Clipdrop**          | yes        |        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       |        | yes    | yes     | -         |
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
-| **fal**               | beta       | beta   | -        | -      | beta  | beta    | beta    | beta    | -         | -        | beta    | beta   | beta   | beta    | -         |
+| **fal**               | beta       | beta   | beta     | beta   | beta  | beta    | beta    | beta    | beta      | beta     | beta    | beta   | beta   | beta    | -         |
 | **Google Gemini**     | -          |        | yes      | -      | -     | yes     | -       | -       | -         | -        | yes     |        | -      | -       | -         |
 | **Groq**              | -          |        | yes      | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | -         |
 | **Hydracept**         | -          | yes    | -        | -      | -     | yes     | -       | -       | -         | -        | -       | beta   | -      | -       | -         |
@@ -1553,6 +1553,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 **Supported options:**
 
+* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via `model()`)
 * Google Gemini
 * Groq
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/describe-prompts/describe-v4)
@@ -1589,6 +1590,7 @@ public function detext( Image $image, array $options = [] ) : FileResponse
 **Supported options:**
 
 * Clipdrop
+* [fal](https://fal.ai/models/fal-ai/image-editing/text-removal/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/layerize-text-v3#request)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/ai-text-removal)
 
@@ -1699,6 +1701,10 @@ Prisma::image()
     ->model( 'fal-ai/nano-banana-pro' )
     ->imagine( 'A watercolor lighthouse at dusk', [], ['aspect_ratio' => '16:9'] );
 ```
+
+The fal `describe()` and `recognize()` methods call the OpenRouter vision endpoint of fal
+synchronously, so `model()` selects the LLM (default: `google/gemini-3.8-flash`) and the
+response can't be resumed.
 
 Hydracept jobs belong to the `project_id` passed in the configuration and are polled for up to
 900 seconds by default; set `poll_timeout` to another number of seconds or `0` to disable the
@@ -1879,6 +1885,7 @@ public function recognize( Image $image, array $options = [] ) : TextResponse;
 **Supported options:**
 
 * [Azure](https://learn.microsoft.com/en-us/rest/api/computervision/image-analysis/analyze-image)
+* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via `model()`)
 * [Mistral](https://docs.mistral.ai/api/endpoint/ocr#operation-ocr_v1_ocr_post)
 * Openrouter
 
@@ -1924,6 +1931,7 @@ public function relocate( Image $image, Image $bgimage, array $options = [] ) : 
 **Supported options:**
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/preciseComposite) ([adaptive](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/adaptiveComposite))
+* [fal](https://fal.ai/models/fal-ai/bria/background/replace/api) (any fal endpoint via `model()`)
 * [Photoroom](https://docs.photoroom.com/image-editing-api-plus-plan/static-background)
 * [RemoveBG](https://www.remove.bg/api#api-reference)
 

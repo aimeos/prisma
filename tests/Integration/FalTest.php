@@ -34,6 +34,16 @@ class FalTest extends TestCase
     }
 
 
+    public function testImageDescribe() : void
+    {
+        $response = Prisma::image()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( Image::fromLocalPath( __DIR__ . '/assets/cat.png' ), 'de' );
+
+        $this->assertNotEmpty( $response->text() );
+    }
+
+
     #[DataProvider('imageOperations')]
     public function testImageOperation( string $method, array $arguments ) : void
     {
@@ -44,6 +54,16 @@ class FalTest extends TestCase
         $this->assertNotFalse( getimagesizefromstring( $response->binary() ) );
 
         file_put_contents( __DIR__ . '/results/fal_' . $method . '.png', $response->binary() );
+    }
+
+
+    public function testImageRecognize() : void
+    {
+        $response = Prisma::image()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( 'recognize' )
+            ->recognize( Image::fromLocalPath( __DIR__ . '/assets/text.png' ) );
+
+        $this->assertNotEmpty( $response->text() );
     }
 
 
@@ -80,13 +100,17 @@ class FalTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $mask = Image::fromLocalPath( __DIR__ . '/assets/mask.png' );
         $erase = Image::fromLocalPath( __DIR__ . '/assets/mask-erase.png' );
+        $background = Image::fromLocalPath( __DIR__ . '/assets/photo.jpg' );
+        $text = Image::fromLocalPath( __DIR__ . '/assets/detext.jpg' );
 
         return [
             'background' => ['background', [$image, 'A forest']],
+            'detext' => ['detext', [$text]],
             'erase' => ['erase', [$image, $erase]],
             'imagine' => ['imagine', ['A cartoon fox in a forest']],
             'inpaint' => ['inpaint', [$image, $mask, 'A red hat']],
             'isolate' => ['isolate', [$image]],
+            'relocate' => ['relocate', [$image, $background]],
             'repaint' => ['repaint', [$image, 'A watercolor painting']],
             'uncrop' => ['uncrop', [$image, 100, 100, 100, 100]],
             'upscale' => ['upscale', [$image, 2]],

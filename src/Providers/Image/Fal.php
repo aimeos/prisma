@@ -5,10 +5,14 @@ namespace Aimeos\Prisma\Providers\Image;
 use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Contracts\Cancel;
 use Aimeos\Prisma\Contracts\Image\Background;
+use Aimeos\Prisma\Contracts\Image\Describe;
+use Aimeos\Prisma\Contracts\Image\Detext;
 use Aimeos\Prisma\Contracts\Image\Erase;
 use Aimeos\Prisma\Contracts\Image\Imagine;
 use Aimeos\Prisma\Contracts\Image\Inpaint;
 use Aimeos\Prisma\Contracts\Image\Isolate;
+use Aimeos\Prisma\Contracts\Image\Recognize;
+use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
@@ -18,6 +22,7 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 /**
@@ -26,9 +31,11 @@ use Aimeos\Prisma\Responses\FileResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/nano-banana-pro". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
+ * Only describe() and recognize() use the OpenRouter vision endpoint of fal synchronously and model()
+ * selects the LLM, e.g. "anthropic/claude-sonnet-5".
  */
 class Fal extends Base
-    implements Background, Cancel, Erase, Imagine, Inpaint, Isolate, Repaint, Resume, Uncrop, Upscale
+    implements Background, Cancel, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Recognize, Relocate, Repaint, Resume, Uncrop, Upscale
 {
     use FalApi;
 
@@ -58,6 +65,23 @@ class Fal extends Base
         return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
             'image_url' => $this->falMedia( $image ),
             'prompt' => $prompt,
+        ] ) );
+    }
+
+
+    public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+            . ( $lang ?? 'en' ) . '".';
+
+        return $this->vision( $image, $prompt, $options );
+    }
+
+
+    public function detext( Image $image, array $options = [] ) : FileResponse
+    {
+        return $this->falQueue( (string) $this->modelName( 'fal-ai/image-editing/text-removal' ), array_replace( $options, [
+            'image_url' => $this->falMedia( $image ),
         ] ) );
     }
 
@@ -98,6 +122,21 @@ class Fal extends Base
     {
         return $this->falQueue( (string) $this->modelName( 'fal-ai/birefnet/v2' ), array_replace( $options, [
             'image_url' => $this->falMedia( $image ),
+        ] ) );
+    }
+
+
+    public function recognize( Image $image, array $options = [] ) : TextResponse
+    {
+        return $this->vision( $image, 'Extract all visible text from the image. Return only the text in reading order.', $options );
+    }
+
+
+    public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
+    {
+        return $this->falQueue( (string) $this->modelName( 'fal-ai/bria/background/replace' ), array_replace( $options, [
+            'image_url' => $this->falMedia( $image ),
+            'ref_image_url' => $this->falMedia( $bgimage ),
         ] ) );
     }
 
@@ -152,5 +191,37 @@ class Fal extends Base
         $image->maxSize( self::MAX_DOWNLOAD_BYTES );
 
         return $image;
+    }
+
+
+    /**
+     * Asks a vision LLM about the image using the synchronous OpenRouter endpoint of fal.
+     *
+     * @param Image $image Input image
+     * @param string $prompt Instructions for the LLM
+     * @param array<string, mixed> $options Provider specific options
+     * @return TextResponse Response text
+     */
+    protected function vision( Image $image, string $prompt, array $options ) : TextResponse
+    {
+        $response = $this->client()->post( 'https://fal.run/openrouter/router/vision', ['json' => array_replace( $options, [
+            'model' => $this->modelName( 'google/gemini-3.8-flash' ),
+            'prompt' => $prompt,
+            'image_urls' => [$this->falMedia( $image )],
+        ] )] );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+        $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
+        $used = $usage['total_tokens'] ?? null;
+
+        if( !is_string( $data['output'] ?? null ) ) {
+            throw new PrismaException( 'No text found in fal response' );
+        }
+
+        return TextResponse::fromText( $data['output'] )
+            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+            ->withMeta( array_diff_key( $data, ['output' => 1, 'usage' => 1] ) );
     }
 }
