@@ -14,7 +14,6 @@ use Aimeos\Prisma\Contracts\Image\Relocate;
 use Aimeos\Prisma\Contracts\Image\Repaint;
 use Aimeos\Prisma\Contracts\Image\Uncrop;
 use Aimeos\Prisma\Contracts\Image\Upscale;
-use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -128,11 +127,7 @@ class Fal extends Base
 
     public function uncrop( Image $image, int $top, int $right, int $bottom, int $left, array $options = [] ) : FileResponse
     {
-        if( ( $size = @getimagesizefromstring( (string) $image->binary() ) ) === false ) {
-            throw new BadRequestException( 'Unable to get image size' );
-        }
-
-        [$width, $height] = $size;
+        [$width, $height] = $image->size();
 
         return $this->submit( 'fal-ai/bria/expand', [
             'image_url' => $image->uri(),
@@ -151,5 +146,4 @@ class Fal extends Base
             'upscale_factor' => max( 1, min( 10, $factor ) ),
         ], $options );
     }
-
 }

@@ -166,7 +166,7 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Returns a closure that polls the status of a request and fetches its result.
+     * Returns a closure that polls the status of a request until it is completed.
      *
      * @param Uri $uri Validated response URL of the request
      * @return \Closure Polling closure that populates the file response
@@ -188,17 +188,7 @@ abstract class Fal extends Base implements Cancel, Resume
                 throw new FailedException( is_string( $data['error'] ) ? $data['error'] : 'fal request failed' );
             }
 
-            $response = $this->client()->get( $uri, ['allow_redirects' => false] );
-            $this->validate( $response );
-
-            $data = $this->fromJson( $response );
-            $files = $this->files( $data, $result );
-            $result->withMeta( array_diff_key( $data, array_flip( $files ) ) );
-
-            if( $result->empty() ) {
-                throw new FailedException( 'No files found in fal response' );
-            }
-
+            $this->result( $uri, $result );
             return true;
         };
     }
@@ -238,6 +228,29 @@ abstract class Fal extends Base implements Cancel, Resume
     {
         // fal returns response URLs of its queue host even if the requests are sent through a gateway
         return $this->jobUrl( $url, '#/requests/[\w-]+$#D', '#^queue\.fal\.run$#D', 'Invalid fal response URL' );
+    }
+
+
+    /**
+     * Fetches the result of a completed request and adds its files and meta data to the response.
+     *
+     * @param Uri $uri Validated response URL of the request
+     * @param FileResponse $result File response to populate
+     * @return void
+     * @throws FailedException If the result contains no files
+     */
+    protected function result( Uri $uri, FileResponse $result ) : void
+    {
+        $response = $this->client()->get( $uri, ['allow_redirects' => false] );
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+        $files = $this->files( $data, $result );
+        $result->withMeta( array_diff_key( $data, array_flip( $files ) ) );
+
+        if( $result->empty() ) {
+            throw new FailedException( 'No files found in fal response' );
+        }
     }
 
 

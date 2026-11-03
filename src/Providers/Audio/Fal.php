@@ -128,5 +128,4 @@ class Fal extends Base
             ->withStructured( is_array( $parts ) ? $parts : [] )
             ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
     }
-
 }
