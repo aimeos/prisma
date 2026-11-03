@@ -6,6 +6,7 @@ use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
 use Aimeos\Prisma\Prisma;
+use Aimeos\Prisma\Schema\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -65,6 +66,42 @@ class FalTest extends TestCase
 
         $this->assertNotEmpty( $response->text() );
     }
+  
+  
+    public function testTextStream() : void
+    {
+        $response = $this->text()->stream( 'What is the capital of France? Reply with only the city name.' );
+
+        $this->assertNotEmpty( iterator_to_array( $response->stream() ) );
+        $this->assertStringContainsStringIgnoringCase( 'Paris', $response->text() );
+    }
+
+
+    public function testTextStructure() : void
+    {
+        $schema = Schema::for( 'person', [
+            'name' => Schema::string()->required(),
+            'age' => Schema::integer()->required(),
+        ] )->strict();
+
+        $response = $this->text()->structure( 'Extract the person: John is 30 years old.', $schema );
+
+        $this->assertEquals( 'John', $response->structured()['name'] );
+        $this->assertEquals( 30, $response->structured()['age'] );
+    }
+
+
+    public function testTextVectorize() : void
+    {
+        $this->assertNotEmpty( $this->text()->vectorize( ['hello'] )->first() );
+    }
+
+
+    public function testTextWrite() : void
+    {
+        $response = $this->text()->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
 
 
     #[DataProvider('videoOperations')]
@@ -130,5 +167,11 @@ class FalTest extends TestCase
             'uncrop' => ['uncrop', [$video, 'A garden', 0, 0.25, 0, 0.25]],
             'upscale' => ['upscale', [$video, 2]],
         ];
+    }
+
+
+    private function text() : \Aimeos\Prisma\Contracts\Provider
+    {
+        return Prisma::text()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] );
     }
 }
