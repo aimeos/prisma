@@ -120,6 +120,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 - [Hydracept](https://hydracept.com/)
 - [Ideogram](https://ideogram.ai/api)
 - [Kimi](https://platform.kimi.ai/docs/overview)
+- [Kling](https://kling.ai/document-api/)
 - [Luma](https://docs.agents.lumalabs.ai/)
 - [Meta Model API](https://dev.meta.ai/docs/overview)
 - [MiniMax](https://platform.minimax.io/docs/)
@@ -231,6 +232,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 | **Google Omni**       |        | -        | -      | beta    | beta    |        | -      | -       |
 | **Google Veo**        | -      | -        | -      | beta    | -       | beta   | -      | -       |
 | **Hydracept**         | yes    | -        | -      | yes     | -       | yes    | -      | -       |
+| **Kling**             | -      | -        | -      | beta    | beta    | beta   | -      | -       |
 | **Luma**              | -      | -        | -      | beta    | beta    | beta   | beta   | -       |
 | **Meta**              |        | beta     | -      | -       | -       |        | -      | -       |
 | **MiniMax**           | -      | -        | -      | beta    | -       | beta   | -      | -       |
@@ -2576,6 +2578,7 @@ forwards audio-only references; the selected model determines whether they are a
 | Google Omni       | image | -     | image    |
 | Google Veo        | image | image | image    |
 | Hydracept         | -     | -     | image    |
+| Kling             | image | image | image, video; frames take precedence |
 | Luma Ray          | image | image | -        |
 | MiniMax Hailuo    | image | image | image    |
 | Openrouter        | image | image | image, video, audio |
@@ -2608,6 +2611,7 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
 * [Google Veo](https://ai.google.dev/gemini-api/docs/video), using provider name `veo`
 * [Hydracept](https://docs.hydracept.com)
+* [Kling](https://kling.ai/document-api/api/video/3-0-omni/text-to-video)
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [MiniMax Hailuo](https://platform.minimax.io/docs/api-reference/video-generation-t2v)
 * Openrouter
@@ -2617,6 +2621,8 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 Amazon Nova Reel also requires an S3 destination in the provider configuration:
 `['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`. The video is stored there
 and the response contains its `s3://` URL, see [resume()](#resume-2) for copying it.
+
+*Note: Kling uses `kling-3.0` for text and frame to video and `kling-3.0-omni` for reference media. A model set by `model()` is used for all three endpoints, so it must support the media passed. Kling expects an API key from the Kling console; access/secret key pairs of the legacy API aren't supported.*
 
 *Note: Hydracept videos are limited to 8 seconds and reference images are only used if the selected execution target supports them.*
 
@@ -2773,6 +2779,7 @@ omitted silently. Calls using the third argument for options remain supported.
 | Alibaba Wan       | image, up to 4 |
 | BytePlus Seedance | image, video, audio |
 | Google Omni       | image |
+| Kling Omni        | image, up to 4 |
 | Luma Ray          | image keyframes |
 | Runway            | image keyframes, up to 5 |
 | xAI Grok Imagine  | - |
@@ -2780,13 +2787,15 @@ omitted silently. Calls using the third argument for options remain supported.
 Luma uses the first reference at frame `0` by default. Multiple Luma references
 require `keyframeIndexes`, for example `[0, 48]`. Runway distributes references
 across the video by default; normalized positions can be supplied using
-`referencePositions`, for example `[0.0, 1.0]`.
+`referencePositions`, for example `[0.0, 1.0]`. Kling keeps the original sound of
+the video if the `audio` option is `true`, generating new audio isn't supported.
 
 **Supported options:**
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-editing-api-reference)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/2291680)
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
+* [Kling Omni](https://kling.ai/document-api/api/video/3-0-omni/omni-video)
 * [Luma Ray](https://docs.agents.lumalabs.ai/api/resources/generations/methods/create/)
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/editing)

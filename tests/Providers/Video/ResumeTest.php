@@ -23,6 +23,7 @@ class ResumeTest extends TestCase
             'bedrock' => ['bedrock', 'arn:aws:bedrock:us-east-1:123:async-invoke/job-1',
                 'https://bedrock-runtime.us-east-1.amazonaws.com/async-invoke/arn%3Aaws%3Abedrock%3Aus-east-1%3A123%3Aasync-invoke%2Fjob-1'],
             'byteplus' => ['byteplus', 'task-1', 'https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/task-1'],
+            'kling' => ['kling', 'task-1', 'https://api-singapore.klingai.com/tasks?task_ids=task-1'],
             'luma' => ['luma', 'gen-1', 'https://agents.lumalabs.ai/v1/generations/gen-1'],
             'minimax' => ['minimax', 'task-1', 'https://api.minimax.io/v1/query/video_generation?task_id=task-1'],
             'openrouter' => ['openrouter', 'job-1', 'https://openrouter.ai/api/v1/videos/job-1', ['status' => 'pending']],
@@ -51,6 +52,7 @@ class ResumeTest extends TestCase
     #[TestWith( ['alibaba'] )]
     #[TestWith( ['bedrock'] )]
     #[TestWith( ['byteplus'] )]
+    #[TestWith( ['kling'] )]
     #[TestWith( ['luma'] )]
     #[TestWith( ['minimax'] )]
     #[TestWith( ['openrouter'] )]
