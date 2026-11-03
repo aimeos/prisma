@@ -152,17 +152,6 @@ abstract class Fal extends Base implements Cancel, Resume
     }
 
 
-    /**
-     * Returns the public URL or the base64 data URI of the file.
-     *
-     * @param File $file Input file
-     * @return string URL or data URI
-     */
-    protected function media( File $file ) : string
-    {
-        return $file->url() ?: $file->dataUri();
-    }
-
 
     /**
      * Returns the content type of a fal file object.

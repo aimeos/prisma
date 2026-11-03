@@ -40,7 +40,7 @@ class Fal extends Base
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/background/replace', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
             'prompt' => $prompt,
         ], $options );
     }
@@ -48,14 +48,14 @@ class Fal extends Base
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/vision', $this->summary( $lang ), ['image_urls' => [$this->media( $image )]], $options );
+        return $this->router( 'openrouter/router/vision', $this->summary( $lang ), ['image_urls' => [$image->uri()]], $options );
     }
 
 
     public function detext( Image $image, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/image-editing/text-removal', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
         ], $options );
     }
 
@@ -63,8 +63,8 @@ class Fal extends Base
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/eraser', [
-            'image_url' => $this->media( $image ),
-            'mask_url' => $this->media( $mask ),
+            'image_url' => $image->uri(),
+            'mask_url' => $mask->uri(),
         ], $options );
     }
 
@@ -77,7 +77,7 @@ class Fal extends Base
 
         return $this->submit( 'fal-ai/flux-2/edit', [
             'prompt' => $prompt,
-            'image_urls' => array_values( array_map( $this->media(...), $images ) ),
+            'image_urls' => array_values( array_map( fn( Image $image ) => $image->uri(), $images ) ),
         ], $options );
     }
 
@@ -85,8 +85,8 @@ class Fal extends Base
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/flux-pro/v1/fill', [
-            'image_url' => $this->media( $image ),
-            'mask_url' => $this->media( $mask ),
+            'image_url' => $image->uri(),
+            'mask_url' => $mask->uri(),
             'prompt' => $prompt,
         ], $options );
     }
@@ -95,7 +95,7 @@ class Fal extends Base
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/birefnet/v2', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
         ], $options );
     }
 
@@ -104,15 +104,15 @@ class Fal extends Base
     {
         $prompt = 'Extract all visible text from the image. Return only the text in reading order.';
 
-        return $this->router( 'openrouter/router/vision', $prompt, ['image_urls' => [$this->media( $image )]], $options );
+        return $this->router( 'openrouter/router/vision', $prompt, ['image_urls' => [$image->uri()]], $options );
     }
 
 
     public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/background/replace', [
-            'image_url' => $this->media( $image ),
-            'ref_image_url' => $this->media( $bgimage ),
+            'image_url' => $image->uri(),
+            'ref_image_url' => $bgimage->uri(),
         ], $options );
     }
 
@@ -120,7 +120,7 @@ class Fal extends Base
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/flux-pro/kontext', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
             'prompt' => $prompt,
         ], $options );
     }
@@ -135,7 +135,7 @@ class Fal extends Base
         [$width, $height] = $size;
 
         return $this->submit( 'fal-ai/bria/expand', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
             'canvas_size' => [$width + $left + $right, $height + $top + $bottom],
             'original_image_size' => [$width, $height],
             'original_image_location' => [$left, $top],
@@ -146,7 +146,7 @@ class Fal extends Base
     public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/seedvr/upscale/image', [
-            'image_url' => $this->media( $image ),
+            'image_url' => $image->uri(),
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
         ], $options );

@@ -50,7 +50,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
     {
         $content = [[
             'type' => 'video_url',
-            'video_url' => ['url' => $this->mediaUrl( $video )]
+            'video_url' => ['url' => $video->uri()]
                 + $this->allowed( $options, ['fps'] ),
         ] + $this->allowed( $options, ['min_pixels', 'max_pixels', 'total_pixels'] ), [
             'type' => 'text',
@@ -140,7 +140,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
     {
         $input = [
             'prompt' => $prompt,
-            'media' => [['type' => 'first_clip', 'url' => $this->mediaUrl( $video )]],
+            'media' => [['type' => 'first_clip', 'url' => $video->uri()]],
         ];
 
         if( is_string( $options['negative_prompt'] ?? null ) ) {
@@ -173,7 +173,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
     {
         $input = [
             'prompt' => $prompt,
-            'media' => [['type' => 'video', 'url' => $this->mediaUrl( $video )]],
+            'media' => [['type' => 'video', 'url' => $video->uri()]],
         ];
         $references = is_array( $media['references'] ?? null ) ? $media['references'] : [];
         $images = array_slice( array_values( array_filter(
@@ -182,7 +182,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
         ) ), 0, 4 );
 
         foreach( $images as $image ) {
-            $input['media'][] = ['type' => 'reference_image', 'url' => $this->mediaUrl( $image )];
+            $input['media'][] = ['type' => 'reference_image', 'url' => $image->uri()];
         }
 
         if( is_string( $options['negative_prompt'] ?? null ) ) {
@@ -234,7 +234,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
             'input' => [
                 'function' => 'video_outpainting',
                 'prompt' => $prompt,
-                'video_url' => $this->mediaUrl( $video ),
+                'video_url' => $video->uri(),
             ],
             'parameters' => $parameters,
         ];
@@ -256,15 +256,15 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
 
         if( $start instanceof Image )
         {
-            $mapped[] = ['type' => 'first_frame', 'url' => $this->mediaUrl( $start )];
+            $mapped[] = ['type' => 'first_frame', 'url' => $start->uri()];
 
             if( $end instanceof Image ) {
-                $mapped[] = ['type' => 'last_frame', 'url' => $this->mediaUrl( $end )];
+                $mapped[] = ['type' => 'last_frame', 'url' => $end->uri()];
             }
 
             foreach( $references as $reference ) {
                 if( $reference instanceof Audio ) {
-                    $mapped[] = ['type' => 'driving_audio', 'url' => $this->mediaUrl( $reference )];
+                    $mapped[] = ['type' => 'driving_audio', 'url' => $reference->uri()];
                     break;
                 }
             }
@@ -281,7 +281,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
             };
 
             if( $type ) {
-                $mapped[] = ['type' => $type, 'url' => $this->mediaUrl( $reference )];
+                $mapped[] = ['type' => $type, 'url' => $reference->uri()];
             }
         }
 

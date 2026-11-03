@@ -79,12 +79,12 @@ class Openrouter extends Base
             } elseif( $file instanceof Video ) {
                 $content[] = [
                     'type' => 'video_url',
-                    'video_url' => ['url' => $this->fileUrl( $file )],
+                    'video_url' => ['url' => $file->uri()],
                 ];
             } else {
                 $content[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => $this->fileUrl( $file )],
+                    'image_url' => ['url' => $file->uri()],
                 ];
             }
         }
@@ -124,17 +124,6 @@ class Openrouter extends Base
         };
     }
 
-
-    /**
-     * Returns a public URL or an inline data URI for an input file.
-     *
-     * @param \Aimeos\Prisma\Files\File $file Input file
-     * @return string URL or data URI
-     */
-    protected function fileUrl( \Aimeos\Prisma\Files\File $file ) : string
-    {
-        return $file->url() ?: $file->dataUri();
-    }
 
 
 }

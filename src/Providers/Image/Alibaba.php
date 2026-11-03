@@ -45,7 +45,7 @@ class Alibaba extends Base implements Imagine, Vectorize
         $content = [['text' => $prompt]];
 
         foreach( $images as $image ) {
-            $content[] = ['image' => $image->url() ?: $image->dataUri()];
+            $content[] = ['image' => $image->uri()];
         }
 
         $request = [
@@ -75,7 +75,7 @@ class Alibaba extends Base implements Imagine, Vectorize
         $contents = [];
 
         foreach( $images as $image ) {
-            $contents[] = ['image' => $image->url() ?: $image->dataUri()];
+            $contents[] = ['image' => $image->uri()];
         }
 
         $request = [

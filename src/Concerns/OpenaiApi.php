@@ -211,7 +211,7 @@ trait OpenaiApi
             $content[] = [
                 'type' => 'image_url',
                 'image_url' => [
-                    'url' => $file->url() ?: $file->dataUri()
+                    'url' => $file->uri()
                 ]
             ];
         }
@@ -521,7 +521,7 @@ trait OpenaiApi
         {
             $content[] = [
                 'type' => 'input_image',
-                'image_url' => $file->url() ?: $file->dataUri()
+                'image_url' => $file->uri()
             ];
         }
 

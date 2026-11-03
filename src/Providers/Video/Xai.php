@@ -90,7 +90,7 @@ class Xai extends Base implements Extend, Imagine, Repaint, Resume
         $request = [
             'model' => $this->modelName( 'grok-imagine-video' ),
             'prompt' => $prompt,
-            'video' => ['url' => $this->mediaUrl( $video )],
+            'video' => ['url' => $video->uri()],
         ];
 
         if( is_array( $options['storage_options'] ?? null ) ) {
@@ -169,7 +169,7 @@ class Xai extends Base implements Extend, Imagine, Repaint, Resume
         $start = $media['start'] ?? null;
 
         if( $start instanceof Image ) {
-            $request['image'] = ['url' => $this->mediaUrl( $start )];
+            $request['image'] = ['url' => $start->uri()];
             return $request;
         }
 
@@ -177,7 +177,7 @@ class Xai extends Base implements Extend, Imagine, Repaint, Resume
 
         foreach( $references as $reference ) {
             if( $reference instanceof Image && count( $request['reference_images'] ?? [] ) < 7 ) {
-                $request['reference_images'][] = ['url' => $this->mediaUrl( $reference )];
+                $request['reference_images'][] = ['url' => $reference->uri()];
             }
         }
 

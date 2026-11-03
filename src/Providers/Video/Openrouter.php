@@ -163,7 +163,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
             if( ( $image = $media[$key] ?? null ) instanceof Image ) {
                 $frames[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => $this->mediaUrl( $image )],
+                    'image_url' => ['url' => $image->uri()],
                     'frame_type' => $type,
                 ];
             }
@@ -194,7 +194,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
             if( $type ) {
                 $result[] = [
                     'type' => $type,
-                    $type => ['url' => $this->mediaUrl( $reference )],
+                    $type => ['url' => $reference->uri()],
                 ];
             }
         }

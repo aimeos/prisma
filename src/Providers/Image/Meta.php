@@ -72,7 +72,7 @@ class Meta extends Base implements Imagine, Repaint
                 throw new BadRequestException( 'Meta editing references must be Image objects' );
             }
 
-            $sources[] = ['image_url' => $image->url() ?: $image->dataUri()];
+            $sources[] = ['image_url' => $image->uri()];
         }
 
         return $sources;

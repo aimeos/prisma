@@ -131,10 +131,10 @@ class Minimax extends Base implements Imagine, Resume
         ];
 
         if( $start instanceof Image ) {
-            $request['first_frame_image'] = $this->mediaUrl( $start );
+            $request['first_frame_image'] = $start->uri();
 
             if( $end instanceof Image ) {
-                $request['last_frame_image'] = $this->mediaUrl( $end );
+                $request['last_frame_image'] = $end->uri();
             }
         } elseif( !empty( $subjects ) ) {
             $request['subject_reference'] = [[
@@ -203,7 +203,7 @@ class Minimax extends Base implements Imagine, Resume
 
         foreach( $references as $reference ) {
             if( $reference instanceof Image ) {
-                $subjects[] = $this->mediaUrl( $reference );
+                $subjects[] = $reference->uri();
             }
         }
 

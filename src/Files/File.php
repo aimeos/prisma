@@ -359,6 +359,17 @@ class File
 
 
     /**
+     * Returns the public file URL or the file content as base64 encoded data URI.
+     *
+     * @return string File URL or data URI
+     */
+    public function uri() : string
+    {
+        return $this->url() ?: $this->dataUri();
+    }
+
+
+    /**
      * Returns the file URL.
      *
      * @return string|null File URL

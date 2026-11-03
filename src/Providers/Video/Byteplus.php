@@ -59,7 +59,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
             'role' => 'user',
             'content' => [[
                 'type' => 'input_video',
-                'video_url' => $this->mediaUrl( $video ),
+                'video_url' => $video->uri(),
             ] + $this->allowed( $options, ['fps'] ), [
                 'type' => 'input_text',
                 'text' => $this->summary( $lang ),
@@ -172,7 +172,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
 
         return [
             'type' => $type,
-            $type => ['url' => $this->mediaUrl( $file )],
+            $type => ['url' => $file->uri()],
             'role' => $role,
         ];
     }

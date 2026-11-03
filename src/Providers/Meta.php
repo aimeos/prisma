@@ -78,7 +78,7 @@ class Meta extends Base
         foreach( $files as $file )
         {
             $type = $file instanceof Video ? 'video_url' : 'image_url';
-            $url = $file->url() ?: $file->dataUri();
+            $url = $file->uri();
 
             $content[] = ['type' => $type, $type => ['url' => $url]];
         }

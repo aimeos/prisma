@@ -24,7 +24,7 @@ class Mistral extends Base implements Recognize
             'document' => [
                 'type' => 'image_url',
                 'image_url' => [
-                    'url' => $image->url() ?: $image->dataUri(),
+                    'url' => $image->uri(),
                 ],
             ],
             'model' => $model,

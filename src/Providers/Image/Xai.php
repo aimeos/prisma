@@ -38,7 +38,7 @@ class Xai extends Base implements Imagine, Repaint
                 throw new BadRequestException( 'xAI editing references must be Image objects' );
             }
 
-            $sources[] = ['type' => 'image_url', 'url' => $image->url() ?: $image->dataUri()];
+            $sources[] = ['type' => 'image_url', 'url' => $image->uri()];
         }
 
         $request = [

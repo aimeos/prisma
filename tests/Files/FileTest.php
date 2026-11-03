@@ -67,6 +67,13 @@ class FileTest extends TestCase
     }
 
 
+    public function testUri() : void
+    {
+        $this->assertSame( 'https://example.com/a.txt', File::fromUrl( 'https://example.com/a.txt' )->uri() );
+        $this->assertSame( 'data:text/plain;base64,aGVsbG8=', File::fromBinary( 'hello', 'text/plain' )->uri() );
+    }
+
+
     public function testFetchClientUsesCurlHandler() : void
     {
         $handler = FileTestProxy::fromBinary( 'file' )->clientHandler();

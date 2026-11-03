@@ -39,7 +39,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         if( $images ) {
             $allowed['input_references'] = array_map( fn( Image $image ) => [
                 'type' => 'image_url',
-                'image_url' => ['url' => $this->fileUrl( $image )],
+                'image_url' => ['url' => $image->uri()],
             ], $images );
         }
 
@@ -104,7 +104,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         $inputs = array_map( fn( Image $image ) => [
             'content' => [[
                 'type' => 'image_url',
-                'image_url' => ['url' => $this->fileUrl( $image )],
+                'image_url' => ['url' => $image->uri()],
             ]],
         ], $images );
         $options = $this->allowed( $options, ['encoding_format', 'input_type', 'provider', 'user'] );

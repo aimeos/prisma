@@ -22,7 +22,7 @@ class Groq extends Base implements Describe
                     'text' => $this->summary( $lang )
                 ], [
                     'type' => 'input_image',
-                    'image_url' => $image->url() ?: $image->dataUri()
+                    'image_url' => $image->uri()
                 ]]
             ]]
         ]] );

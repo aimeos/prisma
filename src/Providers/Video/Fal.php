@@ -36,14 +36,14 @@ class Fal extends Base
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$this->media( $video )]], $options );
+        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$video->uri()]], $options );
     }
 
 
     public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/veo3.1/extend-video', [
-            'video_url' => $this->media( $video ),
+            'video_url' => $video->uri(),
             'prompt' => $prompt,
         ], $options );
     }
@@ -57,12 +57,12 @@ class Fal extends Base
         $end = $media['end'] ?? null;
 
         if( $start instanceof Image ) {
-            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $this->media( $start );
+            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $start->uri();
         }
 
         // end frames require a start frame
         if( $start instanceof Image && $end instanceof Image ) {
-            $input['end_image_url'] = $this->media( $end );
+            $input['end_image_url'] = $end->uri();
         }
 
         if( !empty( $images ) ) {
@@ -82,7 +82,7 @@ class Fal extends Base
     {
         [$media, $options] = $this->repaintArguments( $media, $options );
 
-        $input = ['video_url' => $this->media( $video ), 'prompt' => $prompt];
+        $input = ['video_url' => $video->uri(), 'prompt' => $prompt];
 
         if( !empty( $images = $this->images( $media['references'] ?? [], 4 ) ) ) {
             $input['image_urls'] = $images;
@@ -103,7 +103,7 @@ class Fal extends Base
 
         // the model expands all selected sides by the same ratio
         return $this->submit( 'fal-ai/wan-vace-14b/outpainting', [
-            'video_url' => $this->media( $video ),
+            'video_url' => $video->uri(),
             'prompt' => $prompt,
             'expand_top' => $edges['top'] > 0,
             'expand_right' => $edges['right'] > 0,
@@ -117,7 +117,7 @@ class Fal extends Base
     public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/seedvr/upscale/video', [
-            'video_url' => $this->media( $video ),
+            'video_url' => $video->uri(),
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
         ], $options );
@@ -135,7 +135,7 @@ class Fal extends Base
     {
         $images = array_filter( is_array( $references ) ? $references : [], fn( $file ) => $file instanceof Image );
 
-        return array_map( $this->media(...), array_slice( array_values( $images ), 0, $max ) );
+        return array_map( fn( Image $image ) => $image->uri(), array_slice( array_values( $images ), 0, $max ) );
     }
 
 

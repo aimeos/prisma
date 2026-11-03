@@ -55,7 +55,7 @@ class Fal extends Base
         };
 
         return $this->submit( 'fal-ai/demucs', [
-            'audio_url' => $this->media( $audio ),
+            'audio_url' => $audio->uri(),
         ], array_replace( $defaults, $options ) );
     }
 
@@ -63,21 +63,21 @@ class Fal extends Base
     public function denoise( Audio $audio, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/deepfilternet3', [
-            'audio_url' => $this->media( $audio ),
+            'audio_url' => $audio->uri(),
         ], $options );
     }
 
 
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $this->media( $audio )], $options );
+        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $audio->uri()], $options );
     }
 
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/elevenlabs/voice-changer', [
-            'audio_url' => $this->media( $audio ),
+            'audio_url' => $audio->uri(),
             'voice' => $voice,
         ], $options );
     }
@@ -109,7 +109,7 @@ class Fal extends Base
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $input = ['audio_url' => $this->media( $audio )];
+        $input = ['audio_url' => $audio->uri()];
 
         if( $lang ) {
             $input['language_code'] = $lang;
