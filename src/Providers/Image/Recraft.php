@@ -175,7 +175,7 @@ class Recraft extends Base
 
     protected function imageUrl( Image $image ) : string
     {
-        return $image->url() ?? 'data:' . $image->mimeType() . ';base64,' . $image->base64();
+        return $image->url() ?: $image->dataUri();
     }
 
 

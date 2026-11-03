@@ -20,7 +20,7 @@ class Gemini extends Base implements Describe
                         'data' => $audio->base64(),
                         'mimeType' => $audio->mimeType()
                     ]],
-                    ['text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ( $lang ?? 'en' ) . '".']
+                    ['text' => $this->summary( $lang )]
                 ]
             ]],
             'generationConfig' => [

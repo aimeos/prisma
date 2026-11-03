@@ -133,11 +133,7 @@ class Openrouter extends Base
      */
     protected function fileUrl( \Aimeos\Prisma\Files\File $file ) : string
     {
-        return $file->url() ?: sprintf(
-            'data:%s;base64,%s',
-            $file->mimeType() ?? 'application/octet-stream',
-            $file->base64()
-        );
+        return $file->url() ?: $file->dataUri();
     }
 
 

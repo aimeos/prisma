@@ -54,8 +54,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
                 + $this->allowed( $options, ['fps'] ),
         ] + $this->allowed( $options, ['min_pixels', 'max_pixels', 'total_pixels'] ), [
             'type' => 'text',
-            'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-                . ( $lang ?? 'en' ) . '".',
+            'text' => $this->summary( $lang ),
         ]];
 
         return $this->completions(

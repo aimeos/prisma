@@ -64,8 +64,7 @@ trait GeneratesVideo
      */
     protected function mediaUrl( File $file ) : string
     {
-        return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
-            . ';base64,' . $file->base64();
+        return $file->url() ?: $file->dataUri();
     }
 
 

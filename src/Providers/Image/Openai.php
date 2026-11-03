@@ -26,10 +26,10 @@ class Openai extends Base implements Describe, Imagine, Inpaint
                 'role' => 'user',
                 'content' => [[
                     'type' => 'input_text',
-                    'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ($lang ?? 'en') . '".'
+                    'text' => $this->summary( $lang )
                 ], [
                     'type' => 'input_image',
-                    'image_url' => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
+                    'image_url' => $image->url() ?: $image->dataUri()
                 ]]
             ]]
         ]] );

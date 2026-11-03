@@ -70,7 +70,7 @@ class Fal extends Base
 
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->summarize( 'openrouter/router/audio', $lang, ['audio_url' => $this->media( $audio )], $options );
+        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $this->media( $audio )], $options );
     }
 
 

@@ -160,8 +160,7 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function media( File $file ) : string
     {
-        return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
-            . ';base64,' . $file->base64();
+        return $file->url() ?: $file->dataUri();
     }
 
 
@@ -311,23 +310,5 @@ abstract class Fal extends Base implements Cancel, Resume
     protected function submit( string $default, array $input, array $options ) : FileResponse
     {
         return $this->queue( (string) $this->modelName( $default ), array_replace( $options, $input ) );
-    }
-
-
-    /**
-     * Summarizes the media file in a few words using a synchronous OpenRouter endpoint of fal.
-     *
-     * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/audio"
-     * @param string|null $lang ISO language code the summary should be generated in
-     * @param array<string, mixed> $input Media fields of the endpoint
-     * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Response text
-     */
-    protected function summarize( string $endpoint, ?string $lang, array $input, array $options ) : TextResponse
-    {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
-
-        return $this->router( $endpoint, $prompt, $input, $options );
     }
 }

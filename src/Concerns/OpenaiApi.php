@@ -211,7 +211,7 @@ trait OpenaiApi
             $content[] = [
                 'type' => 'image_url',
                 'image_url' => [
-                    'url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+                    'url' => $file->url() ?: $file->dataUri()
                 ]
             ];
         }
@@ -521,7 +521,7 @@ trait OpenaiApi
         {
             $content[] = [
                 'type' => 'input_image',
-                'image_url' => $file->url() ?? sprintf( 'data:%s;base64,%s', $file->mimeType(), $file->base64() )
+                'image_url' => $file->url() ?: $file->dataUri()
             ];
         }
 

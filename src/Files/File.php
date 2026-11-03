@@ -108,6 +108,17 @@ class File
 
 
     /**
+     * Returns the file content as base64 encoded data URI.
+     *
+     * @return string Data URI
+     */
+    public function dataUri() : string
+    {
+        return 'data:' . ( $this->mimeType() ?? 'application/octet-stream' ) . ';base64,' . $this->base64();
+    }
+
+
+    /**
      * Returns the file name.
      *
      * @return string|null File name

@@ -12,8 +12,7 @@ class Meta extends Base implements Describe
 {
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
+        $prompt = $this->summary( $lang );
         $options = $this->allowed( $options, ['temperature', 'top_p', 'seed', 'safety_identifier', 'service_tier'] );
 
         return $this->completions(

@@ -36,7 +36,7 @@ class Fal extends Base
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->summarize( 'openrouter/router/video', $lang, ['video_urls' => [$this->media( $video )]], $options );
+        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$this->media( $video )]], $options );
     }
 
 

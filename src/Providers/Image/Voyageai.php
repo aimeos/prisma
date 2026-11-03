@@ -39,7 +39,7 @@ class Voyageai extends Base implements Vectorize
             $inputs[] = [
                 'content' => [[
                     'type' => 'image_base64',
-                    'image_base64' => sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
+                    'image_base64' => $image->dataUri()
                 ]]
             ];
             $request['inputs'] = $inputs;

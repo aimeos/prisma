@@ -19,8 +19,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
+        $prompt = $this->summary( $lang );
 
         return $this->understand( $image, $prompt, $options );
     }

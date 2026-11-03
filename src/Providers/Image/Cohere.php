@@ -29,7 +29,7 @@ class Cohere extends CohereBase implements Vectorize
                 'content' => [[
                     'type' => 'image_url',
                     'image_url' => [
-                        'url' => sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
+                        'url' => $image->dataUri()
                     ]
                 ]]
             ];

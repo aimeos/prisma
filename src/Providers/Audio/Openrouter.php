@@ -15,8 +15,7 @@ class Openrouter extends Base implements Describe, Speak, Transcribe
 {
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
+        $prompt = $this->summary( $lang );
         $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
 
         return $this->completions(

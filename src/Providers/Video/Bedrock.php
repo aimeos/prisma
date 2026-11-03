@@ -100,8 +100,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
                         'source' => $this->videoSource( $video, $options ),
                     ],
                 ], [
-                    'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-                        . ( $lang ?? 'en' ) . '".',
+                    'text' => $this->summary( $lang ),
                 ]],
             ]],
         ];

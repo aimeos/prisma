@@ -48,7 +48,7 @@ class Fal extends Base
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->summarize( 'openrouter/router/vision', $lang, ['image_urls' => [$this->media( $image )]], $options );
+        return $this->router( 'openrouter/router/vision', $this->summary( $lang ), ['image_urls' => [$this->media( $image )]], $options );
     }
 
 

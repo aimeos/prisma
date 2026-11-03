@@ -62,8 +62,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
                 'video_url' => $this->mediaUrl( $video ),
             ] + $this->allowed( $options, ['fps'] ), [
                 'type' => 'input_text',
-                'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-                    . ( $lang ?? 'en' ) . '".',
+                'text' => $this->summary( $lang ),
             ]],
         ]];
 

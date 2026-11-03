@@ -335,4 +335,17 @@ abstract class Base implements Provider
 
         return $options;
     }
+
+
+    /**
+     * Returns the prompt for summarizing the content of a file.
+     *
+     * @param string|null $lang ISO language code the summary should be generated in
+     * @return string Prompt for the LLM
+     */
+    protected function summary( ?string $lang ) : string
+    {
+        return 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
+            . ( $lang ?? 'en' ) . '".';
+    }
 }
