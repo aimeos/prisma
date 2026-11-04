@@ -55,8 +55,27 @@ class TextResponse implements \IteratorAggregate, \JsonSerializable
     }
 
 
+    /**
+     * Returns the citations, waiting for the response if necessary.
+     *
+     * @return array<int, \Aimeos\Prisma\Values\Citation> Citations
+     */
+    public function citations() : array
+    {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
+        return $this->citations;
+    }
+
+
     public function empty() : bool
     {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
         return empty( $this->list );
     }
 
@@ -165,6 +184,31 @@ class TextResponse implements \IteratorAggregate, \JsonSerializable
     }
 
 
+    public function reason() : ?string
+    {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
+        return $this->reason;
+    }
+
+
+    /**
+     * Returns the tool steps, waiting for the response if necessary.
+     *
+     * @return array<int, \Aimeos\Prisma\Tools\Step> Tool steps
+     */
+    public function steps() : array
+    {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
+        return $this->steps;
+    }
+
+
     /**
      * Returns the structured output data.
      *
@@ -172,6 +216,10 @@ class TextResponse implements \IteratorAggregate, \JsonSerializable
      */
     public function structured() : array
     {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
         return $this->structured;
     }
 
@@ -199,6 +247,16 @@ class TextResponse implements \IteratorAggregate, \JsonSerializable
         }
 
         return $this->list;
+    }
+
+
+    public function usage() : \Aimeos\Prisma\Values\Usage
+    {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
+        return new \Aimeos\Prisma\Values\Usage( $this->usage );
     }
 
 

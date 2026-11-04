@@ -20,61 +20,9 @@ class Openai extends Base implements Describe, Imagine, Inpaint
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $response = $this->client()->post( 'v1/responses', ['json' => [
-            'model' => $this->modelName( 'gpt-6.1-sol' ),
-            'input' => [[
-                'role' => 'user',
-                'content' => [[
-                    'type' => 'input_text',
-                    'text' => 'Summarize the content of the file in a few words in plain text format in the language of ISO code "' . ($lang ?? 'en') . '".'
-                ], [
-                    'type' => 'input_image',
-                    'image_url' => $image->url() ?? sprintf( 'data:%s;base64,%s', $image->mimeType(), $image->base64() )
-                ]]
-            ]]
-        ]] );
+        $input = $this->responsesInput( $this->summary( $lang ), [$image] );
 
-        $this->validate( $response );
-
-        /** @var array<string, mixed> $result */
-        $result = $this->fromJson( $response );
-        /** @var array<string|null> $texts */
-        $texts = [];
-
-        /** @var array<int, array<string, mixed>> $output */
-        $output = $result['output'] ?? [];
-
-        foreach( $output as $data )
-        {
-            /** @var array<int, array<string, mixed>> $contentItems */
-            $contentItems = $data['content'] ?? [];
-
-            foreach( $contentItems as $content )
-            {
-                if( $text = $content['text'] ?? null ) {
-                    /** @var string $text */
-                    $texts[] = $text;
-                }
-            }
-        }
-
-        if( empty( $texts ) ) {
-            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No text found in response' );
-        }
-
-        $meta = $result;
-        unset( $meta['output'], $meta['usage'] );
-
-        /** @var array<string, mixed> $usage */
-        $usage = $result['usage'] ?? [];
-        $used = $usage['total_tokens'] ?? null;
-
-        return TextResponse::fromTexts( $texts )
-            ->withUsage(
-                is_numeric( $used ) ? (float) $used : null,
-                $usage,
-            )
-            ->withMeta( $meta );
+        return $this->responses( 'v1/responses', 'gpt-6.1-sol', $input, $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
     }
 
 

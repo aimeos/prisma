@@ -133,33 +133,6 @@ class Gemini extends Base implements Stream, Structure, Vectorize, Write
 
 
     /**
-     * Extracts text content from Gemini candidate parts.
-     *
-     * @param array<int, array<string, mixed>> $candidates Candidate response blocks
-     * @return array<int, string> Extracted texts
-     */
-    private function candidateTexts( array $candidates ) : array
-    {
-        $texts = [];
-
-        foreach( $candidates as $candidate )
-        {
-            /** @var array<int, array<string, mixed>> $parts */
-            $parts = $candidate['content']['parts'] ?? [];
-
-            foreach( $parts as $part )
-            {
-                if( !( $part['thought'] ?? false ) && ( $text = $part['text'] ?? null ) ) {
-                    $texts[] = $text;
-                }
-            }
-        }
-
-        return $texts;
-    }
-
-
-    /**
      * Runs the Gemini tool loop, drained eagerly into a TextResponse.
      *
      * @param array<int, array<string, mixed>> $contents Chat contents

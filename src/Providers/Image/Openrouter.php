@@ -19,10 +19,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
-
-        return $this->understand( $image, $prompt, $options );
+        return $this->understand( $image, $this->summary( $lang ), $options );
     }
 
 
@@ -40,7 +37,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         if( $images ) {
             $allowed['input_references'] = array_map( fn( Image $image ) => [
                 'type' => 'image_url',
-                'image_url' => ['url' => $this->fileUrl( $image )],
+                'image_url' => ['url' => $image->uri()],
             ], $images );
         }
 
@@ -86,11 +83,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
-        return $this->understand(
-            $image,
-            'Extract all visible text from the image. Return only the text in reading order.',
-            $options
-        );
+        return $this->understand( $image, $this->extraction(), $options );
     }
 
 
@@ -105,7 +98,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         $inputs = array_map( fn( Image $image ) => [
             'content' => [[
                 'type' => 'image_url',
-                'image_url' => ['url' => $this->fileUrl( $image )],
+                'image_url' => ['url' => $image->uri()],
             ]],
         ], $images );
         $options = $this->allowed( $options, ['encoding_format', 'input_type', 'provider', 'user'] );
@@ -116,23 +109,4 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         );
     }
 
-
-    /**
-     * Sends an image understanding request.
-     *
-     * @param Image $image Input image
-     * @param string $prompt Task prompt
-     * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Text response
-     */
-    protected function understand( Image $image, string $prompt, array $options ) : TextResponse
-    {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
-
-        return $this->completions(
-            'api/v1/chat/completions', '~google/gemini-flash-latest',
-            $this->messages( $this->content( $prompt, [$image] ) ),
-            $options
-        );
-    }
 }

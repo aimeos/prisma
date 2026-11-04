@@ -2,20 +2,18 @@
 
 namespace Aimeos\Prisma\Providers\Video;
 
-use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Concerns\GeneratesVideo;
-use Aimeos\Prisma\Contracts\Cancel;
-use Aimeos\Prisma\Contracts\Resume;
+use Aimeos\Prisma\Contracts\Video\Describe;
 use Aimeos\Prisma\Contracts\Video\Extend;
 use Aimeos\Prisma\Contracts\Video\Imagine;
 use Aimeos\Prisma\Contracts\Video\Repaint;
 use Aimeos\Prisma\Contracts\Video\Uncrop;
 use Aimeos\Prisma\Contracts\Video\Upscale;
-use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Image;
 use Aimeos\Prisma\Files\Video;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 /**
@@ -24,65 +22,67 @@ use Aimeos\Prisma\Responses\FileResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/veo3.1". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
+ * describe() uses the OpenRouter video endpoint of fal, can't be resumed and the "model" option selects
+ * the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
-    implements Cancel, Extend, Imagine, Repaint, Resume, Uncrop, Upscale
+    implements Describe, Extend, Imagine, Repaint, Uncrop, Upscale
 {
-    use FalApi, GeneratesVideo;
+    use GeneratesVideo;
 
 
-    /** @var array<int, string> */
-    private array $downloadHosts;
+    protected const FILE = Video::class;
+    protected const MAX_BYTES = 512 * 1024 * 1024;
+
+    /** Polling interval in seconds, video generation takes minutes so polling less often saves status requests */
+    protected const RETRY = 10;
+
+    /** Maximum number of reference images of the Kling generation and edit endpoints */
+    private const MAX_REFERENCES = 7;
+    private const MAX_EDIT_REFERENCES = 4;
 
 
-    public function __construct( array $config )
+    public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $hosts = $config['download_hosts'] ?? ['fal.media'];
-        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
-
-        $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
-        $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
+        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$this->uri( $video )]], $options );
     }
 
 
     public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/veo3.1/extend-video' ), array_replace( $options, [
-            'video_url' => $this->falMedia( $video ),
+        return $this->submit( 'fal-ai/veo3.1/extend-video', [
+            'video_url' => $this->uri( $video ),
             'prompt' => $prompt,
-        ] ) );
+        ], $options );
     }
 
 
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
-        $input = array_replace( $options, $this->settings( $options ), ['prompt' => $prompt] );
-        $images = $this->images( $media['references'] ?? [], 7 );
-        $start = $media['start'] ?? null;
-        $end = $media['end'] ?? null;
+        $input = array_replace( $this->settings( $options ), ['prompt' => $prompt] );
+        $images = $this->images( $media['references'] ?? [], self::MAX_REFERENCES );
+        $start = $this->image( $media['start'] ?? null );
+        $end = $this->image( $media['end'] ?? null );
 
-        if( $start instanceof Image ) {
-            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $this->falMedia( $start );
+        if( $start ) {
+            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $this->uri( $start );
         }
 
         // end frames require a start frame
-        if( $start instanceof Image && $end instanceof Image ) {
-            $input['end_image_url'] = $this->falMedia( $end );
+        if( $start && $end ) {
+            $input['end_image_url'] = $this->uri( $end );
         }
 
         if( !empty( $images ) ) {
-            return $this->falQueue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/reference-to-video' ), $input + ['image_urls' => $images] );
+            $input['image_urls'] = $images;
+            return $this->submit( 'fal-ai/kling-video/o3/pro/reference-to-video', $input, $options );
         }
 
-        if( $start instanceof Image ) {
-            return $this->falQueue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/image-to-video' ), $input );
+        if( $start ) {
+            return $this->submit( 'fal-ai/kling-video/o3/pro/image-to-video', $input, $options );
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/text-to-video' ), $input );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/text-to-video', $input, $options );
     }
 
 
@@ -90,9 +90,9 @@ class Fal extends Base
     {
         [$media, $options] = $this->repaintArguments( $media, $options );
 
-        $input = ['video_url' => $this->falMedia( $video ), 'prompt' => $prompt];
+        $input = ['video_url' => $this->uri( $video ), 'prompt' => $prompt];
 
-        if( !empty( $images = $this->images( $media['references'] ?? [], 4 ) ) ) {
+        if( !empty( $images = $this->images( $media['references'] ?? [], self::MAX_EDIT_REFERENCES ) ) ) {
             $input['image_urls'] = $images;
         }
 
@@ -101,7 +101,7 @@ class Fal extends Base
             $input['keep_audio'] = $options['audio'];
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/kling-video/o3/pro/video-to-video/edit' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/video-to-video/edit', $input, $options );
     }
 
 
@@ -110,41 +110,35 @@ class Fal extends Base
         $edges = $this->uncropEdges( $top, $right, $bottom, $left );
 
         // the model expands all selected sides by the same ratio
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/wan-vace-14b/outpainting' ), array_replace( $options, [
-            'video_url' => $this->falMedia( $video ),
+        return $this->submit( 'fal-ai/wan-vace-14b/outpainting', [
+            'video_url' => $this->uri( $video ),
             'prompt' => $prompt,
             'expand_top' => $edges['top'] > 0,
             'expand_right' => $edges['right'] > 0,
             'expand_bottom' => $edges['bottom'] > 0,
             'expand_left' => $edges['left'] > 0,
             'expand_ratio' => max( $edges ),
-        ] ) );
+        ], $options );
     }
 
 
     public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/seedvr/upscale/video' ), array_replace( $options, [
-            'video_url' => $this->falMedia( $video ),
-            'upscale_mode' => 'factor',
-            'upscale_factor' => max( 1, min( 10, $factor ) ),
-        ] ) );
+        return $this->submit( 'fal-ai/seedvr/upscale/video', [
+            'video_url' => $this->uri( $video ),
+        ] + $this->upscaling( $factor ), $options );
     }
 
 
     /**
-     * Builds a lazy video whose eventual download stays on the fal CDN.
+     * Returns the value if it is an image.
      *
-     * @param string $url Video URL returned by fal
-     * @param string|null $mimeType Content type of the video if known
-     * @return Video Video file
+     * @param mixed $file Media file
+     * @return Image|null Image or NULL if the value isn't an image
      */
-    protected function falFile( string $url, ?string $mimeType ) : Video
+    protected function image( mixed $file ) : ?Image
     {
-        $video = Video::fromUrl( $url, $mimeType );
-        $video->restrictHosts( $this->downloadHosts );
-
-        return $video;
+        return $file instanceof Image ? $file : null;
     }
 
 
@@ -157,9 +151,9 @@ class Fal extends Base
      */
     protected function images( mixed $references, int $max ) : array
     {
-        $images = array_filter( is_array( $references ) ? $references : [], fn( $file ) => $file instanceof Image );
+        $images = array_filter( array_map( $this->image(...), is_array( $references ) ? $references : [] ) );
 
-        return array_map( $this->falMedia(...), array_slice( array_values( $images ), 0, $max ) );
+        return array_map( $this->uri(...), array_slice( array_values( $images ), 0, $max ) );
     }
 
 

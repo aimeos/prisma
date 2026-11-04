@@ -138,6 +138,32 @@ class PrismaTest extends TestCase
     }
 
 
+    public function testObserveDoesNotWaitForAsyncResponse() : void
+    {
+        $records = [];
+        $polls = 0;
+
+        Prisma::fake( [TextResponse::fromAsync( function() use ( &$polls ) {
+            $polls++;
+            return false;
+        } )] );
+
+        $response = Prisma::text()
+            ->observe( function( Observation $observation ) use ( &$records ) {
+                $records[] = $observation;
+            } )
+            ->using( 'openai', ['api_key' => 'test'] )
+            ->ensure( 'write' )
+            ->write( 'prompt' );
+
+        // pending jobs are returned without polling, so they can be resumed later
+        $this->assertInstanceOf( TextResponse::class, $response );
+        $this->assertSame( 0, $polls );
+        $this->assertCount( 1, $records );
+        $this->assertNull( $records[0]->usage );
+    }
+
+
     public function testObserveIsInstanceScoped() : void
     {
         $records = [];

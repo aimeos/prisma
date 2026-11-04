@@ -239,15 +239,15 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
             throw new BadRequestException( 'Adobe expansion margins must be between 0 and 3999 pixels' );
         }
 
-        $size = @getimagesizefromstring( $image->binary() ?? '' );
+        [$width, $height] = $image->size();
 
-        if( !$size || $size[0] + $left + $right > 3999 || $size[1] + $top + $bottom > 3999 ) {
-            throw new BadRequestException( 'Adobe expansion requires a readable image and an output no larger than 3999x3999' );
+        if( $width + $left + $right > 3999 || $height + $top + $bottom > 3999 ) {
+            throw new BadRequestException( 'Adobe expansion requires an output no larger than 3999x3999' );
         }
 
         return $this->request( 'v3/images/expand-async', [
             'image' => $this->imageReference( $image ),
-            'size' => ['width' => $size[0] + $left + $right, 'height' => $size[1] + $top + $bottom],
+            'size' => ['width' => $width + $left + $right, 'height' => $height + $top + $bottom],
             'placement' => ['inset' => compact( 'top', 'right', 'bottom', 'left' )],
         ] + $this->allowed( $options, ['prompt', 'seeds', 'numVariations'] ) );
     }

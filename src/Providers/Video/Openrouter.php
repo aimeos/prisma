@@ -29,15 +29,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = 'Summarize the content of the file in a few words in plain text format in the language of ISO code "'
-            . ( $lang ?? 'en' ) . '".';
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
-
-        return $this->completions(
-            'api/v1/chat/completions', '~google/gemini-flash-latest',
-            $this->messages( $this->content( $prompt, [$video] ) ),
-            $options
-        );
+        return $this->understand( $video, $this->summary( $lang ), $options );
     }
 
 
@@ -164,7 +156,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
             if( ( $image = $media[$key] ?? null ) instanceof Image ) {
                 $frames[] = [
                     'type' => 'image_url',
-                    'image_url' => ['url' => $this->mediaUrl( $image )],
+                    'image_url' => ['url' => $image->uri()],
                     'frame_type' => $type,
                 ];
             }
@@ -195,7 +187,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
             if( $type ) {
                 $result[] = [
                     'type' => $type,
-                    $type => ['url' => $this->mediaUrl( $reference )],
+                    $type => ['url' => $reference->uri()],
                 ];
             }
         }

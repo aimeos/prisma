@@ -32,12 +32,14 @@ class GroqTest extends TestCase
                 }
             }' )
             ->ensure( 'describe' )
-            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en', ['temperature' => 0.2, 'unknown' => 1] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.groq.com/openai/v1/responses', (string) $request->getUri() );
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'qwen/qwen3.8-27b', $body['model'] );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
             $this->assertEquals( 'input_image', $body['input'][0]['content'][1]['type'] );
         } );
 

@@ -107,10 +107,12 @@ class FalTest extends TestCase
     public function testDescribe() : void
     {
         $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
-            ->response( ['output' => 'Eine Katze', 'usage' => ['total_tokens' => 42, 'cost' => 0.001], 'id' => 'x'] );
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'COMPLETED'] );
+        $this->response( ['output' => 'Eine Katze', 'usage' => ['total_tokens' => 42, 'cost' => 0.001], 'id' => 'x'] );
 
         $response = $this->provider()->ensure( 'describe' )
-            ->describe( Image::fromBinary( 'i', 'image/png' ), 'de', ['temperature' => 0.2] );
+            ->model( 'fal-ai/flux-2' )->describe( Image::fromBinary( 'i', 'image/png' ), 'de', ['temperature' => 0.2] );
 
         $this->assertSame( 'Eine Katze', $response->text() );
         $this->assertSame( 42.0, $response->usage()['used'] );
@@ -119,7 +121,7 @@ class FalTest extends TestCase
 
         $request = $this->requests()[0];
         $body = json_decode( (string) $request->getBody(), true );
-        $this->assertSame( 'https://fal.run/openrouter/router/vision', (string) $request->getUri() );
+        $this->assertSame( 'https://queue.fal.run/openrouter/router/vision', (string) $request->getUri() );
         $this->assertSame( 'google/gemini-3.8-flash', $body['model'] );
         $this->assertStringContainsString( '"de"', $body['prompt'] );
         $this->assertSame( ['data:image/png;base64,' . base64_encode( 'i' )], $body['image_urls'] );
@@ -130,10 +132,12 @@ class FalTest extends TestCase
     public function testRecognize() : void
     {
         $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
-            ->response( ['output' => 'Hello'] );
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'COMPLETED'] );
+        $this->response( ['output' => 'Hello'] );
 
-        $response = $this->provider()->ensure( 'recognize' )->model( 'anthropic/claude-sonnet-5' )
-            ->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+        $response = $this->provider()->ensure( 'recognize' )->model( 'fal-ai/nano-banana-pro' )
+            ->recognize( Image::fromUrl( 'https://example.com/a.png' ), ['model' => 'anthropic/claude-sonnet-5'] );
 
         $body = json_decode( (string) $this->requests()[0]->getBody(), true );
         $this->assertSame( 'Hello', $response->text() );
@@ -145,10 +149,12 @@ class FalTest extends TestCase
     public function testRecognizeNoText() : void
     {
         $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
-            ->response( ['error' => 'x'] );
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'COMPLETED'] );
+        $this->response( ['error' => 'x'] );
 
-        $this->expectException( PrismaException::class );
-        $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+        $this->expectException( FailedException::class );
+        $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) )->text();
     }
 
 
@@ -204,6 +210,7 @@ class FalTest extends TestCase
         $this->assertFalse( $response->ready() );
         $this->assertSame( 'IN_PROGRESS', $response->meta()['status'] );
         $this->assertCount( 1, $this->requests() );
+        $this->assertSame( 3, $response->retryAfter() );
     }
 
 
@@ -248,6 +255,46 @@ class FalTest extends TestCase
 
         $this->assertSame( 'PUT', $this->requests()[0]->getMethod() );
         $this->assertSame( self::URL . '/cancel', (string) $this->requests()[0]->getUri() );
+    }
+
+
+    public function testRecognizeBehindApiGateway() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test', 'url' => 'https://gateway.example/fal/'] )
+            ->response( ['response_url' => self::URL] );
+
+        $this->provider()->recognize( Image::fromBinary( 'i', 'image/png' ) );
+
+        $this->assertSame( 'https://gateway.example/fal/openrouter/router/vision', (string) $this->requests()[0]->getUri() );
+    }
+
+
+    public function testRecognizePending() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'IN_PROGRESS'] );
+
+        $response = $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+
+        $this->assertFalse( $response->ready() );
+        $this->assertNull( $response->jobId() );
+        $this->assertSame( 1, $response->retryAfter() );
+    }
+
+
+    public function testRecognizeTimeout() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test', 'poll_timeout' => 1] )
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'IN_QUEUE'] );
+        $this->response( ['status' => 'IN_QUEUE'] );
+
+        $response = $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'Asynchronous operation timed out after 1 seconds' );
+        $response->text();
     }
 
 

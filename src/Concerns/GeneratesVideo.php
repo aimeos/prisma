@@ -4,7 +4,6 @@ namespace Aimeos\Prisma\Concerns;
 
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
-use Aimeos\Prisma\Files\File;
 
 
 trait GeneratesVideo
@@ -53,19 +52,6 @@ trait GeneratesVideo
         }
 
         return $edges;
-    }
-
-
-    /**
-     * Returns a public URL when available and otherwise an inline data URI.
-     *
-     * @param File $file Input media file
-     * @return string Public URL or inline data URI
-     */
-    protected function mediaUrl( File $file ) : string
-    {
-        return $file->url() ?: 'data:' . ( $file->mimeType() ?? 'application/octet-stream' )
-            . ';base64,' . $file->base64();
     }
 
 

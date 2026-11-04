@@ -67,6 +67,120 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslate() : void
+    {
+        $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo","Welt"]}', ['total_tokens' => 9] ) )
+            ->ensure( 'translate' )
+            ->translate( ['a' => 'Hello', 'b' => 'World'], 'de', 'en', 'Greeting', ['temperature' => 0.1, 'top_k' => 5] );
+
+        $this->assertSame( ['Hallo', 'Welt'], $response->texts() );
+        $this->assertSame( 9.0, $response->usage()['used'] );
+        $this->assertSame( 'gen-1', $response->meta()['id'] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $prompt = $body['messages'][0]['content'][0]['text'] ?? $body['messages'][0]['content'];
+            $this->assertSame( 'https://fal.run/openrouter/router/openai/v1/chat/completions', (string) $request->getUri() );
+            $this->assertEquals( 'json_schema', $body['response_format']['type'] );
+            $this->assertSame( 0.1, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'top_k', $body );
+            $this->assertStringContainsString( 'from the language of ISO code "en" into the language of ISO code "de"', $prompt );
+            $this->assertStringContainsString( 'Context of the texts: Greeting', $prompt );
+            $this->assertStringContainsString( '["Hello","World"]', $prompt );
+        } );
+    }
+
+
+    public function testTranslatePlain() : void
+    {
+        $tool = Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo"]}' ) );
+        $this->response( $this->completion( 'gen-2', 'Done' ) );
+
+        $provider = $this->provider()->withSystemPrompt( 'Be brief' )
+            ->withMessages( [['role' => 'user', 'content' => 'Earlier']] )
+            ->withTools( [$tool] );
+
+        $this->assertSame( ['Hallo'], $provider->translate( ['Hello'], 'de' )->texts() );
+        $this->assertSame( 'Done', $provider->write( 'Ping' )->text() );
+
+        [$translate, $write] = array_map( fn( $request ) => json_decode( (string) $request->getBody(), true ), $this->requests() );
+
+        // translations don't use the system prompt, messages and tools but the provider keeps them
+        $this->assertCount( 1, $translate['messages'] );
+        $this->assertArrayNotHasKey( 'tools', $translate );
+        $this->assertCount( 3, $write['messages'] );
+        $this->assertArrayHasKey( 'tools', $write );
+    }
+
+
+    public function testTranslateBatches() : void
+    {
+        $long = str_repeat( 'a', 9990 );
+
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo","b"]}', ['total_tokens' => 9, 'prompt_tokens_details' => ['cached_tokens' => 1]] ) );
+        $this->response( $this->completion( 'gen-2', '{"texts":["Welt!"]}', ['total_tokens' => 7, 'prompt_tokens_details' => ['cached_tokens' => 2]] ) );
+
+        // a batch contains at most 10000 characters
+        $response = $this->provider()->translate( ['Hello', $long, 'World!'], 'de' );
+
+        $this->assertSame( ['Hallo', 'b', 'Welt!'], $response->texts() );
+        $this->assertSame( 16.0, $response->usage()['used'] );
+        $this->assertSame( 3, $response->usage()->cacheReadTokens() );
+        $this->assertSame( 'gen-2', $response->meta()['id'] );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+        $this->assertStringContainsString( 'Hello', (string) $requests[0]->getBody() );
+        $this->assertStringNotContainsString( 'World!', (string) $requests[0]->getBody() );
+        $this->assertStringContainsString( '[\\"World!\\"]', (string) $requests[1]->getBody() );
+        $this->assertArrayNotHasKey( 'stream', json_decode( (string) $requests[1]->getBody(), true ) );
+    }
+
+
+    public function testTranslateEmpty() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] );
+        $response = $this->provider()->translate( [], 'de' );
+
+        $this->assertSame( [], $response->texts() );
+        $this->assertSame( [], $this->requests() );
+    }
+
+
+    public function testTranslateCountMismatch() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo"]}' ) );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->translate( ['Hello', 'World'], 'de' );
+    }
+
+
+    public function testTranslateInvalidUtf8() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] );
+
+        $this->expectException( \JsonException::class );
+        $this->provider()->translate( ["\xB1"], 'de' );
+    }
+
+
+    public function testTranslateNoString() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo",null]}' ) );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->translate( ['Hello', 'World'], 'de' );
+    }
+
+
     public function testVectorize() : void
     {
         $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
@@ -107,6 +221,18 @@ class FalTest extends TestCase
             $this->assertEquals( 'openai/gpt-6-luna', $body['model'] );
             $this->assertEquals( 0.2, $body['temperature'] );
             $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testWriteWithRunUrl() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test', 'run_url' => 'https://gateway.example.com/fal-run/'] )
+            ->response( ['choices' => [['message' => ['content' => 'Hi']]]] )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://gateway.example.com/fal-run/openrouter/router/openai/v1/chat/completions', (string) $request->getUri() );
         } );
     }
 
@@ -156,5 +282,19 @@ class FalTest extends TestCase
             $this->assertCount( 1, $body['tools'] );
             $this->assertEquals( 'ping', $body['tools'][0]['function']['name'] );
         } );
+    }
+
+
+    /**
+     * Returns the result of a chat completion.
+     *
+     * @param string $id Completion ID
+     * @param string $content Answer text
+     * @param array<string, mixed> $usage Token usage
+     * @return array<string, mixed> Chat completion
+     */
+    private function completion( string $id, string $content, array $usage = [] ) : array
+    {
+        return ['id' => $id, 'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $content]]]] + ( $usage ? ['usage' => $usage] : [] );
     }
 }

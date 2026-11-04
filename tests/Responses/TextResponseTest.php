@@ -46,6 +46,22 @@ class TextResponseTest extends TestCase
     }
 
 
+    public function testAsyncAccessorsWait() : void
+    {
+        $response = TextResponse::fromAsync( function( TextResponse $response ) {
+            $response->add( 'done' )->withUsage( 3.0 )->withReason( 'stop' );
+            return true;
+        } );
+
+        // accessors not returning texts wait for the response too
+        $this->assertFalse( $response->empty() );
+        $this->assertSame( 3.0, $response->usage()->used() );
+        $this->assertSame( 'stop', $response->reason() );
+        $this->assertSame( [], $response->citations() );
+        $this->assertSame( [], $response->steps() );
+    }
+
+
     public function testJsonEncodeSerializesNestedCitations() : void
     {
         $response = TextResponse::fake( 'Paris' )

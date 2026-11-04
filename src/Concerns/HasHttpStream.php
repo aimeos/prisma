@@ -47,8 +47,19 @@ trait HasHttpStream
      */
     protected function post( string $endpoint, array $params, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : array
     {
-        $response = $this->client()->post( $endpoint, ['json' => $params] );
+        return $this->received( $this->client()->post( $endpoint, ['json' => $params] ), $rateLimit );
+    }
 
+
+    /**
+     * Validates a non-streamed response and returns its decoded body.
+     *
+     * @param \Psr\Http\Message\ResponseInterface $response Received response
+     * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Updated with this response's rate limit, left unchanged when the response carries none
+     * @return array<string, mixed> Decoded response body
+     */
+    protected function received( \Psr\Http\Message\ResponseInterface $response, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : array
+    {
         $this->validate( $response );
 
         $rateLimit = $this->getRateLimit( $response ) ?? $rateLimit;

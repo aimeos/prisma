@@ -35,6 +35,26 @@ class FalTest extends TestCase
     }
 
 
+    public function testAudioDescribe() : void
+    {
+        $response = Prisma::audio()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ), 'de' );
+
+        $this->assertNotEmpty( $response->text() );
+    }
+
+
+    public function testAudioTranscribe() : void
+    {
+        $response = Prisma::audio()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( 'transcribe' )
+            ->transcribe( Audio::fromLocalPath( __DIR__ . '/assets/hello.mp3' ) );
+
+        $this->assertStringContainsStringIgnoringCase( 'hello', (string) $response->text() );
+    }
+
+
     public function testImageDescribe() : void
     {
         $response = Prisma::image()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
@@ -91,6 +111,15 @@ class FalTest extends TestCase
     }
 
 
+    public function testTextTranslate() : void
+    {
+        $response = $this->text()->ensure( 'translate' )->translate( ['Good morning', 'Thank you'], 'de', 'en' );
+
+        $this->assertCount( 2, $response->texts() );
+        $this->assertStringContainsStringIgnoringCase( 'danke', (string) $response->texts()[1] );
+    }
+
+
     public function testTextVectorize() : void
     {
         $this->assertNotEmpty( $this->text()->vectorize( ['hello'] )->first() );
@@ -102,6 +131,17 @@ class FalTest extends TestCase
         $response = $this->text()->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
 
         $this->assertStringContainsStringIgnoringCase( 'hello', $response->text() );
+    }
+
+
+    public function testVideoDescribe() : void
+    {
+        $response = Prisma::video()->using( 'fal', ['api_key' => $_ENV['FAL_API_KEY']] )
+            ->ensure( 'describe' )
+            ->describe( Video::fromLocalPath( __DIR__ . '/assets/flower.mp4' ) );
+
+        $this->assertNotEmpty( $response->text() );
+    }
 
 
     #[DataProvider('videoOperations')]

@@ -17,6 +17,9 @@ class File
     use FetchesUrls;
 
 
+    /** Bytes of seekable streams read for detecting the mime type, enough for the headers of media formats */
+    private const HEAD_BYTES = 65536;
+
     /** @var resource|null */
     protected mixed $stream = null;
     protected ?string $url = null;
@@ -104,6 +107,89 @@ class File
         }
 
         return $this->binary;
+    }
+
+
+    /**
+     * Returns the size of the file content without reading it.
+     *
+     * @return int|null Size in bytes or NULL if unknown, e.g. for URLs not fetched yet or pipes
+     */
+    public function bytes() : ?int
+    {
+        if( $this->binary !== null ) {
+            return strlen( $this->binary );
+        }
+
+        if( $this->base64 !== null ) {
+            // base64_decode() skips padding, line breaks and other characters outside the alphabet
+            $length = strlen( $this->base64 ) - (int) preg_match_all( '#[^A-Za-z0-9+/]#', $this->base64 );
+            return intdiv( $length * 3, 4 );
+        }
+
+        if( $this->stream !== null && stream_get_meta_data( $stream = self::resource( $this->stream ) )['seekable'] )
+        {
+            $size = fstat( $stream )['size'] ?? null;
+            $pos = ftell( $stream );
+
+            return is_int( $size ) && is_int( $pos ) ? max( 0, $size - $pos ) : null;
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Returns the file content in chunks to process large files with little memory.
+     *
+     * Content already in memory is sliced without copying it, streams and URLs are read chunk by chunk.
+     * Seekable streams are set back to their position afterwards.
+     *
+     * @param int $bytes Maximum size of each chunk in bytes
+     * @return \Generator<int, string> Non-empty chunks of the file content
+     */
+    public function chunks( int $bytes ) : \Generator
+    {
+        $bytes = max( 1, $bytes );
+
+        if( $this->binary !== null || $this->base64 !== null || ( $this->stream === null && !$this->url ) )
+        {
+            $binary = (string) $this->binary();
+
+            for( $pos = 0; $pos < strlen( $binary ); $pos += $bytes ) {
+                yield substr( $binary, $pos, $bytes );
+            }
+
+            return;
+        }
+
+        $stream = $this->stream();
+        $start = stream_get_meta_data( $stream )['seekable'] ? ftell( $stream ) : false;
+
+        try
+        {
+            while( ( $chunk = stream_get_contents( $stream, $bytes ) ) !== false && $chunk !== '' ) {
+                yield $chunk;
+            }
+        }
+        finally
+        {
+            // seekable streams are rewound, so the file content can be used again
+            if( $start !== false ) {
+                fseek( $stream, $start );
+            }
+        }
+    }
+
+
+    /**
+     * Returns the file content as base64 encoded data URI.
+     *
+     * @return string Data URI
+     */
+    public function dataUri() : string
+    {
+        return 'data:' . ( $this->mimeType() ?? 'application/octet-stream' ) . ';base64,' . $this->base64();
     }
 
 
@@ -277,7 +363,7 @@ class File
 
             if( $this->binary !== null || $this->base64 !== null || $this->stream !== null )
             {
-                $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
+                $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $this->head() ) ?: null;
             }
             elseif( $this->url )
             {
@@ -348,6 +434,17 @@ class File
 
 
     /**
+     * Returns the public file URL or the file content as base64 encoded data URI.
+     *
+     * @return string File URL or data URI
+     */
+    public function uri() : string
+    {
+        return $this->url() ?: $this->dataUri();
+    }
+
+
+    /**
      * Returns the file URL.
      *
      * @return string|null File URL
@@ -380,6 +477,30 @@ class File
     protected function acceptsMimeType( ?string $mimeType ) : bool
     {
         return !( $prefix = $this->mimePrefix() ) || str_starts_with( (string) $mimeType, $prefix );
+    }
+
+
+    /**
+     * Returns the beginning of the file content for detecting the mime type.
+     *
+     * Seekable streams are read partly and set back to their position, so large streams aren't
+     * loaded into memory. All other content is read completely.
+     *
+     * @return string Beginning or complete file content
+     */
+    private function head() : string
+    {
+        if( $this->binary !== null || $this->base64 !== null || $this->stream === null
+            || !stream_get_meta_data( $stream = self::resource( $this->stream ) )['seekable']
+            || ( $pos = ftell( $stream ) ) === false
+        ) {
+            return (string) $this->binary();
+        }
+
+        $head = (string) stream_get_contents( $stream, self::HEAD_BYTES );
+        fseek( $stream, $pos );
+
+        return $head;
     }
 
 

@@ -118,7 +118,7 @@ class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
         $request = [
             'model' => $this->modelName( 'aleph2' ),
             'promptText' => $prompt,
-            'videoUri' => $this->mediaUrl( $video ),
+            'videoUri' => $video->uri(),
         ];
         $keyframes = $this->repaintKeyframes( $media, $options );
 
@@ -169,7 +169,7 @@ class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
         }
 
         return array_map(
-            fn( Image $image, int|float $position ) => ['uri' => $this->mediaUrl( $image ), 'at' => $position],
+            fn( Image $image, int|float $position ) => ['uri' => $image->uri(), 'at' => $position],
             $images,
             array_values( $positions )
         );
@@ -188,7 +188,7 @@ class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
     {
         $request = [
             'model' => 'magnific_video_upscaler_creative',
-            'videoUri' => $this->mediaUrl( $video ),
+            'videoUri' => $video->uri(),
             'resolution' => $this->upscaleResolution( $factor, $options['resolution'] ?? null ),
         ];
 
@@ -240,11 +240,11 @@ class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
         $frames = [];
 
         if( ( $media['start'] ?? null ) instanceof Image ) {
-            $frames[] = ['uri' => $this->mediaUrl( $media['start'] ), 'position' => 'first'];
+            $frames[] = ['uri' => $media['start']->uri(), 'position' => 'first'];
         }
 
         if( ( $media['end'] ?? null ) instanceof Image ) {
-            $frames[] = ['uri' => $this->mediaUrl( $media['end'] ), 'position' => 'last'];
+            $frames[] = ['uri' => $media['end']->uri(), 'position' => 'last'];
         }
 
         return $frames;

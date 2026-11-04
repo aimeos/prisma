@@ -33,7 +33,7 @@ class Recraft extends Base
 
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
-        $data = ['prompt' => $prompt, 'image_url' => $this->imageUrl( $image )];
+        $data = ['prompt' => $prompt, 'image_url' => $image->uri()];
         $endpoint = 'replaceBackground';
 
         if( isset( $options['mask'] ) )
@@ -42,7 +42,7 @@ class Recraft extends Base
                 throw new BadRequestException( 'The background mask must be an Image' );
             }
 
-            $data['mask_url'] = $this->imageUrl( $options['mask'] );
+            $data['mask_url'] = $options['mask']->uri();
             $endpoint = 'generateBackground';
         }
 
@@ -53,8 +53,8 @@ class Recraft extends Base
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         return $this->request( 'eraseRegion', [
-            'image_url' => $this->imageUrl( $image ),
-            'mask_url' => $this->imageUrl( $mask ),
+            'image_url' => $image->uri(),
+            'mask_url' => $mask->uri(),
         ] + $this->allowed( $options, ['response_format'] ) );
     }
 
@@ -75,7 +75,7 @@ class Recraft extends Base
                     throw new BadRequestException( 'Style references must be Image objects' );
                 }
 
-                $data['style_reference_urls'][] = $this->imageUrl( $image );
+                $data['style_reference_urls'][] = $image->uri();
             }
         }
 
@@ -90,8 +90,8 @@ class Recraft extends Base
     {
         return $this->request( 'inpaint', [
             'prompt' => $prompt,
-            'image_url' => $this->imageUrl( $image ),
-            'mask_url' => $this->imageUrl( $mask ),
+            'image_url' => $image->uri(),
+            'mask_url' => $mask->uri(),
         ] + $this->generationOptions( $options, 'recraftv3' ) );
     }
 
@@ -99,7 +99,7 @@ class Recraft extends Base
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         return $this->request( 'removeBackground', [
-            'image_url' => $this->imageUrl( $image ),
+            'image_url' => $image->uri(),
         ] + $this->allowed( $options, ['response_format'] ) );
     }
 
@@ -108,7 +108,7 @@ class Recraft extends Base
     {
         $data = [
             'prompt' => $prompt,
-            'image_url' => $this->imageUrl( $image ),
+            'image_url' => $image->uri(),
         ];
 
         $allowed = $this->generationOptions( $options, 'recraftv4_1' )
@@ -130,7 +130,7 @@ class Recraft extends Base
         }
 
         $data = [
-            'image_url' => $this->imageUrl( $image ),
+            'image_url' => $image->uri(),
             'expand_top' => $top,
             'expand_right' => $right,
             'expand_bottom' => $bottom,
@@ -155,7 +155,7 @@ class Recraft extends Base
 
         // Recraft determines the output resolution; its API has no scale parameter.
         return $this->request( $mode . 'Upscale', [
-            'image_url' => $this->imageUrl( $image ),
+            'image_url' => $image->uri(),
         ] + $this->allowed( $options, ['response_format'] ) );
     }
 
@@ -170,12 +170,6 @@ class Recraft extends Base
             'n', 'style', 'style_id', 'style_match', 'response_format',
             'negative_prompt', 'text_layout', 'controls'
         ] );
-    }
-
-
-    protected function imageUrl( Image $image ) : string
-    {
-        return $image->url() ?? 'data:' . $image->mimeType() . ';base64,' . $image->base64();
     }
 
 

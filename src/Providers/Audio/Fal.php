@@ -2,19 +2,19 @@
 
 namespace Aimeos\Prisma\Providers\Audio;
 
-use Aimeos\Prisma\Concerns\FalApi;
 use Aimeos\Prisma\Contracts\Audio\Compose;
 use Aimeos\Prisma\Contracts\Audio\Demix;
 use Aimeos\Prisma\Contracts\Audio\Denoise;
+use Aimeos\Prisma\Contracts\Audio\Describe;
 use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Synthesize;
-use Aimeos\Prisma\Contracts\Cancel;
-use Aimeos\Prisma\Contracts\Resume;
-use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Contracts\Audio\Transcribe;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Files\Audio;
-use Aimeos\Prisma\Providers\Base;
+use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 /**
@@ -23,31 +23,14 @@ use Aimeos\Prisma\Responses\FileResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/minimax-music/v2". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
+ * The text responses of describe() and transcribe() can't be resumed, describe() uses the OpenRouter
+ * audio endpoint of fal and the "model" option selects the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
-    implements Cancel, Compose, Demix, Denoise, Resume, Revoice, Speak, Synthesize
+    implements Compose, Demix, Denoise, Describe, Revoice, Speak, Synthesize, Transcribe
 {
-    use FalApi;
-
-
-    private const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
-
-    /** @var array<int, string> */
-    private array $downloadHosts;
-
-
-    public function __construct( array $config )
-    {
-        if( !isset( $config['api_key'] ) ) {
-            throw new PrismaException( 'No API key' );
-        }
-
-        $hosts = $config['download_hosts'] ?? ['fal.media'];
-        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
-
-        $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
-        $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
-    }
+    protected const FILE = Audio::class;
+    protected const MAX_BYTES = 100 * 1024 * 1024;
 
 
     public function compose( string $prompt, array $options = [] ) : FileResponse
@@ -58,7 +41,7 @@ class Fal extends Base
             $input['music_length_ms'] = (int) round( $options['duration'] * 1000 );
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/music' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/music', $input, $options );
     }
 
 
@@ -71,26 +54,32 @@ class Fal extends Base
             default => ['model' => 'htdemucs_6s', 'stems' => ['vocals', 'drums', 'bass', 'guitar', 'piano', 'other']],
         };
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/demucs' ), array_replace( $defaults, $options, [
-            'audio_url' => $this->falMedia( $audio ),
-        ] ) );
+        return $this->submit( 'fal-ai/demucs', [
+            'audio_url' => $this->uri( $audio ),
+        ], array_replace( $defaults, $options ) );
     }
 
 
     public function denoise( Audio $audio, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/deepfilternet3' ), array_replace( $options, [
-            'audio_url' => $this->falMedia( $audio ),
-        ] ) );
+        return $this->submit( 'fal-ai/deepfilternet3', [
+            'audio_url' => $this->uri( $audio ),
+        ], $options );
+    }
+
+
+    public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
+    {
+        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $this->uri( $audio )], $options );
     }
 
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/voice-changer' ), array_replace( $options, [
-            'audio_url' => $this->falMedia( $audio ),
+        return $this->submit( 'fal-ai/elevenlabs/voice-changer', [
+            'audio_url' => $this->uri( $audio ),
             'voice' => $voice,
-        ] ) );
+        ], $options );
     }
 
 
@@ -102,7 +91,7 @@ class Fal extends Base
             $input['voice'] = $voice;
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/tts/eleven-v3' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/tts/eleven-v3', $input, $options );
     }
 
 
@@ -114,23 +103,32 @@ class Fal extends Base
             $input['duration_seconds'] = (float) $options['duration'];
         }
 
-        return $this->falQueue( (string) $this->modelName( 'fal-ai/elevenlabs/sound-effects/v2' ), array_replace( $options, $input ) );
+        return $this->submit( 'fal-ai/elevenlabs/sound-effects/v2', $input, $options );
     }
 
 
-    /**
-     * Builds a lazy audio file whose eventual download stays on the fal CDN.
-     *
-     * @param string $url Audio URL returned by fal
-     * @param string|null $mimeType Content type of the audio if known
-     * @return Audio Audio file
-     */
-    protected function falFile( string $url, ?string $mimeType ) : Audio
+    public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $audio = Audio::fromUrl( $url, $mimeType );
-        $audio->restrictHosts( $this->downloadHosts );
-        $audio->maxSize( self::MAX_DOWNLOAD_BYTES );
+        $input = ['audio_url' => $this->uri( $audio )];
 
-        return $audio;
+        if( $lang !== null && $lang !== '' ) {
+            $input['language_code'] = $lang;
+        }
+
+        $endpoint = $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' );
+
+        return $this->ask( $endpoint, array_replace( $options, $input ), function( array $data, TextResponse $response ) {
+
+            if( !is_string( $data['text'] ?? null ) ) {
+                throw new FailedException( 'No text found in fal response' );
+            }
+
+            // Whisper based models return "chunks" instead of "words"
+            $parts = $data['words'] ?? $data['chunks'] ?? [];
+
+            $response->add( $data['text'] )
+                ->withStructured( is_array( $parts ) ? $parts : [] )
+                ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
+        } );
     }
 }
