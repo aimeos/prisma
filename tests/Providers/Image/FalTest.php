@@ -251,6 +251,17 @@ class FalTest extends TestCase
     }
 
 
+    public function testRunBehindApiGateway() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test', 'run_url' => 'https://gateway.example/fal-run/'] )
+            ->response( ['output' => 'text'] );
+
+        $this->provider()->recognize( Image::fromBinary( 'i', 'image/png' ) );
+
+        $this->assertSame( 'https://gateway.example/fal-run/openrouter/router/vision', (string) $this->requests()[0]->getUri() );
+    }
+
+
     public function testResumeBehindApiGateway() : void
     {
         // fal returns response URLs of its queue host even if the requests are sent through a gateway

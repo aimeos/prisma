@@ -30,6 +30,7 @@ abstract class Fal extends Base implements Cancel, Resume
 
     /** @var array<int, string> */
     private array $downloadHosts;
+    private string $runUrl;
 
 
     public function __construct( array $config )
@@ -40,6 +41,8 @@ abstract class Fal extends Base implements Cancel, Resume
 
         $hosts = $config['download_hosts'] ?? ['fal.media'];
         $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
+
+        $this->runUrl = rtrim( $this->config( $config, 'run_url', 'https://fal.run' ), '/' ) . '/';
 
         $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
@@ -102,26 +105,20 @@ abstract class Fal extends Base implements Cancel, Resume
      *
      * @param array<string, mixed> $data Result data of the model endpoint
      * @param FileResponse $result File response to add the files to
-     * @return array<int, string> Output names of the added files
+     * @return void
      */
-    protected function files( array $data, FileResponse $result ) : array
+    protected function files( array $data, FileResponse $result ) : void
     {
-        $keys = [];
-
         foreach( $data as $key => $value )
         {
             if( $this->isFile( $value ) ) {
                 $result->add( $this->file( $value['url'], $this->mimeType( $value ) ), $key );
-                $keys[] = $key;
             } elseif( $this->isFileList( $value ) ) {
                 foreach( $value as $item ) {
                     $result->add( $this->file( $item['url'], $this->mimeType( $item ) ) );
                 }
-                $keys[] = $key;
             }
         }
-
-        return $keys;
     }
 
 
@@ -150,7 +147,6 @@ abstract class Fal extends Base implements Cancel, Resume
         return is_array( $value ) && $value !== [] && array_is_list( $value )
             && array_filter( $value, $this->isFile(...) ) === $value;
     }
-
 
 
     /**
@@ -245,8 +241,8 @@ abstract class Fal extends Base implements Cancel, Resume
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
-        $files = $this->files( $data, $result );
-        $result->withMeta( array_diff_key( $data, array_flip( $files ) ) );
+        $this->files( $data, $result );
+        $result->withMeta( array_filter( $data, fn( $value ) => !$this->isFile( $value ) && !$this->isFileList( $value ) ) );
 
         if( $result->empty() ) {
             throw new FailedException( 'No files found in fal response' );
@@ -294,7 +290,7 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function run( string $endpoint, array $input ) : array
     {
-        $response = $this->client()->post( 'https://fal.run/' . $endpoint, ['json' => $input] );
+        $response = $this->client()->post( $this->runUrl . $endpoint, ['json' => $input] );
         $this->validate( $response );
 
         return $this->fromJson( $response );
@@ -311,6 +307,6 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function submit( string $default, array $input, array $options ) : FileResponse
     {
-        return $this->queue( (string) $this->modelName( $default ), array_replace( $options, $input ) );
+        return $this->queue( $this->modelName( $default ), array_replace( $options, $input ) );
     }
 }

@@ -123,7 +123,4 @@ class Openrouter extends Base
             default => 'mp3',
         };
     }
-
-
-
 }

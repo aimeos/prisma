@@ -29,6 +29,7 @@ trait HasModel
      *
      * @param string|null $default Default model name
      * @return string|null Model name
+     * @phpstan-return ($default is string ? string : string|null)
      */
     protected function modelName( ?string $default = null ) : ?string
     {

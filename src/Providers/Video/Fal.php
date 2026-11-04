@@ -54,8 +54,8 @@ class Fal extends Base
     {
         $input = array_replace( $this->settings( $options ), ['prompt' => $prompt] );
         $images = $this->images( $media['references'] ?? [], 7 );
-        $start = ( $start = $media['start'] ?? null ) instanceof Image ? $start : null;
-        $end = ( $end = $media['end'] ?? null ) instanceof Image ? $end : null;
+        $start = $this->image( $media['start'] ?? null );
+        $end = $this->image( $media['end'] ?? null );
 
         if( $start ) {
             $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $start->uri();
@@ -122,6 +122,18 @@ class Fal extends Base
             'upscale_mode' => 'factor',
             'upscale_factor' => max( 1, min( 10, $factor ) ),
         ], $options );
+    }
+
+
+    /**
+     * Returns the value if it is an image.
+     *
+     * @param mixed $file Media file
+     * @return Image|null Image or NULL if the value isn't an image
+     */
+    protected function image( mixed $file ) : ?Image
+    {
+        return $file instanceof Image ? $file : null;
     }
 
 

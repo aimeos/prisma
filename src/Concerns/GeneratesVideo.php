@@ -55,7 +55,6 @@ trait GeneratesVideo
     }
 
 
-
     /**
      * Raises a provider job failure with a consistent exception type.
      *

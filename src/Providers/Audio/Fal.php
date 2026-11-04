@@ -115,7 +115,7 @@ class Fal extends Base
             $input['language_code'] = $lang;
         }
 
-        $data = $this->run( (string) $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
+        $data = $this->run( $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
 
         if( !is_string( $data['text'] ?? null ) ) {
             throw new PrismaException( 'No text found in fal response' );
