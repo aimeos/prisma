@@ -28,6 +28,29 @@ trait OpenaiApi
 
 
     /**
+     * Sends the first chat completions request without waiting for the answer.
+     *
+     * The answer is received when the returned response is used, so several requests sent
+     * before using their responses are processed by the API at the same time.
+     *
+     * @param string $endpoint API endpoint path
+     * @param string $defaultModel Default model name
+     * @param array<int, array<string, mixed>> $messages Chat messages
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @return \Aimeos\Prisma\Responses\TextResponse Lazy text response
+     */
+    protected function deferCompletions( string $endpoint, string $defaultModel, array $messages, array $options ) : \Aimeos\Prisma\Responses\TextResponse
+    {
+        $params = $this->completionParams( $defaultModel, $messages, $options, 1, false );
+        $promise = $this->client()->postAsync( $endpoint, ['json' => $params] );
+
+        return \Aimeos\Prisma\Responses\TextResponse::fromStream(
+            fn( \Aimeos\Prisma\Responses\TextResponse $res ) => $this->runCompletions( $res, $endpoint, $defaultModel, $messages, $options, null, $promise )
+        );
+    }
+
+
+    /**
      * Streams the chat completions tool loop as a lazy TextResponse for OpenAI-compatible APIs.
      *
      * Lazy dual of completions(): iterate the returned response for live deltas and tool steps,
@@ -123,9 +146,10 @@ trait OpenaiApi
      * @param array<int, array<string, mixed>> $messages Chat messages
      * @param array<string, mixed> $options Provider specific options
      * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body for the first streamed turn; its presence enables streaming
+     * @param \GuzzleHttp\Promise\PromiseInterface|null $firstResponse Already sent request of the first non-streamed turn
      * @return \Generator<int, mixed> Text deltas and tool steps (empty when not streaming)
      */
-    protected function runCompletions( \Aimeos\Prisma\Responses\TextResponse $res, string $endpoint, string $defaultModel, array $messages, array $options, ?\Psr\Http\Message\StreamInterface $firstBody = null ) : \Generator
+    protected function runCompletions( \Aimeos\Prisma\Responses\TextResponse $res, string $endpoint, string $defaultModel, array $messages, array $options, ?\Psr\Http\Message\StreamInterface $firstBody = null, ?\GuzzleHttp\Promise\PromiseInterface $firstResponse = null ) : \Generator
     {
         $stream = $firstBody !== null;
         $allSteps = [];
@@ -139,10 +163,10 @@ trait OpenaiApi
         {
             $params = $this->completionParams( $defaultModel, $messages, $options, $step, $stream );
 
-            $turn = $this->completionTurn( $endpoint, $params, $stream, $firstBody, $rateLimit );
+            $turn = $this->completionTurn( $endpoint, $params, $stream, $firstBody, $firstResponse, $rateLimit );
             yield from $turn;                       // answer text deltas
             $result = $turn->getReturn();
-            $firstBody = null;                      // consumed by the first turn
+            $firstBody = $firstResponse = null;     // consumed by the first turn
 
             // keep the last step that produced text so a tool-only final step doesn't discard it
             $texts = $this->completionTexts( $result ) ?: $texts;
@@ -178,11 +202,16 @@ trait OpenaiApi
      * @param array<string, mixed> $params Request payload for this turn
      * @param bool $stream Whether to stream the turn over SSE
      * @param \Psr\Http\Message\StreamInterface|null $firstBody Eagerly opened body reused for the first streamed turn
+     * @param \GuzzleHttp\Promise\PromiseInterface|null $firstResponse Already sent request reused for the first non-streamed turn
      * @param \Aimeos\Prisma\Values\RateLimit|null $rateLimit Updated with this turn's rate limit
      * @return \Generator<int, string, mixed, array<string, mixed>> Text deltas, returning the result envelope
      */
-    private function completionTurn( string $endpoint, array $params, bool $stream, ?\Psr\Http\Message\StreamInterface $firstBody, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit ) : \Generator
+    private function completionTurn( string $endpoint, array $params, bool $stream, ?\Psr\Http\Message\StreamInterface $firstBody, ?\GuzzleHttp\Promise\PromiseInterface $firstResponse, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit ) : \Generator
     {
+        if( $firstResponse ) {
+            return $this->received( $firstResponse->wait(), $rateLimit );
+        }
+
         if( !$stream ) {
             return $this->post( $endpoint, $params, $rateLimit );
         }

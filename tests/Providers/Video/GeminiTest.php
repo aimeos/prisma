@@ -45,8 +45,8 @@ class GeminiTest extends TestCase
         $this->response( ['name' => 'files/abc', 'state' => 'ACTIVE'] );
         $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'a long video']]]]]] );
 
-        // videos larger than 14 MiB are uploaded in parts of 8 MiB
-        $video = Video::fromBinary( str_repeat( 'v', 15 * 1024 * 1024 ), 'video/mp4' )->as( 'v.mp4' );
+        // videos larger than 14 MiB are uploaded in parts of 32 MiB
+        $video = Video::fromBinary( str_repeat( 'v', 33 * 1024 * 1024 ), 'video/mp4' )->as( 'v.mp4' );
         $response = $this->provider()->describe( $video, 'en' );
 
         $this->assertSame( 'a long video', $response->text() );
@@ -55,16 +55,16 @@ class GeminiTest extends TestCase
 
         $this->assertSame( 'https://generativelanguage.googleapis.com/upload/v1beta/files', (string) $start->getUri() );
         $this->assertSame( 'start', $start->getHeaderLine( 'X-Goog-Upload-Command' ) );
-        $this->assertSame( (string) ( 15 * 1024 * 1024 ), $start->getHeaderLine( 'X-Goog-Upload-Header-Content-Length' ) );
+        $this->assertSame( (string) ( 33 * 1024 * 1024 ), $start->getHeaderLine( 'X-Goog-Upload-Header-Content-Length' ) );
         $this->assertSame( 'video/mp4', $start->getHeaderLine( 'X-Goog-Upload-Header-Content-Type' ) );
         $this->assertSame( ['file' => ['display_name' => 'v.mp4']], json_decode( (string) $start->getBody(), true ) );
 
         $this->assertSame( 'upload', $part1->getHeaderLine( 'X-Goog-Upload-Command' ) );
         $this->assertSame( '0', $part1->getHeaderLine( 'X-Goog-Upload-Offset' ) );
-        $this->assertSame( 8 * 1024 * 1024, $part1->getBody()->getSize() );
+        $this->assertSame( 32 * 1024 * 1024, $part1->getBody()->getSize() );
         $this->assertSame( 'upload, finalize', $part2->getHeaderLine( 'X-Goog-Upload-Command' ) );
-        $this->assertSame( (string) ( 8 * 1024 * 1024 ), $part2->getHeaderLine( 'X-Goog-Upload-Offset' ) );
-        $this->assertSame( 7 * 1024 * 1024, $part2->getBody()->getSize() );
+        $this->assertSame( (string) ( 32 * 1024 * 1024 ), $part2->getHeaderLine( 'X-Goog-Upload-Offset' ) );
+        $this->assertSame( 1024 * 1024, $part2->getBody()->getSize() );
 
         $this->assertSame( 'https://generativelanguage.googleapis.com/v1beta/files/abc', (string) $state->getUri() );
 
@@ -77,7 +77,6 @@ class GeminiTest extends TestCase
     {
         $this->prisma( 'video', 'gemini', ['api_key' => 'test'] )
             ->response( '', ['X-Goog-Upload-URL' => 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=1'] );
-        $this->response( '' );
         $this->response( ['file' => ['name' => 'files/abc', 'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/abc', 'state' => 'PROCESSING']] );
         $this->response( ['name' => 'files/abc', 'state' => 'FAILED'] );
 
@@ -85,5 +84,21 @@ class GeminiTest extends TestCase
 
         $this->expectException( FailedException::class );
         $response->text();
+    }
+
+
+    public function testDescribeUploadOnce() : void
+    {
+        $this->prisma( 'video', 'gemini', ['api_key' => 'test'] )
+            ->response( '', ['X-Goog-Upload-URL' => 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=1'] );
+        $this->response( ['file' => ['name' => 'files/abc', 'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/abc', 'state' => 'ACTIVE']] );
+        $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'first']]]]]] );
+        $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'second']]]]]] );
+
+        $video = Video::fromBinary( str_repeat( 'v', 15 * 1024 * 1024 ), 'video/mp4' );
+
+        $this->assertSame( 'first', $this->provider()->describe( $video )->text() );
+        $this->assertSame( 'second', $this->provider()->describe( $video, 'de' )->text() );
+        $this->assertCount( 4, $this->requests() );
     }
 }

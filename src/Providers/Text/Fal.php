@@ -79,7 +79,7 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
 
         foreach( array_chunk( $this->batches( array_values( $texts ) ), self::BATCH_REQUESTS ) as $batches )
         {
-            // all requests are sent before reading the answers, so the LLM translates the batches at the same time
+            // all requests are sent before receiving the answers, so the LLM translates the batches at the same time
             $responses = array_map( fn( $batch ) => $this->translation( $batch, $to, $from, $context, $options ), $batches );
 
             foreach( $responses as $idx => $response )
@@ -189,7 +189,7 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
     /**
      * Returns the validated translations of one batch.
      *
-     * @param TextResponse $response Streamed structured output response of the batch
+     * @param TextResponse $response Structured output response of the batch
      * @param int $count Number of texts in the batch
      * @return array<int, string> Translated texts in the same order
      * @throws PrismaException If the translations are invalid
@@ -211,14 +211,14 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
     /**
      * Sends the request translating one batch of texts using structured output.
      *
-     * The answer is streamed, so the request is sent immediately but the response is read when used.
+     * The request is sent immediately but the answer is received when the response is used.
      *
      * @param array<int, string> $texts Texts to translate
      * @param string $to ISO language code to translate into
      * @param string|null $from ISO language code of the texts or NULL to detect it
      * @param string|null $context Context of the texts for better translations
      * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Lazy streamed response
+     * @return TextResponse Lazy response
      */
     private function translation( array $texts, string $to, ?string $from, ?string $context, array $options ) : TextResponse
     {
@@ -231,6 +231,6 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
             $this->allowed( $options, self::OPTIONS ), $options['mode'] ?? null
         );
 
-        return $this->streamCompletions( 'chat/completions', self::MODEL, $this->messages( $this->content( $prompt, [] ) ), $params );
+        return $this->deferCompletions( 'chat/completions', self::MODEL, $this->messages( $this->content( $prompt, [] ) ), $params );
     }
 }

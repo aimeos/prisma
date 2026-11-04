@@ -19,10 +19,13 @@ class Gemini extends Base
     private const INLINE_BYTES = 14 * 1024 * 1024;
 
     /** Size of the uploaded parts, a multiple of the 8 MiB upload granularity of Gemini */
-    private const PART_BYTES = 8 * 1024 * 1024;
+    private const PART_BYTES = 32 * 1024 * 1024;
 
     /** Polling interval in seconds until uploaded media are processed */
     private const RETRY = 3;
+
+    /** @var \WeakMap<File, array{name: string, uri: string, mimeType: string, state: string|null}>|null Uploaded files, so files used several times are uploaded once */
+    private ?\WeakMap $uploads = null;
 
 
     public function __construct( array $config )
@@ -299,7 +302,8 @@ class Gemini extends Base
             return $this->answer( $model, $this->content( $prompt, [$file] ), $config, TextResponse::fromTexts( [] ) );
         }
 
-        $upload = $this->upload( $file );
+        $this->uploads ??= new \WeakMap();
+        $upload = $this->uploads[$file] ??= $this->upload( $file );
         $parts = [['fileData' => ['fileUri' => $upload['uri'], 'mimeType' => $upload['mimeType']]], ['text' => $prompt]];
         $state = $upload['state'];
 

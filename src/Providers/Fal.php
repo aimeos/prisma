@@ -53,6 +53,9 @@ abstract class Fal extends Base implements Cancel, Resume
     private array $downloadHosts;
     private string $restUrl;
 
+    /** @var \WeakMap<File, string>|null URLs of the uploaded files, so files used several times are uploaded once */
+    private ?\WeakMap $uploads = null;
+
 
     public function __construct( array $config )
     {
@@ -365,7 +368,8 @@ abstract class Fal extends Base implements Cancel, Resume
             return $file->dataUri();
         }
 
-        return $this->upload( $file );
+        $this->uploads ??= new \WeakMap();
+        return $this->uploads[$file] ??= $this->upload( $file );
     }
 
 

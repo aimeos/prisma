@@ -70,7 +70,7 @@ class FalTest extends TestCase
     public function testTranslate() : void
     {
         $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
-            ->streamResponse( $this->events( 'gen-1', '{"texts":["Hallo","Welt"]}', ['total_tokens' => 9] ) )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo","Welt"]}', ['total_tokens' => 9] ) )
             ->ensure( 'translate' )
             ->translate( ['a' => 'Hello', 'b' => 'World'], 'de', 'en', 'Greeting', ['temperature' => 0.1, 'top_k' => 5] );
 
@@ -97,8 +97,8 @@ class FalTest extends TestCase
         $long = str_repeat( 'a', 9990 );
 
         $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
-            ->streamResponse( $this->events( 'gen-1', '{"texts":["Hallo","b"]}', ['total_tokens' => 9, 'prompt_tokens_details' => ['cached_tokens' => 1]] ) );
-        $this->streamResponse( $this->events( 'gen-2', '{"texts":["Welt!"]}', ['total_tokens' => 7, 'prompt_tokens_details' => ['cached_tokens' => 2]] ) );
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo","b"]}', ['total_tokens' => 9, 'prompt_tokens_details' => ['cached_tokens' => 1]] ) );
+        $this->response( $this->completion( 'gen-2', '{"texts":["Welt!"]}', ['total_tokens' => 7, 'prompt_tokens_details' => ['cached_tokens' => 2]] ) );
 
         // a batch contains at most 10000 characters
         $response = $this->provider()->translate( ['Hello', $long, 'World!'], 'de' );
@@ -113,6 +113,7 @@ class FalTest extends TestCase
         $this->assertStringContainsString( 'Hello', (string) $requests[0]->getBody() );
         $this->assertStringNotContainsString( 'World!', (string) $requests[0]->getBody() );
         $this->assertStringContainsString( '[\\"World!\\"]', (string) $requests[1]->getBody() );
+        $this->assertArrayNotHasKey( 'stream', json_decode( (string) $requests[1]->getBody(), true ) );
     }
 
 
@@ -129,7 +130,7 @@ class FalTest extends TestCase
     public function testTranslateCountMismatch() : void
     {
         $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
-            ->streamResponse( $this->events( 'gen-1', '{"texts":["Hallo"]}' ) );
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo"]}' ) );
 
         $this->expectException( PrismaException::class );
         $this->provider()->translate( ['Hello', 'World'], 'de' );
@@ -148,7 +149,7 @@ class FalTest extends TestCase
     public function testTranslateNoString() : void
     {
         $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
-            ->streamResponse( $this->events( 'gen-1', '{"texts":["Hallo",null]}' ) );
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo",null]}' ) );
 
         $this->expectException( PrismaException::class );
         $this->provider()->translate( ['Hello', 'World'], 'de' );
@@ -260,19 +261,15 @@ class FalTest extends TestCase
 
 
     /**
-     * Returns the SSE events of a streamed chat completion.
+     * Returns the result of a chat completion.
      *
      * @param string $id Completion ID
      * @param string $content Answer text
      * @param array<string, mixed> $usage Token usage
-     * @return array<int, array<string, mixed>> Stream events
+     * @return array<string, mixed> Chat completion
      */
-    private function events( string $id, string $content, array $usage = [] ) : array
+    private function completion( string $id, string $content, array $usage = [] ) : array
     {
-        return [
-            ['data' => ['id' => $id, 'choices' => [['delta' => ['content' => $content]]]]],
-            ['data' => ['id' => $id, 'choices' => [['delta' => [], 'finish_reason' => 'stop']]] + ( $usage ? ['usage' => $usage] : [] )],
-            ['data' => '[DONE]'],
-        ];
+        return ['id' => $id, 'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $content]]]] + ( $usage ? ['usage' => $usage] : [] );
     }
 }
