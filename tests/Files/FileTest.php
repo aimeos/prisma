@@ -66,6 +66,7 @@ class FileTest extends TestCase
         $this->assertSame( 5, File::fromBinary( 'hello' )->bytes() );
         $this->assertSame( 5, File::fromBase64( base64_encode( 'hello' ) )->bytes() );
         $this->assertSame( 6, File::fromBase64( base64_encode( 'hello!' ) )->bytes() );
+        $this->assertSame( 100, File::fromBase64( chunk_split( base64_encode( str_repeat( 'x', 100 ) ), 76 ) )->bytes() );
         $this->assertNull( File::fromUrl( 'https://example.com/file.bin' )->bytes() );
 
         $stream = Utils::tryFopen( 'php://temp', 'w+' );

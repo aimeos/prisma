@@ -3024,7 +3024,9 @@ limit the total polling time in the queue.
 
 While a job is pending, `meta()` contains the data of the latest status response,
 e.g. `progress` from 0.0 to 1.0 for Runway or a `progress` array with `phase`, `step` and
-optional `percent` and `etaSeconds` for Hydracept.
+optional `percent` and `etaSeconds` for Hydracept. That's why `meta()` and `rateLimit()` never
+wait for the job, while the other accessors of text responses, e.g. `text()`, `usage()` or `empty()`,
+wait until it completes.
 
 `stream()` downloads the file into a temporary stream, which uses a temporary file for
 larger downloads instead of memory, and downloads it again on each call. `binary()` and

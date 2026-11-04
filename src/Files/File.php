@@ -122,7 +122,8 @@ class File
         }
 
         if( $this->base64 !== null ) {
-            $length = strlen( rtrim( $this->base64, '=' ) );
+            // base64_decode() skips padding, line breaks and other characters outside the alphabet
+            $length = strlen( $this->base64 ) - (int) preg_match_all( '#[^A-Za-z0-9+/]#', $this->base64 );
             return intdiv( $length * 3, 4 );
         }
 

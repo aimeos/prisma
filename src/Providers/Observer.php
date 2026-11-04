@@ -80,7 +80,7 @@ class Observer implements Provider
             // void operations like cancel() don't return a response
             $this->emit( $method, $start, null,
                 is_object( $response ) && method_exists( $response, 'meta' ) ? $response->meta() : null,
-                is_object( $response ) && method_exists( $response, 'usage' ) ? $response->usage() : null
+                is_object( $response ) && method_exists( $response, 'usage' ) && !$this->pending( $response ) ? $response->usage() : null
             );
         }
         catch( \Throwable $e )
@@ -363,5 +363,19 @@ class Observer implements Provider
                 error_log( 'prisma observer: ' . $e->getMessage() );
             }
         }
+    }
+
+
+    /**
+     * Tests if the response is an asynchronous job which is still running.
+     *
+     * retryAfter() doesn't poll the provider, so the job isn't waited for by the observer.
+     *
+     * @param object $response Provider response
+     * @return bool TRUE if the job is still running, FALSE if it completed or isn't asynchronous
+     */
+    private function pending( object $response ) : bool
+    {
+        return method_exists( $response, 'retryAfter' ) && $response->retryAfter() > 0;
     }
 }
