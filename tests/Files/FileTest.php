@@ -151,6 +151,21 @@ class FileTest extends TestCase
     }
 
 
+    public function testMimeTypeStream() : void
+    {
+        $stream = Utils::tryFopen( 'php://temp', 'w+' );
+        fwrite( $stream, '%PDF-1.4' . str_repeat( ' ', 100000 ) );
+        rewind( $stream );
+
+        $file = File::fromStream( $stream );
+
+        // seekable streams are detected by their beginning and aren't read into memory
+        $this->assertSame( 'application/pdf', $file->mimeType() );
+        $this->assertSame( 0, ftell( $stream ) );
+        $this->assertSame( 100008, $file->bytes() );
+    }
+
+
     public function testMimeTypeUsesConfiguredStrictMode() : void
     {
         $history = [];

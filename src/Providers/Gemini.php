@@ -311,12 +311,12 @@ class Gemini extends Base
 
         $upload = $this->uploads[$file];
         $parts = [['fileData' => ['fileUri' => $upload['uri'], 'mimeType' => $upload['mimeType']]], ['text' => $prompt]];
-        $state = $upload['state'];
+        $active = $upload['state'] === 'ACTIVE';
 
         // uploaded audio and video files are processed by Gemini before they can be used
-        return TextResponse::fromAsync( function( TextResponse $response ) use ( $upload, $parts, $model, $config, &$state ) : bool {
+        return TextResponse::fromAsync( function( TextResponse $response ) use ( $file, $upload, $parts, $model, $config, &$active ) : bool {
 
-            if( $state !== 'ACTIVE' && ( $state = $this->state( $upload['name'] ) ) !== 'ACTIVE' ) {
+            if( !$active && !( $active = $this->active( $file, $upload['name'] ) ) ) {
                 return false;
             }
 
@@ -392,6 +392,27 @@ class Gemini extends Base
                 403 => 401, // unauthorized, not forbidden content
                 default   => $status
             }, $error, $response );
+        }
+    }
+
+
+    /**
+     * Returns if Gemini has processed the uploaded file.
+     *
+     * Failed uploads are removed from the uploaded files, so the next call uploads the file again.
+     *
+     * @param File $file Uploaded file
+     * @param string $name Name of the uploaded file in Gemini, e.g. "files/abc"
+     * @return bool TRUE if the file can be used, FALSE if it's still processed
+     * @throws FailedException If processing the file failed
+     */
+    private function active( File $file, string $name ) : bool
+    {
+        try {
+            return $this->state( $name ) === 'ACTIVE';
+        } catch( FailedException $e ) {
+            unset( $this->uploads[$file] );
+            throw $e;
         }
     }
 

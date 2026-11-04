@@ -17,6 +17,9 @@ class File
     use FetchesUrls;
 
 
+    /** Bytes of seekable streams read for detecting the mime type, enough for the headers of media formats */
+    private const HEAD_BYTES = 65536;
+
     /** @var resource|null */
     protected mixed $stream = null;
     protected ?string $url = null;
@@ -359,7 +362,7 @@ class File
 
             if( $this->binary !== null || $this->base64 !== null || $this->stream !== null )
             {
-                $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( (string) $this->binary() ) ?: null;
+                $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->buffer( $this->head() ) ?: null;
             }
             elseif( $this->url )
             {
@@ -473,6 +476,30 @@ class File
     protected function acceptsMimeType( ?string $mimeType ) : bool
     {
         return !( $prefix = $this->mimePrefix() ) || str_starts_with( (string) $mimeType, $prefix );
+    }
+
+
+    /**
+     * Returns the beginning of the file content for detecting the mime type.
+     *
+     * Seekable streams are read partly and set back to their position, so large streams aren't
+     * loaded into memory. All other content is read completely.
+     *
+     * @return string Beginning or complete file content
+     */
+    private function head() : string
+    {
+        if( $this->binary !== null || $this->base64 !== null || $this->stream === null
+            || !stream_get_meta_data( $stream = self::resource( $this->stream ) )['seekable']
+            || ( $pos = ftell( $stream ) ) === false
+        ) {
+            return (string) $this->binary();
+        }
+
+        $head = (string) stream_get_contents( $stream, self::HEAD_BYTES );
+        fseek( $stream, $pos );
+
+        return $head;
     }
 
 

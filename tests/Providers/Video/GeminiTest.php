@@ -82,10 +82,20 @@ class GeminiTest extends TestCase
         $this->response( ['file' => ['name' => 'files/abc', 'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/abc', 'state' => 'PROCESSING']] );
         $this->response( ['name' => 'files/abc', 'state' => 'FAILED'] );
 
-        $response = $this->provider()->describe( Video::fromBinary( str_repeat( 'v', 15 * 1024 * 1024 ), 'video/mp4' ) );
+        $this->response( '', ['X-Goog-Upload-URL' => 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=2'] );
+        $this->response( ['file' => ['name' => 'files/def', 'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/def', 'state' => 'ACTIVE']] );
+        $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'a video']]]]]] );
 
-        $this->expectException( FailedException::class );
-        $response->text();
+        $video = Video::fromBinary( str_repeat( 'v', 15 * 1024 * 1024 ), 'video/mp4' );
+
+        try {
+            $this->provider()->describe( $video )->text();
+            $this->fail( 'Failed processing must throw' );
+        } catch( FailedException ) {}
+
+        // failed uploads aren't reused, so the next call uploads the file again
+        $this->assertSame( 'a video', $this->provider()->describe( $video )->text() );
+        $this->assertCount( 6, $this->requests() );
     }
 
 
