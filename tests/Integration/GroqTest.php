@@ -123,7 +123,7 @@ class GroqTest extends TestCase
         $image = Image::fromLocalPath( __DIR__ . '/assets/cat.png' );
         $response = Prisma::text()
             ->using( 'groq', ['api_key' => $_ENV['GROQ_API_KEY']] )
-            ->model( 'qwen/qwen3.6-27b' )
+            ->model( 'qwen/qwen3.8-27b' )
             ->ensure( 'write' )
             ->write( 'What animal is in this image? Reply with just the animal name.', [$image] );
 
