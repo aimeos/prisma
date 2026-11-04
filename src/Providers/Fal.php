@@ -10,7 +10,11 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 
 /**
@@ -31,12 +35,18 @@ abstract class Fal extends Base implements Cancel, Resume
     /** Polling interval of the queued requests in seconds */
     protected const RETRY = 3;
 
+    /** Files up to this size are sent inline as data URI because uploading them takes three requests */
+    private const INLINE_BYTES = 5 * 1024 * 1024;
+
+    /** Size of the uploaded parts, so each request of large uploads stays short */
+    private const PART_BYTES = 10 * 1024 * 1024;
+
     /** Default LLM of the OpenRouter endpoints */
     private const ROUTER_MODEL = 'google/gemini-3.8-flash';
 
     /** @var array<int, string> */
     private array $downloadHosts;
-    private string $runUrl;
+    private string $restUrl;
 
 
     public function __construct( array $config )
@@ -48,7 +58,7 @@ abstract class Fal extends Base implements Cancel, Resume
         $hosts = $config['download_hosts'] ?? null;
         $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
 
-        $this->runUrl = rtrim( $this->config( $config, 'run_url', 'https://fal.run' ), '/' ) . '/';
+        $this->restUrl = rtrim( $this->config( $config, 'rest_url', 'https://rest.fal.ai' ), '/' ) . '/';
 
         $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
@@ -80,7 +90,25 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $this->requestUrl( $jobId ) ), static::RETRY, jobId: $jobId );
+        $poll = $this->poll( $this->requestUrl( $jobId ), $this->result(...) );
+        return FileResponse::fromAsync( $poll, static::RETRY, jobId: $jobId );
+    }
+
+
+    /**
+     * Submits a request returning text to the queue of a model endpoint.
+     *
+     * Text responses can't be resumed because resume() returns file responses only.
+     *
+     * @param string $endpoint Model endpoint ID, e.g. "fal-ai/elevenlabs/speech-to-text/scribe-v2"
+     * @param array<string, mixed> $input Model input
+     * @param \Closure $result Closure that populates the text response from the result data
+     * @return TextResponse Asynchronous text response
+     */
+    protected function ask( string $endpoint, array $input, \Closure $result ) : TextResponse
+    {
+        // text results are fast, so they are polled with the default interval even for videos
+        return TextResponse::fromAsync( $this->poll( $this->queue( $endpoint, $input ), $result ), self::RETRY );
     }
 
 
@@ -171,16 +199,17 @@ abstract class Fal extends Base implements Cancel, Resume
      * Returns a closure that polls the status of a request until it is completed.
      *
      * @param Uri $uri Validated response URL of the request
-     * @return \Closure Polling closure that populates the file response
+     * @param \Closure $result Closure that populates the response from the result data
+     * @return \Closure Polling closure that populates the response
      */
-    protected function poll( Uri $uri ) : \Closure
+    protected function poll( Uri $uri, \Closure $result ) : \Closure
     {
-        return function( FileResponse $result ) use ( $uri ) : bool {
-            $response = $this->client()->get( $uri->withPath( $uri->getPath() . '/status' ), ['allow_redirects' => false] );
-            $this->validate( $response );
+        return function( FileResponse|TextResponse $response ) use ( $uri, $result ) : bool {
+            $status = $this->client()->get( $uri->withPath( $uri->getPath() . '/status' ), ['allow_redirects' => false] );
+            $this->validate( $status );
 
-            $data = $this->fromJson( $response );
-            $result->withMeta( $data );
+            $data = $this->fromJson( $status );
+            $response->withMeta( $data );
 
             if( ( $data['status'] ?? null ) !== 'COMPLETED' ) {
                 return false;
@@ -190,7 +219,10 @@ abstract class Fal extends Base implements Cancel, Resume
                 throw new FailedException( is_string( $data['error'] ) ? $data['error'] : 'fal request failed' );
             }
 
-            $this->result( $uri, $result );
+            $output = $this->client()->get( $uri, ['allow_redirects' => false] );
+            $this->validate( $output );
+
+            $result( $this->fromJson( $output ), $response );
             return true;
         };
     }
@@ -201,9 +233,9 @@ abstract class Fal extends Base implements Cancel, Resume
      *
      * @param string $endpoint Model endpoint ID, e.g. "fal-ai/flux-2"
      * @param array<string, mixed> $input Model input
-     * @return FileResponse Asynchronous file response
+     * @return Uri Validated response URL of the request
      */
-    protected function queue( string $endpoint, array $input ) : FileResponse
+    protected function queue( string $endpoint, array $input ) : Uri
     {
         $response = $this->client()->post( $endpoint, ['json' => $input] );
         $this->validate( $response );
@@ -215,7 +247,7 @@ abstract class Fal extends Base implements Cancel, Resume
             throw new FailedException( 'No response URL in fal response' );
         }
 
-        return $this->resume( $url );
+        return $this->requestUrl( $url );
     }
 
 
@@ -234,19 +266,15 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Fetches the result of a completed request and adds its files and meta data to the response.
+     * Adds the files and meta data of a completed request to the response.
      *
-     * @param Uri $uri Validated response URL of the request
+     * @param array<string, mixed> $data Result data of the model endpoint
      * @param FileResponse $result File response to populate
      * @return void
      * @throws FailedException If the result contains no files
      */
-    protected function result( Uri $uri, FileResponse $result ) : void
+    protected function result( array $data, FileResponse $result ) : void
     {
-        $response = $this->client()->get( $uri, ['allow_redirects' => false] );
-        $this->validate( $response );
-
-        $data = $this->fromJson( $response );
         $this->files( $data, $result );
         $result->withMeta( array_filter( $data, fn( $value ) => !$this->isFile( $value ) && !$this->isFileList( $value ) ) );
 
@@ -257,49 +285,32 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Asks an LLM about the media files using a synchronous OpenRouter endpoint of fal.
+     * Asks an LLM about the media files using an OpenRouter endpoint of fal.
      *
      * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/vision"
      * @param string $prompt Instructions for the LLM
      * @param array<string, mixed> $input Media fields of the endpoint
      * @param array<string, mixed> $options Provider specific options, "model" selects the LLM
-     * @return TextResponse Response text
+     * @return TextResponse Asynchronous response text
      */
     protected function router( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
     {
         // model() selects the queue endpoint, so the LLM is passed as option
-        $data = $this->run( $endpoint, array_replace( ['model' => self::ROUTER_MODEL], $options, $input, [
-            'prompt' => $prompt,
-        ] ) );
+        $input = array_replace( ['model' => self::ROUTER_MODEL], $options, $input, ['prompt' => $prompt] );
 
-        if( !is_string( $data['output'] ?? null ) ) {
-            throw new PrismaException( 'No text found in fal response' );
-        }
+        return $this->ask( $endpoint, $input, function( array $data, TextResponse $response ) {
 
-        $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
-        $used = $usage['total_tokens'] ?? null;
+            if( !is_string( $data['output'] ?? null ) ) {
+                throw new FailedException( 'No text found in fal response' );
+            }
 
-        return TextResponse::fromText( $data['output'] )
-            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
-            ->withMeta( array_diff_key( $data, ['output' => 1, 'usage' => 1] ) );
-    }
+            $usage = is_array( $data['usage'] ?? null ) ? $data['usage'] : [];
+            $used = $usage['total_tokens'] ?? null;
 
-
-    /**
-     * Sends a synchronous request to a model endpoint and returns its result.
-     *
-     * Used for text results only because resume() can continue file responses only.
-     *
-     * @param string $endpoint Model endpoint ID, e.g. "fal-ai/elevenlabs/speech-to-text/scribe-v2"
-     * @param array<string, mixed> $input Model input
-     * @return array<string, mixed> Result data of the model endpoint
-     */
-    protected function run( string $endpoint, array $input ) : array
-    {
-        $response = $this->client()->post( $this->runUrl . $endpoint, ['json' => $input] );
-        $this->validate( $response );
-
-        return $this->fromJson( $response );
+            $response->add( $data['output'] )
+                ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+                ->withMeta( array_diff_key( $data, ['output' => 1, 'usage' => 1] ) );
+        } );
     }
 
 
@@ -313,7 +324,7 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function submit( string $default, array $input, array $options ) : FileResponse
     {
-        return $this->queue( $this->modelName( $default ), array_replace( $options, $input ) );
+        return $this->resume( (string) $this->queue( $this->modelName( $default ), array_replace( $options, $input ) ) );
     }
 
 
@@ -326,5 +337,111 @@ abstract class Fal extends Base implements Cancel, Resume
     protected function upscaling( int $factor ) : array
     {
         return ['upscale_mode' => 'factor', 'upscale_factor' => max( 1, min( 10, $factor ) )];
+    }
+
+
+    /**
+     * Returns the URL of the file or uploads it to the fal storage if it's large.
+     *
+     * Large files are uploaded because data URIs need several times the file size as
+     * memory when sent as JSON and slow down the requests to the model endpoints.
+     *
+     * @param File $file Input file
+     * @return string File URL or data URI
+     */
+    protected function uri( File $file ) : string
+    {
+        if( $url = $file->url() ) {
+            return $url;
+        }
+
+        $mimeType = $file->mimeType() ?? 'application/octet-stream';
+        $body = Utils::streamFor( $file->stream() );
+        $size = $body->getSize();
+
+        if( $size !== null && $size <= self::INLINE_BYTES ) {
+            return $file->dataUri();
+        }
+
+        return $this->upload( $body, $mimeType, $file->filename() );
+    }
+
+
+    /**
+     * Uploads the content in parts to the URL returned by fal.
+     *
+     * @param Uri $uri Upload URL of the multipart upload
+     * @param StreamInterface $body File content
+     * @return void
+     */
+    private function parts( Uri $uri, StreamInterface $body ) : void
+    {
+        $parts = [];
+
+        for( $num = 1; ( $chunk = Utils::copyToString( $body, self::PART_BYTES ) ) !== ''; $num++ )
+        {
+            $response = $this->put( $uri->withPath( $uri->getPath() . '/' . $num ), $chunk );
+            $data = json_decode( (string) $response->getBody(), true );
+            $etag = is_array( $data ) && is_string( $data['etag'] ?? null ) ? $data['etag'] : $response->getHeaderLine( 'ETag' );
+
+            if( $etag === '' ) {
+                throw new FailedException( 'No ETag in fal upload response' );
+            }
+
+            $parts[] = ['partNumber' => $num, 'etag' => $etag];
+        }
+
+        // the signed upload URL authorizes the request, so the API key isn't sent
+        $response = $this->client()->post( $uri->withPath( $uri->getPath() . '/complete' ), [
+            'json' => ['parts' => $parts],
+            'headers' => null,
+        ] );
+
+        $this->validate( $response );
+    }
+
+
+    /**
+     * Sends a part of the file content to the signed upload URL.
+     *
+     * @param Uri $uri Signed upload URL of the part
+     * @param string $content Part of the file content
+     * @return ResponseInterface Upload response
+     */
+    private function put( Uri $uri, string $content ) : ResponseInterface
+    {
+        // the signed upload URL authorizes the request, so the API key isn't sent
+        $response = $this->client()->send( new Request( 'PUT', $uri, [], $content ), ['headers' => null] );
+        $this->validate( $response );
+
+        return $response;
+    }
+
+
+    /**
+     * Uploads the file content to the fal storage.
+     *
+     * @param StreamInterface $body File content
+     * @param string $mimeType Content type of the file
+     * @param string|null $filename File name if known
+     * @return string URL of the uploaded file
+     */
+    private function upload( StreamInterface $body, string $mimeType, ?string $filename ) : string
+    {
+        $url = $this->restUrl . 'storage/upload/initiate-multipart?storage_type=fal-cdn-v3';
+        $response = $this->client()->post( $url, ['json' => [
+            'content_type' => $mimeType,
+            'file_name' => $filename ?? 'upload',
+        ]] );
+
+        $this->validate( $response );
+        $data = $this->fromJson( $response );
+
+        if( !str_starts_with( (string) ( $data['upload_url'] ?? '' ), 'https://' ) || !is_string( $data['file_url'] ?? null ) ) {
+            throw new FailedException( 'No upload URL in fal response' );
+        }
+
+        $this->parts( new Uri( $data['upload_url'] ), $body );
+        return $data['file_url'];
     }
 }

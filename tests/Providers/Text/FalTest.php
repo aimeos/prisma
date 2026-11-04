@@ -96,6 +96,48 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslateBatches() : void
+    {
+        $long = str_repeat( 'a', 9990 );
+
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( [
+                'id' => 'gen-1',
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"texts":["Hallo","b"]}']]],
+                'usage' => ['total_tokens' => 9, 'prompt_tokens_details' => ['cached_tokens' => 1]],
+            ] );
+        $this->response( [
+            'id' => 'gen-2',
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"texts":["Welt!"]}']]],
+            'usage' => ['total_tokens' => 7, 'prompt_tokens_details' => ['cached_tokens' => 2]],
+        ] );
+
+        // a batch contains at most 10000 characters
+        $response = $this->provider()->translate( ['Hello', $long, 'World!'], 'de' );
+
+        $this->assertSame( ['Hallo', 'b', 'Welt!'], $response->texts() );
+        $this->assertSame( 16.0, $response->usage()['used'] );
+        $this->assertSame( 3, $response->usage()->cacheReadTokens() );
+        $this->assertSame( 'gen-2', $response->meta()['id'] );
+
+        $requests = $this->requests();
+        $this->assertCount( 2, $requests );
+        $this->assertStringContainsString( 'Hello', (string) $requests[0]->getBody() );
+        $this->assertStringNotContainsString( 'World!', (string) $requests[0]->getBody() );
+        $this->assertStringContainsString( '[\\"World!\\"]', (string) $requests[1]->getBody() );
+    }
+
+
+    public function testTranslateEmpty() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] );
+        $response = $this->provider()->translate( [], 'de' );
+
+        $this->assertSame( [], $response->texts() );
+        $this->assertSame( [], $this->requests() );
+    }
+
+
     public function testTranslateCountMismatch() : void
     {
         $this->prisma( 'text', 'fal', ['api_key' => 'test'] )

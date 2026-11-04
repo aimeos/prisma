@@ -10,7 +10,7 @@ use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Contracts\Audio\Synthesize;
 use Aimeos\Prisma\Contracts\Audio\Transcribe;
-use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Fal as Base;
 use Aimeos\Prisma\Responses\FileResponse;
@@ -23,7 +23,7 @@ use Aimeos\Prisma\Responses\TextResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/minimax-music/v2". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
- * describe() and transcribe() are sent synchronously and can't be resumed, describe() uses the OpenRouter
+ * The text responses of describe() and transcribe() can't be resumed, describe() uses the OpenRouter
  * audio endpoint of fal and the "model" option selects the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
@@ -55,7 +55,7 @@ class Fal extends Base
         };
 
         return $this->submit( 'fal-ai/demucs', [
-            'audio_url' => $audio->uri(),
+            'audio_url' => $this->uri( $audio ),
         ], array_replace( $defaults, $options ) );
     }
 
@@ -63,21 +63,21 @@ class Fal extends Base
     public function denoise( Audio $audio, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/deepfilternet3', [
-            'audio_url' => $audio->uri(),
+            'audio_url' => $this->uri( $audio ),
         ], $options );
     }
 
 
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $audio->uri()], $options );
+        return $this->router( 'openrouter/router/audio', $this->summary( $lang ), ['audio_url' => $this->uri( $audio )], $options );
     }
 
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/elevenlabs/voice-changer', [
-            'audio_url' => $audio->uri(),
+            'audio_url' => $this->uri( $audio ),
             'voice' => $voice,
         ], $options );
     }
@@ -109,23 +109,26 @@ class Fal extends Base
 
     public function transcribe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $input = ['audio_url' => $audio->uri()];
+        $input = ['audio_url' => $this->uri( $audio )];
 
         if( $lang !== null && $lang !== '' ) {
             $input['language_code'] = $lang;
         }
 
-        $data = $this->run( $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' ), array_replace( $options, $input ) );
+        $endpoint = $this->modelName( 'fal-ai/elevenlabs/speech-to-text/scribe-v2' );
 
-        if( !is_string( $data['text'] ?? null ) ) {
-            throw new PrismaException( 'No text found in fal response' );
-        }
+        return $this->ask( $endpoint, array_replace( $options, $input ), function( array $data, TextResponse $response ) {
 
-        // Whisper based models return "chunks" instead of "words"
-        $parts = $data['words'] ?? $data['chunks'] ?? [];
+            if( !is_string( $data['text'] ?? null ) ) {
+                throw new FailedException( 'No text found in fal response' );
+            }
 
-        return TextResponse::fromText( $data['text'] )
-            ->withStructured( is_array( $parts ) ? $parts : [] )
-            ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
+            // Whisper based models return "chunks" instead of "words"
+            $parts = $data['words'] ?? $data['chunks'] ?? [];
+
+            $response->add( $data['text'] )
+                ->withStructured( is_array( $parts ) ? $parts : [] )
+                ->withMeta( array_diff_key( $data, ['text' => 1, 'words' => 1, 'chunks' => 1] ) );
+        } );
     }
 }

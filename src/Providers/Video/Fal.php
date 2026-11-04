@@ -22,7 +22,7 @@ use Aimeos\Prisma\Responses\TextResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/veo3.1". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
- * Only describe() uses the OpenRouter video endpoint of fal synchronously and the "model" option selects
+ * describe() uses the OpenRouter video endpoint of fal, can't be resumed and the "model" option selects
  * the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
@@ -44,14 +44,14 @@ class Fal extends Base
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$video->uri()]], $options );
+        return $this->router( 'openrouter/router/video', $this->summary( $lang ), ['video_urls' => [$this->uri( $video )]], $options );
     }
 
 
     public function extend( Video $video, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/veo3.1/extend-video', [
-            'video_url' => $video->uri(),
+            'video_url' => $this->uri( $video ),
             'prompt' => $prompt,
         ], $options );
     }
@@ -65,12 +65,12 @@ class Fal extends Base
         $end = $this->image( $media['end'] ?? null );
 
         if( $start ) {
-            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $start->uri();
+            $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $this->uri( $start );
         }
 
         // end frames require a start frame
         if( $start && $end ) {
-            $input['end_image_url'] = $end->uri();
+            $input['end_image_url'] = $this->uri( $end );
         }
 
         if( !empty( $images ) ) {
@@ -90,7 +90,7 @@ class Fal extends Base
     {
         [$media, $options] = $this->repaintArguments( $media, $options );
 
-        $input = ['video_url' => $video->uri(), 'prompt' => $prompt];
+        $input = ['video_url' => $this->uri( $video ), 'prompt' => $prompt];
 
         if( !empty( $images = $this->images( $media['references'] ?? [], self::MAX_EDIT_REFERENCES ) ) ) {
             $input['image_urls'] = $images;
@@ -111,7 +111,7 @@ class Fal extends Base
 
         // the model expands all selected sides by the same ratio
         return $this->submit( 'fal-ai/wan-vace-14b/outpainting', [
-            'video_url' => $video->uri(),
+            'video_url' => $this->uri( $video ),
             'prompt' => $prompt,
             'expand_top' => $edges['top'] > 0,
             'expand_right' => $edges['right'] > 0,
@@ -125,7 +125,7 @@ class Fal extends Base
     public function upscale( Video $video, int $factor, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/seedvr/upscale/video', [
-            'video_url' => $video->uri(),
+            'video_url' => $this->uri( $video ),
         ] + $this->upscaling( $factor ), $options );
     }
 
@@ -153,7 +153,7 @@ class Fal extends Base
     {
         $images = array_filter( array_map( $this->image(...), is_array( $references ) ? $references : [] ) );
 
-        return array_map( fn( Image $image ) => $image->uri(), array_slice( array_values( $images ), 0, $max ) );
+        return array_map( $this->uri(...), array_slice( array_values( $images ), 0, $max ) );
     }
 
 

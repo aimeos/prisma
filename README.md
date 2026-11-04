@@ -1291,7 +1291,7 @@ public function resume( string $jobId ) : FileResponse|TextResponse
 **Supported providers:**
 
 * AudioPod: Only for `demix()`, `denoise()`, `revoice()`, `speak()` and `transcribe()`; the job ID is the status path
-* fal: Not for `describe()` and `transcribe()`, which are synchronous; the job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
+* fal: Not for `describe()` and `transcribe()`, which return text; the job ID is the response URL of the `queue.fal.run` HTTPS host or the configured API host
 * Hydracept: Only for `compose()`, `speak()` and `synthesize()`; the job ID is the Hydracept job ID
 
 **Example:**
@@ -1696,8 +1696,10 @@ fal hosts hundreds of models, so each method uses a default endpoint and `model(
 any other compatible fal endpoint. Prisma maps the prompt and images only and passes all
 options to the endpoint unchanged, so use the input fields documented on the model page.
 fal returns images on its `fal.media` CDN; pass `download_hosts` in the configuration if
-your requests are routed differently. Behind an API gateway, `url` replaces the queue host
-(`https://queue.fal.run`) and `run_url` the host of the synchronous calls and text models (`https://fal.run`):
+your requests are routed differently. Files without URL larger than 5 MiB are uploaded to the
+fal storage first instead of being sent as data URI. Behind an API gateway, `url` replaces the
+queue host (`https://queue.fal.run`), `rest_url` the storage host (`https://rest.fal.ai`) and
+`run_url` the host of the text models (`https://fal.run`):
 
 ```php
 Prisma::image()
@@ -1706,8 +1708,8 @@ Prisma::image()
     ->imagine( 'A watercolor lighthouse at dusk', [], ['aspect_ratio' => '16:9'] );
 ```
 
-The fal `describe()` and `recognize()` methods call the OpenRouter vision endpoint of fal
-synchronously, so the response can't be resumed. As `model()` selects the fal endpoint, the
+The fal `describe()` and `recognize()` methods queue a request at the OpenRouter vision endpoint
+of fal and poll its result, but the text response can't be resumed. As `model()` selects the fal endpoint, the
 `model` option selects the LLM (default: `google/gemini-3.8-flash`):
 
 ```php

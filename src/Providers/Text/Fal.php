@@ -26,6 +26,9 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
     // server tools of OpenRouter aren't documented for the fal API
     protected const PROVIDER_TOOL_MAP = [];
 
+    /** Maximum characters translated by one request, so the output doesn't exceed the token limit of the LLM */
+    private const BATCH_CHARS = 10000;
+
     private const MODEL = 'openai/gpt-6-luna';
     private const OPTIONS = ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'];
 
@@ -36,7 +39,7 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
             throw new PrismaException( 'No API key' );
         }
 
-        // "run_url" is the host shared with the synchronous calls of the other fal providers
+        // "run_url" is the host of the synchronous fal endpoints
         $host = rtrim( $this->config( $config, 'run_url', 'https://fal.run' ), '/' );
         $url = $this->config( $config, 'url', $host . '/openrouter/router/openai/v1' );
 
@@ -68,23 +71,19 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
 
     public function translate( array $texts, string $to, ?string $from = null, ?string $context = null, array $options = [] ) : TextResponse
     {
-        $texts = array_values( $texts );
-        $schema = Schema::for( 'translation', [
-            'texts' => Schema::array()->items( Schema::string() ),
-        ] );
+        $translated = $usage = $meta = [];
+        $used = null;
 
-        $response = $this->structure( $this->prompt( $texts, $to, $from, $context ), $schema, [], $options );
-        $translated = $response->structured()['texts'] ?? null;
-
-        if( !is_array( $translated ) || !array_is_list( $translated ) || count( $translated ) !== count( $texts )
-            || array_filter( $translated, 'is_string' ) !== $translated
-        ) {
-            throw new PrismaException( 'Invalid translations in fal response' );
+        foreach( $this->batches( array_values( $texts ) ) as $batch )
+        {
+            $response = $this->translation( $batch, $to, $from, $context, $options );
+            $translated = array_merge( $translated, $response->texts() );
+            $usage = $this->total( $usage, $response->usage()->all() );
+            $used = $response->usage()->used() !== null ? ( $used ?? 0 ) + $response->usage()->used() : $used;
+            $meta = $response->meta()->all();
         }
 
-        return TextResponse::fromTexts( $translated )
-            ->withUsage( $response->usage()->used(), $response->usage()->all() )
-            ->withMeta( $response->meta()->all() );
+        return TextResponse::fromTexts( $translated )->withUsage( $used, $usage )->withMeta( $meta );
     }
 
 
@@ -109,6 +108,35 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
 
 
     /**
+     * Splits the texts into batches whose length doesn't exceed the maximum characters per request.
+     *
+     * @param array<int, string> $texts Texts to translate
+     * @return array<int, array<int, string>> Batches of texts, texts longer than the maximum form their own batch
+     */
+    private function batches( array $texts ) : array
+    {
+        $batches = [];
+        $batch = [];
+        $length = 0;
+
+        foreach( $texts as $text )
+        {
+            if( !empty( $batch ) && $length + mb_strlen( $text ) > self::BATCH_CHARS )
+            {
+                $batches[] = $batch;
+                $batch = [];
+                $length = 0;
+            }
+
+            $batch[] = $text;
+            $length += mb_strlen( $text );
+        }
+
+        return empty( $batch ) ? $batches : array_merge( $batches, [$batch] );
+    }
+
+
+    /**
      * Returns the prompt for translating the texts.
      *
      * @param array<int, string> $texts Texts to translate
@@ -123,5 +151,60 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
             . 'into the language of ISO code "' . $to . '" and return the translations in the same order.'
             . ( $context ? "\nContext of the texts: " . $context : '' )
             . "\nTexts: " . json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR );
+    }
+
+
+    /**
+     * Adds the numeric usage values of two responses.
+     *
+     * @param array<mixed> $usage Usage values summed up so far
+     * @param array<mixed> $more Usage values of the next response
+     * @return array<mixed> Summed usage values
+     */
+    private function total( array $usage, array $more ) : array
+    {
+        foreach( $more as $key => $value )
+        {
+            $current = $usage[$key] ?? null;
+
+            $usage[$key] = match( true ) {
+                is_array( $value ) => $this->total( is_array( $current ) ? $current : [], $value ),
+                is_int( $value ) || is_float( $value ) => ( is_int( $current ) || is_float( $current ) ? $current : 0 ) + $value,
+                default => $value,
+            };
+        }
+
+        return $usage;
+    }
+
+
+    /**
+     * Translates one batch of texts using structured output.
+     *
+     * @param array<int, string> $texts Texts to translate
+     * @param string $to ISO language code to translate into
+     * @param string|null $from ISO language code of the texts or NULL to detect it
+     * @param string|null $context Context of the texts for better translations
+     * @param array<string, mixed> $options Provider specific options
+     * @return TextResponse Translated texts in the same order
+     */
+    private function translation( array $texts, string $to, ?string $from, ?string $context, array $options ) : TextResponse
+    {
+        $schema = Schema::for( 'translation', [
+            'texts' => Schema::array()->items( Schema::string() ),
+        ] );
+
+        $response = $this->structure( $this->prompt( $texts, $to, $from, $context ), $schema, [], $options );
+        $translated = $response->structured()['texts'] ?? null;
+
+        if( !is_array( $translated ) || !array_is_list( $translated ) || count( $translated ) !== count( $texts )
+            || array_filter( $translated, 'is_string' ) !== $translated
+        ) {
+            throw new PrismaException( 'Invalid translations in fal response' );
+        }
+
+        return TextResponse::fromTexts( $translated )
+            ->withUsage( $response->usage()->used(), $response->usage()->all() )
+            ->withMeta( $response->meta()->all() );
     }
 }

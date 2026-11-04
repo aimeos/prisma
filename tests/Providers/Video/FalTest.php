@@ -162,7 +162,9 @@ class FalTest extends TestCase
     public function testDescribe() : void
     {
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
-            ->response( ['output' => 'A flower opens', 'usage' => ['total_tokens' => 30]] );
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'COMPLETED'] );
+        $this->response( ['output' => 'A flower opens', 'usage' => ['total_tokens' => 30]] );
 
         // model() selects the queue endpoint only, the LLM is passed as option
         $response = $this->provider()->ensure( 'describe' )->model( 'fal-ai/veo3.1' )
@@ -172,7 +174,7 @@ class FalTest extends TestCase
 
         $request = $this->requests()[0];
         $body = json_decode( (string) $request->getBody(), true );
-        $this->assertSame( 'https://fal.run/openrouter/router/video', (string) $request->getUri() );
+        $this->assertSame( 'https://queue.fal.run/openrouter/router/video', (string) $request->getUri() );
         $this->assertSame( 'google/gemini-2.5-pro', $body['model'] );
         $this->assertSame( ['https://example.com/v.mp4'], $body['video_urls'] );
         $this->assertStringContainsString( '"en"', $body['prompt'] );
@@ -192,6 +194,55 @@ class FalTest extends TestCase
             'video_url' => 'data:video/mp4;base64,' . base64_encode( 'v' ),
             'prompt' => 'The camera pulls back',
         ], json_decode( (string) $this->requests()[0]->getBody(), true ) );
+    }
+
+
+    public function testExtendUpload() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['upload_url' => 'https://upload.fal.example/u/abc?sig=1', 'file_url' => 'https://v3.fal.media/files/v.mp4'] );
+        $this->response( '', ['ETag' => '"e1"'] );
+        $this->response( ['etag' => 'e2'] );
+        $this->response( [] );
+        $this->response( ['response_url' => self::URL] );
+
+        // files larger than 5 MiB are uploaded in parts of 10 MiB
+        $content = str_repeat( 'v', 12 * 1024 * 1024 );
+        $video = Video::fromBinary( $content, 'video/mp4' )->as( 'v.mp4' );
+
+        $this->provider()->extend( $video, 'The camera pulls back' );
+
+        [$initiate, $part1, $part2, $complete, $queue] = $this->requests();
+
+        $this->assertSame( 'https://rest.fal.ai/storage/upload/initiate-multipart?storage_type=fal-cdn-v3', (string) $initiate->getUri() );
+        $this->assertSame( 'Key test', $initiate->getHeaderLine( 'Authorization' ) );
+        $this->assertSame( ['content_type' => 'video/mp4', 'file_name' => 'v.mp4'], json_decode( (string) $initiate->getBody(), true ) );
+
+        $this->assertSame( 'PUT', $part1->getMethod() );
+        $this->assertSame( 'https://upload.fal.example/u/abc/1?sig=1', (string) $part1->getUri() );
+        $this->assertSame( 10 * 1024 * 1024, $part1->getBody()->getSize() );
+        $this->assertFalse( $part1->hasHeader( 'Authorization' ) );
+        $this->assertSame( 'https://upload.fal.example/u/abc/2?sig=1', (string) $part2->getUri() );
+        $this->assertSame( 2 * 1024 * 1024, $part2->getBody()->getSize() );
+
+        $this->assertSame( 'https://upload.fal.example/u/abc/complete?sig=1', (string) $complete->getUri() );
+        $this->assertFalse( $complete->hasHeader( 'Authorization' ) );
+        $this->assertSame( ['parts' => [
+            ['partNumber' => 1, 'etag' => '"e1"'],
+            ['partNumber' => 2, 'etag' => 'e2'],
+        ]], json_decode( (string) $complete->getBody(), true ) );
+
+        $this->assertSame( 'https://v3.fal.media/files/v.mp4', json_decode( (string) $queue->getBody(), true )['video_url'] );
+    }
+
+
+    public function testExtendUploadInsecure() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['upload_url' => 'http://upload.fal.example/u/abc', 'file_url' => 'https://v3.fal.media/files/v.mp4'] );
+
+        $this->expectException( FailedException::class );
+        $this->provider()->extend( Video::fromBinary( str_repeat( 'v', 6 * 1024 * 1024 ), 'video/mp4' ), 'Pull back' );
     }
 
 

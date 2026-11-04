@@ -172,6 +172,10 @@ class TextResponse implements \IteratorAggregate, \JsonSerializable
      */
     public function structured() : array
     {
+        if( empty( $this->list ) ) {
+            $this->ensure();
+        }
+
         return $this->structured;
     }
 

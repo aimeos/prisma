@@ -26,7 +26,7 @@ use Aimeos\Prisma\Responses\TextResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/nano-banana-pro". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
- * Only describe() and recognize() use the OpenRouter vision endpoint of fal synchronously and the "model"
+ * describe() and recognize() use the OpenRouter vision endpoint of fal, can't be resumed and the "model"
  * option selects the LLM, e.g. "anthropic/claude-sonnet-5" (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
@@ -39,7 +39,7 @@ class Fal extends Base
     public function background( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/background/replace', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
             'prompt' => $prompt,
         ], $options );
     }
@@ -47,14 +47,14 @@ class Fal extends Base
 
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/vision', $this->summary( $lang ), ['image_urls' => [$image->uri()]], $options );
+        return $this->router( 'openrouter/router/vision', $this->summary( $lang ), ['image_urls' => [$this->uri( $image )]], $options );
     }
 
 
     public function detext( Image $image, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/image-editing/text-removal', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
         ], $options );
     }
 
@@ -62,8 +62,8 @@ class Fal extends Base
     public function erase( Image $image, Image $mask, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/eraser', [
-            'image_url' => $image->uri(),
-            'mask_url' => $mask->uri(),
+            'image_url' => $this->uri( $image ),
+            'mask_url' => $this->uri( $mask ),
         ], $options );
     }
 
@@ -76,7 +76,7 @@ class Fal extends Base
 
         return $this->submit( 'fal-ai/flux-2/edit', [
             'prompt' => $prompt,
-            'image_urls' => array_values( array_map( fn( Image $image ) => $image->uri(), $images ) ),
+            'image_urls' => array_values( array_map( $this->uri(...), $images ) ),
         ], $options );
     }
 
@@ -84,8 +84,8 @@ class Fal extends Base
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/flux-pro/v1/fill', [
-            'image_url' => $image->uri(),
-            'mask_url' => $mask->uri(),
+            'image_url' => $this->uri( $image ),
+            'mask_url' => $this->uri( $mask ),
             'prompt' => $prompt,
         ], $options );
     }
@@ -94,22 +94,22 @@ class Fal extends Base
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/birefnet/v2', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
         ], $options );
     }
 
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
-        return $this->router( 'openrouter/router/vision', $this->extraction(), ['image_urls' => [$image->uri()]], $options );
+        return $this->router( 'openrouter/router/vision', $this->extraction(), ['image_urls' => [$this->uri( $image )]], $options );
     }
 
 
     public function relocate( Image $image, Image $bgimage, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/bria/background/replace', [
-            'image_url' => $image->uri(),
-            'ref_image_url' => $bgimage->uri(),
+            'image_url' => $this->uri( $image ),
+            'ref_image_url' => $this->uri( $bgimage ),
         ], $options );
     }
 
@@ -117,7 +117,7 @@ class Fal extends Base
     public function repaint( Image $image, string $prompt, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/flux-pro/kontext', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
             'prompt' => $prompt,
         ], $options );
     }
@@ -128,7 +128,7 @@ class Fal extends Base
         [$width, $height] = $image->size();
 
         return $this->submit( 'fal-ai/bria/expand', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
             'canvas_size' => [$width + $left + $right, $height + $top + $bottom],
             'original_image_size' => [$width, $height],
             'original_image_location' => [$left, $top],
@@ -139,7 +139,7 @@ class Fal extends Base
     public function upscale( Image $image, int $factor, array $options = [] ) : FileResponse
     {
         return $this->submit( 'fal-ai/seedvr/upscale/image', [
-            'image_url' => $image->uri(),
+            'image_url' => $this->uri( $image ),
         ] + $this->upscaling( $factor ), $options );
     }
 }
