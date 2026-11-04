@@ -77,10 +77,13 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
         $translated = $usage = $meta = [];
         $used = null;
 
+        // the system prompt, messages and tools set for the other methods would change or prevent the translations
+        $plain = ( clone $this )->withMessages( [] )->withSystemPrompt( null )->withTools( [] );
+
         foreach( array_chunk( $this->batches( array_values( $texts ) ), self::BATCH_REQUESTS ) as $batches )
         {
             // all requests are sent before receiving the answers, so the LLM translates the batches at the same time
-            $responses = array_map( fn( $batch ) => $this->translation( $batch, $to, $from, $context, $options ), $batches );
+            $responses = array_map( fn( $batch ) => $plain->translation( $batch, $to, $from, $context, $options ), $batches );
 
             foreach( $responses as $idx => $response )
             {

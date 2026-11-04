@@ -2501,6 +2501,7 @@ Prisma::text()
 fal translates the texts with the LLM selected by `model()` using structured output and
 accepts the same options as `structure()`, e.g. `temperature` or `mode`. Texts are sent in
 batches of up to 10,000 characters and up to five batches are translated at the same time.
+The system prompt, messages and tools of the provider aren't used for translations.
 
 ### vectorize
 

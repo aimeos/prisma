@@ -92,6 +92,31 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslatePlain() : void
+    {
+        $tool = Tools::make( 'ping', 'Returns pong', Schema::for( 'ping', [] ), fn() => 'pong' );
+
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( $this->completion( 'gen-1', '{"texts":["Hallo"]}' ) );
+        $this->response( $this->completion( 'gen-2', 'Done' ) );
+
+        $provider = $this->provider()->withSystemPrompt( 'Be brief' )
+            ->withMessages( [['role' => 'user', 'content' => 'Earlier']] )
+            ->withTools( [$tool] );
+
+        $this->assertSame( ['Hallo'], $provider->translate( ['Hello'], 'de' )->texts() );
+        $this->assertSame( 'Done', $provider->write( 'Ping' )->text() );
+
+        [$translate, $write] = array_map( fn( $request ) => json_decode( (string) $request->getBody(), true ), $this->requests() );
+
+        // translations don't use the system prompt, messages and tools but the provider keeps them
+        $this->assertCount( 1, $translate['messages'] );
+        $this->assertArrayNotHasKey( 'tools', $translate );
+        $this->assertCount( 3, $write['messages'] );
+        $this->assertArrayHasKey( 'tools', $write );
+    }
+
+
     public function testTranslateBatches() : void
     {
         $long = str_repeat( 'a', 9990 );
