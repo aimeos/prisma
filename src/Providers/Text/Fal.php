@@ -78,7 +78,8 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
         $used = null;
 
         // the system prompt, messages and tools set for the other methods would change or prevent the translations
-        $plain = ( clone $this )->withMessages( [] )->withSystemPrompt( null )->withTools( [] );
+        $plain = clone $this;
+        $plain->withMessages( [] )->withSystemPrompt( null )->withTools( [] );
 
         foreach( array_chunk( $this->batches( array_values( $texts ) ), self::BATCH_REQUESTS ) as $batches )
         {
