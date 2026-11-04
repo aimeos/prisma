@@ -7,6 +7,7 @@ use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\TextResponse;
+use GuzzleHttp\Psr7\Request;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -36,6 +37,7 @@ class Gemini extends Base
 
         $this->header( 'x-goog-api-key', $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://generativelanguage.googleapis.com' ) );
+        $this->pollTimeout( $config );
     }
 
 
@@ -316,7 +318,7 @@ class Gemini extends Base
 
             $this->answer( $model, $parts, $config, $response );
             return true;
-        }, self::RETRY );
+        }, self::RETRY, $this->pollTimeout );
     }
 
 
@@ -431,13 +433,13 @@ class Gemini extends Base
      */
     private function part( string $url, string $chunk, int $offset, string $command ) : ResponseInterface
     {
-        $response = $this->client()->post( $url, [
-            'headers' => [
-                'X-Goog-Upload-Command' => $command,
-                'X-Goog-Upload-Offset' => (string) $offset,
-            ],
-            'body' => $chunk,
-        ] );
+        $request = new Request( 'POST', $url, [
+            'X-Goog-Upload-Command' => $command,
+            'X-Goog-Upload-Offset' => (string) $offset,
+        ], $chunk );
+
+        // the upload URL authorizes the request, so the API key isn't sent to the URL returned by the response
+        $response = $this->client()->send( $request, ['headers' => null] );
 
         $this->validate( $response );
         return $response;

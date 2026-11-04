@@ -1280,6 +1280,8 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 Google Gemini uploads audio files larger than 14 MiB to its Files API first (deleted by Gemini
 after 48 hours) and returns the description when Gemini has processed the audio. The provider
 object uploads each file object only once, so keep it to describe the same audio several times.
+Waiting for the processing stops after the `poll_timeout` of the provider configuration (900 seconds
+by default, `0` disables the deadline).
 
 ### resume
 
@@ -2675,7 +2677,7 @@ and the `RateLimitException` is thrown. Use `ready()` to perform one non-blockin
 poll; providers returning video data immediately are ready without polling. To continue
 polling in another process, e.g. a queue job, see [resume()](#resume-2).
 
-Alibaba, Hydracept and Openrouter video polling stop after 900 seconds by default. Set
+Alibaba, fal, Hydracept and Openrouter video polling stop after 900 seconds by default. Set
 `poll_timeout` in the provider configuration to another number of seconds, or to
 `0` to disable the deadline. For changes to `fromAsync()` in custom providers,
 see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
@@ -2781,7 +2783,9 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 
 Google Gemini uploads videos larger than 14 MiB to its Files API first (deleted by Gemini after
 48 hours) and returns the description when Gemini has processed the video. The provider object
-uploads each file object only once, so keep it to describe the same video several times:
+uploads each file object only once, so keep it to describe the same video several times. Waiting
+for the processing stops after the `poll_timeout` of the provider configuration (900 seconds by
+default, `0` disables the deadline):
 
 ```php
 $gemini = Prisma::video()->using( 'gemini', ['api_key' => 'xxx'] );
@@ -3014,7 +3018,7 @@ response returns the polling interval of the provider in seconds, the seconds of
 `Retry-After` header after a rate limited poll, or zero if the job completed or failed. Other
 exceptions like network errors may be temporary too and the queue retries them.
 Released and failed attempts count as attempts in Laravel, so limit the total polling
-time with `retryUntil()` instead of `$tries`. The provider `poll_timeout` of Alibaba,
+time with `retryUntil()` instead of `$tries`. The provider `poll_timeout` of Alibaba, fal,
 Hydracept, Ideogram and Openrouter starts again with each `resume()` call, so it doesn't
 limit the total polling time in the queue.
 

@@ -283,6 +283,21 @@ class FalTest extends TestCase
     }
 
 
+    public function testRecognizeTimeout() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test', 'poll_timeout' => 1] )
+            ->response( ['response_url' => self::URL] );
+        $this->response( ['status' => 'IN_QUEUE'] );
+        $this->response( ['status' => 'IN_QUEUE'] );
+
+        $response = $this->provider()->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+
+        $this->expectException( PrismaException::class );
+        $this->expectExceptionMessage( 'Asynchronous operation timed out after 1 seconds' );
+        $response->text();
+    }
+
+
     public function testResumeBehindApiGateway() : void
     {
         // fal returns response URLs of its queue host even if the requests are sent through a gateway

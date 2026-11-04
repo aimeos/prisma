@@ -60,9 +60,11 @@ class GeminiTest extends TestCase
         $this->assertSame( ['file' => ['display_name' => 'v.mp4']], json_decode( (string) $start->getBody(), true ) );
 
         $this->assertSame( 'upload', $part1->getHeaderLine( 'X-Goog-Upload-Command' ) );
+        $this->assertFalse( $part1->hasHeader( 'x-goog-api-key' ) );
         $this->assertSame( '0', $part1->getHeaderLine( 'X-Goog-Upload-Offset' ) );
         $this->assertSame( 32 * 1024 * 1024, $part1->getBody()->getSize() );
         $this->assertSame( 'upload, finalize', $part2->getHeaderLine( 'X-Goog-Upload-Command' ) );
+        $this->assertFalse( $part2->hasHeader( 'x-goog-api-key' ) );
         $this->assertSame( (string) ( 32 * 1024 * 1024 ), $part2->getHeaderLine( 'X-Goog-Upload-Offset' ) );
         $this->assertSame( 1024 * 1024, $part2->getBody()->getSize() );
 

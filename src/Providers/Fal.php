@@ -70,6 +70,7 @@ abstract class Fal extends Base implements Cancel, Resume
 
         $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://queue.fal.run' ) );
+        $this->pollTimeout( $config );
     }
 
 
@@ -99,7 +100,7 @@ abstract class Fal extends Base implements Cancel, Resume
     public function resume( string $jobId ) : FileResponse
     {
         $poll = $this->poll( $this->requestUrl( $jobId ), $this->result(...) );
-        return FileResponse::fromAsync( $poll, static::RETRY, jobId: $jobId );
+        return FileResponse::fromAsync( $poll, static::RETRY, $this->pollTimeout, $jobId );
     }
 
 
@@ -116,7 +117,7 @@ abstract class Fal extends Base implements Cancel, Resume
     protected function ask( string $endpoint, array $input, \Closure $result ) : TextResponse
     {
         // text results are fast, so they are polled more often than generated files
-        return TextResponse::fromAsync( $this->poll( $this->queue( $endpoint, $input ), $result ), self::ASK_RETRY );
+        return TextResponse::fromAsync( $this->poll( $this->queue( $endpoint, $input ), $result ), self::ASK_RETRY, $this->pollTimeout );
     }
 
 
