@@ -28,6 +28,9 @@ abstract class Fal extends Base implements Cancel, Resume
     /** Maximum size of the downloaded output files in bytes */
     protected const MAX_BYTES = 64 * 1024 * 1024;
 
+    /** Polling interval of the queued requests in seconds */
+    protected const RETRY = 3;
+
     /** Default LLM of the OpenRouter endpoints */
     private const ROUTER_MODEL = 'google/gemini-3.8-flash';
 
@@ -77,7 +80,7 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $this->requestUrl( $jobId ) ), 3, jobId: $jobId );
+        return FileResponse::fromAsync( $this->poll( $this->requestUrl( $jobId ) ), static::RETRY, jobId: $jobId );
     }
 
 

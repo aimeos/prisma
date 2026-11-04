@@ -34,6 +34,9 @@ class Fal extends Base
     protected const FILE = Video::class;
     protected const MAX_BYTES = 512 * 1024 * 1024;
 
+    // video generation takes minutes, so polling less often saves status requests
+    protected const RETRY = 10;
+
     /** Maximum number of reference images of the Kling generation and edit endpoints */
     private const MAX_REFERENCES = 7;
     private const MAX_EDIT_REFERENCES = 4;

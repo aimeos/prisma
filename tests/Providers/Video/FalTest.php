@@ -275,6 +275,7 @@ class FalTest extends TestCase
 
         $this->assertFalse( $response->ready() );
         $this->assertSame( 'IN_PROGRESS', $response->meta()['status'] );
+        $this->assertSame( 10, $response->retryAfter() );
     }
 
 
