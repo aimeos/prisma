@@ -215,7 +215,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Ollama**            | beta  |        | beta       |           | beta      | beta  | -         | yes          |                | yes           | yes             |
 | **OpenAI**            | yes   |        | yes        |           | yes       | yes   | yes       | yes          | yes            | yes           | yes             |
 | **Openrouter**        | yes   |        | yes        |           | -         | yes   | -         | yes          | yes            | yes           | yes             |
-| **Perplexity**        | beta  |        | beta       |           | -         | beta  | yes       | yes          |                | yes           | yes             |
+| **Perplexity**        | beta  |        | beta       |           | -         | beta  | beta      | beta         | beta           | beta          | beta            |
 | **Requesty**          | yes   |        | yes        |           | yes       | yes   | -         | yes          |                | yes           | yes             |
 | **TypeSafe**          |       | beta   |            |           |           |       |           |              |                |               |                 |
 | **Vertexai**          | beta  |        | beta       |           | beta      | beta  | yes       | yes          | yes            | yes           | yes             |
@@ -692,7 +692,7 @@ foreach( $citations as $citation ) {
 
 The `text` field contains the snippet from the model's **output** that cites the source
 (populated by OpenAI, xAI, Google Gemini). The `source` field contains a verbatim quote from the
-**input/source document** (populated by Anthropic). For Perplexity, only `url` is available.
+**input/source document** (populated by Anthropic). For Perplexity, only `title` and `url` are available.
 
 Anthropic requires opting in via options:
 
@@ -997,7 +997,7 @@ $response = Prisma::text()
 
 | Tool name | Providers |
 | :--- | :--- |
-| `web_search` | Anthropic, OpenAI, Google Gemini, Vertexai, Meta, Mistral, xAI, OpenRouter, Alibaba, Z.AI |
+| `web_search` | Anthropic, OpenAI, Google Gemini, Vertexai, Meta, Mistral, xAI, OpenRouter, Perplexity, Alibaba, Z.AI |
 | `web_search_premium` | Mistral |
 | `code_execution` | Anthropic, OpenAI, Google Gemini, Vertexai, Mistral, xAI |
 | `web_fetch` | Anthropic, Google Gemini, Vertexai |
@@ -1005,9 +1005,11 @@ $response = Prisma::text()
 | `image_generation` | Mistral |
 | `document_library` | Mistral |
 
-Provider tool names not supported by the chosen provider are silently ignored. Providers without any provider tool support (e.g. Bedrock, Cohere, Deepseek, Perplexity) ignore all provider tools.
+Provider tool names not supported by the chosen provider are silently ignored. Providers without any provider tool support (e.g. Bedrock, Cohere, Deepseek) ignore all provider tools.
 
 OpenAI omits `web_search` for `structure()` in both native and JSON modes.
+
+Perplexity uses the `fast` effort level by default, which already searches the web. Pass `Tools::provider( 'web_search' )->with( [...] )` only to configure the search (`filters`, `max_results`, `search_type`, `user_location`) or pick another level with the `effort` option.
 
 Custom and provider tools can be mixed in a single `withTools()` call:
 
@@ -2265,7 +2267,7 @@ Iterating `$response->stream()` yields:
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/responses-streaming)
 * [Openrouter](https://openrouter.ai/docs/api-reference/streaming)
-* [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Perplexity](https://docs.perplexity.ai/docs/agent-api/output-control)
 * [Requesty](https://docs.requesty.ai/features/streaming)
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
 * Vertexai
@@ -2393,7 +2395,7 @@ public function structure( string $prompt, Schema $schema, array $files = [], ar
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
-* [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Perplexity](https://docs.perplexity.ai/docs/agent-api/building-agents/shape-output)
 * [Requesty](https://docs.requesty.ai/features/structured-outputs)
 * Vertexai
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)
@@ -2575,7 +2577,7 @@ public function write( string $prompt, array $files = [], array $options = [] ) 
 * [Ollama](https://github.com/ollama/ollama/blob/main/docs/openai.md)
 * [OpenAI](https://platform.openai.com/docs/api-reference/chat/create)
 * [Openrouter](https://openrouter.ai/docs/api-reference/chat-completions)
-* [Perplexity](https://docs.perplexity.ai/api-reference/chat-completions)
+* [Perplexity](https://docs.perplexity.ai/api-reference/agent-post)
 * [Requesty](https://docs.requesty.ai/api-reference/endpoint/chat-completions-create)
 * Vertexai
 * [xAI](https://docs.x.ai/api/endpoints#chat-completions)

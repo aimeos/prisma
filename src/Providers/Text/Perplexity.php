@@ -14,10 +14,11 @@ class Perplexity extends Base implements Stream, Structure, Write
 {
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
-        $messages = $this->messages( $this->content( $prompt, $files ) );
-
-        return $this->streamCompletions( 'chat/completions', 'sonar', $messages, $options );
+        return $this->streamResponses(
+            'v1/agent', 'perplexity/sonar',
+            $this->responsesInput( $prompt, $files ),
+            $this->options( $options )
+        );
     }
 
 
@@ -25,23 +26,39 @@ class Perplexity extends Base implements Stream, Structure, Write
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $mode = $options['mode'] ?? null;
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
+        // The Agent API keeps the chat completions response_format shape for structured output
+        [$prompt, $options] = $this->structuredRequest( $prompt, $schema, $this->options( $options ), $mode );
 
-        return $this->structuredCompletions(
-            'chat/completions', 'sonar',
-            $prompt, $files, $schema, $options, $mode
+        $response = $this->responses(
+            'v1/agent', 'perplexity/sonar',
+            $this->responsesInput( $prompt, $files ),
+            $options
         );
+
+        return $response->withStructured( $this->parseJson( $response->text() ) );
     }
 
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning_effort'] );
-
-        return $this->completions(
-            'chat/completions', 'sonar',
-            $this->messages( $this->content( $prompt, $files ) ),
-            $options
+        return $this->responses(
+            'v1/agent', 'perplexity/sonar',
+            $this->responsesInput( $prompt, $files ),
+            $this->options( $options )
         );
+    }
+
+
+    /**
+     * Filters the request options and applies the default effort level.
+     *
+     * The "fast" effort level replaces Sonar and enables web search by default.
+     *
+     * @param array<string, mixed> $options Request options
+     * @return array<string, mixed> Allowed request options
+     */
+    private function options( array $options ) : array
+    {
+        return $this->allowed( $options, ['effort', 'reasoning', 'temperature', 'top_p'] ) + ['effort' => 'fast'];
     }
 }
