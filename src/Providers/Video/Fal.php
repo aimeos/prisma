@@ -34,9 +34,6 @@ class Fal extends Base
     protected const FILE = Video::class;
     protected const MAX_BYTES = 512 * 1024 * 1024;
 
-    /** Kling O3 Pro endpoints used by imagine() and repaint() */
-    private const KLING = 'fal-ai/kling-video/o3/pro/';
-
     /** Maximum number of reference images of the Kling generation and edit endpoints */
     private const MAX_REFERENCES = 7;
     private const MAX_EDIT_REFERENCES = 4;
@@ -75,14 +72,14 @@ class Fal extends Base
 
         if( !empty( $images ) ) {
             $input['image_urls'] = $images;
-            return $this->submit( self::KLING . 'reference-to-video', $input, $options );
+            return $this->submit( 'fal-ai/kling-video/o3/pro/reference-to-video', $input, $options );
         }
 
         if( $start ) {
-            return $this->submit( self::KLING . 'image-to-video', $input, $options );
+            return $this->submit( 'fal-ai/kling-video/o3/pro/image-to-video', $input, $options );
         }
 
-        return $this->submit( self::KLING . 'text-to-video', $input, $options );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/text-to-video', $input, $options );
     }
 
 
@@ -101,7 +98,7 @@ class Fal extends Base
             $input['keep_audio'] = $options['audio'];
         }
 
-        return $this->submit( self::KLING . 'video-to-video/edit', $input, $options );
+        return $this->submit( 'fal-ai/kling-video/o3/pro/video-to-video/edit', $input, $options );
     }
 
 
@@ -151,7 +148,7 @@ class Fal extends Base
      */
     protected function images( mixed $references, int $max ) : array
     {
-        $images = array_filter( is_array( $references ) ? $references : [], fn( $file ) => $file instanceof Image );
+        $images = array_filter( array_map( $this->image(...), is_array( $references ) ? $references : [] ) );
 
         return array_map( fn( Image $image ) => $image->uri(), array_slice( array_values( $images ), 0, $max ) );
     }
