@@ -40,12 +40,17 @@ class GeminiTest extends TestCase
         $response = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
             ->response( json_encode( [
                 'candidates' => [[
-                    'content' => ['parts' => [['text' => 'an image '], ['text' => 'description']]],
+                    'content' => ['parts' => [['text' => 'thinking', 'thought' => true], ['text' => 'an image '], ['text' => 'description']]],
                     'metadata' => ['id' => 'x'],
                 ]],
                 'usageMetadata' => ['totalTokenCount' => 42],
             ] ) )
-            ->describe( Image::fromBinary( 'PNG', 'image/png' ) );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), null, ['temperature' => 0.2, 'unknown' => 1] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( $request->getBody()->getContents(), true );
+            $this->assertEquals( ['responseModalities' => ['TEXT'], 'temperature' => 0.2], $body['generationConfig'] );
+        } );
 
         $this->assertEquals( 'an image description', $response->text() );
         $this->assertEquals( 42.0, $response->usage()['used'] );

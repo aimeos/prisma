@@ -12,6 +12,6 @@ class Gemini extends Base implements Describe
 {
     public function describe( Audio $audio, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->understand( $audio, $this->summary( $lang ), 'gemini-flash-latest' );
+        return $this->understand( $audio, $this->summary( $lang ), 'gemini-flash-latest', $options );
     }
 }

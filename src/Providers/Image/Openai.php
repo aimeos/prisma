@@ -22,7 +22,7 @@ class Openai extends Base implements Describe, Imagine, Inpaint
     {
         $input = $this->responsesInput( $this->summary( $lang ), [$image] );
 
-        return $this->responses( 'v1/responses', 'gpt-6.1-sol', $input, [] );
+        return $this->responses( 'v1/responses', 'gpt-6.1-sol', $input, $this->allowed( $options, ['temperature', 'top_p', 'reasoning'] ) );
     }
 
 

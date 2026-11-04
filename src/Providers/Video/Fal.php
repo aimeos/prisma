@@ -34,7 +34,7 @@ class Fal extends Base
     protected const FILE = Video::class;
     protected const MAX_BYTES = 512 * 1024 * 1024;
 
-    // video generation takes minutes, so polling less often saves status requests
+    /** Polling interval in seconds, video generation takes minutes so polling less often saves status requests */
     protected const RETRY = 10;
 
     /** Maximum number of reference images of the Kling generation and edit endpoints */

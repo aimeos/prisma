@@ -245,13 +245,16 @@ class Gemini extends Base
      * @param File $file Image, audio or video file
      * @param string $prompt Task prompt
      * @param string $model Default model name
+     * @param array<string, mixed> $options Provider specific options
      * @return TextResponse Text parts of the first candidate
      */
-    protected function understand( File $file, string $prompt, string $model ) : TextResponse
+    protected function understand( File $file, string $prompt, string $model, array $options ) : TextResponse
     {
+        $config = $this->allowed( $options, ['temperature', 'topP', 'topK', 'thinkingConfig'] );
+
         $response = $this->client()->post( 'v1beta/models/' . $this->modelName( $model ) . ':generateContent', ['json' => [
             'contents' => [['parts' => $this->content( $prompt, [$file] )]],
-            'generationConfig' => ['responseModalities' => ['TEXT']],
+            'generationConfig' => ['responseModalities' => ['TEXT']] + $config,
         ]] );
 
         $this->validate( $response );
@@ -259,7 +262,16 @@ class Gemini extends Base
         $data = $this->fromJson( $response );
         $candidate = is_array( $data['candidates'][0] ?? null ) ? $data['candidates'][0] : [];
         $parts = is_array( $candidate['content']['parts'] ?? null ) ? $candidate['content']['parts'] : [];
-        $texts = array_filter( array_map( fn( $part ) => is_array( $part ) ? $part['text'] ?? null : null, $parts ), 'is_string' );
+        $texts = [];
+
+        foreach( $parts as $part )
+        {
+            // thinking summaries aren't part of the answer
+            if( is_array( $part ) && empty( $part['thought'] ) && is_string( $part['text'] ?? null ) ) {
+                $texts[] = $part['text'];
+            }
+        }
+
         $usage = is_array( $data['usageMetadata'] ?? null ) ? $data['usageMetadata'] : [];
         $used = $usage['totalTokenCount'] ?? null;
 

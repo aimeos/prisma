@@ -14,6 +14,6 @@ class Groq extends Base implements Describe
     {
         $input = $this->responsesInput( $this->summary( $lang ), [$image] );
 
-        return $this->responses( 'openai/v1/responses', 'qwen/qwen3.8-27b', $input, [] );
+        return $this->responses( 'openai/v1/responses', 'qwen/qwen3.8-27b', $input, $this->allowed( $options, ['temperature', 'top_p'] ) );
     }
 }

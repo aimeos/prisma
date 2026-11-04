@@ -32,13 +32,15 @@ class OpenaiTest extends TestCase
                 }
             }' )
             ->ensure( 'describe' )
-            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en' );
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ), 'en', ['temperature' => 0.2, 'unknown' => 1] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.openai.com/v1/responses', (string) $request->getUri() );
 
             $body = json_decode( $request->getBody()->getContents(), true );
             $this->assertEquals( 'gpt-6.1-sol', $body['model'] );
+            $this->assertEquals( 0.2, $body['temperature'] );
+            $this->assertArrayNotHasKey( 'unknown', $body );
         } );
 
         $this->assertEquals( 'an image description', $response->text() );

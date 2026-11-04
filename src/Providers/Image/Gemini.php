@@ -17,7 +17,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        return $this->understand( $image, $this->summary( $lang ), 'gemini-3-pro-image' );
+        return $this->understand( $image, $this->summary( $lang ), 'gemini-3-pro-image', $options );
     }
 
 
