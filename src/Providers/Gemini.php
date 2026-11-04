@@ -4,6 +4,8 @@ namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Responses\TextResponse;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -234,6 +236,36 @@ class Gemini extends Base
         }
 
         return [['role' => 'user', 'parts' => $parts]];
+    }
+
+
+    /**
+     * Asks the LLM about a media file.
+     *
+     * @param File $file Image, audio or video file
+     * @param string $prompt Task prompt
+     * @param string $model Default model name
+     * @return TextResponse Text parts of the first candidate
+     */
+    protected function understand( File $file, string $prompt, string $model ) : TextResponse
+    {
+        $response = $this->client()->post( 'v1beta/models/' . $this->modelName( $model ) . ':generateContent', ['json' => [
+            'contents' => [['parts' => $this->content( $prompt, [$file] )]],
+            'generationConfig' => ['responseModalities' => ['TEXT']],
+        ]] );
+
+        $this->validate( $response );
+
+        $data = $this->fromJson( $response );
+        $candidate = is_array( $data['candidates'][0] ?? null ) ? $data['candidates'][0] : [];
+        $parts = is_array( $candidate['content']['parts'] ?? null ) ? $candidate['content']['parts'] : [];
+        $texts = array_filter( array_map( fn( $part ) => is_array( $part ) ? $part['text'] ?? null : null, $parts ), 'is_string' );
+        $usage = is_array( $data['usageMetadata'] ?? null ) ? $data['usageMetadata'] : [];
+        $used = $usage['totalTokenCount'] ?? null;
+
+        return TextResponse::fromText( $texts ? implode( '', $texts ) : null )
+            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+            ->withMeta( is_array( $candidate['metadata'] ?? null ) ? $candidate['metadata'] : [] );
     }
 
 

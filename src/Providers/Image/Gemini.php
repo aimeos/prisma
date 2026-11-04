@@ -17,58 +17,7 @@ class Gemini extends Base implements Describe, Imagine, Repaint
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $model = $this->modelName( 'gemini-3-pro-image' );
-        $request = [
-            'contents' => [[
-                'parts' => [[
-                    'inlineData' => [
-                        'data' => $image->base64(),
-                        'mimeType' => $image->mimeType()
-                    ]],
-                    ['text' => $this->summary( $lang )]
-                ]
-            ]],
-            'generationConfig' => [
-                'responseModalities' => ['TEXT']
-            ]
-        ];
-        $response = $this->client()->post( 'v1beta/models/' . $model . ':generateContent', ['json' => $request] );
-
-        $this->validate( $response );
-
-        /** @var array<string, mixed> $data */
-        $data = $this->fromJson( $response );
-        /** @var array<string|null> $texts */
-        $texts = [];
-
-        /** @var array<int, array<string, mixed>> $candidates */
-        $candidates = $data['candidates'] ?? [];
-
-        foreach( $candidates as $candidate )
-        {
-            /** @var array<string, mixed> $content */
-            $content = $candidate['content'] ?? [];
-            /** @var array<int, array<string, mixed>> $parts */
-            $parts = $content['parts'] ?? [];
-
-            foreach( $parts as $part )
-            {
-                if( $text = $part['text'] ?? null ) {
-                    /** @var string $text */
-                    $texts[] = $text;
-                }
-            }
-        }
-
-        /** @var array<int, array<string, mixed>> $candidatesArr */
-        $candidatesArr = $data['candidates'] ?? [];
-        $first = current( $candidatesArr ) ?: [];
-
-        /** @var array<string, mixed> $metadata */
-        $metadata = $first['metadata'] ?? [];
-
-        return TextResponse::fromTexts( $texts )
-            ->withMeta( $metadata );
+        return $this->understand( $image, $this->summary( $lang ), 'gemini-3-pro-image' );
     }
 
 

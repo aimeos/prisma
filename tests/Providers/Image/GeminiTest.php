@@ -35,6 +35,24 @@ class GeminiTest extends TestCase
     }
 
 
+    public function testDescribeParts() : void
+    {
+        $response = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
+            ->response( json_encode( [
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => 'an image '], ['text' => 'description']]],
+                    'metadata' => ['id' => 'x'],
+                ]],
+                'usageMetadata' => ['totalTokenCount' => 42],
+            ] ) )
+            ->describe( Image::fromBinary( 'PNG', 'image/png' ) );
+
+        $this->assertEquals( 'an image description', $response->text() );
+        $this->assertEquals( 42.0, $response->usage()['used'] );
+        $this->assertEquals( 'x', $response->meta()['id'] );
+    }
+
+
     public function testImagine() : void
     {
         $file = $this->prisma( 'image', 'gemini', ['api_key' => 'test'] )
