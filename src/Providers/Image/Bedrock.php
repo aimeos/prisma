@@ -16,69 +16,67 @@ use Psr\Http\Message\ResponseInterface;
 
 class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectorize
 {
+    protected string $imagineUrl;
+
+
+    public function __construct( array $config )
+    {
+        parent::__construct( $config );
+        $this->imagineUrl = $this->config( $config, 'url', 'https://bedrock-runtime.us-west-2.amazonaws.com' );
+    }
+
+
     public function imagine( string $prompt, array $images = [], array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
-        $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale', 'seed'] );
+        $model = $this->modelName( 'stability.sd3-5-large-v1:0' );
+        $allowed = $this->allowed( $options, ['aspect_ratio', 'negative_prompt', 'output_format', 'seed', 'strength'] );
+        $allowed = $this->sanitize( $allowed, [
+            'aspect_ratio' => ['16:9', '1:1', '21:9', '2:3', '3:2', '4:5', '5:4', '9:16', '9:21'],
+            'output_format' => ['png', 'jpeg', 'webp'],
+        ] );
 
-        $request = [
-            'taskType' => 'TEXT_IMAGE',
-            'textToImageParams' => [
-                'text' => $prompt,
-                ...$this->allowed( $options, ['controlMode', 'controlStrength', 'negativeText'] ) + ['controlStrength' => 0.25]
-            ],
-            'imageGenerationConfig' => [
-                'numberOfImages' => 1,
-            ] + $allowed
-        ];
+        $request = ['prompt' => $prompt] + $allowed;
 
-        if( $image = current( $images ) ) {
-            $request['textToImageParams']['conditionImage'] = $image->base64();
+        if( $image = current( $images ) )
+        {
+            unset( $request['aspect_ratio'] );
+            $request = ['mode' => 'image-to-image', 'image' => $image->base64()] + $request + ['strength' => 0.85];
         }
 
-        $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
+        $response = $this->client()->post( $this->imagineUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $allowed );
     }
 
 
     public function inpaint( Image $image, Image $mask, string $prompt, array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
-        $allowed = $this->allowed( $options, ['quality', 'height', 'width', 'cfgScale'] );
+        $model = $this->modelName( 'us.stability.stable-image-inpaint-v1:0' );
+        $allowed = $this->allowed( $options, ['grow_mask', 'negative_prompt', 'output_format', 'seed', 'style_preset'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'jpeg', 'webp']] );
 
         $request = [
-            'taskType' => 'INPAINTING',
-            'inPaintingParams' => [
-                'image' => $image->base64(),
-                'maskImage' => $this->invert( $mask )->base64(),
-                'text' => $prompt,
-                ...$this->allowed( $options, ['negativeText'] )
-            ],
-            'imageGenerationConfig' => [
-                'numberOfImages' => 1,
-            ] + $allowed
-        ];
+            'image' => $image->base64(),
+            'mask' => $mask->base64(),
+            'prompt' => $prompt,
+        ] + $allowed;
+
         $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $allowed );
     }
 
 
     public function isolate( Image $image, array $options = [] ) : FileResponse
     {
-        $model = $this->modelName( 'amazon.nova-canvas-v1:0' );
+        $model = $this->modelName( 'us.stability.stable-image-remove-background-v1:0' );
+        $allowed = $this->allowed( $options, ['output_format'] );
+        $allowed = $this->sanitize( $allowed, ['output_format' => ['png', 'webp']] );
 
-        $request = [
-            'taskType' => 'BACKGROUND_REMOVAL',
-            'backgroundRemovalParams' => [
-                'image' => $image->base64(),
-            ],
-        ];
-
+        $request = ['image' => $image->base64()] + $allowed;
         $response = $this->client()->post( $this->baseUrl . '/model/' . $model . '/invoke', ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $allowed );
     }
 
 
@@ -151,45 +149,33 @@ class Bedrock extends BedrockBase implements Imagine, Inpaint, Isolate, Vectoriz
     }
 
 
-    protected function invert( Image $image ) : Image
-    {
-        if( ( $img = imagecreatefromstring( (string) $image->binary() ) ) === false ) {
-            throw new PrismaException( "Invalid image/mask data" );
-        }
-
-        if( ( $stream = fopen( 'php://memory', 'r+' ) ) === false ) {
-            throw new PrismaException( "Unable to create image stream" );
-        }
-
-        imagefilter( $img, IMG_FILTER_NEGATE );
-
-        imagepng( $img, $stream );
-        rewind( $stream );
-
-        $png = stream_get_contents( $stream );
-
-        fclose( $stream );
-
-        return Image::fromBinary( $png, 'image/png' );
-    }
-
-
-    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    /**
+     * Converts a Stability response into a file response.
+     *
+     * @param ResponseInterface $response Provider response
+     * @param array<string, mixed> $options Request options containing the optional output format
+     * @return FileResponse File response
+     */
+    protected function toFileResponse( ResponseInterface $response, array $options = [] ) : FileResponse
     {
         $this->validate( $response );
 
         $data = $this->fromJson( $response );
+        $mime = 'image/' . ( is_string( $options['output_format'] ?? null ) ? $options['output_format'] : 'png' );
         $files = [];
 
         /** @var array<int, string> $images */
         $images = $data['images'] ?? [];
 
         foreach( $images as $image ) {
-            $files[] = Image::fromBase64( $image, 'image/png' );
+            $files[] = Image::fromBase64( $image, $mime );
         }
 
-        if( empty( $files ) ) {
-            throw new \Aimeos\Prisma\Exceptions\PrismaException( 'No image data found in response' );
+        if( empty( $files ) )
+        {
+            /** @var array<int, string|null> $reasons */
+            $reasons = $data['finish_reasons'] ?? [];
+            throw new PrismaException( current( array_filter( $reasons ) ) ?: 'No image data found in response' );
         }
 
         return FileResponse::fromFiles( $files );

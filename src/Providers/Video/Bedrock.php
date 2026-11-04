@@ -26,7 +26,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
 
     public function __construct( array $config )
     {
-        parent::__construct( $config );
+        parent::__construct( $config + ['url' => 'https://bedrock-runtime.us-west-2.amazonaws.com'] );
         $this->s3Uri = $this->config( $config, 's3_uri' );
     }
 
@@ -208,14 +208,21 @@ class Bedrock extends Base implements Describe, Imagine, Resume
 
 
     /**
-     * Returns the Nova Reel image format identifier.
+     * Builds a Luma Ray keyframe from an image.
      *
-     * @param Image $image Start frame
-     * @return string Image format identifier
+     * @param Image $image Start or end frame
+     * @return array<string, mixed> Keyframe definition
      */
-    protected function imageFormat( Image $image ) : string
+    protected function keyframe( Image $image ) : array
     {
-        return in_array( $image->mimeType(), ['image/jpeg', 'image/jpg'], true ) ? 'jpeg' : 'png';
+        return [
+            'type' => 'image',
+            'source' => [
+                'type' => 'base64',
+                'media_type' => in_array( $image->mimeType(), ['image/jpeg', 'image/jpg'], true ) ? 'image/jpeg' : 'image/png',
+                'data' => $image->base64(),
+            ],
+        ];
     }
 
 
@@ -261,7 +268,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
 
 
     /**
-     * Builds the Bedrock Nova Reel invocation request.
+     * Builds the Bedrock Luma Ray invocation request.
      *
      * @param string $prompt Video prompt
      * @param array<string, mixed> $media Input media by semantic role
@@ -270,35 +277,27 @@ class Bedrock extends Base implements Describe, Imagine, Resume
      */
     protected function request( string $prompt, array $media, array $options ) : array
     {
-        $start = $media['start'] ?? null;
-        $duration = is_int( $options['duration'] ?? null ) ? $options['duration'] : 6;
-        $multi = !( $start instanceof Image ) && $duration >= 12 && $duration <= 120 && $duration % 6 === 0;
-        $params = ['text' => $prompt];
+        $input = ['prompt' => $prompt] + $this->sanitize( $this->allowed( $options, ['aspect_ratio', 'resolution'] ), [
+            'aspect_ratio' => ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '9:21'],
+            'resolution' => ['540p', '720p'],
+        ] );
 
-        if( $start instanceof Image ) {
-            $params['images'] = [[
-                'format' => $this->imageFormat( $start ),
-                'source' => ['bytes' => $start->base64()],
-            ]];
+        $input['duration'] = is_int( $options['duration'] ?? null ) && $options['duration'] > 5 ? '9s' : '5s';
+
+        if( is_bool( $options['loop'] ?? null ) ) {
+            $input['loop'] = $options['loop'];
         }
 
-        $config = [
-            'durationSeconds' => $multi ? $duration : 6,
-            'fps' => 24,
-            'dimension' => '1280x720',
-        ];
-
-        if( is_int( $options['seed'] ?? null ) ) {
-            $config['seed'] = $options['seed'];
+        foreach( ['start' => 'frame0', 'end' => 'frame1'] as $role => $frame )
+        {
+            if( ( $image = $media[$role] ?? null ) instanceof Image ) {
+                $input['keyframes'][$frame] = $this->keyframe( $image );
+            }
         }
 
         return [
-            'modelId' => $this->modelName( 'amazon.nova-reel-v1:1' ),
-            'modelInput' => [
-                'taskType' => $multi ? 'MULTI_SHOT_AUTOMATED' : 'TEXT_VIDEO',
-                $multi ? 'multiShotAutomatedParams' : 'textToVideoParams' => $params,
-                'videoGenerationConfig' => $config,
-            ],
+            'modelId' => $this->modelName( 'luma.ray-v2:0' ),
+            'modelInput' => $input,
             'outputDataConfig' => [
                 's3OutputDataConfig' => ['s3Uri' => $this->s3Uri],
             ],
