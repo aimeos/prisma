@@ -48,6 +48,33 @@ class Gemini extends Base
 
 
     /**
+     * Extracts text content from Gemini candidate parts.
+     *
+     * @param array<int, array<string, mixed>> $candidates Candidate response blocks
+     * @return array<int, string> Extracted texts
+     */
+    protected function candidateTexts( array $candidates ) : array
+    {
+        $texts = [];
+
+        foreach( $candidates as $candidate )
+        {
+            /** @var array<int, array<string, mixed>> $parts */
+            $parts = $candidate['content']['parts'] ?? [];
+
+            foreach( $parts as $part )
+            {
+                if( !( $part['thought'] ?? false ) && ( $text = $part['text'] ?? null ) ) {
+                    $texts[] = $text;
+                }
+            }
+        }
+
+        return $texts;
+    }
+
+
+    /**
      * Decodes JSON-string arguments back into the objects/arrays the schema expects.
      *
      * This is the inverse of encodeArgs(): that method declares schema-less object
@@ -261,17 +288,7 @@ class Gemini extends Base
 
         $data = $this->fromJson( $response );
         $candidate = is_array( $data['candidates'][0] ?? null ) ? $data['candidates'][0] : [];
-        $parts = is_array( $candidate['content']['parts'] ?? null ) ? $candidate['content']['parts'] : [];
-        $texts = [];
-
-        foreach( $parts as $part )
-        {
-            // thinking summaries aren't part of the answer
-            if( is_array( $part ) && empty( $part['thought'] ) && is_string( $part['text'] ?? null ) ) {
-                $texts[] = $part['text'];
-            }
-        }
-
+        $texts = $this->candidateTexts( [$candidate] );
         $usage = is_array( $data['usageMetadata'] ?? null ) ? $data['usageMetadata'] : [];
         $used = $usage['totalTokenCount'] ?? null;
 
