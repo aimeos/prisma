@@ -108,6 +108,65 @@ class File
 
 
     /**
+     * Returns the size of the file content without reading it.
+     *
+     * @return int|null Size in bytes or NULL if unknown, e.g. for URLs not fetched yet or pipes
+     */
+    public function bytes() : ?int
+    {
+        if( $this->binary !== null ) {
+            return strlen( $this->binary );
+        }
+
+        if( $this->base64 !== null ) {
+            $length = strlen( rtrim( $this->base64, '=' ) );
+            return intdiv( $length * 3, 4 );
+        }
+
+        if( $this->stream !== null && stream_get_meta_data( $stream = self::resource( $this->stream ) )['seekable'] )
+        {
+            $size = fstat( $stream )['size'] ?? null;
+            $pos = ftell( $stream );
+
+            return is_int( $size ) && is_int( $pos ) ? max( 0, $size - $pos ) : null;
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Returns the file content in chunks to process large files with little memory.
+     *
+     * Content already in memory is sliced without copying it, streams and URLs are read chunk by chunk.
+     *
+     * @param int $bytes Maximum size of each chunk in bytes
+     * @return \Generator<int, string> Non-empty chunks of the file content
+     */
+    public function chunks( int $bytes ) : \Generator
+    {
+        $bytes = max( 1, $bytes );
+
+        if( $this->binary !== null || $this->base64 !== null || ( $this->stream === null && !$this->url ) )
+        {
+            $binary = (string) $this->binary();
+
+            for( $pos = 0; $pos < strlen( $binary ); $pos += $bytes ) {
+                yield substr( $binary, $pos, $bytes );
+            }
+
+            return;
+        }
+
+        $stream = $this->stream();
+
+        while( ( $chunk = stream_get_contents( $stream, $bytes ) ) !== false && $chunk !== '' ) {
+            yield $chunk;
+        }
+    }
+
+
+    /**
      * Returns the file content as base64 encoded data URI.
      *
      * @return string Data URI

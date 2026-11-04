@@ -236,6 +236,38 @@ class FalTest extends TestCase
     }
 
 
+    public function testExtendUploadFailed() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['upload_url' => 'https://upload.fal.example/u/abc', 'file_url' => 'https://v3.fal.media/files/v.mp4'] );
+        $this->response( '', [], 403 );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->extend( Video::fromBinary( str_repeat( 'v', 6 * 1024 * 1024 ), 'video/mp4' ), 'Pull back' );
+    }
+
+
+    public function testExtendUploadStream() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['upload_url' => 'https://upload.fal.example/u/abc', 'file_url' => 'https://v3.fal.media/files/v.mp4'] );
+        $this->response( ['etag' => 'e1'] );
+        $this->response( [] );
+        $this->response( ['response_url' => self::URL] );
+
+        $stream = fopen( 'php://temp', 'w+' );
+        fwrite( $stream, str_repeat( 'v', 6 * 1024 * 1024 ) );
+        rewind( $stream );
+
+        $this->provider()->extend( Video::fromStream( $stream, 'video/mp4' ), 'Pull back' );
+
+        [, $part, $complete] = $this->requests();
+
+        $this->assertSame( 6 * 1024 * 1024, $part->getBody()->getSize() );
+        $this->assertSame( ['parts' => [['partNumber' => 1, 'etag' => 'e1']]], json_decode( (string) $complete->getBody(), true ) );
+    }
+
+
     public function testExtendUploadInsecure() : void
     {
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )

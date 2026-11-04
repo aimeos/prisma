@@ -3,6 +3,7 @@
 namespace Aimeos\Prisma\Providers;
 
 use Aimeos\Prisma\Concerns\CallsTools;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\TextResponse;
@@ -12,6 +13,16 @@ use Psr\Http\Message\ResponseInterface;
 class Gemini extends Base
 {
     use CallsTools;
+
+
+    /** Media up to this size are sent inline because the base64 encoded request must stay below 20 MB */
+    private const INLINE_BYTES = 14 * 1024 * 1024;
+
+    /** Size of the uploaded parts, a multiple of the 8 MiB upload granularity of Gemini */
+    private const PART_BYTES = 8 * 1024 * 1024;
+
+    /** Polling interval in seconds until uploaded media are processed */
+    private const RETRY = 3;
 
 
     public function __construct( array $config )
@@ -273,28 +284,35 @@ class Gemini extends Base
      * @param string $prompt Task prompt
      * @param string $model Default model name
      * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Text parts of the first candidate
+     * @return TextResponse Text parts of the first candidate, asynchronous if the file is uploaded
      */
     protected function understand( File $file, string $prompt, string $model, array $options ) : TextResponse
     {
         $config = $this->allowed( $options, ['temperature', 'topP', 'topK', 'thinkingConfig'] );
 
-        $response = $this->client()->post( 'v1beta/models/' . $this->modelName( $model ) . ':generateContent', ['json' => [
-            'contents' => [['parts' => $this->content( $prompt, [$file] )]],
-            'generationConfig' => ['responseModalities' => ['TEXT']] + $config,
-        ]] );
+        // URLs are downloaded to a temporary stream once, so their size is known without keeping them in memory
+        if( $file->bytes() === null && $file->url() ) {
+            $file = $file::fromStream( $file->stream(), $file->mimeType() );
+        }
 
-        $this->validate( $response );
+        if( ( $size = $file->bytes() ) !== null && $size <= self::INLINE_BYTES ) {
+            return $this->answer( $model, $this->content( $prompt, [$file] ), $config, TextResponse::fromTexts( [] ) );
+        }
 
-        $data = $this->fromJson( $response );
-        $candidate = is_array( $data['candidates'][0] ?? null ) ? $data['candidates'][0] : [];
-        $texts = $this->candidateTexts( [$candidate] );
-        $usage = is_array( $data['usageMetadata'] ?? null ) ? $data['usageMetadata'] : [];
-        $used = $usage['totalTokenCount'] ?? null;
+        $upload = $this->upload( $file );
+        $parts = [['fileData' => ['fileUri' => $upload['uri'], 'mimeType' => $upload['mimeType']]], ['text' => $prompt]];
+        $state = $upload['state'];
 
-        return TextResponse::fromText( $texts ? implode( '', $texts ) : null )
-            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
-            ->withMeta( is_array( $candidate['metadata'] ?? null ) ? $candidate['metadata'] : [] );
+        // uploaded audio and video files are processed by Gemini before they can be used
+        return TextResponse::fromAsync( function( TextResponse $response ) use ( $upload, $parts, $model, $config, &$state ) : bool {
+
+            if( $state !== 'ACTIVE' && ( $state = $this->state( $upload['name'] ) ) !== 'ACTIVE' ) {
+                return false;
+            }
+
+            $this->answer( $model, $parts, $config, $response );
+            return true;
+        }, self::RETRY );
     }
 
 
@@ -369,6 +387,60 @@ class Gemini extends Base
 
 
     /**
+     * Generates the answer to the media parts and adds it to the response.
+     *
+     * @param string $model Default model name
+     * @param array<int, array<string, mixed>> $parts Media and prompt parts
+     * @param array<string, mixed> $config Generation config
+     * @param TextResponse $response Response to populate
+     * @return TextResponse Populated response
+     */
+    private function answer( string $model, array $parts, array $config, TextResponse $response ) : TextResponse
+    {
+        $result = $this->client()->post( 'v1beta/models/' . $this->modelName( $model ) . ':generateContent', ['json' => [
+            'contents' => [['parts' => $parts]],
+            'generationConfig' => ['responseModalities' => ['TEXT']] + $config,
+        ]] );
+
+        $this->validate( $result );
+
+        $data = $this->fromJson( $result );
+        $candidate = is_array( $data['candidates'][0] ?? null ) ? $data['candidates'][0] : [];
+        $texts = $this->candidateTexts( [$candidate] );
+        $usage = is_array( $data['usageMetadata'] ?? null ) ? $data['usageMetadata'] : [];
+        $used = $usage['totalTokenCount'] ?? null;
+
+        return $response->add( $texts ? implode( '', $texts ) : null )
+            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+            ->withMeta( is_array( $candidate['metadata'] ?? null ) ? $candidate['metadata'] : [] );
+    }
+
+
+    /**
+     * Sends a part of the file content to the resumable upload URL.
+     *
+     * @param string $url Upload URL returned by Gemini
+     * @param string $chunk Part of the file content
+     * @param int $offset Position of the part in the file content
+     * @param string $command Upload command, "upload" or "upload, finalize" for the last part
+     * @return ResponseInterface Validated upload response
+     */
+    private function part( string $url, string $chunk, int $offset, string $command ) : ResponseInterface
+    {
+        $response = $this->client()->post( $url, [
+            'headers' => [
+                'X-Goog-Upload-Command' => $command,
+                'X-Goog-Upload-Offset' => (string) $offset,
+            ],
+            'body' => $chunk,
+        ] );
+
+        $this->validate( $response );
+        return $response;
+    }
+
+
+    /**
      * Extracts the retry delay (seconds) from a Gemini error's RetryInfo detail.
      *
      * @param array<int, array<string, mixed>> $details Error details from the response body
@@ -384,5 +456,90 @@ class Gemini extends Base
         }
 
         return null;
+    }
+
+
+    /**
+     * Returns the processing state of an uploaded file.
+     *
+     * @param string $name Resource name of the file, e.g. "files/abc-123"
+     * @return string|null Processing state, e.g. "PROCESSING" or "ACTIVE"
+     * @throws FailedException If Gemini failed to process the file
+     */
+    private function state( string $name ) : ?string
+    {
+        $response = $this->client()->get( 'v1beta/' . $name );
+        $this->validate( $response );
+
+        $state = $this->fromJson( $response )['state'] ?? null;
+
+        if( $state === 'FAILED' ) {
+            throw new FailedException( 'Gemini failed to process the uploaded file' );
+        }
+
+        return is_string( $state ) ? $state : null;
+    }
+
+
+    /**
+     * Uploads the file to the Gemini Files API in parts.
+     *
+     * Large media can't be sent inline, so they are uploaded by the resumable upload protocol
+     * which reads only one part at a time. Uploaded files are deleted by Gemini after 48 hours.
+     *
+     * @param File $file Input file
+     * @return array{name: string, uri: string, mimeType: string, state: string|null} Uploaded file
+     * @throws FailedException If the upload response is invalid
+     */
+    private function upload( File $file ) : array
+    {
+        $mimeType = $file->mimeType() ?? 'application/octet-stream';
+        $headers = [
+            'X-Goog-Upload-Protocol' => 'resumable',
+            'X-Goog-Upload-Command' => 'start',
+            'X-Goog-Upload-Header-Content-Type' => $mimeType,
+        ];
+
+        if( ( $size = $file->bytes() ) !== null ) {
+            $headers['X-Goog-Upload-Header-Content-Length'] = (string) $size;
+        }
+
+        $response = $this->client()->post( 'upload/v1beta/files', [
+            'headers' => $headers,
+            'json' => ['file' => ['display_name' => $file->filename() ?? 'upload']],
+        ] );
+
+        $this->validate( $response );
+
+        if( !str_starts_with( $url = $response->getHeaderLine( 'X-Goog-Upload-URL' ), 'https://' ) ) {
+            throw new FailedException( 'No upload URL in Gemini response' );
+        }
+
+        $offset = 0;
+        $chunk = '';
+
+        // the last part must finalize the upload, so each part is sent when the next one is read
+        foreach( $file->chunks( self::PART_BYTES ) as $idx => $next )
+        {
+            if( $idx > 0 ) {
+                $this->part( $url, $chunk, $offset, 'upload' );
+                $offset += strlen( $chunk );
+            }
+
+            $chunk = $next;
+        }
+
+        $result = $this->fromJson( $this->part( $url, $chunk, $offset, 'upload, finalize' ) )['file'] ?? null;
+
+        if( !is_array( $result ) || !is_string( $result['name'] ?? null ) || !is_string( $result['uri'] ?? null ) ) {
+            throw new FailedException( 'No file in Gemini upload response' );
+        }
+
+        return [
+            'name' => $result['name'],
+            'uri' => $result['uri'],
+            'mimeType' => is_string( $result['mimeType'] ?? null ) ? $result['mimeType'] : $mimeType,
+            'state' => is_string( $result['state'] ?? null ) ? $result['state'] : null,
+        ];
     }
 }

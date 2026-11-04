@@ -61,6 +61,36 @@ class FileTest extends TestCase
     }
 
 
+    public function testBytes() : void
+    {
+        $this->assertSame( 5, File::fromBinary( 'hello' )->bytes() );
+        $this->assertSame( 5, File::fromBase64( base64_encode( 'hello' ) )->bytes() );
+        $this->assertSame( 6, File::fromBase64( base64_encode( 'hello!' ) )->bytes() );
+        $this->assertNull( File::fromUrl( 'https://example.com/file.bin' )->bytes() );
+
+        $stream = Utils::tryFopen( 'php://temp', 'w+' );
+        fwrite( $stream, 'hello world' );
+        rewind( $stream );
+        fseek( $stream, 6 );
+
+        // only the unread content is counted
+        $this->assertSame( 5, File::fromStream( $stream )->bytes() );
+    }
+
+
+    public function testChunks() : void
+    {
+        $this->assertSame( ['he', 'll', 'o'], iterator_to_array( File::fromBinary( 'hello' )->chunks( 2 ) ) );
+        $this->assertSame( [], iterator_to_array( File::fromBinary( '' )->chunks( 2 ) ) );
+
+        $stream = Utils::tryFopen( 'php://temp', 'w+' );
+        fwrite( $stream, 'hello' );
+        rewind( $stream );
+
+        $this->assertSame( ['hel', 'lo'], iterator_to_array( File::fromStream( $stream )->chunks( 3 ) ) );
+    }
+
+
     public function testDataUri() : void
     {
         $this->assertSame( 'data:text/plain;base64,aGVsbG8=', File::fromBinary( 'hello', 'text/plain' )->dataUri() );

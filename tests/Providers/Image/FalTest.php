@@ -279,7 +279,7 @@ class FalTest extends TestCase
 
         $this->assertFalse( $response->ready() );
         $this->assertNull( $response->jobId() );
-        $this->assertSame( 3, $response->retryAfter() );
+        $this->assertSame( 1, $response->retryAfter() );
     }
 
 

@@ -1277,6 +1277,9 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 * OpenAI
 * Openrouter
 
+Google Gemini uploads audio files larger than 14 MiB to its Files API first (deleted by Gemini
+after 48 hours) and returns the description when Gemini has processed the audio.
+
 ### resume
 
 Continue polling an asynchronous audio job, e.g. in a later queue job.
@@ -2492,7 +2495,8 @@ Prisma::text()
 ```
 
 fal translates the texts with the LLM selected by `model()` using structured output and
-accepts the same options as `structure()`, e.g. `temperature` or `mode`.
+accepts the same options as `structure()`, e.g. `temperature` or `mode`. Texts are sent in
+batches of up to 10,000 characters and up to five batches are translated at the same time.
 
 ### vectorize
 
@@ -2772,6 +2776,10 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
 * [Meta Muse Spark](https://dev.meta.ai/docs/video-understanding)
 * Openrouter
+
+Google Gemini uploads videos larger than 14 MiB to its Files API first (deleted by Gemini after
+48 hours) and returns the description when Gemini has processed the video. OpenRouter sends
+videos without URL inline, so pass large videos by URL.
 
 ### extend
 

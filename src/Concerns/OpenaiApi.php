@@ -570,13 +570,7 @@ trait OpenaiApi
      */
     protected function structuredCompletions( string $endpoint, string $defaultModel, string $prompt, array $files, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : \Aimeos\Prisma\Responses\TextResponse
     {
-        if( Mode::from( $mode )->isJson() ) {
-            $options['response_format'] = ['type' => 'json_object'];
-            $prompt = $schema->toPrompt( $prompt );
-        } else {
-            // Chat completions nest the schema under a "json_schema" key.
-            $options['response_format'] = ['type' => 'json_schema', 'json_schema' => $this->structuredSchema( $schema )];
-        }
+        [$prompt, $options] = $this->structuredRequest( $prompt, $schema, $options, $mode );
 
         $response = $this->completions(
             $endpoint, $defaultModel,
@@ -585,6 +579,31 @@ trait OpenaiApi
         );
 
         return $response->withStructured( $this->parseJson( $response->text() ) );
+    }
+
+
+    /**
+     * Returns the prompt and request options for structured output by chat completions.
+     *
+     * Native strict mode sends the schema as json_schema response format, JSON mode embeds
+     * the schema in the prompt and requests a JSON object (default: native).
+     *
+     * @param string $prompt User prompt
+     * @param \Aimeos\Prisma\Schema\Schema $schema Response schema
+     * @param array<string, mixed> $options Pre-filtered request options
+     * @param string|null $mode Structured output mode ("json"/"structured") or null for automatic
+     * @return array{0: string, 1: array<string, mixed>} Prompt and request options
+     */
+    protected function structuredRequest( string $prompt, \Aimeos\Prisma\Schema\Schema $schema, array $options, ?string $mode = null ) : array
+    {
+        if( Mode::from( $mode )->isJson() ) {
+            $options['response_format'] = ['type' => 'json_object'];
+            return [$schema->toPrompt( $prompt ), $options];
+        }
+
+        // Chat completions nest the schema under a "json_schema" key.
+        $options['response_format'] = ['type' => 'json_schema', 'json_schema' => $this->structuredSchema( $schema )];
+        return [$prompt, $options];
     }
 
 

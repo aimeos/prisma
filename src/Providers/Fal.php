@@ -10,11 +10,10 @@ use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Responses\TextResponse;
+use GuzzleHttp\Pool;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
-use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
 
 
 /**
@@ -35,11 +34,17 @@ abstract class Fal extends Base implements Cancel, Resume
     /** Polling interval of the queued requests in seconds */
     protected const RETRY = 3;
 
+    /** Polling interval of the queued text requests in seconds, LLM answers often take only a few seconds */
+    private const ASK_RETRY = 1;
+
     /** Files up to this size are sent inline as data URI because uploading them takes three requests */
     private const INLINE_BYTES = 5 * 1024 * 1024;
 
     /** Size of the uploaded parts, so each request of large uploads stays short */
     private const PART_BYTES = 10 * 1024 * 1024;
+
+    /** Number of parts uploaded at the same time */
+    private const PART_UPLOADS = 4;
 
     /** Default LLM of the OpenRouter endpoints */
     private const ROUTER_MODEL = 'google/gemini-3.8-flash';
@@ -107,8 +112,8 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function ask( string $endpoint, array $input, \Closure $result ) : TextResponse
     {
-        // text results are fast, so they are polled with the default interval even for videos
-        return TextResponse::fromAsync( $this->poll( $this->queue( $endpoint, $input ), $result ), self::RETRY );
+        // text results are fast, so they are polled more often than generated files
+        return TextResponse::fromAsync( $this->poll( $this->queue( $endpoint, $input ), $result ), self::ASK_RETRY );
     }
 
 
@@ -355,43 +360,68 @@ abstract class Fal extends Base implements Cancel, Resume
             return $url;
         }
 
-        $mimeType = $file->mimeType() ?? 'application/octet-stream';
-        $body = Utils::streamFor( $file->stream() );
-        $size = $body->getSize();
-
-        if( $size !== null && $size <= self::INLINE_BYTES ) {
+        // files of unknown size, e.g. pipes, are uploaded because they may be large
+        if( ( $size = $file->bytes() ) !== null && $size <= self::INLINE_BYTES ) {
             return $file->dataUri();
         }
 
-        return $this->upload( $body, $mimeType, $file->filename() );
+        return $this->upload( $file );
     }
 
 
     /**
-     * Uploads the content in parts to the URL returned by fal.
+     * Returns the ETag of an uploaded part.
      *
-     * @param Uri $uri Upload URL of the multipart upload
-     * @param StreamInterface $body File content
-     * @return void
+     * @param ResponseInterface $response Validated upload response of the part
+     * @return string ETag of the part
+     * @throws FailedException If the response contains no ETag
      */
-    private function parts( Uri $uri, StreamInterface $body ) : void
+    private function etag( ResponseInterface $response ) : string
     {
-        $parts = [];
+        $data = json_decode( (string) $response->getBody(), true );
+        $etag = is_array( $data ) && is_string( $data['etag'] ?? null ) ? $data['etag'] : $response->getHeaderLine( 'ETag' );
 
-        for( $num = 1; ( $chunk = Utils::copyToString( $body, self::PART_BYTES ) ) !== ''; $num++ )
-        {
-            $response = $this->put( $uri->withPath( $uri->getPath() . '/' . $num ), $chunk );
-            $data = json_decode( (string) $response->getBody(), true );
-            $etag = is_array( $data ) && is_string( $data['etag'] ?? null ) ? $data['etag'] : $response->getHeaderLine( 'ETag' );
-
-            if( $etag === '' ) {
-                throw new FailedException( 'No ETag in fal upload response' );
-            }
-
-            $parts[] = ['partNumber' => $num, 'etag' => $etag];
+        if( $etag === '' ) {
+            throw new FailedException( 'No ETag in fal upload response' );
         }
 
-        // the signed upload URL authorizes the request, so the API key isn't sent
+        return $etag;
+    }
+
+
+    /**
+     * Uploads the file content in parts to the URL returned by fal.
+     *
+     * Several parts are sent at the same time and only those are kept in memory.
+     *
+     * @param Uri $uri Signed upload URL of the multipart upload
+     * @param File $file Input file
+     * @return void
+     */
+    private function parts( Uri $uri, File $file ) : void
+    {
+        $etags = [];
+
+        $requests = function() use ( $uri, $file ) {
+            foreach( $file->chunks( self::PART_BYTES ) as $idx => $chunk ) {
+                yield $idx => new Request( 'PUT', $uri->withPath( $uri->getPath() . '/' . ( $idx + 1 ) ), [], $chunk );
+            }
+        };
+
+        // the signed upload URL authorizes the requests, so the API key isn't sent
+        ( new Pool( $this->client(), $requests(), [
+            'concurrency' => self::PART_UPLOADS,
+            'options' => ['headers' => null],
+            'fulfilled' => function( ResponseInterface $response, int $idx ) use ( &$etags ) {
+                $this->validate( $response );
+                $etags[$idx] = $this->etag( $response );
+            },
+            'rejected' => fn( mixed $reason ) => throw ( $reason instanceof \Throwable ? $reason : new FailedException( 'fal upload failed' ) ),
+        ] ) )->promise()->wait();
+
+        ksort( $etags );
+        $parts = array_map( fn( $idx, $etag ) => ['partNumber' => $idx + 1, 'etag' => $etag], array_keys( $etags ), $etags );
+
         $response = $this->client()->post( $uri->withPath( $uri->getPath() . '/complete' ), [
             'json' => ['parts' => $parts],
             'headers' => null,
@@ -402,36 +432,17 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Sends a part of the file content to the signed upload URL.
-     *
-     * @param Uri $uri Signed upload URL of the part
-     * @param string $content Part of the file content
-     * @return ResponseInterface Upload response
-     */
-    private function put( Uri $uri, string $content ) : ResponseInterface
-    {
-        // the signed upload URL authorizes the request, so the API key isn't sent
-        $response = $this->client()->send( new Request( 'PUT', $uri, [], $content ), ['headers' => null] );
-        $this->validate( $response );
-
-        return $response;
-    }
-
-
-    /**
      * Uploads the file content to the fal storage.
      *
-     * @param StreamInterface $body File content
-     * @param string $mimeType Content type of the file
-     * @param string|null $filename File name if known
+     * @param File $file Input file
      * @return string URL of the uploaded file
      */
-    private function upload( StreamInterface $body, string $mimeType, ?string $filename ) : string
+    private function upload( File $file ) : string
     {
         $url = $this->restUrl . 'storage/upload/initiate-multipart?storage_type=fal-cdn-v3';
         $response = $this->client()->post( $url, ['json' => [
-            'content_type' => $mimeType,
-            'file_name' => $filename ?? 'upload',
+            'content_type' => $file->mimeType() ?? 'application/octet-stream',
+            'file_name' => $file->filename() ?? 'upload',
         ]] );
 
         $this->validate( $response );
@@ -441,7 +452,7 @@ abstract class Fal extends Base implements Cancel, Resume
             throw new FailedException( 'No upload URL in fal response' );
         }
 
-        $this->parts( new Uri( $data['upload_url'] ), $body );
+        $this->parts( new Uri( $data['upload_url'] ), $file );
         return $data['file_url'];
     }
 }
