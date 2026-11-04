@@ -101,9 +101,7 @@ class Fal extends Base
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
-        $prompt = 'Extract all visible text from the image. Return only the text in reading order.';
-
-        return $this->router( 'openrouter/router/vision', $prompt, ['image_urls' => [$image->uri()]], $options );
+        return $this->router( 'openrouter/router/vision', $this->extraction(), ['image_urls' => [$image->uri()]], $options );
     }
 
 

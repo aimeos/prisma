@@ -338,6 +338,17 @@ abstract class Base implements Provider
 
 
     /**
+     * Returns the prompt for extracting the text of an image.
+     *
+     * @return string Prompt for the LLM
+     */
+    protected function extraction() : string
+    {
+        return 'Extract all visible text from the image. Return only the text in reading order.';
+    }
+
+
+    /**
      * Returns the prompt for summarizing the content of a file.
      *
      * @param string|null $lang ISO language code the summary should be generated in

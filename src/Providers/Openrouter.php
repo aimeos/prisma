@@ -6,7 +6,9 @@ use Aimeos\Prisma\Concerns\CallsTools;
 use Aimeos\Prisma\Concerns\OpenaiApi;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
+use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Files\Video;
+use Aimeos\Prisma\Responses\TextResponse;
 
 
 class Openrouter extends Base
@@ -122,5 +124,25 @@ class Openrouter extends Base
             'audio/webm', 'video/webm' => 'webm',
             default => 'mp3',
         };
+    }
+
+
+    /**
+     * Asks the LLM about a media file.
+     *
+     * @param File $file Image, audio or video file
+     * @param string $prompt Task prompt
+     * @param array<string, mixed> $options Provider specific options
+     * @return TextResponse Text response
+     */
+    protected function understand( File $file, string $prompt, array $options ) : TextResponse
+    {
+        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
+
+        return $this->completions(
+            'api/v1/chat/completions', '~google/gemini-flash-latest',
+            $this->messages( $this->content( $prompt, [$file] ) ),
+            $options
+        );
     }
 }

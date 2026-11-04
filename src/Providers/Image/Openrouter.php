@@ -19,9 +19,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
 {
     public function describe( Image $image, ?string $lang = null, array $options = [] ) : TextResponse
     {
-        $prompt = $this->summary( $lang );
-
-        return $this->understand( $image, $prompt, $options );
+        return $this->understand( $image, $this->summary( $lang ), $options );
     }
 
 
@@ -85,11 +83,7 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
 
     public function recognize( Image $image, array $options = [] ) : TextResponse
     {
-        return $this->understand(
-            $image,
-            'Extract all visible text from the image. Return only the text in reading order.',
-            $options
-        );
+        return $this->understand( $image, $this->extraction(), $options );
     }
 
 
@@ -115,23 +109,4 @@ class Openrouter extends Base implements Describe, Imagine, Recognize, Repaint, 
         );
     }
 
-
-    /**
-     * Sends an image understanding request.
-     *
-     * @param Image $image Input image
-     * @param string $prompt Task prompt
-     * @param array<string, mixed> $options Provider specific options
-     * @return TextResponse Text response
-     */
-    protected function understand( Image $image, string $prompt, array $options ) : TextResponse
-    {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'reasoning', 'provider'] );
-
-        return $this->completions(
-            'api/v1/chat/completions', '~google/gemini-flash-latest',
-            $this->messages( $this->content( $prompt, [$image] ) ),
-            $options
-        );
-    }
 }
