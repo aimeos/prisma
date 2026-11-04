@@ -164,8 +164,9 @@ class FalTest extends TestCase
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
             ->response( ['output' => 'A flower opens', 'usage' => ['total_tokens' => 30]] );
 
-        $response = $this->provider()->ensure( 'describe' )->model( 'google/gemini-2.5-pro' )
-            ->describe( Video::fromUrl( 'https://example.com/v.mp4' ) );
+        // model() selects the queue endpoint only, the LLM is passed as option
+        $response = $this->provider()->ensure( 'describe' )->model( 'fal-ai/veo3.1' )
+            ->describe( Video::fromUrl( 'https://example.com/v.mp4' ), null, ['model' => 'google/gemini-2.5-pro'] );
 
         $this->assertSame( 'A flower opens', $response->text() );
 

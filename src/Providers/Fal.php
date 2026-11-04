@@ -260,13 +260,13 @@ abstract class Fal extends Base implements Cancel, Resume
      * @param string $endpoint OpenRouter endpoint of fal, e.g. "openrouter/router/vision"
      * @param string $prompt Instructions for the LLM
      * @param array<string, mixed> $input Media fields of the endpoint
-     * @param array<string, mixed> $options Provider specific options
+     * @param array<string, mixed> $options Provider specific options, "model" selects the LLM
      * @return TextResponse Response text
      */
     protected function router( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
     {
-        $data = $this->run( $endpoint, array_replace( $options, $input, [
-            'model' => $this->modelName( 'google/gemini-3.8-flash' ),
+        // model() selects the queue endpoint, so the LLM is passed as option
+        $data = $this->run( $endpoint, array_replace( ['model' => 'google/gemini-3.8-flash'], $options, $input, [
             'prompt' => $prompt,
         ] ) );
 

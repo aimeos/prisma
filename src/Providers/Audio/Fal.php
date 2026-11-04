@@ -24,7 +24,7 @@ use Aimeos\Prisma\Responses\TextResponse;
  * using model(), e.g. "fal-ai/minimax-music/v2". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
  * describe() and transcribe() are sent synchronously and can't be resumed, describe() uses the OpenRouter
- * audio endpoint of fal and model() selects the LLM, e.g. "google/gemini-3.1-pro-preview".
+ * audio endpoint of fal and the "model" option selects the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
     implements Compose, Demix, Denoise, Describe, Revoice, Speak, Synthesize, Transcribe
@@ -111,7 +111,7 @@ class Fal extends Base
     {
         $input = ['audio_url' => $audio->uri()];
 
-        if( $lang ) {
+        if( $lang !== null && $lang !== '' ) {
             $input['language_code'] = $lang;
         }
 

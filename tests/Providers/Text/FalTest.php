@@ -106,6 +106,16 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslateNoString() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
+            ->response( ['choices' => [['finish_reason' => 'stop', 'message' => ['content' => '{"texts":["Hallo",null]}']]]] );
+
+        $this->expectException( PrismaException::class );
+        $this->provider()->translate( ['Hello', 'World'], 'de' );
+    }
+
+
     public function testVectorize() : void
     {
         $response = $this->prisma( 'text', 'fal', ['api_key' => 'test'] )

@@ -26,8 +26,8 @@ use Aimeos\Prisma\Responses\TextResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/nano-banana-pro". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
- * Only describe() and recognize() use the OpenRouter vision endpoint of fal synchronously and model()
- * selects the LLM, e.g. "anthropic/claude-sonnet-5".
+ * Only describe() and recognize() use the OpenRouter vision endpoint of fal synchronously and the "model"
+ * option selects the LLM, e.g. "anthropic/claude-sonnet-5" (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
     implements Background, Describe, Detext, Erase, Imagine, Inpaint, Isolate, Recognize, Relocate, Repaint, Uncrop, Upscale

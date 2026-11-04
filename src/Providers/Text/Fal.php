@@ -26,6 +26,9 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
     // server tools of OpenRouter aren't documented for the fal API
     protected const PROVIDER_TOOL_MAP = [];
 
+    private const MODEL = 'openai/gpt-6-luna';
+    private const OPTIONS = ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'];
+
 
     public function __construct( array $config )
     {
@@ -42,20 +45,20 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
 
     public function stream( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
+        $options = $this->allowed( $options, self::OPTIONS );
         $messages = $this->messages( $this->content( $prompt, $files ) );
 
-        return $this->streamCompletions( 'chat/completions', 'openai/gpt-6-luna', $messages, $options );
+        return $this->streamCompletions( 'chat/completions', self::MODEL, $messages, $options );
     }
 
 
     public function structure( string $prompt, Schema $schema, array $files = [], array $options = [] ) : TextResponse
     {
         $mode = $options['mode'] ?? null;
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
+        $options = $this->allowed( $options, self::OPTIONS );
 
         return $this->structuredCompletions(
-            'chat/completions', 'openai/gpt-6-luna',
+            'chat/completions', self::MODEL,
             $prompt, $files, $schema, $options, $mode
         );
     }
@@ -68,23 +71,17 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
             'texts' => Schema::array()->items( Schema::string() ),
         ] );
 
-        $prompt = 'Translate each text of the JSON list ' . ( $from ? 'from the language of ISO code "' . $from . '" ' : '' )
-            . 'into the language of ISO code "' . $to . '" and return the translations in the same order.'
-            . ( $context ? "\nContext of the texts: " . $context : '' )
-            . "\nTexts: " . json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
-
-        $response = $this->structure( $prompt, $schema, [], $options );
+        $response = $this->structure( $this->prompt( $texts, $to, $from, $context ), $schema, [], $options );
         $translated = $response->structured()['texts'] ?? null;
 
-        if( !is_array( $translated ) || count( $translated ) !== count( $texts ) ) {
-            throw new PrismaException( 'Invalid number of translations in fal response' );
+        if( !is_array( $translated ) || !array_is_list( $translated ) || count( $translated ) !== count( $texts )
+            || array_filter( $translated, 'is_string' ) !== $translated
+        ) {
+            throw new PrismaException( 'Invalid translations in fal response' );
         }
 
-        $usage = $response->usage()->all();
-        $used = $usage['used'] ?? null;
-
-        return TextResponse::fromTexts( array_map( fn( $text ) => is_string( $text ) ? $text : null, array_values( $translated ) ) )
-            ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
+        return TextResponse::fromTexts( $translated )
+            ->withUsage( $response->usage()->used(), $response->usage()->all() )
             ->withMeta( $response->meta()->all() );
     }
 
@@ -99,12 +96,30 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
 
     public function write( string $prompt, array $files = [], array $options = [] ) : TextResponse
     {
-        $options = $this->allowed( $options, ['temperature', 'top_p', 'frequency_penalty', 'presence_penalty', 'reasoning'] );
+        $options = $this->allowed( $options, self::OPTIONS );
 
         return $this->completions(
-            'chat/completions', 'openai/gpt-6-luna',
+            'chat/completions', self::MODEL,
             $this->messages( $this->content( $prompt, $files ) ),
             $options
         );
+    }
+
+
+    /**
+     * Returns the prompt for translating the texts.
+     *
+     * @param array<int, string> $texts Texts to translate
+     * @param string $to ISO language code to translate into
+     * @param string|null $from ISO language code of the texts or NULL to detect it
+     * @param string|null $context Context of the texts for better translations
+     * @return string Prompt for the LLM
+     */
+    private function prompt( array $texts, string $to, ?string $from, ?string $context ) : string
+    {
+        return 'Translate each text of the JSON list ' . ( $from ? 'from the language of ISO code "' . $from . '" ' : '' )
+            . 'into the language of ISO code "' . $to . '" and return the translations in the same order.'
+            . ( $context ? "\nContext of the texts: " . $context : '' )
+            . "\nTexts: " . json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
     }
 }

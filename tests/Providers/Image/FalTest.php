@@ -110,7 +110,7 @@ class FalTest extends TestCase
             ->response( ['output' => 'Eine Katze', 'usage' => ['total_tokens' => 42, 'cost' => 0.001], 'id' => 'x'] );
 
         $response = $this->provider()->ensure( 'describe' )
-            ->describe( Image::fromBinary( 'i', 'image/png' ), 'de', ['temperature' => 0.2] );
+            ->model( 'fal-ai/flux-2' )->describe( Image::fromBinary( 'i', 'image/png' ), 'de', ['temperature' => 0.2] );
 
         $this->assertSame( 'Eine Katze', $response->text() );
         $this->assertSame( 42.0, $response->usage()['used'] );
@@ -132,8 +132,8 @@ class FalTest extends TestCase
         $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
             ->response( ['output' => 'Hello'] );
 
-        $response = $this->provider()->ensure( 'recognize' )->model( 'anthropic/claude-sonnet-5' )
-            ->recognize( Image::fromUrl( 'https://example.com/a.png' ) );
+        $response = $this->provider()->ensure( 'recognize' )->model( 'fal-ai/nano-banana-pro' )
+            ->recognize( Image::fromUrl( 'https://example.com/a.png' ), ['model' => 'anthropic/claude-sonnet-5'] );
 
         $body = json_decode( (string) $this->requests()[0]->getBody(), true );
         $this->assertSame( 'Hello', $response->text() );

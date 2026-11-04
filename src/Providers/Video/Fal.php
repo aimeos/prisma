@@ -22,8 +22,8 @@ use Aimeos\Prisma\Responses\TextResponse;
  * Each method uses a default model endpoint which can be replaced by any compatible fal endpoint
  * using model(), e.g. "fal-ai/veo3.1". The common fields are mapped and all other options
  * are passed to the endpoint unchanged, so model specific parameters can be used as documented by fal.
- * Only describe() uses the OpenRouter video endpoint of fal synchronously and model() selects the LLM,
- * e.g. "google/gemini-2.5-pro".
+ * Only describe() uses the OpenRouter video endpoint of fal synchronously and the "model" option selects
+ * the LLM (default: "google/gemini-3.8-flash").
  */
 class Fal extends Base
     implements Describe, Extend, Imagine, Repaint, Uncrop, Upscale
@@ -32,6 +32,7 @@ class Fal extends Base
 
 
     protected const FILE = Video::class;
+    protected const MAX_BYTES = 512 * 1024 * 1024;
 
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
@@ -53,15 +54,15 @@ class Fal extends Base
     {
         $input = array_replace( $this->settings( $options ), ['prompt' => $prompt] );
         $images = $this->images( $media['references'] ?? [], 7 );
-        $start = $media['start'] ?? null;
-        $end = $media['end'] ?? null;
+        $start = ( $start = $media['start'] ?? null ) instanceof Image ? $start : null;
+        $end = ( $end = $media['end'] ?? null ) instanceof Image ? $end : null;
 
-        if( $start instanceof Image ) {
+        if( $start ) {
             $input[empty( $images ) ? 'image_url' : 'start_image_url'] = $start->uri();
         }
 
         // end frames require a start frame
-        if( $start instanceof Image && $end instanceof Image ) {
+        if( $start && $end ) {
             $input['end_image_url'] = $end->uri();
         }
 
@@ -70,7 +71,7 @@ class Fal extends Base
             return $this->submit( 'fal-ai/kling-video/o3/pro/reference-to-video', $input, $options );
         }
 
-        if( $start instanceof Image ) {
+        if( $start ) {
             return $this->submit( 'fal-ai/kling-video/o3/pro/image-to-video', $input, $options );
         }
 

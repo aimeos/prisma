@@ -1269,7 +1269,7 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 
 **Supported options:**
 
-* [fal](https://fal.ai/models/openrouter/router/audio/api) (any OpenRouter audio model via `model()`)
+* [fal](https://fal.ai/models/openrouter/router/audio/api) (any OpenRouter audio model via the `model` option)
 * Google Gemini
 * Groq
 * Meta
@@ -1556,7 +1556,7 @@ public function describe( Image $image, ?string $lang = null, array $options = [
 
 **Supported options:**
 
-* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via `model()`)
+* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via the `model` option)
 * Google Gemini
 * Groq
 * [Ideogram V4](https://developer.ideogram.ai/api-reference/describe-prompts/describe-v4)
@@ -1706,8 +1706,14 @@ Prisma::image()
 ```
 
 The fal `describe()` and `recognize()` methods call the OpenRouter vision endpoint of fal
-synchronously, so `model()` selects the LLM (default: `google/gemini-3.8-flash`) and the
-response can't be resumed.
+synchronously, so the response can't be resumed. As `model()` selects the fal endpoint, the
+`model` option selects the LLM (default: `google/gemini-3.8-flash`):
+
+```php
+Prisma::image()
+    ->using( 'fal', ['api_key' => 'xxx'] )
+    ->describe( Image::fromUrl( 'https://example.com/image.png' ), 'en', ['model' => 'anthropic/claude-sonnet-5'] );
+```
 
 Hydracept jobs belong to the `project_id` passed in the configuration and are polled for up to
 900 seconds by default; set `poll_timeout` to another number of seconds or `0` to disable the
@@ -1888,7 +1894,7 @@ public function recognize( Image $image, array $options = [] ) : TextResponse;
 **Supported options:**
 
 * [Azure](https://learn.microsoft.com/en-us/rest/api/computervision/image-analysis/analyze-image)
-* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via `model()`)
+* [fal](https://fal.ai/models/openrouter/router/vision/api) (any OpenRouter vision model via the `model` option)
 * [Mistral](https://docs.mistral.ai/api/endpoint/ocr#operation-ocr_v1_ocr_post)
 * Openrouter
 
@@ -2759,7 +2765,7 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * [Alibaba Qwen](https://www.alibabacloud.com/help/en/model-studio/vision-model)
 * [Amazon Nova](https://docs.aws.amazon.com/nova/latest/userguide/modalities-video.html)
 * [BytePlus Seed](https://docs.byteplus.com/en/docs/ModelArk/1895586)
-* [fal](https://fal.ai/models/openrouter/router/video/api) (any OpenRouter video model via `model()`)
+* [fal](https://fal.ai/models/openrouter/router/video/api) (any OpenRouter video model via the `model` option)
 * [Google Gemini](https://ai.google.dev/gemini-api/docs/video-understanding)
 * [Meta Muse Spark](https://dev.meta.ai/docs/video-understanding)
 * Openrouter
