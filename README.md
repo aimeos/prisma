@@ -1278,7 +1278,8 @@ public function describe( Audio $audio, ?string $lang = null, array $options = [
 * Openrouter
 
 Google Gemini uploads audio files larger than 14 MiB to its Files API first (deleted by Gemini
-after 48 hours) and returns the description when Gemini has processed the audio.
+after 48 hours) and returns the description when Gemini has processed the audio. The provider
+object uploads each file object only once, so keep it to describe the same audio several times.
 
 ### resume
 
@@ -1700,7 +1701,8 @@ any other compatible fal endpoint. Prisma maps the prompt and images only and pa
 options to the endpoint unchanged, so use the input fields documented on the model page.
 fal returns images on its `fal.media` CDN; pass `download_hosts` in the configuration if
 your requests are routed differently. Files without URL larger than 5 MiB are uploaded to the
-fal storage first instead of being sent as data URI. Behind an API gateway, `url` replaces the
+fal storage first instead of being sent as data URI. The provider object uploads each file object
+only once, so keep it to process the same large file several times. Behind an API gateway, `url` replaces the
 queue host (`https://queue.fal.run`), `rest_url` the storage host (`https://rest.fal.ai`) and
 `run_url` the host of the text models (`https://fal.run`):
 
@@ -2778,8 +2780,17 @@ public function describe( Video $video, ?string $lang = null, array $options = [
 * Openrouter
 
 Google Gemini uploads videos larger than 14 MiB to its Files API first (deleted by Gemini after
-48 hours) and returns the description when Gemini has processed the video. OpenRouter sends
-videos without URL inline, so pass large videos by URL.
+48 hours) and returns the description when Gemini has processed the video. The provider object
+uploads each file object only once, so keep it to describe the same video several times:
+
+```php
+$gemini = Prisma::video()->using( 'gemini', ['api_key' => 'xxx'] );
+
+$english = $gemini->describe( $video, 'en' );
+$german = $gemini->describe( $video, 'de' ); // reuses the uploaded video
+```
+
+OpenRouter sends videos without URL inline, so pass large videos by URL.
 
 ### extend
 
