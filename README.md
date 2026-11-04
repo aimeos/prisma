@@ -171,7 +171,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
 | **Adobe Firefly**     | beta       | beta   | -        | -      | -     | beta    | beta    | -       | -         | beta     | beta    | beta   | beta   | beta    | -         |
 | **Alibaba**           | -          |        | -        | -      | -     | yes     | -       | -       | -         | -        | -       |        | -      | -       | yes       |
 | **Azure**             | -          |        | -        | -      | -     | -       | -       | -       | beta      | -        | -       |        | -      | -       | -         |
-| **Bedrock Titan**     | -          |        | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       |        | -      | -       | yes       |
+| **Bedrock**           | -          |        | -        | -      | -     | yes     | yes     | yes     | -         | -        | -       |        | -      | -       | yes       |
 | **Black Forest Labs** | -          | -      | -        | -      | -     | beta    | beta    | -       | -         | -        | beta    | beta   | beta   | -       | -         |
 | **Clipdrop**          | yes        |        | -        | yes    | yes   | yes     | -       | yes     | -         | -        | -       |        | yes    | yes     | -         |
 | **Cohere**            | -          |        | -        | -      | -     | -       | -       | -       | -         | -        | -       |        | -      | -       | yes       |
@@ -230,7 +230,7 @@ must accept the mapped token budget or effort level; see [withThinkingBudget](#w
 |                       | cancel | describe | extend | imagine | repaint | resume | uncrop | upscale |
 | :---                  | :---:  | :---:    | :---:  | :---:   | :---:   | :---:  | :---:  | :---:   |
 | **Alibaba**           | beta   | yes      | beta   | beta    | beta    | beta   | beta   | -       |
-| **Bedrock Nova**      | -      | beta     | -      | beta    | -       | beta   | -      | -       |
+| **Bedrock**           | -      | beta     | -      | beta    | -       | beta   | -      | -       |
 | **BytePlus**          | beta   | beta     | beta   | beta    | beta    | beta   | -      | -       |
 | **fal**               | beta   | beta     | beta   | beta    | beta    | beta   | beta   | beta    |
 | **Google Gemini**     |        | yes      | -      | -       | -       |        | -      | -       |
@@ -1675,7 +1675,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/firefly_image_v5_generate_async_v4) ([Image3/4](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/generateImagesV3Async))
 * [Alibaba Qwen/Wan/Z-Image](https://www.alibabacloud.com/help/en/model-studio/qwen-image-api)
-* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-diffusion-3-5-large.html)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-or-edit-an-image-with-flux2-[pro])
 * Clipdrop
 * [fal FLUX.2](https://fal.ai/models/fal-ai/flux-2/api) ([Editing](https://fal.ai/models/fal-ai/flux-2/edit/api), any fal endpoint via `model()`)
@@ -1736,6 +1736,8 @@ Prisma::image()->using( 'hydracept', [
     'poll_timeout' => 300,
 ] );
 ```
+
+*Note: Bedrock uses Stable Diffusion 3.5 Large in `us-west-2` by default, the only region offering Stability text to image models. A `url` in the configuration replaces it, also for the other Bedrock image methods, which use `us-east-1` otherwise.*
 
 *Note: The Hydracept `billingMode`, `credentialSource`, `executionPreference` and `maximumCharge` options control billing and execution of a job, so don't pass end-user input to them unfiltered.*
 
@@ -1824,7 +1826,7 @@ to edit.
 **Supported options:**
 
 * [Adobe Firefly](https://developer.adobe.com/firefly-services/docs/firefly-api/api/#operation/fillImagesV3Async)
-* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/stable-image-services.html#stable-image-services-8)
 * [Black Forest Labs](https://docs.bfl.ai/api-reference/models/generate-an-image-with-flux1-fill-[pro]-using-an-input-image-and-mask)
 * [fal](https://fal.ai/models/fal-ai/flux-pro/v1/fill/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/api-reference/edit-v3#request)
@@ -1865,7 +1867,7 @@ public function isolate( Image $image, array $options = [] ) : FileResponse
 
 **Supported options:**
 
-* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-image.html)
+* [Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/stable-image-services.html)
 * [Clipdrop](https://clipdrop.co/apis/docs/remove-background)
 * [fal](https://fal.ai/models/fal-ai/birefnet/v2/api) (any fal endpoint via `model()`)
 * [Ideogram](https://developer.ideogram.ai/api-reference/tools/remove-background#request)
@@ -2652,7 +2654,7 @@ forwards audio-only references; the selected model determines whether they are a
 | Provider          | start | end | references |
 | :---              | :---: | :---: | :---     |
 | Alibaba Wan       | image | image | image, video, audio; frame mode may use one driving audio |
-| Bedrock Nova Reel | image | -     | -        |
+| Bedrock Luma Ray  | image | image | -        |
 | BytePlus Seedance | image | image | image, video, audio; audio requires a visual reference |
 | fal Kling O3      | image | image | image, up to 7 |
 | Google Omni       | image | -     | image    |
@@ -2686,7 +2688,7 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 **Supported options:**
 
 * [Alibaba Wan](https://www.alibabacloud.com/help/en/model-studio/wan-video-generation-api-reference)
-* [Amazon Nova Reel](https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html)
+* [Bedrock Luma Ray](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-luma.html)
 * [BytePlus Seedance](https://docs.byteplus.com/en/docs/ModelArk/1366799)
 * [fal Kling O3](https://fal.ai/models/fal-ai/kling-video/o3/pro/text-to-video/api) ([image](https://fal.ai/models/fal-ai/kling-video/o3/pro/image-to-video/api) and [reference](https://fal.ai/models/fal-ai/kling-video/o3/pro/reference-to-video/api) to video, any fal endpoint via `model()`)
 * [Google Omni](https://ai.google.dev/gemini-api/docs/omni), using provider name `omni`
@@ -2699,9 +2701,11 @@ see the [migration note](CUSTOM-PROVIDERS.md#async-operations).
 * [Runway](https://docs.dev.runwayml.com/api/)
 * [xAI Grok Imagine](https://docs.x.ai/developers/model-capabilities/video/generation)
 
-Amazon Nova Reel also requires an S3 destination in the provider configuration:
+Bedrock Luma Ray also requires an S3 destination in the provider configuration:
 `['api_key' => 'xxx', 's3_uri' => 's3://bucket/prefix']`. The video is stored there
 and the response contains its `s3://` URL, see [resume()](#resume-2) for copying it.
+
+*Note: Bedrock video uses `us-west-2` by default because Luma Ray is only available there. A `url` in the configuration replaces it for all Bedrock video methods.*
 
 *Note: Kling uses `kling-3.0` for text and frame to video and `kling-3.0-omni` for reference media. A model set by `model()` is used for all three endpoints, so it must support the media passed. Kling expects an API key from the Kling console; access/secret key pairs of the legacy API aren't supported.*
 

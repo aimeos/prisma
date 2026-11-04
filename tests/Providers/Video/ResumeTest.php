@@ -20,8 +20,8 @@ class ResumeTest extends TestCase
     {
         return [
             'alibaba' => ['alibaba', 'task-1', 'https://dashscope-intl.aliyuncs.com/api/v1/tasks/task-1'],
-            'bedrock' => ['bedrock', 'arn:aws:bedrock:us-east-1:123:async-invoke/job-1',
-                'https://bedrock-runtime.us-east-1.amazonaws.com/async-invoke/arn%3Aaws%3Abedrock%3Aus-east-1%3A123%3Aasync-invoke%2Fjob-1'],
+            'bedrock' => ['bedrock', 'arn:aws:bedrock:us-west-2:123:async-invoke/job-1',
+                'https://bedrock-runtime.us-west-2.amazonaws.com/async-invoke/arn%3Aaws%3Abedrock%3Aus-west-2%3A123%3Aasync-invoke%2Fjob-1'],
             'byteplus' => ['byteplus', 'task-1', 'https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/task-1'],
             'kling' => ['kling', 'task-1', 'https://api-singapore.klingai.com/tasks?task_ids=task-1'],
             'luma' => ['luma', 'gen-1', 'https://agents.lumalabs.ai/v1/generations/gen-1'],

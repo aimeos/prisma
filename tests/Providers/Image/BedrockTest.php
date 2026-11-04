@@ -25,13 +25,58 @@ class BedrockTest extends TestCase
             ->imagine( 'prompt' );
 
         $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( (string) $request->getBody(), true );
+
             $this->assertEquals( 'POST', $request->getMethod() );
             $this->assertEquals( 'Bearer test', $request->getHeaderLine( 'Authorization' ) );
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-west-2.amazonaws.com/model/stability.sd3-5-large-v1:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( ['prompt' => 'prompt'], $body );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
         $this->assertEquals( 'image/png', $file->mimeType() );
+    }
+
+
+    public function testImagineImage() : void
+    {
+        $file = $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
+            ->response( '{"seeds": [1], "finish_reasons": [null], "images": ["' . base64_encode( 'JPEG' ) . '"]}' )
+            ->ensure( 'imagine' )
+            ->imagine( 'prompt', [Image::fromBinary( 'PNG', 'image/png' )], [
+                'aspect_ratio' => '16:9',
+                'output_format' => 'jpeg',
+                'seed' => 3,
+                'quality' => 'premium',
+            ] );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $body = json_decode( (string) $request->getBody(), true );
+
+            $this->assertEquals( [
+                'mode' => 'image-to-image',
+                'image' => base64_encode( 'PNG' ),
+                'prompt' => 'prompt',
+                'output_format' => 'jpeg',
+                'seed' => 3,
+                'strength' => 0.85,
+            ], $body );
+        } );
+
+        $this->assertEquals( 'JPEG', $file->binary() );
+        $this->assertEquals( 'image/jpeg', $file->mimeType() );
+    }
+
+
+    public function testImagineFiltered() : void
+    {
+        $this->expectException( \Aimeos\Prisma\Exceptions\PrismaException::class );
+        $this->expectExceptionMessage( 'Filter reason: prompt' );
+
+        $this->prisma( 'image', 'bedrock', ['api_key' => 'test'] )
+            ->response( '{"finish_reasons": ["Filter reason: prompt"]}' )
+            ->ensure( 'imagine' )
+            ->imagine( 'prompt' );
     }
 
 
@@ -52,8 +97,13 @@ class BedrockTest extends TestCase
                 'prompt'
             );
 
-        $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
+        $this->assertPrismaRequest( function( $request, $options ) use ( $base64 ) {
+            $body = json_decode( (string) $request->getBody(), true );
+
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/us.stability.stable-image-inpaint-v1:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( base64_encode( 'PNG' ), $body['image'] );
+            $this->assertEquals( $base64, $body['mask'] );
+            $this->assertEquals( 'prompt', $body['prompt'] );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
@@ -74,7 +124,7 @@ class BedrockTest extends TestCase
             ->isolate( Image::fromBinary( 'PNG', 'image/png' ) );
 
         $this->assertPrismaRequest( function( $request, $options ) {
-            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-canvas-v1:0/invoke', (string) $request->getUri() );
+            $this->assertEquals( 'https://bedrock-runtime.us-east-1.amazonaws.com/model/us.stability.stable-image-remove-background-v1:0/invoke', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'PNG', $file->binary() );
