@@ -103,4 +103,50 @@ class GeminiTest extends TestCase
         $this->assertSame( 'second', $this->provider()->describe( $video, 'de' )->text() );
         $this->assertCount( 4, $this->requests() );
     }
+
+
+    public function testDescribeUploadUrlOnce() : void
+    {
+        $this->prisma( 'video', 'gemini', ['api_key' => 'test'] )
+            ->response( '', ['X-Goog-Upload-URL' => 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=1'] );
+        $this->response( ['file' => ['name' => 'files/abc', 'uri' => 'https://generativelanguage.googleapis.com/v1beta/files/abc', 'state' => 'ACTIVE']] );
+        $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'first']]]]]] );
+        $this->response( ['candidates' => [['content' => ['parts' => [['text' => 'second']]]]]] );
+
+        $video = DownloadedVideo::fromUrl( 'https://example.com/v.mp4', 'video/mp4' )->as( 'v.mp4' );
+
+        $this->assertSame( 'first', $this->provider()->describe( $video )->text() );
+        $this->assertSame( 'second', $this->provider()->describe( $video, 'de' )->text() );
+        $this->assertSame( 1, DownloadedVideo::$downloads );
+
+        $requests = $this->requests();
+
+        $this->assertCount( 4, $requests );
+        $this->assertSame( ['file' => ['display_name' => 'v.mp4']], json_decode( (string) $requests[0]->getBody(), true ) );
+    }
+}
+
+
+/**
+ * Video whose URL is "downloaded" from memory and counts the downloads.
+ */
+class DownloadedVideo extends Video
+{
+    public static int $downloads = 0;
+
+
+    public function stream() : mixed
+    {
+        if( $this->stream !== null ) {
+            return parent::stream();
+        }
+
+        self::$downloads++;
+
+        $stream = fopen( 'php://temp', 'w+' );
+        fwrite( $stream, str_repeat( 'v', 15 * 1024 * 1024 ) );
+        rewind( $stream );
+
+        return $stream;
+    }
 }

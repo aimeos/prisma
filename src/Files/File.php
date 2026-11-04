@@ -139,6 +139,7 @@ class File
      * Returns the file content in chunks to process large files with little memory.
      *
      * Content already in memory is sliced without copying it, streams and URLs are read chunk by chunk.
+     * Seekable streams are set back to their position afterwards.
      *
      * @param int $bytes Maximum size of each chunk in bytes
      * @return \Generator<int, string> Non-empty chunks of the file content
@@ -159,9 +160,20 @@ class File
         }
 
         $stream = $this->stream();
+        $start = stream_get_meta_data( $stream )['seekable'] ? ftell( $stream ) : false;
 
-        while( ( $chunk = stream_get_contents( $stream, $bytes ) ) !== false && $chunk !== '' ) {
-            yield $chunk;
+        try
+        {
+            while( ( $chunk = stream_get_contents( $stream, $bytes ) ) !== false && $chunk !== '' ) {
+                yield $chunk;
+            }
+        }
+        finally
+        {
+            // seekable streams are rewound, so the file content can be used again
+            if( $start !== false ) {
+                fseek( $stream, $start );
+            }
         }
     }
 

@@ -360,7 +360,9 @@ abstract class Fal extends Base implements Cancel, Resume
      */
     protected function uri( File $file ) : string
     {
-        if( $url = $file->url() ) {
+        $this->uploads ??= new \WeakMap();
+
+        if( $url = $file->url() ?: $this->uploads[$file] ?? null ) {
             return $url;
         }
 
@@ -369,8 +371,7 @@ abstract class Fal extends Base implements Cancel, Resume
             return $file->dataUri();
         }
 
-        $this->uploads ??= new \WeakMap();
-        return $this->uploads[$file] ??= $this->upload( $file );
+        return $this->uploads[$file] = $this->upload( $file );
     }
 
 

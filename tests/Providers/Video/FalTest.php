@@ -268,6 +268,32 @@ class FalTest extends TestCase
     }
 
 
+    public function testExtendUploadStreamOnce() : void
+    {
+        $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
+            ->response( ['upload_url' => 'https://upload.fal.example/u/abc', 'file_url' => 'https://v3.fal.media/files/v.mp4'] );
+        $this->response( ['etag' => 'e1'] );
+        $this->response( [] );
+        $this->response( ['response_url' => self::URL] );
+        $this->response( ['response_url' => self::URL] );
+
+        $stream = fopen( 'php://temp', 'w+' );
+        fwrite( $stream, str_repeat( 'v', 6 * 1024 * 1024 ) );
+        rewind( $stream );
+
+        $video = Video::fromStream( $stream, 'video/mp4' );
+
+        $this->provider()->extend( $video, 'Pull back' );
+        $this->provider()->upscale( $video, 2 );
+
+        $requests = $this->requests();
+
+        $this->assertCount( 5, $requests );
+        $this->assertSame( 'https://v3.fal.media/files/v.mp4', json_decode( (string) $requests[4]->getBody(), true )['video_url'] );
+        $this->assertSame( 6 * 1024 * 1024, $video->bytes() );
+    }
+
+
     public function testExtendUploadStream() : void
     {
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )

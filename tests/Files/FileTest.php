@@ -87,7 +87,12 @@ class FileTest extends TestCase
         fwrite( $stream, 'hello' );
         rewind( $stream );
 
-        $this->assertSame( ['hel', 'lo'], iterator_to_array( File::fromStream( $stream )->chunks( 3 ) ) );
+        $file = File::fromStream( $stream );
+
+        // seekable streams are rewound, so the content can be read again
+        $this->assertSame( ['hel', 'lo'], iterator_to_array( $file->chunks( 3 ) ) );
+        $this->assertSame( 5, $file->bytes() );
+        $this->assertSame( 'hello', $file->binary() );
     }
 
 

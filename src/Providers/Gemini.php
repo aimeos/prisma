@@ -295,17 +295,21 @@ class Gemini extends Base
     {
         $config = $this->allowed( $options, ['temperature', 'topP', 'topK', 'thinkingConfig'] );
 
-        // URLs are downloaded to a temporary stream once, so their size is known without keeping them in memory
-        if( $file->bytes() === null && $file->url() ) {
-            $file = $file::fromStream( $file->stream(), $file->mimeType() );
-        }
-
-        if( ( $size = $file->bytes() ) !== null && $size <= self::INLINE_BYTES ) {
-            return $this->answer( $model, $this->content( $prompt, [$file] ), $config, TextResponse::fromTexts( [] ) );
-        }
-
         $this->uploads ??= new \WeakMap();
-        $upload = $this->uploads[$file] ??= $this->upload( $file );
+
+        if( !isset( $this->uploads[$file] ) )
+        {
+            $media = $this->media( $file );
+
+            if( ( $size = $media->bytes() ) !== null && $size <= self::INLINE_BYTES ) {
+                return $this->answer( $model, $this->content( $prompt, [$media] ), $config, TextResponse::fromTexts( [] ) );
+            }
+
+            // the original file is the key, so files passed by URL are downloaded and uploaded once too
+            $this->uploads[$file] = $this->upload( $media );
+        }
+
+        $upload = $this->uploads[$file];
         $parts = [['fileData' => ['fileUri' => $upload['uri'], 'mimeType' => $upload['mimeType']]], ['text' => $prompt]];
         $state = $upload['state'];
 
@@ -419,6 +423,25 @@ class Gemini extends Base
         return $response->add( $texts ? implode( '', $texts ) : null )
             ->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )
             ->withMeta( is_array( $candidate['metadata'] ?? null ) ? $candidate['metadata'] : [] );
+    }
+
+
+    /**
+     * Returns the file with known size if possible.
+     *
+     * URLs are downloaded to a temporary stream once, so their size is known without keeping them in memory.
+     *
+     * @param File $file Input file
+     * @return File Input file or file using the downloaded stream
+     */
+    private function media( File $file ) : File
+    {
+        if( $file->bytes() !== null || !$file->url() ) {
+            return $file;
+        }
+
+        $media = $file::fromStream( $file->stream(), $file->mimeType() );
+        return ( $name = $file->filename() ) !== null ? $media->as( $name ) : $media;
     }
 
 
