@@ -36,7 +36,9 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
             throw new PrismaException( 'No API key' );
         }
 
-        $url = $this->config( $config, 'url', 'https://fal.run/openrouter/router/openai/v1' );
+        // "run_url" is the host shared with the synchronous calls of the other fal providers
+        $host = rtrim( $this->config( $config, 'run_url', 'https://fal.run' ), '/' );
+        $url = $this->config( $config, 'url', $host . '/openrouter/router/openai/v1' );
 
         $this->header( 'Authorization', 'Key ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( rtrim( $url, '/' ) . '/' );
@@ -120,6 +122,6 @@ class Fal extends Base implements Stream, Structure, Translate, Vectorize, Write
         return 'Translate each text of the JSON list ' . ( $from ? 'from the language of ISO code "' . $from . '" ' : '' )
             . 'into the language of ISO code "' . $to . '" and return the translations in the same order.'
             . ( $context ? "\nContext of the texts: " . $context : '' )
-            . "\nTexts: " . json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+            . "\nTexts: " . json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR );
     }
 }

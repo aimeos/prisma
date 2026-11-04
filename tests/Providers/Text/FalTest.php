@@ -106,6 +106,15 @@ class FalTest extends TestCase
     }
 
 
+    public function testTranslateInvalidUtf8() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test'] );
+
+        $this->expectException( \JsonException::class );
+        $this->provider()->translate( ["\xB1"], 'de' );
+    }
+
+
     public function testTranslateNoString() : void
     {
         $this->prisma( 'text', 'fal', ['api_key' => 'test'] )
@@ -156,6 +165,18 @@ class FalTest extends TestCase
             $this->assertEquals( 'openai/gpt-6-luna', $body['model'] );
             $this->assertEquals( 0.2, $body['temperature'] );
             $this->assertArrayNotHasKey( 'unknown', $body );
+        } );
+    }
+
+
+    public function testWriteWithRunUrl() : void
+    {
+        $this->prisma( 'text', 'fal', ['api_key' => 'test', 'run_url' => 'https://gateway.example.com/fal-run/'] )
+            ->response( ['choices' => [['message' => ['content' => 'Hi']]]] )
+            ->write( 'Say hello' );
+
+        $this->assertPrismaRequest( function( $request, $options ) {
+            $this->assertEquals( 'https://gateway.example.com/fal-run/openrouter/router/openai/v1/chat/completions', (string) $request->getUri() );
         } );
     }
 

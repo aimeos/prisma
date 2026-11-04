@@ -1697,7 +1697,7 @@ any other compatible fal endpoint. Prisma maps the prompt and images only and pa
 options to the endpoint unchanged, so use the input fields documented on the model page.
 fal returns images on its `fal.media` CDN; pass `download_hosts` in the configuration if
 your requests are routed differently. Behind an API gateway, `url` replaces the queue host
-(`https://queue.fal.run`) and `run_url` the host of the synchronous calls (`https://fal.run`):
+(`https://queue.fal.run`) and `run_url` the host of the synchronous calls and text models (`https://fal.run`):
 
 ```php
 Prisma::image()

@@ -28,6 +28,9 @@ abstract class Fal extends Base implements Cancel, Resume
     /** Maximum size of the downloaded output files in bytes */
     protected const MAX_BYTES = 64 * 1024 * 1024;
 
+    /** Default LLM of the OpenRouter endpoints */
+    private const ROUTER_MODEL = 'google/gemini-3.8-flash';
+
     /** @var array<int, string> */
     private array $downloadHosts;
     private string $runUrl;
@@ -39,7 +42,7 @@ abstract class Fal extends Base implements Cancel, Resume
             throw new PrismaException( 'No API key' );
         }
 
-        $hosts = $config['download_hosts'] ?? ['fal.media'];
+        $hosts = $config['download_hosts'] ?? null;
         $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
 
         $this->runUrl = rtrim( $this->config( $config, 'run_url', 'https://fal.run' ), '/' ) . '/';
@@ -262,7 +265,7 @@ abstract class Fal extends Base implements Cancel, Resume
     protected function router( string $endpoint, string $prompt, array $input, array $options ) : TextResponse
     {
         // model() selects the queue endpoint, so the LLM is passed as option
-        $data = $this->run( $endpoint, array_replace( ['model' => 'google/gemini-3.8-flash'], $options, $input, [
+        $data = $this->run( $endpoint, array_replace( ['model' => self::ROUTER_MODEL], $options, $input, [
             'prompt' => $prompt,
         ] ) );
 
@@ -308,5 +311,17 @@ abstract class Fal extends Base implements Cancel, Resume
     protected function submit( string $default, array $input, array $options ) : FileResponse
     {
         return $this->queue( $this->modelName( $default ), array_replace( $options, $input ) );
+    }
+
+
+    /**
+     * Returns the upscaling fields of the fal upscale endpoints.
+     *
+     * @param int $factor Upscale factor, limited to 1 to 10 by fal
+     * @return array<string, mixed> Upscaling fields
+     */
+    protected function upscaling( int $factor ) : array
+    {
+        return ['upscale_mode' => 'factor', 'upscale_factor' => max( 1, min( 10, $factor ) )];
     }
 }

@@ -34,6 +34,13 @@ class Fal extends Base
     protected const FILE = Video::class;
     protected const MAX_BYTES = 512 * 1024 * 1024;
 
+    /** Kling O3 Pro endpoints used by imagine() and repaint() */
+    private const KLING = 'fal-ai/kling-video/o3/pro/';
+
+    /** Maximum number of reference images of the Kling generation and edit endpoints */
+    private const MAX_REFERENCES = 7;
+    private const MAX_EDIT_REFERENCES = 4;
+
 
     public function describe( Video $video, ?string $lang = null, array $options = [] ) : TextResponse
     {
@@ -53,7 +60,7 @@ class Fal extends Base
     public function imagine( string $prompt, array $media = [], array $options = [] ) : FileResponse
     {
         $input = array_replace( $this->settings( $options ), ['prompt' => $prompt] );
-        $images = $this->images( $media['references'] ?? [], 7 );
+        $images = $this->images( $media['references'] ?? [], self::MAX_REFERENCES );
         $start = $this->image( $media['start'] ?? null );
         $end = $this->image( $media['end'] ?? null );
 
@@ -68,14 +75,14 @@ class Fal extends Base
 
         if( !empty( $images ) ) {
             $input['image_urls'] = $images;
-            return $this->submit( 'fal-ai/kling-video/o3/pro/reference-to-video', $input, $options );
+            return $this->submit( self::KLING . 'reference-to-video', $input, $options );
         }
 
         if( $start ) {
-            return $this->submit( 'fal-ai/kling-video/o3/pro/image-to-video', $input, $options );
+            return $this->submit( self::KLING . 'image-to-video', $input, $options );
         }
 
-        return $this->submit( 'fal-ai/kling-video/o3/pro/text-to-video', $input, $options );
+        return $this->submit( self::KLING . 'text-to-video', $input, $options );
     }
 
 
@@ -85,7 +92,7 @@ class Fal extends Base
 
         $input = ['video_url' => $video->uri(), 'prompt' => $prompt];
 
-        if( !empty( $images = $this->images( $media['references'] ?? [], 4 ) ) ) {
+        if( !empty( $images = $this->images( $media['references'] ?? [], self::MAX_EDIT_REFERENCES ) ) ) {
             $input['image_urls'] = $images;
         }
 
@@ -94,7 +101,7 @@ class Fal extends Base
             $input['keep_audio'] = $options['audio'];
         }
 
-        return $this->submit( 'fal-ai/kling-video/o3/pro/video-to-video/edit', $input, $options );
+        return $this->submit( self::KLING . 'video-to-video/edit', $input, $options );
     }
 
 
@@ -119,9 +126,7 @@ class Fal extends Base
     {
         return $this->submit( 'fal-ai/seedvr/upscale/video', [
             'video_url' => $video->uri(),
-            'upscale_mode' => 'factor',
-            'upscale_factor' => max( 1, min( 10, $factor ) ),
-        ], $options );
+        ] + $this->upscaling( $factor ), $options );
     }
 
 

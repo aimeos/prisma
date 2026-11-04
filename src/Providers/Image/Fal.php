@@ -142,8 +142,6 @@ class Fal extends Base
     {
         return $this->submit( 'fal-ai/seedvr/upscale/image', [
             'image_url' => $image->uri(),
-            'upscale_mode' => 'factor',
-            'upscale_factor' => max( 1, min( 10, $factor ) ),
-        ], $options );
+        ] + $this->upscaling( $factor ), $options );
     }
 }
