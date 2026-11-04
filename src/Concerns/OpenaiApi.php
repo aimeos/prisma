@@ -499,11 +499,23 @@ trait OpenaiApi
             $toolResults = $exec->getReturn();
 
             array_push( $allSteps, ...$toolResults );
-            // Responses API expects the output items appended verbatim as top-level input items
-            $messages = array_merge( $messages, $output, $this->responseSteps( $toolResults ) );
+            // Responses API expects the output items appended as top-level input items
+            $messages = array_merge( $messages, $this->replay( $output ), $this->responseSteps( $toolResults ) );
         }
 
         $this->applyResponse( $res, $result, $allSteps, $texts, $rateLimit );
+    }
+
+
+    /**
+     * Returns the output items of a Responses API turn to send back as input in the next turn.
+     *
+     * @param array<int, array<string, mixed>> $output Response output items
+     * @return array<int, array<string, mixed>> Input items
+     */
+    protected function replay( array $output ) : array
+    {
+        return $output;
     }
 
 
@@ -1006,6 +1018,13 @@ trait OpenaiApi
                     /** @var string $text */
                     $text = $summary['text'] ?? '';
                     $thinking .= $text;
+                }
+            }
+
+            // Perplexity Agent API lists the web search sources as a separate output item
+            if( ( $data['type'] ?? '' ) === 'search_results' ) {
+                foreach( $data['results'] ?? [] as $item ) {
+                    $citations[] = new \Aimeos\Prisma\Values\Citation( title: $item['title'] ?? null, url: $item['url'] ?? null );
                 }
             }
 
