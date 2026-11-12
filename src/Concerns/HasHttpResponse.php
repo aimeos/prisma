@@ -86,17 +86,22 @@ trait HasHttpResponse
     /**
      * Decodes a JSON response body into an array.
      *
+     * The body is never part of the exception message: the response may come from a host the
+     * caller doesn't control, e.g. a configured base URL pointing to an internal service, and
+     * the message is often shown to users. Status code and content type are enough to tell an
+     * HTML error page of a gateway from a truncated or empty response.
+     *
      * @param ResponseInterface $response HTTP response whose body will be decoded
      * @return array<string, mixed> Decoded response data
      */
     protected function fromJson( ResponseInterface $response ) : array
     {
-        $body = $this->readBody( $response );
-        $data = json_decode( $body, true );
+        $data = json_decode( $this->readBody( $response ), true );
 
         if( !is_array( $data ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf(
-                'Invalid JSON response (HTTP %1$s): %2$s', $response->getStatusCode(), $body
+                'Invalid JSON response (HTTP %1$s, %2$s)', $response->getStatusCode(),
+                substr( (string) preg_replace( '/[^\w\/.+-].*$/s', '', $response->getHeaderLine( 'Content-Type' ) ), 0, 100 ) ?: 'no content type'
             ) );
         }
 

@@ -11,6 +11,7 @@ use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -19,6 +20,8 @@ use Psr\Http\Message\ResponseInterface;
  */
 trait HasHttpClient
 {
+    use ResolvesHosts;
+
     private Client $client;
     private Client $streamClient;
     private ?HandlerStack $clientHandler = null;
@@ -27,6 +30,8 @@ trait HasHttpClient
     private $retryMiddleware = null;
 
     private bool $retryApplied = false;
+    private bool $publicOnly = true;
+    private bool $publicApplied = false;
 
     /** @var array<string, mixed> */
     private array $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
@@ -87,6 +92,34 @@ trait HasHttpClient
         };
 
         $this->retryMiddleware = Middleware::retry( $decider, $delay );
+        return $this;
+    }
+
+
+    /**
+     * Allows requests to hosts resolving to internal IP addresses.
+     *
+     * By default, all requests are restricted to hosts resolving to public IP addresses, so
+     * users who can change the base URL or other provider settings can't reach internal
+     * services, e.g. the loopback interface, private networks or the metadata service of cloud
+     * servers. The host of every request, redirect and retry is resolved and the connection is
+     * pinned to the checked address, so DNS rebinding can't switch to an internal address
+     * between check and request. Requests through a proxy are rejected too because the proxy
+     * resolves the host itself and HTTP handlers set by withClientHandler() must be cURL based
+     * to keep the DNS pin.
+     *
+     * Allow internal hosts for local or private endpoints like Ollama, LM Studio or vLLM, API
+     * gateways in the own network or if requests must be sent through a proxy. Only do that if
+     * the provider settings can't be changed by untrusted users.
+     *
+     * @param bool $allow TRUE to allow internal hosts and proxies, FALSE to allow public hosts only
+     * @return self Same instance for fluent chaining
+     */
+    public function withInternalHosts( bool $allow = true ) : self
+    {
+        $this->publicOnly = !$allow;
+        unset( $this->client, $this->streamClient );
+
         return $this;
     }
 
@@ -178,7 +211,23 @@ trait HasHttpClient
                 $this->retryApplied = true;
             }
 
+            if( $this->publicOnly && !$this->publicApplied )
+            {
+                $this->clientHandler->push( $this->pinMiddleware( false ), 'prisma_pin' );
+                $this->publicApplied = true;
+            }
+            elseif( !$this->publicOnly && $this->publicApplied )
+            {
+                $this->clientHandler->remove( 'prisma_pin' );
+                $this->publicApplied = false;
+            }
+
             return $this->clientHandler;
+        }
+
+        // Guzzle falls back to the StreamHandler without cURL, which ignores the cURL DNS pin
+        if( $this->publicOnly && $base === null && !function_exists( 'curl_exec' ) ) {
+            $base = new StreamHandler();
         }
 
         $handler = $base ? HandlerStack::create( $base ) : HandlerStack::create();
@@ -187,7 +236,83 @@ trait HasHttpClient
             $handler->push( $this->retryMiddleware );
         }
 
+        // Pushed last, so it's the innermost middleware and checks every redirect and retry too
+        if( $this->publicOnly ) {
+            $handler->push( $this->pinMiddleware( $base instanceof StreamHandler ), 'prisma_pin' );
+        }
+
         return $handler;
+    }
+
+
+    /**
+     * Returns the middleware which pins requests to the checked public IP address of the host.
+     *
+     * cURL connects to the pinned address by CURLOPT_RESOLVE. The StreamHandler has no such
+     * option, so the request is sent to the IP address instead while the Host header and the
+     * TLS peer name (used for SNI and certificate validation) keep the original host name.
+     *
+     * @param bool $stream TRUE for the StreamHandler, FALSE for cURL based handlers
+     * @return \Closure Guzzle middleware
+     */
+    private function pinMiddleware( bool $stream ) : \Closure
+    {
+        return fn( callable $next ) => function( RequestInterface $request, array $options ) use ( $next, $stream ) {
+
+            $uri = $request->getUri();
+            $host = trim( $uri->getHost(), '[]' );
+            $scheme = $uri->getScheme();
+
+            if( !in_array( $scheme, ['http', 'https'], true ) || $host === '' || !( $ip = $this->resolve( $host, true ) ) ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf( 'Host "%s" does not resolve to a public address, use withInternalHosts() to allow internal hosts', $host ) );
+            }
+
+            if( $this->proxied( $host, $scheme, $options['proxy'] ?? null ) ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf( 'Requests to "%s" through a proxy are only allowed after calling withInternalHosts()', $host ) );
+            }
+
+            $addr = str_contains( $ip, ':' ) ? '[' . $ip . ']' : $ip;
+
+            if( $stream )
+            {
+                $request = $request->withUri( $uri->withHost( $addr ), true );
+                $options['stream_context']['ssl']['peer_name'] = $host;
+            }
+            elseif( !defined( 'CURLOPT_RESOLVE' ) )
+            {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Restricting requests to public hosts requires the cURL extension, use withInternalHosts() otherwise' );
+            }
+            else
+            {
+                $port = $uri->getPort() ?? ( $scheme === 'https' ? 443 : 80 );
+                $options['curl'][CURLOPT_RESOLVE] = [$host . ':' . $port . ':' . $addr];
+                unset( $options['curl'][CURLOPT_CONNECT_TO] );
+            }
+
+            return $next( $request, $options );
+        };
+    }
+
+
+    /**
+     * Tests if the request is sent through a proxy.
+     *
+     * @param string $host Host name of the request
+     * @param string $scheme URL scheme of the request
+     * @param mixed $proxy Value of the Guzzle "proxy" option, set from the environment by default
+     * @return bool TRUE if the request uses a proxy, FALSE if it connects directly
+     */
+    private function proxied( string $host, string $scheme, mixed $proxy ) : bool
+    {
+        if( !is_array( $proxy ) ) {
+            return is_string( $proxy ) && $proxy !== '';
+        }
+
+        if( empty( $proxy[$scheme] ) ) {
+            return false;
+        }
+
+        return !is_array( $proxy['no'] ?? null ) || !\GuzzleHttp\Utils::isHostInNoProxy( $host, $proxy['no'] );
     }
 
 

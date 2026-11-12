@@ -163,11 +163,16 @@ class RecraftTest extends TestCase
 
     public function testNonJsonResponse() : void
     {
-        // a successful response must be JSON, so its body is reported instead of missing image data
-        $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )->response( '<html>maintenance</html>' );
-        $this->expectException( PrismaException::class );
-        $this->expectExceptionMessage( 'Invalid JSON response (HTTP 200)' );
-        $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
+        // a successful response must be JSON, but its body is never reported because it can come from an internal host
+        $provider = $this->prisma( 'image', 'recraft', ['api_key' => 'test'] )
+            ->response( '<html>secret</html>', ['Content-Type' => 'text/html; charset=utf-8'] );
+
+        try {
+            $provider->repaint( Image::fromUrl( 'https://example.com/image.png' ), 'Winter' );
+            $this->fail( 'Non-JSON responses must be rejected' );
+        } catch( PrismaException $e ) {
+            $this->assertSame( 'Invalid JSON response (HTTP 200, text/html)', $e->getMessage() );
+        }
     }
 
 

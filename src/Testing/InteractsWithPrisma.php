@@ -44,7 +44,9 @@ trait InteractsWithPrisma
 
         $this->interactsProvider = ( new Prisma( $type ) )
             ->using( $name, $config )
-            ->withClientHandler( $stack );
+            ->withClientHandler( $stack )
+            // responses are mocked, so no host must be resolved
+            ->withInternalHosts();
 
         return $this;
     }
