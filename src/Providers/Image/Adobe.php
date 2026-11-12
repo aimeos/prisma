@@ -362,7 +362,7 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
                     throw new FailedException( 'Invalid image in Adobe response' );
                 }
 
-                $files[] = Image::fromUrl( $image );
+                $files[] = $this->urlFile( $image, Image::class );
             }
 
             foreach( $files as $file ) {

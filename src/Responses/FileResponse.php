@@ -218,6 +218,9 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
     /**
      * Create a file instance from a URL.
      *
+     * The file is downloaded from public hosts only and without the handler of a provider.
+     * Providers pass files created by their urlFile() method to fromFiles() instead.
+     *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
      * @return static FileResponse instance

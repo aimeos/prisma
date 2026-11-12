@@ -278,7 +278,7 @@ class Runway extends Base implements Cancel, Imagine, Repaint, Resume, Upscale
 
             foreach( is_array( $data['output'] ?? null ) ? $data['output'] : [] as $url ) {
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+                    $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
                 }
             }
 

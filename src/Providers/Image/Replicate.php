@@ -19,20 +19,12 @@ class Replicate extends Base implements Cancel, Imagine, Resume
     private const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
     private const PREDICTION = '#/v\d+/predictions/\w[\w.-]*$#D';
 
-    /** @var array<int, string> */
-    private array $downloadHosts;
-
 
     public function __construct( array $config )
     {
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( 'No API key' );
         }
-
-        $hosts = $config['download_hosts'] ?? ['replicate.delivery'];
-        $this->downloadHosts = is_array( $hosts )
-            ? array_values( array_filter( $hosts, 'is_string' ) )
-            : ['replicate.delivery'];
 
         $this->header( 'Authorization', 'Bearer ' . $this->config( $config, 'api_key' ) );
         $this->baseUrl( $this->config( $config, 'url', 'https://api.replicate.com' ) );
@@ -189,12 +181,11 @@ class Replicate extends Base implements Cancel, Imagine, Resume
 
 
     /**
-     * Builds a lazy image whose eventual download stays on Replicate's HTTPS CDN.
+     * Builds a lazy image with the size limit of Replicate downloads.
      */
     private function image( string $url ) : Image
     {
-        $image = Image::fromUrl( $url );
-        $image->restrictHosts( $this->downloadHosts );
+        $image = $this->urlFile( $url, Image::class );
         $image->maxSize( self::MAX_DOWNLOAD_BYTES );
 
         return $image;

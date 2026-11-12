@@ -283,7 +283,7 @@ class Audiopod extends Base implements Demix, Denoise, Resume, Revoice, Speak, T
             }
 
             foreach( $urls as $name => $url ) {
-                $fr->add( Audio::fromUrl( $prefix . $url ), $name );
+                $fr->add( $this->urlFile( $prefix . $url, Audio::class ), $name );
             }
 
             return true;

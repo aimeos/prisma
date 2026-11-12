@@ -124,7 +124,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
 
             foreach( $urls as $url ) {
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+                    $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
                 }
             }
 

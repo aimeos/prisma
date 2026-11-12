@@ -97,7 +97,7 @@ class Ideogram
             throw new PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromFiles( [Image::fromUrl( $url )] )->withMeta( $result );
+        return FileResponse::fromFiles( [$this->urlFile( $url, Image::class )] )->withMeta( $result );
     }
 
 
@@ -480,7 +480,7 @@ class Ideogram
         foreach( is_array( $dataItems ) ? $dataItems : [] as $item )
         {
             if( is_array( $item ) && is_string( $item['url'] ?? null ) && $item['url'] !== '' ) {
-                $files[] = Image::fromUrl( $item['url'] );
+                $files[] = $this->urlFile( $item['url'], Image::class );
                 $first = $first ?: $item;
             }
         }

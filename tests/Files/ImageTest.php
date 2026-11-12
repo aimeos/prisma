@@ -35,11 +35,49 @@ class ImageTest extends TestCase
     public function testSizeUrlLargeHeader() : void
     {
         // the size isn't part of the fetched header, so the image is downloaded completely
-        $mock = new MockHandler( [new Response( 200, [], 'truncated' ), new Response( 200, [], (string) base64_decode( self::PNG ) )] );
+        $mock = new MockHandler( [new Response( 200, [], str_repeat( "\0", 70000 ) ), new Response( 200, [], (string) base64_decode( self::PNG ) )] );
         $image = Image::fromUrl( 'http://8.8.8.8/a.png', 'image/png' )->withClientHandler( HandlerStack::create( $mock ) );
 
         $this->assertSame( [1, 1], $image->size() );
         $this->assertSame( 0, $mock->count() );
+    }
+
+
+    public function testSizeAndMimeTypeFetchHeaderOnce() : void
+    {
+        $png = (string) base64_decode( self::PNG );
+        $mock = new MockHandler( [new Response( 200, [], $png . str_repeat( "\0", 70000 ) )] );
+        $image = Image::fromUrl( 'http://8.8.8.8/a.png' )->withClientHandler( HandlerStack::create( $mock ) );
+
+        $this->assertSame( 'image/png', $image->mimeType() );
+        $this->assertSame( [1, 1], $image->size() );
+        $this->assertSame( 0, $mock->count() );
+        $this->assertSame( 'bytes=0-65535', $mock->getLastRequest()?->getHeaderLine( 'Range' ) );
+    }
+
+
+    public function testSmallUrlFilesAreFetchedOnce() : void
+    {
+        $png = (string) base64_decode( self::PNG );
+        $mock = new MockHandler( [new Response( 200, [], $png )] );
+        $image = Image::fromUrl( 'http://8.8.8.8/a.png' )->withClientHandler( HandlerStack::create( $mock ) );
+
+        $this->assertSame( 'image/png', $image->mimeType() );
+        $this->assertSame( $png, $image->binary() );
+        $this->assertSame( 0, $mock->count() );
+    }
+
+
+    public function testDoesNotSerializeHeader() : void
+    {
+        $mock = new MockHandler( [new Response( 200, [], str_repeat( "\0", 70000 ) )] );
+        $image = Image::fromUrl( 'http://8.8.8.8/a.png', 'image/png' )->withClientHandler( HandlerStack::create( $mock ) );
+
+        try {
+            $image->size();
+        } catch( \Throwable ) {}
+
+        $this->assertStringNotContainsString( 'prefix', serialize( $image ) );
     }
 
 

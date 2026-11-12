@@ -38,7 +38,7 @@ class Murf extends Base implements Revoice, Speak
         $this->validate( $response );
 
         $url = $this->fromJson( $response )['audio_file'] ?? '';
-        return FileResponse::fromUrl( is_string( $url ) ? $url : '' );
+        return FileResponse::fromFiles( [$this->urlFile( is_string( $url ) ? $url : '' )] );
     }
 
 

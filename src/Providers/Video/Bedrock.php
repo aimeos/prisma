@@ -261,7 +261,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( rtrim( $uri, '/' ) . '/output.mp4', 'video/mp4' ) );
+            $result->add( $this->urlFile( rtrim( $uri, '/' ) . '/output.mp4', Video::class, 'video/mp4' ) );
             return true;
         };
     }

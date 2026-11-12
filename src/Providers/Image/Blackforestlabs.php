@@ -173,7 +173,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
                 throw new FailedException( 'No image data found in response' );
             }
 
-            $fr->add( Image::fromUrl( $sample ) );
+            $fr->add( $this->urlFile( $sample, Image::class ) );
 
             return true;
         };

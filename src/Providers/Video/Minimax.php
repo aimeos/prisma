@@ -234,6 +234,6 @@ class Minimax extends Base implements Imagine, Resume
             $this->videoFailed();
         }
 
-        return Video::fromUrl( $url, 'video/mp4' );
+        return $this->urlFile( $url, Video::class, 'video/mp4' );
     }
 }

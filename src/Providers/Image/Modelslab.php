@@ -103,7 +103,7 @@ class Modelslab extends Base implements Imagine, Resume
         foreach( (array) $output as $url )
         {
             if( is_string( $url ) && $url !== '' ) {
-                $files[] = Image::fromUrl( $url );
+                $files[] = $this->urlFile( $url, Image::class );
             }
         }
 
