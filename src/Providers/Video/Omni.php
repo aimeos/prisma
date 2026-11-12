@@ -119,7 +119,7 @@ class Omni extends Base implements Imagine, Repaint
                 if( is_string( $part['data'] ?? null ) ) {
                     $files[] = Video::fromBase64( $part['data'], $mime );
                 } elseif( is_string( $part['uri'] ?? null ) ) {
-                    $files[] = Video::fromUrl( $part['uri'], $mime );
+                    $files[] = $this->urlFile( $part['uri'], Video::class, $mime );
                 }
             }
         }

@@ -162,7 +162,7 @@ class Veo extends Base implements Imagine, Resume
                 $url = is_array( $sample ) && is_array( $sample['video'] ?? null ) ? ( $sample['video']['uri'] ?? null ) : null;
 
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+                    $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
                 }
             }
 

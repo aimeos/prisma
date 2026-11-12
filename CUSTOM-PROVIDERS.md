@@ -381,9 +381,17 @@ $file = Image::fromStream( $stream, 'image/png' );
 ```
 
 The mime type parameter is optional but recommended. If omitted, it will be
-guessed from the content when accessed. URL-backed files probe the first 255 bytes.
+guessed from the content when accessed. URL-backed files fetch the first 64 KiB by a range request.
 `fromStoragePath()` requires Laravel's storage facade. `fromUrl()` also accepts
 `bool $strict = true` as its third argument.
+
+For URLs of results returned by the API, create the files with `urlFile()` of the
+provider instead, so they are downloaded with the handler and `withInternalHosts()`
+setting of the provider. Client options like the API key are not used for downloads:
+
+```php
+$file = $this->urlFile( $url, Image::class, 'image/png' );
+```
 
 `fromStream()` retains the supplied resource without reading it. Keep the
 resource open while the file object uses it. Conversion is deferred until another
@@ -544,6 +552,9 @@ $response = FileResponse::fromBinary( '...', 'image/png' );
 $response = FileResponse::fromBase64( '...', 'image/png' );
 $response = FileResponse::fromStream( $stream, 'image/png' );
 $response = FileResponse::fromUrl( '...', 'image/png' );
+
+// URLs returned by the API, downloaded like requests of the provider
+$response = FileResponse::fromFiles( [$this->urlFile( '...', Image::class, 'image/png' )] );
 
 $stream = $response->stream(); // close the returned resource after use
 ```
@@ -1073,7 +1084,7 @@ protected function download( string $url ) : \Closure
             return false;
         }
 
-        $fr->add( Image::fromUrl( $data['url'] ?? '' ) );
+        $fr->add( $this->urlFile( $data['url'] ?? '', Image::class ) );
         return true;
     };
 }

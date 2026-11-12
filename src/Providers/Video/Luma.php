@@ -259,7 +259,7 @@ class Luma extends Base implements Imagine, Repaint, Resume, Uncrop
                 $url = is_array( $output ) && ( $output['type'] ?? null ) === 'video' ? ( $output['url'] ?? null ) : null;
 
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+                    $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
                 }
             }
 

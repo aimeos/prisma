@@ -206,7 +206,7 @@ class Recraft extends Base
                 $files[] = Image::fromBinary( $binary );
             }
             elseif( is_string( $entry['url'] ?? null ) && $entry['url'] !== '' ) {
-                $files[] = Image::fromUrl( $entry['url'] );
+                $files[] = $this->urlFile( $entry['url'], Image::class );
             }
             else {
                 throw new PrismaException( 'No image data found in Recraft response' );

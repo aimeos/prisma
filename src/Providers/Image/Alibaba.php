@@ -141,7 +141,7 @@ class Alibaba extends Base implements Imagine, Vectorize
                 array_map( function( $part ) {
                     /** @var string $image */
                     $image = $part['image'] ?? '';
-                    return !empty( $image ) ? Image::fromUrl( $image ) : null;
+                    return !empty( $image ) ? $this->urlFile( $image, Image::class ) : null;
                 }, $content )
             ) );
         }

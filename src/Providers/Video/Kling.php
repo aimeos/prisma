@@ -137,7 +137,7 @@ class Kling extends Base implements Imagine, Repaint, Resume
 
             foreach( is_array( $task['outputs'] ?? null ) ? $task['outputs'] : [] as $output ) {
                 if( ( $output['type'] ?? null ) === 'video' && is_string( $output['url'] ?? null ) && $output['url'] !== '' ) {
-                    $result->add( Video::fromUrl( $output['url'], 'video/mp4' ) );
+                    $result->add( $this->urlFile( $output['url'], Video::class, 'video/mp4' ) );
                 }
             }
 

@@ -36,7 +36,7 @@ trait HasImageResponse
             } elseif( !empty( $item['url'] ) ) {
                 /** @var string $url */
                 $url = $item['url'];
-                $files[] = Image::fromUrl( $url );
+                $files[] = $this->urlFile( $url, Image::class );
             }
         }
 

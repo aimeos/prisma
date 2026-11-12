@@ -254,7 +254,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+            $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
             return true;
         };
     }

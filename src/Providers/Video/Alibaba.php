@@ -327,7 +327,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+            $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
             return true;
         };
     }

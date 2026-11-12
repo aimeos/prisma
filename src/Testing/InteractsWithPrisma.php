@@ -39,8 +39,8 @@ trait InteractsWithPrisma
     {
         $this->interactsHandler = new MockHandler();
 
-        $stack = HandlerStack::create( $this->interactsHandler );
-        $stack->push( Middleware::history( $this->interactsHistory ) );
+        // recorded by the handler instead of a middleware, so downloads of result files are recorded too
+        $stack = HandlerStack::create( Middleware::history( $this->interactsHistory )( $this->interactsHandler ) );
 
         $this->interactsProvider = ( new Prisma( $type ) )
             ->using( $name, $config )
