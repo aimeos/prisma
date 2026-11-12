@@ -295,6 +295,7 @@ class PrismaTest extends TestCase
             } )
             ->using( 'replicate', ['api_key' => 'test'] )
             ->withClientHandler( $stack )
+            ->withInternalHosts()
             ->ensure( 'cancel' )
             ->cancel( 'https://api.replicate.com/v1/predictions/p1' );
 

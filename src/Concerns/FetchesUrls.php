@@ -28,6 +28,8 @@ use Psr\Http\Message\StreamInterface;
  */
 trait FetchesUrls
 {
+    use ResolvesHosts;
+
     private ?HandlerStack $fetchHandler = null;
 
     /** @var array<int, string>|null */
@@ -120,58 +122,6 @@ trait FetchesUrls
 
         rewind( $stream );
         return $stream;
-    }
-
-
-    /**
-     * Resolves a hostname to an IP address.
-     *
-     * Literal IP hosts are validated directly without a DNS lookup. In strict mode,
-     * non-public addresses are rejected.
-     *
-     * @param string $host Hostname or IP address to resolve
-     * @param bool $strict TRUE to reject non-public addresses
-     * @return string|null First resolved IP address, or null if none was found
-     */
-    protected function resolve( string $host, bool $strict ) : ?string
-    {
-        if( filter_var( $host, FILTER_VALIDATE_IP ) ) {
-            return $this->allowedIp( $host, $strict ) ? $host : null;
-        }
-
-        foreach( @dns_get_record( $host, DNS_A + DNS_AAAA ) ?: [] as $record )
-        {
-            $ip = $record['ip'] ?? $record['ipv6'] ?? null;
-
-            if( $ip && $this->allowedIp( $ip, $strict ) ) {
-                return $ip;
-            }
-        }
-
-        foreach( @gethostbynamel( $host ) ?: [] as $ip )
-        {
-            if( $this->allowedIp( $ip, $strict ) ) {
-                return $ip;
-            }
-        }
-
-        return null;
-    }
-
-
-    /**
-     * Checks whether an IP address is valid for the requested mode.
-     *
-     * @param string $ip IPv4 or IPv6 address to validate
-     * @param bool $strict TRUE to reject non-public addresses
-     * @return bool TRUE if the address is valid and allowed in the requested mode
-     */
-    protected function allowedIp( string $ip, bool $strict ) : bool
-    {
-        // Rejects carrier-grade NAT like the 100.100.100.200 metadata service of Alibaba Cloud too
-        $flags = $strict ? FILTER_FLAG_GLOBAL_RANGE : 0;
-
-        return (bool) filter_var( $ip, FILTER_VALIDATE_IP, $flags );
     }
 
 

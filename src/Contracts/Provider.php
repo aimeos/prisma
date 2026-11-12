@@ -68,6 +68,15 @@ interface Provider
 
 
     /**
+     * Allows requests to hosts resolving to internal IP addresses.
+     *
+     * @param bool $allow TRUE to allow internal hosts and proxies, FALSE to allow public hosts only
+     * @return self Provider interface
+     */
+    public function withInternalHosts( bool $allow = true ) : self;
+
+
+    /**
      * Sets prior conversation turns for text providers.
      *
      * @param array<int, array<string, mixed>> $messages Conversation turns

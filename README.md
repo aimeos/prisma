@@ -17,6 +17,7 @@ Light-weight PHP package for integrating multi-media and text related Large Lang
     <li><a href="#model">model</a><span>: Use the model passed by its name</span></li>
     <li><a href="#withclientoptions">withClientOptions</a><span>: Add options for the Guzzle HTTP client</span></li>
     <li><a href="#withclientretry">withClientRetry</a><span>: Configure automatic retry for failed HTTP requests</span></li>
+    <li><a href="#withinternalhosts">withInternalHosts</a><span>: Allow requests to hosts with internal IP addresses</span></li>
     <li><a href="#withmaxresponsesize">withMaxResponseSize</a><span>: Set the maximum bytes read for a single provider response</span></li>
     <li><a href="#withsystemprompt">withSystemPrompt</a><span>: Add a system prompt for the LLM</span></li>
     <li><a href="#withmessages">withMessages</a><span>: Add prior conversation turns for multi-turn chat</span></li>
@@ -436,6 +437,37 @@ and client options before the provider's first request.
 \Aimeos\Prisma\Prisma::text()
     ->using( '<provider>', ['api_key' => 'xxx'])
     ->withClientRetry( 3, 100, fn( $response, $attempt ) => $response->getStatusCode() === 429 );
+```
+
+### withInternalHosts
+
+Allow requests to hosts resolving to internal IP addresses.
+
+By default, all requests are restricted to hosts resolving to public IP addresses, so users
+who can change the base URL (`url` setting) or other provider settings can't reach internal
+services like the loopback interface, private networks or the metadata service of cloud
+servers. The host of every request, redirect and retry is resolved and the connection is
+pinned to the checked address, so DNS rebinding can't bypass the check. Requests through a
+proxy are rejected because the proxy resolves the host itself and handlers set by
+`withClientHandler()` must be cURL based.
+
+Allow internal hosts for local or private endpoints like Ollama, LM Studio or vLLM, API
+gateways in your own network or if requests must be sent through a proxy. Only do that if
+the provider settings can't be changed by untrusted users.
+
+```php
+public function withInternalHosts( bool $allow = true ) : self
+```
+
+* @param **bool** `$allow` TRUE to allow internal hosts and proxies, FALSE to allow public hosts only
+* @return **self** Provider interface
+
+**Example:**
+
+```php
+\Aimeos\Prisma\Prisma::text()
+    ->using( 'ollama', ['url' => 'http://localhost:11434'])
+    ->withInternalHosts();
 ```
 
 ### withMaxResponseSize
