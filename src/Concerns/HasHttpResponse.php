@@ -10,9 +10,6 @@ use Psr\Http\Message\ResponseInterface;
  */
 trait HasHttpResponse
 {
-    /** Maximum length of the media type in error messages */
-    private const MEDIA_TYPE_LENGTH = 100;
-
     /** Maximum bytes read for a single provider response, streamed or not, before it is rejected (64 MiB). */
     private int $maxResponseSize = 67108864;
 
@@ -103,29 +100,13 @@ trait HasHttpResponse
 
         if( !is_array( $data ) ) {
             throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf(
-                'Invalid JSON response (HTTP %1$s, %2$s)', $response->getStatusCode(), $this->mediaType( $response )
+                'Invalid JSON response (HTTP %1$s, %2$s)', $response->getStatusCode(),
+                substr( (string) preg_replace( '/[^\w\/.+-].*$/s', '', $response->getHeaderLine( 'Content-Type' ) ), 0, 100 ) ?: 'no content type'
             ) );
         }
 
         /** @var array<string, mixed> $data */
         return $data;
-    }
-
-
-    /**
-     * Returns the media type of a response for error messages.
-     *
-     * Parameters and everything else which isn't part of a media type are removed, so the
-     * header of a response can't add text to the error message.
-     *
-     * @param ResponseInterface $response HTTP response
-     * @return string Media type, e.g. "text/html", or "no content type"
-     */
-    private function mediaType( ResponseInterface $response ) : string
-    {
-        $type = (string) preg_replace( '/[^\w\/.+-].*$/s', '', $response->getHeaderLine( 'Content-Type' ) );
-
-        return substr( $type, 0, self::MEDIA_TYPE_LENGTH ) ?: 'no content type';
     }
 
 

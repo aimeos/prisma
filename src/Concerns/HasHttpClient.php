@@ -3,15 +3,16 @@
 namespace Aimeos\Prisma\Concerns;
 
 use Aimeos\Prisma\Files\File;
-use Aimeos\Prisma\Http\Network;
 use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Handler\StreamHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 
@@ -20,11 +21,18 @@ use Psr\Http\Message\ResponseInterface;
  */
 trait HasHttpClient
 {
+    use ResolvesHosts;
+
     private Client $client;
-    private Network $network;
+    private Client $streamClient;
+    private ?HandlerStack $clientHandler = null;
 
     /** @var callable|null */
     private $retryMiddleware = null;
+
+    private bool $retryApplied = false;
+    private bool $publicOnly = true;
+    private bool $publicApplied = false;
 
     /** @var array<string, mixed> */
     private array $clientOptions = ['connect_timeout' => 10, 'timeout' => 60];
@@ -38,9 +46,7 @@ trait HasHttpClient
      */
     public function withClientHandler( HandlerStack $stack ) : self
     {
-        $this->network = $this->network()->withHandler( $stack );
-        unset( $this->client );
-
+        $this->clientHandler = $stack;
         return $this;
     }
 
@@ -54,8 +60,6 @@ trait HasHttpClient
     public function withClientOptions( array $options ) : self
     {
         $this->clientOptions = array_replace_recursive( $this->clientOptions, $options );
-        unset( $this->client );
-
         return $this;
     }
 
@@ -89,8 +93,6 @@ trait HasHttpClient
         };
 
         $this->retryMiddleware = Middleware::retry( $decider, $delay );
-        unset( $this->client );
-
         return $this;
     }
 
@@ -104,11 +106,8 @@ trait HasHttpClient
      * servers. The host of every request, redirect and retry is resolved and the connection is
      * pinned to the checked address, so DNS rebinding can't switch to an internal address
      * between check and request. Requests through a proxy are rejected too because the proxy
-     * resolves the host itself. For the same reason, proxies cURL reads from the environment are
-     * disabled and the CURLOPT_CONNECT_TO, CURLOPT_PRE_PROXY, CURLOPT_UNIX_SOCKET_PATH and
-     * CURLOPT_ABSTRACT_UNIX_SOCKET options are removed. Handlers set by withClientHandler() must
-     * be Guzzle's cURL handlers or its StreamHandler, because other handlers get requests to the
-     * IP address, which fail for HTTPS.
+     * resolves the host itself and HTTP handlers set by withClientHandler() must be cURL based
+     * to keep the DNS pin.
      *
      * Allow internal hosts for local or private endpoints like Ollama, LM Studio or vLLM, API
      * gateways in the own network or if requests must be sent through a proxy. Only do that if
@@ -119,8 +118,8 @@ trait HasHttpClient
      */
     public function withInternalHosts( bool $allow = true ) : self
     {
-        $this->network = $this->network()->withInternalHosts( $allow );
-        unset( $this->client );
+        $this->publicOnly = !$allow;
+        unset( $this->client, $this->streamClient );
 
         return $this;
     }
@@ -148,7 +147,6 @@ trait HasHttpClient
     {
         if( is_string( $url ) ) {
             $this->clientOptions['base_uri'] = $url;
-            unset( $this->client );
         }
 
         return $this;
@@ -158,18 +156,12 @@ trait HasHttpClient
     /**
      * Returns the HTTP client, creating it on first use.
      *
-     * Requests with the "stream" option are sent by Guzzle's StreamHandler, all others by cURL:
-     * only the StreamHandler honors the per-read inactivity timeout (read_timeout) and exposes
-     * the "timed_out" stream metadata that readLines() relies on to detect a stalled stream -
-     * cURL ignores read_timeout and downloads the whole response before it's returned.
-     *
      * @return Client Guzzle HTTP client
      */
     protected function client() : Client
     {
         if( !isset( $this->client ) ) {
-            $handler = $this->network()->handler( $this->retryMiddleware );
-            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $handler] );
+            $this->client = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->handler( null )] );
         }
 
         return $this->client;
@@ -177,22 +169,156 @@ trait HasHttpClient
 
 
     /**
-     * Returns the network access of the provider, which files created by urlFile() copy.
+     * Returns the HTTP client used for streaming requests, creating it on first use.
      *
-     * @return Network Network access of the provider
+     * Streaming uses Guzzle's StreamHandler rather than the default cURL handler: only the
+     * StreamHandler honors the per-read inactivity timeout (read_timeout) and exposes the
+     * "timed_out" stream metadata that readLines() relies on to detect a stalled stream - cURL
+     * ignores read_timeout, so a stalled stream could otherwise pin the process. A handler set
+     * explicitly via withClientHandler() (e.g. a test mock) is respected unchanged and shared with
+     * the non-streaming client. Configured retry behaviour applies to both clients alike.
+     *
+     * @return Client Guzzle HTTP client for streaming
      */
-    protected function network() : Network
+    protected function streamClient() : Client
     {
-        return $this->network ??= new Network();
+        if( !isset( $this->streamClient ) ) {
+            $this->streamClient = new Client( $this->clientOptions + ['http_errors' => false, 'handler' => $this->handler( new StreamHandler() )] );
+        }
+
+        return $this->streamClient;
     }
 
 
     /**
-     * Returns a lazy file for a URL returned by the API.
+     * Builds a handler stack for a client, adding the retry middleware when configured.
      *
-     * The file is downloaded with the handler and host restrictions of the provider but neither
-     * its client options nor the middleware of its handler stack, which may add credentials.
-     * Later changes of the provider don't affect the file.
+     * A handler set explicitly via withClientHandler() backs both the streaming and non-streaming
+     * client; it is augmented with the retry middleware only once so the shared stack is never
+     * wrapped twice. Otherwise a fresh stack is created around the given base handler - the default
+     * (cURL) handler for normal requests, the StreamHandler for streaming - and the retry middleware
+     * is pushed onto each so streamed and non-streamed requests retry identically.
+     *
+     * @param callable|null $base Base handler for a self-created stack, or null for Guzzle's default
+     * @return HandlerStack Configured handler stack
+     */
+    private function handler( ?callable $base ) : HandlerStack
+    {
+        if( isset( $this->clientHandler ) )
+        {
+            if( $this->retryMiddleware && !$this->retryApplied )
+            {
+                $this->clientHandler->push( $this->retryMiddleware );
+                $this->retryApplied = true;
+            }
+
+            if( $this->publicOnly && !$this->publicApplied )
+            {
+                $this->clientHandler->push( $this->pinMiddleware( false ), 'prisma_pin' );
+                $this->publicApplied = true;
+            }
+            elseif( !$this->publicOnly && $this->publicApplied )
+            {
+                $this->clientHandler->remove( 'prisma_pin' );
+                $this->publicApplied = false;
+            }
+
+            return $this->clientHandler;
+        }
+
+        // Guzzle falls back to the StreamHandler without cURL, which ignores the cURL DNS pin
+        if( $this->publicOnly && $base === null && !function_exists( 'curl_exec' ) ) {
+            $base = new StreamHandler();
+        }
+
+        $handler = $base ? HandlerStack::create( $base ) : HandlerStack::create();
+
+        if( $this->retryMiddleware ) {
+            $handler->push( $this->retryMiddleware );
+        }
+
+        // Pushed last, so it's the innermost middleware and checks every redirect and retry too
+        if( $this->publicOnly ) {
+            $handler->push( $this->pinMiddleware( $base instanceof StreamHandler ), 'prisma_pin' );
+        }
+
+        return $handler;
+    }
+
+
+    /**
+     * Returns the middleware which pins requests to the checked public IP address of the host.
+     *
+     * cURL connects to the pinned address by CURLOPT_RESOLVE. The StreamHandler has no such
+     * option, so the request is sent to the IP address instead while the Host header and the
+     * TLS peer name (used for SNI and certificate validation) keep the original host name.
+     *
+     * @param bool $stream TRUE for the StreamHandler, FALSE for cURL based handlers
+     * @return \Closure Guzzle middleware
+     */
+    private function pinMiddleware( bool $stream ) : \Closure
+    {
+        return fn( callable $next ) => function( RequestInterface $request, array $options ) use ( $next, $stream ) {
+
+            $uri = $request->getUri();
+            $host = trim( $uri->getHost(), '[]' );
+            $scheme = $uri->getScheme();
+
+            if( !in_array( $scheme, ['http', 'https'], true ) || $host === '' || !( $ip = $this->resolve( $host, true ) ) ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf( 'Host "%s" does not resolve to a public address, use withInternalHosts() to allow internal hosts', $host ) );
+            }
+
+            if( $this->proxied( $host, $scheme, $options['proxy'] ?? null ) ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( sprintf( 'Requests to "%s" through a proxy are only allowed after calling withInternalHosts()', $host ) );
+            }
+
+            $addr = str_contains( $ip, ':' ) ? '[' . $ip . ']' : $ip;
+
+            if( $stream )
+            {
+                $request = $request->withUri( $uri->withHost( $addr ), true );
+                $options['stream_context']['ssl']['peer_name'] = $host;
+            }
+            elseif( !defined( 'CURLOPT_RESOLVE' ) )
+            {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Restricting requests to public hosts requires the cURL extension, use withInternalHosts() otherwise' );
+            }
+            else
+            {
+                $port = $uri->getPort() ?? ( $scheme === 'https' ? 443 : 80 );
+                $options['curl'][CURLOPT_RESOLVE] = [$host . ':' . $port . ':' . $addr];
+                unset( $options['curl'][CURLOPT_CONNECT_TO] );
+            }
+
+            return $next( $request, $options );
+        };
+    }
+
+
+    /**
+     * Tests if the request is sent through a proxy.
+     *
+     * @param string $host Host name of the request
+     * @param string $scheme URL scheme of the request
+     * @param mixed $proxy Value of the Guzzle "proxy" option, set from the environment by default
+     * @return bool TRUE if the request uses a proxy, FALSE if it connects directly
+     */
+    private function proxied( string $host, string $scheme, mixed $proxy ) : bool
+    {
+        if( !is_array( $proxy ) ) {
+            return is_string( $proxy ) && $proxy !== '';
+        }
+
+        if( empty( $proxy[$scheme] ) ) {
+            return false;
+        }
+
+        return !is_array( $proxy['no'] ?? null ) || !\GuzzleHttp\Utils::isHostInNoProxy( $host, $proxy['no'] );
+    }
+
+
+    /**
+     * Returns a file for a URL returned by the API.
      *
      * @template T of File
      * @param string $url File URL returned by the API
@@ -202,7 +328,7 @@ trait HasHttpClient
      */
     protected function urlFile( string $url, string $class = File::class, ?string $mimeType = null ) : File
     {
-        return $class::fromUrl( $url, $mimeType )->withNetwork( $this->network()->withoutMiddleware() );
+        return $class::fromUrl( $url, $mimeType, !$this->publicOnly );
     }
 
 
@@ -217,7 +343,6 @@ trait HasHttpClient
     {
         if( is_string( $value ) ) {
             $this->clientOptions['headers'][$name] = $value;
-            unset( $this->client );
         }
 
         return $this;

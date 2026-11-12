@@ -448,17 +448,12 @@ who can change the base URL (`url` setting) or other provider settings can't rea
 services like the loopback interface, private networks or the metadata service of cloud
 servers. The host of every request, redirect and retry is resolved and the connection is
 pinned to the checked address, so DNS rebinding can't bypass the check. Requests through a
-proxy are rejected because the proxy resolves the host itself. Handlers set by
-`withClientHandler()` must be Guzzle's `CurlHandler`, `CurlMultiHandler` or `StreamHandler`
-because other handlers get requests to the IP address, which fail for HTTPS.
+proxy are rejected because the proxy resolves the host itself and handlers set by
+`withClientHandler()` must be cURL based.
 
 Allow internal hosts for local or private endpoints like Ollama, LM Studio or vLLM, API
 gateways in your own network or if requests must be sent through a proxy. Only do that if
 the provider settings can't be changed by untrusted users.
-
-Files returned by the provider are downloaded with the same setting and the handler set by
-`withClientHandler()`, but without the client options like the API key. Changing the
-provider afterwards doesn't affect files that were already returned.
 
 ```php
 public function withInternalHosts( bool $allow = true ) : self
@@ -1542,15 +1537,8 @@ $image = Image::fromStoragePath( 'path/to/image.png', 'public', 'image/png' );
 the [custom provider guide](CUSTOM-PROVIDERS.md#file-types) for ownership details.
 
 The `mimeType` parameter is optional. If omitted, Prisma detects it when requested;
-URL-backed files fetch the first 64 KiB by a range request. Downloads are pinned to the public
-addresses of the host and rejected if they would be sent through a proxy. For files on
-internal hosts, call `withInternalHosts()` like for providers:
-
-```php
-$image = Image::fromUrl( 'http://10.0.0.5/image.png' )->withInternalHosts();
-```
-
-The optional third argument of `fromUrl()`, `bool $strict = true`, does the same if `false`.
+URL-backed files use a probe of the first 255 bytes. `fromUrl()` also accepts an
+optional third argument, `bool $strict = true`.
 
 **Note:** It's best to use **fromUrl()** if possible because all other formats (binary and
 base64) can be derived from the URL content but URLs can't be created from binary/base64
@@ -1779,7 +1767,8 @@ public function imagine( string $prompt, array $images = [], array $options = []
 fal hosts hundreds of models, so each method uses a default endpoint and `model()` selects
 any other compatible fal endpoint. Prisma maps the prompt and images only and passes all
 options to the endpoint unchanged, so use the input fields documented on the model page.
-Files without URL larger than 5 MiB are uploaded to the
+fal returns images on its `fal.media` CDN; pass `download_hosts` in the configuration if
+your requests are routed differently. Files without URL larger than 5 MiB are uploaded to the
 fal storage first instead of being sent as data URI. The provider object uploads each file object
 only once, so keep it to process the same large file several times. Behind an API gateway, `url` replaces the
 queue host (`https://queue.fal.run`), `rest_url` the storage host (`https://rest.fal.ai`) and
