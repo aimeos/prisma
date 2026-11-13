@@ -6,6 +6,7 @@ use Aimeos\Prisma\Concerns\FetchesUrls;
 use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\NotImplementedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Http\Network;
 use GuzzleHttp\Psr7\Utils;
 
 
@@ -17,7 +18,7 @@ class File
     use FetchesUrls;
 
 
-    /** Bytes of seekable streams read for detecting the mime type, enough for the headers of media formats */
+    /** Bytes of seekable streams and URLs read for detecting the mime type, enough for the headers of media formats */
     private const HEAD_BYTES = 65536;
 
     /** @var resource|null */
@@ -28,7 +29,9 @@ class File
     protected ?string $filename = null;
     protected ?string $mimeType = null;
     protected int $maxBytes = 67108864;
-    protected bool $strict = true;
+
+    /** Beginning of the content of a URL file, so it's fetched only once by head() */
+    private ?string $prefix = null;
 
 
     /**
@@ -42,7 +45,32 @@ class File
             $this->binary();
         }
 
-        return get_object_vars( $this );
+        // fetched again if needed because the file may have changed in the meantime
+        return array_diff_key( get_object_vars( $this ), ['prefix' => true] );
+    }
+
+
+    /**
+     * Restores the properties, including files serialized by versions which had a "strict" property.
+     *
+     * Private properties of this class are checked separately because property_exists() doesn't
+     * find them for subclasses like Image.
+     *
+     * @param array<string, mixed> $data Serialized properties
+     */
+    public function __unserialize( array $data ) : void
+    {
+        foreach( $data as $key => $value )
+        {
+            // older versions serialized protected properties with their mangled names
+            $name = ( $pos = strrpos( $key, "\0" ) ) !== false ? substr( $key, $pos + 1 ) : $key;
+
+            if( $name === 'strict' ) {
+                $this->fetchNetwork = ( new Network() )->withInternalHosts( !$value );
+            } elseif( property_exists( self::class, $name ) || property_exists( $this, $name ) ) {
+                $this->$name = $value;
+            }
+        }
     }
 
 
@@ -102,10 +130,11 @@ class File
             return $this->binary = $content;
         }
 
-        if( $this->url && !( $this->binary = $this->fetch( $this->url, $this->maxBytes, $this->strict ) ?: null ) ) {
+        if( $this->url && !( $this->binary = (string) $this->fetchBody( $this->url, $this->maxBytes ) ?: null ) ) {
             throw new PrismaException( "Unable to fetch URL from {$this->url} or it is empty" );
         }
 
+        $this->prefix = null;
         return $this->binary;
     }
 
@@ -323,14 +352,18 @@ class File
      *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
-     * @param bool $strict TRUE to reject non-public addresses, FALSE to allow them
+     * @param bool $strict FALSE to allow internal hosts and proxies, same as withInternalHosts()
      * @return static File instance
      */
     public static function fromUrl( string $url, ?string $mimeType = null, bool $strict = true ) : static
     {
         $instance = new static;
         $instance->url = $url;
-        $instance->strict = $strict;
+
+        if( !$strict ) {
+            $instance->withInternalHosts();
+        }
+
         $instance->setMimeType( $mimeType );
 
         return $instance;
@@ -370,7 +403,7 @@ class File
                 try
                 {
                     // best-effort probe of the first bytes; an unsafe or unreachable URL stays null
-                    $content = $this->fetch( $this->url, -255, $this->strict );
+                    $content = $this->head();
                     $mimeType = $content !== '' ? ( (new \finfo(FILEINFO_MIME_TYPE))->buffer( $content ) ?: null ) : null;
                 }
                 catch( PrismaException ) {}
@@ -425,8 +458,8 @@ class File
             return self::resource( $this->stream );
         }
 
-        if( $this->url && $this->binary === null && $this->base64 === null ) {
-            return $this->fetchStream( $this->url, $this->maxBytes, $this->strict );
+        if( $this->urlOnly() ) {
+            return $this->fetchStream( (string) $this->url, $this->maxBytes );
         }
 
         return self::resource( Utils::streamFor( (string) $this->binary() )->detach() );
@@ -484,12 +517,18 @@ class File
      * Returns the beginning of the file content for detecting the mime type.
      *
      * Seekable streams are read partly and set back to their position, so large streams aren't
-     * loaded into memory. All other content is read completely.
+     * loaded into memory. The beginning of URL files is fetched by urlHead(). All other content is
+     * read completely.
      *
      * @return string Beginning or complete file content
+     * @throws PrismaException If the URL can't be fetched
      */
-    private function head() : string
+    protected function head() : string
     {
+        if( $this->urlOnly() ) {
+            return $this->urlHead();
+        }
+
         if( $this->binary !== null || $this->base64 !== null || $this->stream === null
             || !stream_get_meta_data( $stream = self::resource( $this->stream ) )['seekable']
             || ( $pos = ftell( $stream ) ) === false
@@ -523,5 +562,41 @@ class File
         }
 
         return $stream;
+    }
+
+
+    /**
+     * Tests if the file content is only available from its URL.
+     *
+     * @return bool TRUE if the file has a URL but no content or stream yet
+     */
+    private function urlOnly() : bool
+    {
+        return $this->url && $this->binary === null && $this->base64 === null && $this->stream === null;
+    }
+
+
+    /**
+     * Returns the beginning of a URL file, fetched once.
+     *
+     * The beginning is kept for the mime type and image size. Files smaller than that are kept as
+     * complete content, so binary() doesn't fetch them again.
+     *
+     * @return string Beginning or complete file content
+     * @throws PrismaException If the URL can't be fetched
+     */
+    private function urlHead() : string
+    {
+        if( $this->prefix === null )
+        {
+            $this->prefix = (string) $this->fetchBody( (string) $this->url, -self::HEAD_BYTES );
+
+            if( $this->prefix !== '' && strlen( $this->prefix ) < self::HEAD_BYTES && strlen( $this->prefix ) <= $this->maxBytes ) {
+                [$this->binary, $this->prefix] = [$this->prefix, null];
+                return $this->binary;
+            }
+        }
+
+        return $this->prefix;
     }
 }

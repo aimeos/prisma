@@ -3,14 +3,19 @@
 namespace Tests\Providers;
 
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Http\Network;
 use Aimeos\Prisma\Providers\Base;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Promise\Create;
-use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\StreamInterface;
+use Tests\Http\CurlMock;
+use Tests\Http\FakeResolver;
 
 
 class PublicHostsTest extends TestCase
@@ -32,11 +37,49 @@ class PublicHostsTest extends TestCase
     }
 
 
+    public function testPinsAllAllowedAddresses() : void
+    {
+        $this->provider()->send( 'https://multi.example.com/v1/models' );
+
+        $this->assertSame( ['multi.example.com:443:93.184.215.14,[2606:2800:21f:cb07:6820:80da:af6b:8b2c]'], $this->sent[0][1]['curl'][CURLOPT_RESOLVE] );
+    }
+
+
     public function testPinsCurlRequestsWithPortAndIpv6() : void
     {
         $this->provider()->send( 'http://[2606:4700:4700::1111]:8080/v1' );
 
         $this->assertSame( ['2606:4700:4700::1111:8080:[2606:4700:4700::1111]'], $this->sent[0][1]['curl'][CURLOPT_RESOLVE] );
+    }
+
+
+    public function testPinsRequestsOfOtherHandlersByAddress() : void
+    {
+        $provider = $this->provider( HandlerStack::create( $this->handler() ) );
+
+        $this->assertSame( 200, $provider->send( 'https://api.example.com/v1' ) );
+        $this->assertSame( 200, $provider->stream( 'https://api.example.com/v1' ) );
+
+        $this->assertSame( 'https://93.184.215.14/v1', (string) $this->sent[0][0]->getUri() );
+        $this->assertSame( 'https://93.184.215.14/v1', (string) $this->sent[1][0]->getUri() );
+        $this->assertSame( 'api.example.com', $this->sent[1][1]['stream_context']['ssl']['peer_name'] );
+        $this->assertTrue( $this->sent[1][1]['stream'] );
+    }
+
+
+    public function testPinsStreamingByCurlHandlers() : void
+    {
+        $this->assertSame( 200, $this->provider()->stream( 'https://api.example.com/v1' ) );
+
+        $this->assertSame( ['api.example.com:443:93.184.215.14'], $this->sent[0][1]['curl'][CURLOPT_RESOLVE] );
+        $this->assertTrue( $this->sent[0][1]['stream'] );
+    }
+
+
+    public function testAllowsStreamingByCustomHandlersForInternalHosts() : void
+    {
+        $this->assertSame( 200, $this->provider()->withInternalHosts()->stream( 'https://api.example.com/v1' ) );
+        $this->assertTrue( $this->sent[0][1]['stream'] );
     }
 
 
@@ -47,21 +90,6 @@ class PublicHostsTest extends TestCase
             ->send( 'https://api.example.com/v1' );
 
         $this->assertArrayNotHasKey( CURLOPT_CONNECT_TO, $this->sent[0][1]['curl'] );
-    }
-
-
-    public function testPinsStreamRequests() : void
-    {
-        $provider = $this->provider();
-        $stack = HandlerStack::create( $this->handler() );
-        $stack->push( ( new \ReflectionMethod( $provider, 'pinMiddleware' ) )->invoke( $provider, true ) );
-
-        $stack( new Request( 'POST', 'https://api.example.com:8443/v1/chat' ), [] )->wait();
-
-        $this->assertSame( 'https://93.184.215.14:8443/v1/chat', (string) $this->sent[0][0]->getUri() );
-        $this->assertSame( 'api.example.com:8443', $this->sent[0][0]->getHeaderLine( 'Host' ) );
-        $this->assertSame( 'api.example.com', $this->sent[0][1]['stream_context']['ssl']['peer_name'] );
-        $this->assertArrayNotHasKey( 'curl', $this->sent[0][1] );
     }
 
 
@@ -164,6 +192,25 @@ class PublicHostsTest extends TestCase
     }
 
 
+    public function testDoesNotChangeSharedStacks() : void
+    {
+        $stack = HandlerStack::create( $this->handler() );
+        $public = $this->provider( $stack )->withClientRetry( 3, 0 );
+        $other = $this->provider( $stack )->withClientRetry( 3, 0 );
+
+        $public->send( 'https://api.example.com/v1' );
+        $other->send( 'https://api.example.com/v1' );
+        $this->sent = [];
+
+        $this->responses = [new Response( 503 ), new Response( 503 ), new Response( 503 )];
+        $this->assertSame( 503, $other->withInternalHosts()->send( 'http://127.0.0.1/' ) );
+        $this->assertCount( 3, $this->sent );
+
+        $this->expectException( PrismaException::class );
+        $public->send( 'http://127.0.0.1/' );
+    }
+
+
     public function testInternalHostsAllowed() : void
     {
         $this->provider()->withInternalHosts()
@@ -171,7 +218,76 @@ class PublicHostsTest extends TestCase
             ->send( 'http://127.0.0.1/' );
 
         $this->assertCount( 1, $this->sent );
-        $this->assertArrayNotHasKey( 'curl', $this->sent[0][1] );
+        $this->assertSame( [CURLOPT_FORBID_REUSE => true], $this->sent[0][1]['curl'] );
+    }
+
+
+    public function testFilesUseNetworkOfProvider() : void
+    {
+        $stack = HandlerStack::create( new CurlMock( $this->handler() ) );
+        $stack->push( Middleware::mapRequest( fn( RequestInterface $request ) => $request->withHeader( 'X-Token', 'secret' ) ) );
+
+        $provider = $this->provider( $stack )->withClientOptions( ['headers' => ['Authorization' => 'Bearer secret']] );
+        $provider->send( 'https://api.example.com/v1' );
+
+        $this->responses = [new Response( 200, [], 'image' )];
+        $this->assertSame( 'image', $provider->file( 'https://api.example.com/image.png' )->binary() );
+
+        // same handler, pin and cached addresses but no client options or middleware adding credentials
+        $this->assertSame( ['api.example.com:443:93.184.215.14'], $this->sent[1][1]['curl'][CURLOPT_RESOLVE] );
+        $this->assertSame( [], $this->sent[1][0]->getHeader( 'Authorization' ) );
+        $this->assertSame( 'secret', $this->sent[0][0]->getHeaderLine( 'X-Token' ) );
+        $this->assertSame( [], $this->sent[1][0]->getHeader( 'X-Token' ) );
+        $this->assertSame( 1, $provider->resolver()->lookups );
+    }
+
+
+    public function testFilesShareDnsCache() : void
+    {
+        $provider = $this->provider();
+        $this->responses = [new Response( 200, [], 'image' )];
+
+        $provider->file( 'https://multi.example.com/image.png' )->binary();
+        $provider->send( 'https://multi.example.com/v1' );
+
+        $this->assertSame( 1, $provider->resolver()->lookups );
+    }
+
+
+    public function testCopiesHandlerStack() : void
+    {
+        $stack = HandlerStack::create( $this->handler() );
+        $provider = $this->provider( $stack );
+
+        $stack->push( fn( callable $next ) => fn( $request, array $options ) => throw new \RuntimeException( 'Changed stack is used' ) );
+
+        $this->assertSame( 200, $provider->send( 'https://api.example.com/v1' ) );
+    }
+
+
+    public function testAppliesLaterClientChanges() : void
+    {
+        $provider = $this->provider();
+        $provider->send( 'https://api.example.com/v1' );
+
+        $this->responses = [new Response( 503 ), new Response( 200 )];
+        $provider->withClientOptions( ['headers' => ['X-Test' => 'yes']] )->withClientRetry( 2, 0 );
+
+        $this->assertSame( 200, $provider->send( 'https://api.example.com/v1' ) );
+        $this->assertSame( 'yes', $this->sent[1][0]->getHeaderLine( 'X-Test' ) );
+        $this->assertCount( 3, $this->sent );
+    }
+
+
+    public function testNetworkChangesAreNotShared() : void
+    {
+        $provider = $this->provider()->withInternalHosts();
+        $file = $provider->file( 'http://127.0.0.1/image.png' )->withInternalHosts( false );
+
+        $this->assertSame( 200, $provider->send( 'http://127.0.0.1/' ) );
+
+        $this->expectException( PrismaException::class );
+        $file->binary();
     }
 
 
@@ -196,28 +312,58 @@ class PublicHostsTest extends TestCase
     {
         return function( RequestInterface $request, array $options ) {
             $this->sent[] = [$request, $options];
-            return Create::promiseFor( array_shift( $this->responses ) ?? new Response( 200 ) );
+            $response = array_shift( $this->responses ) ?? new Response( 200 );
+
+            // file downloads pass a sink the body must be written to
+            if( ( $options['sink'] ?? null ) instanceof StreamInterface ) {
+                $options['sink']->write( (string) $response->getBody() );
+            }
+
+            return Create::promiseFor( $response );
         };
     }
 
 
-    private function provider() : Base
+    private function provider( ?HandlerStack $stack = null ) : PublicHostsProvider
     {
-        $provider = new class( [] ) extends Base {
-            public function __construct( array $config ) {}
+        return ( new PublicHostsProvider( [] ) )->withClientHandler( $stack ?? HandlerStack::create( new CurlMock( $this->handler() ) ) );
+    }
+}
 
-            public function send( string $url ) : int
-            {
-                return $this->client()->get( $url )->getStatusCode();
-            }
 
-            // no DNS lookups in tests
-            protected function resolve( string $host, bool $strict ) : ?string
-            {
-                return $host === 'api.example.com' ? '93.184.215.14' : parent::resolve( $host, $strict );
-            }
-        };
+class PublicHostsProvider extends Base
+{
+    public function __construct( array $config )
+    {
+        ( new \ReflectionProperty( Base::class, 'clientNetwork' ) )->setValue( $this, new Network( new FakeResolver() ) );
+    }
 
-        return $provider->withClientHandler( HandlerStack::create( $this->handler() ) );
+
+    public function resolver() : FakeResolver
+    {
+        /** @var FakeResolver */
+        return ( new \ReflectionProperty( Network::class, 'resolver' ) )->getValue( $this->network() );
+    }
+
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function send( string $url, array $options = [] ) : int
+    {
+        return $this->client()->get( $url, $options )->getStatusCode();
+    }
+
+
+    public function file( string $url ) : File
+    {
+        /** @var File */
+        return $this->fileResponse()->addUrl( $url )->first();
+    }
+
+
+    public function stream( string $url ) : int
+    {
+        return $this->client()->get( $url, ['stream' => true] )->getStatusCode();
     }
 }

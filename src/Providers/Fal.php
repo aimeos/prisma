@@ -49,8 +49,6 @@ abstract class Fal extends Base implements Cancel, Resume
     /** Default LLM of the OpenRouter endpoints */
     private const ROUTER_MODEL = 'google/gemini-3.8-flash';
 
-    /** @var array<int, string> */
-    private array $downloadHosts;
     private string $restUrl;
 
     /** @var \WeakMap<File, string>|null URLs of the uploaded files, so files used several times are uploaded once */
@@ -62,9 +60,6 @@ abstract class Fal extends Base implements Cancel, Resume
         if( !isset( $config['api_key'] ) ) {
             throw new PrismaException( 'No API key' );
         }
-
-        $hosts = $config['download_hosts'] ?? null;
-        $this->downloadHosts = is_array( $hosts ) ? array_values( array_filter( $hosts, 'is_string' ) ) : ['fal.media'];
 
         $this->restUrl = rtrim( $this->config( $config, 'rest_url', 'https://rest.fal.ai' ), '/' ) . '/';
 
@@ -100,7 +95,7 @@ abstract class Fal extends Base implements Cancel, Resume
     public function resume( string $jobId ) : FileResponse
     {
         $poll = $this->poll( $this->requestUrl( $jobId ), $this->result(...) );
-        return FileResponse::fromAsync( $poll, static::RETRY, $this->pollTimeout, $jobId );
+        return $this->asyncResponse( $poll, static::RETRY, $this->pollTimeout, $jobId )->withMaxSize( static::MAX_BYTES );
     }
 
 
@@ -122,25 +117,6 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Builds a lazy file whose eventual download stays on the fal CDN.
-     *
-     * @param string $url File URL returned by fal
-     * @param string|null $mimeType Content type of the file if known
-     * @return File Response file
-     */
-    protected function file( string $url, ?string $mimeType ) : File
-    {
-        $class = static::FILE;
-
-        $file = $class::fromUrl( $url, $mimeType );
-        $file->restrictHosts( $this->downloadHosts );
-        $file->maxSize( static::MAX_BYTES );
-
-        return $file;
-    }
-
-
-    /**
      * Adds the output files of a completed request to the response.
      *
      * fal returns file objects with an "url" property, either as single values whose output
@@ -155,10 +131,10 @@ abstract class Fal extends Base implements Cancel, Resume
         foreach( $data as $key => $value )
         {
             if( $this->isFile( $value ) ) {
-                $result->add( $this->file( $value['url'], $this->mimeType( $value ) ), $key );
+                $result->addUrl( $value['url'], static::FILE, $this->mimeType( $value ), $key );
             } elseif( $this->isFileList( $value ) ) {
                 foreach( $value as $item ) {
-                    $result->add( $this->file( $item['url'], $this->mimeType( $item ) ) );
+                    $result->addUrl( $item['url'], static::FILE, $this->mimeType( $item ) );
                 }
             }
         }

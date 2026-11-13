@@ -62,7 +62,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
     }
 
 
@@ -124,7 +124,7 @@ class Openrouter extends Base implements Describe, Imagine, Resume
 
             foreach( $urls as $url ) {
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+                    $result->addUrl( $url, Video::class, 'video/mp4' );
                 }
             }
 

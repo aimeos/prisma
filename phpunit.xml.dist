@@ -12,7 +12,9 @@
     displayDetailsOnPhpunitDeprecations="true">
     <testsuites>
         <testsuite name="Test Suite">
+            <directory suffix="Test.php">./tests/Concerns/</directory>
             <directory suffix="Test.php">./tests/Files/</directory>
+            <directory suffix="Test.php">./tests/Http/</directory>
             <directory suffix="Test.php">./tests/Providers/</directory>
             <directory suffix="Test.php">./tests/Responses/</directory>
             <directory suffix="Test.php">./tests/Schema/</directory>

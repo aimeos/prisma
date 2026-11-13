@@ -22,25 +22,21 @@ trait HasImageResponse
 
         /** @var array<string, mixed> $result */
         $result = $this->fromJson( $response );
-        $files = [];
+        $files = $this->fileResponse();
 
         /** @var array<int, array<string, mixed>> $dataItems */
         $dataItems = $result['data'] ?? [];
 
         foreach( $dataItems as $item )
         {
-            if( !empty( $item['b64_json'] ) ) {
-                /** @var string $b64 */
-                $b64 = $item['b64_json'];
-                $files[] = Image::fromBase64( $b64 );
-            } elseif( !empty( $item['url'] ) ) {
-                /** @var string $url */
-                $url = $item['url'];
-                $files[] = Image::fromUrl( $url );
+            if( is_string( $item['b64_json'] ?? null ) && $item['b64_json'] !== '' ) {
+                $files->add( Image::fromBase64( $item['b64_json'] ) );
+            } elseif( is_string( $item['url'] ?? null ) && $item['url'] !== '' ) {
+                $files->addUrl( $item['url'], Image::class );
             }
         }
 
-        if( empty( $files ) ) {
+        if( $files->empty() ) {
             throw new PrismaException( 'No image data found in response' );
         }
 
@@ -51,11 +47,6 @@ trait HasImageResponse
         $usage = $result['usage'] ?? [];
         $used = $usage['total_tokens'] ?? null;
 
-        return FileResponse::fromFiles( $files )
-            ->withUsage(
-                is_numeric( $used ) ? (float) $used : null,
-                $usage,
-            )
-            ->withMeta( $meta );
+        return $files->withUsage( is_numeric( $used ) ? (float) $used : null, $usage )->withMeta( $meta );
     }
 }

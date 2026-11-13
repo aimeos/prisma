@@ -5,9 +5,9 @@ namespace Aimeos\Prisma\Concerns;
 use Aimeos\Prisma\Exceptions\ForbiddenException;
 use Aimeos\Prisma\Exceptions\NotFoundException;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Http\Network;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\DroppingStream;
 use GuzzleHttp\Psr7\Uri;
@@ -20,20 +20,15 @@ use Psr\Http\Message\StreamInterface;
 /**
  * Fetching of remote URLs.
  *
- * Requests are restricted to http(s) (so wrapper schemes like file:// or php:// cannot be
- * fetched), redirects are bounded and kept on http(s), TLS is verified, stalled transfers
- * and those taking longer than 10 minutes are aborted and the downloaded size is capped.
- * DNS is resolved and pinned for every request; strict requests additionally reject
- * non-public addresses.
+ * Guzzle's handlers only send http(s) requests (so wrapper schemes like file:// or php://
+ * cannot be fetched), redirects are bounded, TLS is verified, stalled transfers and those
+ * taking longer than 10 minutes are aborted and the downloaded size is capped.
+ * Requests are pinned to the public addresses of their hosts and rejected if they are sent
+ * through a proxy unless internal hosts are allowed.
  */
 trait FetchesUrls
 {
-    use ResolvesHosts;
-
-    private ?HandlerStack $fetchHandler = null;
-
-    /** @var array<int, string>|null */
-    private ?array $fetchHosts = null;
+    private Network $fetchNetwork;
 
     private const FETCH_STALL = 30;
     private const FETCH_TIMEOUT = 600;
@@ -41,47 +36,48 @@ trait FetchesUrls
 
 
     /**
-     * Restricts remote fetches to HTTPS URLs on the given hosts and their subdomains.
-     *
-     * @param array<int, string> $hosts Allowed host names
-     * @return self File instance
-     */
-    public function restrictHosts( array $hosts ) : self
-    {
-        $this->fetchHosts = array_values( array_unique( array_filter( array_map(
-            fn( string $host ) => strtolower( trim( $host, ". \t\n\r\0\x0B" ) ),
-            $hosts
-        ) ) ) );
-
-        return $this;
-    }
-
-
-    /**
      * Sets the Guzzle handler stack used for URL fetches.
      *
      * @param HandlerStack $stack Guzzle handler stack
-     * @return self File instance
+     * @return static File instance
      */
-    public function withClientHandler( HandlerStack $stack ) : self
+    public function withClientHandler( HandlerStack $stack ) : static
     {
-        $this->fetchHandler = $stack;
+        $this->fetchNetwork = $this->network()->withHandler( $stack );
         return $this;
     }
 
 
     /**
-     * Fetches bytes from an http(s) URL.
+     * Allows downloads from hosts resolving to internal IP addresses and through proxies.
      *
-     * @param string $url Remote URL to fetch
-     * @param int $limit Positive maximum to enforce, or negative sample size to return without an error
-     * @param bool $strict TRUE to resolve and reject private IPs, FALSE to allow internal IPs too
-     * @return string Fetched content
-     * @throws PrismaException If the URL is invalid, unreachable or exceeds the limit
+     * Only do that for URLs untrusted users can't choose, e.g. files on the own network.
+     *
+     * @param bool $allow TRUE to allow internal hosts and proxies, FALSE to allow public hosts only
+     * @return static File instance
      */
-    protected function fetch( string $url, int $limit, bool $strict ) : string
+    public function withInternalHosts( bool $allow = true ) : static
     {
-        return (string) $this->fetchBody( $url, $limit, $strict );
+        $this->fetchNetwork = $this->network()->withInternalHosts( $allow );
+        return $this;
+    }
+
+
+    /**
+     * Uses the given network access for URL fetches.
+     *
+     * File responses of providers pass the network of the provider without the middleware of its
+     * handler stack, so result files are fetched with the handler and host restrictions of the
+     * provider. The DNS cache is shared too, so each host is looked up once for the provider and
+     * all of its files.
+     *
+     * @param Network $network Network access, e.g. of a provider
+     * @return static File instance
+     */
+    public function withNetwork( Network $network ) : static
+    {
+        $this->fetchNetwork = $network;
+        return $this;
     }
 
 
@@ -92,10 +88,18 @@ trait FetchesUrls
      */
     protected function fetchClient() : Client
     {
-        // The DNS pin and the low speed limit are curl options, which StreamHandler would ignore
-        $handler = $this->fetchHandler ?? HandlerStack::create( new CurlHandler );
+        return new Client( ['handler' => $this->network()->handler()] );
+    }
 
-        return new Client( ['handler' => $handler] );
+
+    /**
+     * Returns the network access used for URL fetches.
+     *
+     * @return Network Network access
+     */
+    protected function network() : Network
+    {
+        return $this->fetchNetwork ??= new Network();
     }
 
 
@@ -108,13 +112,12 @@ trait FetchesUrls
      *
      * @param string $url Remote URL to fetch
      * @param int $limit Maximum number of bytes
-     * @param bool $strict TRUE to resolve and reject private IPs, FALSE to allow internal IPs too
      * @return resource Readable stream positioned at the start of the content
      * @throws PrismaException If the URL is invalid, unreachable, empty or exceeds the limit
      */
-    protected function fetchStream( string $url, int $limit, bool $strict ) : mixed
+    protected function fetchStream( string $url, int $limit ) : mixed
     {
-        $body = $this->fetchBody( $url, $limit, $strict );
+        $body = $this->fetchBody( $url, $limit );
 
         if( !$body->getSize() || !( $stream = $body->detach() ) ) {
             throw new PrismaException( "Unable to fetch URL from {$url} or it is empty" );
@@ -126,27 +129,18 @@ trait FetchesUrls
 
 
     /**
-     * Returns Guzzle options that resolve and pin the connection for the given URL.
-     * Redirects are disabled so fetch() can validate and pin every target separately
-     * and stalled or overlong transfers are aborted.
+     * Returns safe Guzzle options for the given URL.
+     * Redirects are disabled because Guzzle would write the bodies of redirect responses into
+     * the same sink, so fetchBody() follows them itself. Stalled or overlong transfers are aborted.
      *
      * @param string $url The http(s) URL that will be fetched
-     * @param bool $strict TRUE to reject non-public addresses
      * @return array<string, mixed> Safe Guzzle request options
-     * @throws PrismaException If the URL is invalid or the host does not resolve
+     * @throws PrismaException If the URL is too long or contains control characters or spaces
      */
-    protected function safeHttp( string $url, bool $strict ) : array
+    protected function safeHttp( string $url ) : array
     {
-        if( !$this->validUrl( $url ) ) {
+        if( strlen( $url ) > 2048 || preg_match( '/[\x00-\x20\x7F]/', $url ) ) {
             throw new PrismaException( sprintf( 'Invalid or unsafe URL: %s', $url ) );
-        }
-
-        $parsed = (array) parse_url( $url );
-        $host = (string) ( $parsed['host'] ?? '' );
-        $port = $parsed['port'] ?? ( ( $parsed['scheme'] ?? '' ) === 'https' ? 443 : 80 );
-
-        if( !( $ip = $this->resolve( $host, $strict ) ) ) {
-            throw new PrismaException( sprintf( 'Host "%s" does not resolve to an allowed address', $host ) );
         }
 
         return [
@@ -156,7 +150,6 @@ trait FetchesUrls
             'timeout' => self::FETCH_TIMEOUT,
             'allow_redirects' => false,
             'curl' => [
-                CURLOPT_RESOLVE => [$host . ':' . $port . ':' . $ip],
                 // curl has no read timeout, abort transfers slower than 1 KiB/s instead
                 CURLOPT_LOW_SPEED_LIMIT => 1024,
                 CURLOPT_LOW_SPEED_TIME => self::FETCH_STALL,
@@ -166,73 +159,23 @@ trait FetchesUrls
 
 
     /**
-     * Checks whether the URL is a syntactically valid http(s) URL.
-     *
-     * @param string $url URL to check
-     * @return bool TRUE if the URL is acceptable, FALSE otherwise
-     */
-    protected function validUrl( string $url ) : bool
-    {
-        if( strlen( $url ) > 2048 || preg_match( '/[\x00-\x20\x7F]/', $url ) || str_starts_with( $url, '//' ) ) {
-            return false;
-        }
-
-        if( !is_array( $parsed = parse_url( $url ) ) ) {
-            return false;
-        }
-
-        if( !empty( $parsed['path'] ) && str_contains( (string) $parsed['path'], '..' ) ) {
-            return false;
-        }
-
-        if( empty( $parsed['scheme'] ) || !in_array( $parsed['scheme'], ['http', 'https'], true ) ) {
-            return false;
-        }
-
-        if( empty( $parsed['host'] ) || !filter_var( $parsed['host'], FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME ) ) {
-            return false;
-        }
-
-        if( $this->fetchHosts === null ) {
-            return true;
-        }
-
-        if( $parsed['scheme'] !== 'https' ) {
-            return false;
-        }
-
-        $host = strtolower( (string) $parsed['host'] );
-
-        foreach( $this->fetchHosts as $allowed )
-        {
-            if( $host === $allowed || str_ends_with( $host, '.' . $allowed ) ) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
-    /**
-     * Downloads a URL into a temporary stream and validates every redirect before following it.
+     * Downloads a URL into a temporary stream and follows a limited number of redirects.
      *
      * @param string $url HTTP(S) URL to fetch
      * @param int $limit Positive maximum to enforce, or negative sample size to return without an error
-     * @param bool $strict TRUE to reject non-public IP addresses
      * @return StreamInterface Downloaded content
      * @throws ForbiddenException If the server denies access, e.g. for an expired signed URL
      * @throws NotFoundException If the file doesn't exist (anymore)
-     * @throws PrismaException If the URL or redirect is unsafe, the request fails or the file exceeds the limit
+     * @throws PrismaException If the URL or redirect is invalid, the request fails or the file exceeds the limit
      */
-    private function fetchBody( string $url, int $limit, bool $strict ) : StreamInterface
+    protected function fetchBody( string $url, int $limit ) : StreamInterface
     {
         $client = $this->fetchClient();
 
         for( $redirects = 0; ; $redirects++ )
         {
             $body = Utils::streamFor();
-            $response = $this->fetchRequest( $client, $url, $limit, $strict, $body );
+            $response = $this->fetchRequest( $client, $url, $limit, $body );
 
             if( !in_array( $response->getStatusCode(), [301, 302, 303, 307, 308], true ) )
             {
@@ -299,28 +242,33 @@ trait FetchesUrls
      *
      * The sink stops accepting data after one byte more than the limit or at the sample size,
      * which makes curl abort the transfer, so large files are never downloaded completely.
+     * Samples are requested as range, so servers supporting ranges complete the transfer and
+     * the connection can be reused instead of being closed by the abort.
      *
      * @param Client $client Guzzle client
      * @param string $url HTTP(S) URL to request
      * @param int $limit Positive maximum to enforce, or negative sample size to return without an error
-     * @param bool $strict TRUE to reject non-public IP addresses
      * @param StreamInterface $body Stream the response body is written to
      * @return ResponseInterface Response containing the status and headers
      * @throws ForbiddenException If the server denies access, e.g. for an expired signed URL
      * @throws NotFoundException If the file doesn't exist (anymore)
      * @throws PrismaException If the URL is unsafe, the request fails or the file exceeds the limit
      */
-    private function fetchRequest( Client $client, string $url, int $limit, bool $strict, StreamInterface $body ) : ResponseInterface
+    private function fetchRequest( Client $client, string $url, int $limit, StreamInterface $body ) : ResponseInterface
     {
         $head = null;
         $maximum = $limit < 0 ? -$limit : min( $limit, PHP_INT_MAX - 1 ) + 1;
 
-        $options = $this->safeHttp( $url, $strict ) + [
+        $options = $this->safeHttp( $url ) + [
             'on_headers' => function( ResponseInterface $response ) use ( &$head, $url, $limit ) : void {
                 $this->fetchHeaders( $head = $response, $url, $limit );
             },
             'sink' => new DroppingStream( $body, $maximum ),
         ];
+
+        if( $limit < 0 ) {
+            $options['headers']['Range'] = 'bytes=0-' . ( $maximum - 1 );
+        }
 
         try
         {

@@ -50,7 +50,7 @@ class Alibaba extends Base implements Speak
 
         $used = $usage['input_tokens'] ?? $usage['characters'] ?? 0;
 
-        return FileResponse::fromUrl( $url, 'audio/mpeg' )
+        return $this->fileResponse()->addUrl( $url, mimeType: 'audio/mpeg' )
             ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
             ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
     }

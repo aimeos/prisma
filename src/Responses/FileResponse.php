@@ -7,7 +7,9 @@ use Aimeos\Prisma\Concerns\HasDescription;
 use Aimeos\Prisma\Concerns\HasMeta;
 use Aimeos\Prisma\Concerns\HasRateLimit;
 use Aimeos\Prisma\Concerns\HasUsage;
+use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Http\Network;
 
 
 /**
@@ -22,6 +24,9 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
 
     /** @var array<string|int, File> */
     protected array $list = [];
+
+    private ?int $maxSize = null;
+    private ?Network $network = null;
 
 
     /**
@@ -40,6 +45,36 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
         }
 
         return $this;
+    }
+
+
+    /**
+     * Adds a lazy file for a URL returned by the API of a provider.
+     *
+     * The file is downloaded with the network set by withNetwork(), so it uses the handler and
+     * host restrictions of the provider but neither its client options nor the middleware of
+     * its handler stack, which may add credentials.
+     *
+     * @param string $url File URL returned by the API
+     * @param class-string<File> $class File class, e.g. Image::class or Video::class
+     * @param string|null $mimeType Content type of the file if known
+     * @param int|string|null $key Optional key to associate with the file
+     * @return static FileResponse instance
+     * @throws PrismaException If no network has been set
+     */
+    public function addUrl( string $url, string $class = File::class, ?string $mimeType = null, int|string|null $key = null ) : static
+    {
+        if( !$this->network ) {
+            throw new PrismaException( 'Call withNetwork() before adding URL files' );
+        }
+
+        $file = $class::fromUrl( $url, $mimeType )->withNetwork( $this->network );
+
+        if( $this->maxSize !== null ) {
+            $file->maxSize( $this->maxSize );
+        }
+
+        return $this->add( $file, $key );
     }
 
 
@@ -218,6 +253,9 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
     /**
      * Create a file instance from a URL.
      *
+     * The file is downloaded from public hosts only and without the handler of a provider.
+     * Providers use addUrl() of a response with their network instead.
+     *
      * @param string $url File URL
      * @param string|null $mimeType Optional mime type
      * @return static FileResponse instance
@@ -297,6 +335,44 @@ class FileResponse implements \IteratorAggregate, \JsonSerializable
     public function url() : ?string
     {
         return $this->first()?->url();
+    }
+
+
+    /**
+     * Sets the maximum number of bytes downloaded for the URL files of the response.
+     *
+     * Applies to URL files already added and to those added later by addUrl().
+     *
+     * @param int $bytes Maximum size in bytes or -1 for no limit
+     * @return static FileResponse instance
+     */
+    public function withMaxSize( int $bytes ) : static
+    {
+        $this->maxSize = $bytes;
+
+        foreach( $this->list as $file )
+        {
+            if( $file->url() !== null ) {
+                $file->maxSize( $bytes );
+            }
+        }
+
+        return $this;
+    }
+
+
+    /**
+     * Sets the network access files added by addUrl() are downloaded with.
+     *
+     * The middleware of its handler stack is removed, so it can't add credentials of the provider.
+     *
+     * @param Network $network Network access of the provider
+     * @return static FileResponse instance
+     */
+    public function withNetwork( Network $network ) : static
+    {
+        $this->network = $network->withoutMiddleware();
+        return $this;
     }
 
 

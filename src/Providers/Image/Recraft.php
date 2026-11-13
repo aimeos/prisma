@@ -187,7 +187,7 @@ class Recraft extends Base
             throw new PrismaException( 'No image data found in Recraft response' );
         }
 
-        $files = [];
+        $files = $this->fileResponse();
 
         foreach( $entries as $entry )
         {
@@ -203,18 +203,17 @@ class Recraft extends Base
                     throw new PrismaException( 'Invalid base64 image in Recraft response' );
                 }
 
-                $files[] = Image::fromBinary( $binary );
+                $files->add( Image::fromBinary( $binary ) );
             }
             elseif( is_string( $entry['url'] ?? null ) && $entry['url'] !== '' ) {
-                $files[] = Image::fromUrl( $entry['url'] );
+                $files->addUrl( $entry['url'], Image::class );
             }
             else {
                 throw new PrismaException( 'No image data found in Recraft response' );
             }
         }
 
-        return FileResponse::fromFiles( $files )
-            ->withMeta( $result )
+        return $files->withMeta( $result )
             ->withUsage( is_numeric( $result['credits'] ?? null ) ? (float) $result['credits'] : null );
     }
 }

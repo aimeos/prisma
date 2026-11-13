@@ -4,11 +4,11 @@ namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Revoice;
 use Aimeos\Prisma\Contracts\Audio\Speak;
+use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
 use Aimeos\Prisma\Files\Audio;
 use Aimeos\Prisma\Providers\Base;
 use Aimeos\Prisma\Responses\FileResponse;
-use Psr\Http\Message\ResponseInterface;
 
 
 class Murf extends Base implements Revoice, Speak
@@ -30,15 +30,18 @@ class Murf extends Base implements Revoice, Speak
 
     public function revoice( Audio $audio, string $voice, array $options = [] ) : FileResponse
     {
-        $allowed = $this->allowed( $options, ['channel_type', 'format', 'pitch', 'rate', 'sample_rate'] );
+        $allowed = $this->allowed( $options, ['channel_type', 'format', 'pitch', 'rate', 'sample_rate'] ) + ['format' => 'mp3'];
 
-        $request = $this->payload( ['voice_id' => $voice] + $allowed + ['format' => 'mp3'], ['file' => $audio] );
+        $request = $this->payload( ['voice_id' => $voice] + $allowed, ['file' => $audio] );
         $response = $this->client()->post( '/v1/voice-changer/convert', ['multipart' => $request] );
 
         $this->validate( $response );
 
-        $url = $this->fromJson( $response )['audio_file'] ?? '';
-        return FileResponse::fromUrl( is_string( $url ) ? $url : '' );
+        if( !is_string( $url = $this->fromJson( $response )['audio_file'] ?? null ) || $url === '' ) {
+            throw new FailedException( 'No audio in Murf response' );
+        }
+
+        return $this->fileResponse()->addUrl( $url, mimeType: $this->formatMime( $allowed['format'] ) );
     }
 
 

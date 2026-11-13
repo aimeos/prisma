@@ -90,7 +90,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 5, $this->pollTimeout, $jobId );
     }
 
 
@@ -327,7 +327,7 @@ class Alibaba extends Base implements Cancel, Describe, Extend, Imagine, Repaint
                 $this->videoFailed();
             }
 
-            $result->add( Video::fromUrl( $url, 'video/mp4' ) );
+            $result->addUrl( $url, Video::class, 'video/mp4' );
             return true;
         };
     }

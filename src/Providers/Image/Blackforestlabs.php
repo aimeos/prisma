@@ -47,7 +47,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
             default => array_keys( $options )
         };
 
-        $allowed = $this->allowed( $options, $names );
+        $allowed = $this->allowed( $options, $names ) + ['output_format' => 'png'];
         $files = [];
 
         if( $file = array_shift( $images ) )
@@ -63,10 +63,10 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
             }
         }
 
-        $request = ['prompt' => $prompt] + $allowed + ['output_format' => 'png'] + $files;
+        $request = ['prompt' => $prompt] + $allowed + $files;
         $response = $this->client()->post( 'v1/' . $model, ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $this->formatMime( $allowed['output_format'] ) );
     }
 
 
@@ -81,7 +81,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
         $request = ['image' => $image->base64(), 'mask' => $mask->base64(), 'prompt' => $prompt] + $allowed;
         $response = $this->client()->post( 'v1/' . $model, ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $this->formatMime( $allowed['output_format'] ) );
     }
 
 
@@ -108,7 +108,7 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $jobId ), 2, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 2, jobId: $jobId );
     }
 
 
@@ -125,22 +125,29 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
         $allowed = $this->allowed( $options, [
             'guidance', 'output_format', 'prompt', 'prompt_upsampling', 'safety_tolerance',
             'seed', 'steps', 'webhook_url', 'webhook_secret'
-        ] );
+        ] ) + ['output_format' => 'png'];
 
-        $request = $data + $allowed + ['output_format' => 'png'];
+        $request = $data + $allowed;
         $response = $this->client()->post( 'v1/' . $model, ['json' => $request] );
 
-        return $this->toFileResponse( $response );
+        return $this->toFileResponse( $response, $this->formatMime( $allowed['output_format'] ) );
     }
 
 
-    protected function poll( string $url ) : \Closure
+    /**
+     * Returns a closure that polls a job and adds its result image.
+     *
+     * @param string $url Polling URL of the job
+     * @param string|null $mimeType Mime type of the image if known from the request, NULL for resumed jobs
+     * @return \Closure Polling closure populating the file response
+     */
+    protected function poll( string $url, ?string $mimeType = null ) : \Closure
     {
         // Never send the API key to hosts outside of Black Forest Labs, e.g. regional ones like api.eu1.bfl.ai,
         // or to other endpoints than the result endpoint
         $uri = $this->jobUrl( $url, self::RESULT, '#^api(\.[a-z0-9-]+)?\.bfl\.ai$#D', 'Invalid Black Forest Labs polling URL' );
 
-        return function( FileResponse $fr ) use ( $uri ) : bool {
+        return function( FileResponse $fr ) use ( $uri, $mimeType ) : bool {
 
             $response = $this->client()->get( $uri, ['allow_redirects' => false] );
             $this->validate( $response );
@@ -173,14 +180,22 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
                 throw new FailedException( 'No image data found in response' );
             }
 
-            $fr->add( Image::fromUrl( $sample ) );
+            $fr->addUrl( $sample, Image::class, $mimeType );
 
             return true;
         };
     }
 
 
-    protected function toFileResponse( ResponseInterface $response ) : FileResponse
+    /**
+     * Returns the asynchronous response of a queued job.
+     *
+     * @param ResponseInterface $response Response of the request queuing the job
+     * @param string|null $mimeType Mime type of the image if known from the request
+     * @return FileResponse Asynchronous image response
+     * @throws FailedException If the response contains no polling URL
+     */
+    protected function toFileResponse( ResponseInterface $response, ?string $mimeType = null ) : FileResponse
     {
         $this->validate( $response );
         $data = $this->fromJson( $response );
@@ -189,9 +204,10 @@ class Blackforestlabs extends Base implements Imagine, Inpaint, Repaint, Resume,
             throw new FailedException( 'No polling URL in response' );
         }
 
+        $url = $data['polling_url'];
         $cost = $data['cost'] ?? 0;
 
-        return $this->resume( $data['polling_url'] )
+        return $this->asyncResponse( $this->poll( $url, $mimeType ), 2, jobId: $url )
             ->withUsage( is_numeric( $cost ) ? (float) $cost : 0 );
     }
 }

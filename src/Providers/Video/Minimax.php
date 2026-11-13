@@ -63,7 +63,7 @@ class Minimax extends Base implements Imagine, Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -103,7 +103,7 @@ class Minimax extends Base implements Imagine, Resume
                 $this->videoFailed();
             }
 
-            $result->add( $this->video( $fileId ) );
+            $result->addUrl( $this->url( $fileId ), Video::class, 'video/mp4' );
             return true;
         };
     }
@@ -212,12 +212,12 @@ class Minimax extends Base implements Imagine, Resume
 
 
     /**
-     * Retrieves a completed MiniMax video file.
+     * Retrieves the download URL of a completed MiniMax video file.
      *
      * @param string|int $id File identifier
-     * @return Video Generated video
+     * @return string Download URL of the generated video
      */
-    protected function video( string|int $id ) : Video
+    protected function url( string|int $id ) : string
     {
         $response = $this->client()->get( 'v1/files/retrieve?file_id=' . rawurlencode( (string) $id ) );
         $this->validate( $response );
@@ -234,6 +234,6 @@ class Minimax extends Base implements Imagine, Resume
             $this->videoFailed();
         }
 
-        return Video::fromUrl( $url, 'video/mp4' );
+        return $url;
     }
 }

@@ -8,6 +8,13 @@ namespace Aimeos\Prisma\Concerns;
  */
 trait HasHttpStream
 {
+    /** Maximum seconds a stream is read, so a slowly trickling response can't block the process indefinitely */
+    private int $streamMaxDuration = 600;
+
+    /** Maximum seconds without data from a stream, so a stalled stream fails fast */
+    private int $streamReadTimeout = 120;
+
+
     /**
      * Opens a streaming POST request and returns its already-validated body.
      *
@@ -21,11 +28,11 @@ trait HasHttpStream
      */
     protected function openStream( string $endpoint, array $params, ?\Aimeos\Prisma\Values\RateLimit &$rateLimit = null ) : \Psr\Http\Message\StreamInterface
     {
-        $response = $this->streamClient()->post( $endpoint, [
+        $response = $this->client()->post( $endpoint, [
             'json' => $params,
             'stream' => true,
-            'timeout' => 600,       // bound the total stream to 10 min so a slow-drip stream cannot pin the process indefinitely
-            'read_timeout' => 120,  // and fail fast if no data arrives for 120s within that window
+            'timeout' => $this->streamMaxDuration, // connecting and waiting for the headers, readLines() bounds the whole stream
+            'read_timeout' => $this->streamReadTimeout,
         ] );
 
         $this->validate( $response );
@@ -146,10 +153,12 @@ trait HasHttpStream
      *
      * @param \Psr\Http\Message\StreamInterface $body Response body stream
      * @return \Generator<int, string> Complete lines
-     * @throws \Aimeos\Prisma\Exceptions\PrismaException When the stream stalls before end of data
+     * @throws \Aimeos\Prisma\Exceptions\PrismaException When the stream stalls before end of data or takes too long
      */
     private function readLines( \Psr\Http\Message\StreamInterface $body ) : \Generator
     {
+        // the read timeout only bounds each read, so a trickling stream is bounded by its duration
+        $deadline = microtime( true ) + $this->streamMaxDuration;
         $buffer = '';
         $start = 0; // first byte not yet flushed as a line
         $scan = 0;  // next byte to search for a newline
@@ -161,6 +170,10 @@ trait HasHttpStream
 
             if( $chunk === '' ) {
                 break; // end of stream or a stalled read - distinguished after the loop
+            }
+
+            if( microtime( true ) > $deadline ) {
+                throw new \Aimeos\Prisma\Exceptions\PrismaException( 'Stream exceeds the maximum duration of ' . $this->streamMaxDuration . ' seconds' );
             }
 
             // bound the whole stream so a runaway or hostile response cannot grow unboundedly

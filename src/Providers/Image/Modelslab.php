@@ -72,7 +72,7 @@ class Modelslab extends Base implements Imagine, Resume
             throw new PrismaException( is_string( $data['message'] ?? null ) ? $data['message'] : 'ModelsLab request failed' );
         }
 
-        return FileResponse::fromFiles( $this->images( $data['output'] ?? [] ) )->withMeta( array_diff_key( $data, ['output' => null] ) );
+        return $this->images( $data['output'] ?? [], $this->fileResponse() )->withMeta( array_diff_key( $data, ['output' => null] ) );
     }
 
 
@@ -85,7 +85,7 @@ class Modelslab extends Base implements Imagine, Resume
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $jobId ), $this->eta( [] ), jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), $this->eta( [] ), jobId: $jobId );
     }
 
 
@@ -93,22 +93,20 @@ class Modelslab extends Base implements Imagine, Resume
      * Builds Image instances from the ModelsLab output URLs.
      *
      * @param mixed $output Output entry from the response (list of URLs)
-     * @return array<int, Image> Image files
+     * @param FileResponse $files File response to add the images to
+     * @return FileResponse File response with the images
      * @throws FailedException If the output contains no image URLs
      */
-    protected function images( mixed $output ) : array
+    protected function images( mixed $output, FileResponse $files ) : FileResponse
     {
-        $files = [];
+        $urls = array_filter( (array) $output, fn( $url ) => is_string( $url ) && $url !== '' );
 
-        foreach( (array) $output as $url )
-        {
-            if( is_string( $url ) && $url !== '' ) {
-                $files[] = Image::fromUrl( $url );
-            }
+        if( empty( $urls ) ) {
+            throw new FailedException( 'No image data found in response' );
         }
 
-        if( empty( $files ) ) {
-            throw new FailedException( 'No image data found in response' );
+        foreach( $urls as $url ) {
+            $files->addUrl( $url, Image::class );
         }
 
         return $files;
@@ -158,9 +156,7 @@ class Modelslab extends Base implements Imagine, Resume
                 throw new PrismaException( is_string( $data['message'] ?? null ) ? $data['message'] : 'Unknown ModelsLab status' );
             }
 
-            foreach( $this->images( $data['output'] ?? [] ) as $image ) {
-                $fr->add( $image );
-            }
+            $this->images( $data['output'] ?? [], $fr );
 
             return true;
         };
@@ -189,7 +185,7 @@ class Modelslab extends Base implements Imagine, Resume
         }
 
         // ModelsLab estimates how long the generation takes, so poll not before that
-        return FileResponse::fromAsync( $this->poll( $url ), $this->eta( $data ), jobId: $url )
+        return $this->asyncResponse( $this->poll( $url ), $this->eta( $data ), jobId: $url )
             ->withMeta( array_diff_key( $data, ['output' => null] ) );
     }
 

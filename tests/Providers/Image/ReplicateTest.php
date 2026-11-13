@@ -4,9 +4,7 @@ namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Psr7\Response;
+use Aimeos\Prisma\Files\File;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -41,6 +39,18 @@ class ReplicateTest extends TestCase
     }
 
 
+    public function testImagineOutputFormat() : void
+    {
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['id' => 'p1', 'status' => 'succeeded', 'output' => ['https://replicate.delivery/a.webp']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'a fox', [], ['output_format' => 'webp'] );
+
+        // the requested format is the mime type, so the image isn't fetched to detect it
+        $this->assertSame( 'image/webp', $response->first()?->mimeType() );
+    }
+
+
     public function testImagineFailed() : void
     {
         $this->expectException( PrismaException::class );
@@ -68,12 +78,13 @@ class ReplicateTest extends TestCase
             ->response( ['id' => 'p1', 'status' => 'processing', 'urls' => ['get' => 'https://api.replicate.com/v1/predictions/p1']] );
         $this->response( ['status' => 'succeeded', 'output' => ['https://replicate.delivery/b.png']] );
 
-        $response = $provider->ensure( 'imagine' )->imagine( 'a cat' );
+        $response = $provider->ensure( 'imagine' )->imagine( 'a cat', [], ['output_format' => 'png'] );
 
         // an unfinished prediction is resolved by polling the URL of the provider
         $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', $response->jobId() );
         $this->assertTrue( $response->ready() );
         $this->assertEquals( 'https://replicate.delivery/b.png', $response->first()?->url() );
+        $this->assertSame( 'image/png', $response->first()?->mimeType() );
         $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', (string) $this->requests()[1]->getUri() );
     }
 
@@ -108,23 +119,7 @@ class ReplicateTest extends TestCase
     }
 
 
-    public function testGeneratedImageRejectsNonHttpsDownload() : void
-    {
-        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
-            ->response( ['status' => 'succeeded', 'output' => 'http://replicate.delivery/image.png'] )
-            ->ensure( 'imagine' )
-            ->imagine( 'x' );
-
-        $this->assertEquals( 'http://replicate.delivery/image.png', $response->first()?->url() );
-
-        $this->expectException( PrismaException::class );
-        $this->expectExceptionMessage( 'Invalid or unsafe URL' );
-
-        $response->first()?->binary();
-    }
-
-
-    public function testGeneratedImageRejectsHostOutsideAllowlist() : void
+    public function testGeneratedImageRejectsPrivateIp() : void
     {
         $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
             ->response( ['status' => 'succeeded', 'output' => 'https://169.254.169.254/latest/meta-data'] )
@@ -132,46 +127,50 @@ class ReplicateTest extends TestCase
             ->imagine( 'x' );
 
         $this->expectException( PrismaException::class );
-        $this->expectExceptionMessage( 'Invalid or unsafe URL' );
+        $this->expectExceptionMessage( 'does not resolve to a public address' );
 
-        $response->first()?->binary();
+        // the mocked provider allows internal hosts, which its files inherit
+        $response->first()?->withInternalHosts( false )->binary();
     }
 
 
     public function testGeneratedImageRejectsResolvablePrivateHost() : void
     {
-        $response = $this->prisma( 'image', 'replicate', [
-            'api_key' => 'test',
-            'download_hosts' => ['localhost'],
-        ] )
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
             ->response( ['status' => 'succeeded', 'output' => 'https://localhost/image.png'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
 
-        $image = $response->first();
-        $image?->withClientHandler( HandlerStack::create( new MockHandler( [new Response( 200, [], 'image' )] ) ) );
-
         $this->expectException( PrismaException::class );
-        $this->expectExceptionMessage( 'does not resolve to an allowed address' );
+        $this->expectExceptionMessage( 'does not resolve to a public address' );
 
-        $image?->binary();
+        $response->first()?->withInternalHosts( false )->binary();
     }
 
 
-    public function testGeneratedImageAllowsConfiguredPublicHost() : void
+    public function testGeneratedImageUsesProviderNetwork() : void
     {
-        $response = $this->prisma( 'image', 'replicate', [
-            'api_key' => 'test',
-            'download_hosts' => ['8.8.8.8'],
-        ] )
-            ->response( ['status' => 'succeeded', 'output' => 'https://8.8.8.8/image.png'] )
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://localhost/image.png'] )
             ->ensure( 'imagine' )
             ->imagine( 'x' );
 
-        $image = $response->first();
-        $image?->withClientHandler( HandlerStack::create( new MockHandler( [new Response( 200, [], 'image' )] ) ) );
+        // downloaded by the mocked handler of the provider, which allows internal hosts
+        $this->response( 'image' );
 
-        $this->assertEquals( 'image', $image?->binary() );
+        $this->assertEquals( 'image', $response->first()?->binary() );
+        $this->assertSame( [], $this->requests()[1]->getHeader( 'Authorization' ) );
+    }
+
+
+    public function testGeneratedImageSizeLimit() : void
+    {
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://replicate.delivery/a.png'] )
+            ->ensure( 'imagine' )
+            ->imagine( 'x' );
+
+        $this->assertSame( 25 * 1024 * 1024, ( new \ReflectionProperty( File::class, 'maxBytes' ) )->getValue( $response->first() ) );
     }
 
 

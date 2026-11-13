@@ -97,7 +97,7 @@ class Ideogram
             throw new PrismaException( 'No image data found in response' );
         }
 
-        return FileResponse::fromFiles( [Image::fromUrl( $url )] )->withMeta( $result );
+        return $this->fileResponse()->addUrl( $url, Image::class )->withMeta( $result );
     }
 
 
@@ -270,7 +270,7 @@ class Ideogram
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 2, $this->pollTimeout, $jobId )
+        return $this->asyncResponse( $this->poll( $jobId ), 2, $this->pollTimeout, $jobId )
             ->withMeta( ['generation_id' => $jobId] );
     }
 
@@ -472,7 +472,7 @@ class Ideogram
      */
     protected function fromResult( array $result ) : FileResponse
     {
-        $files = [];
+        $files = $this->fileResponse();
         $first = [];
 
         $dataItems = $result['data'] ?? [];
@@ -480,19 +480,18 @@ class Ideogram
         foreach( is_array( $dataItems ) ? $dataItems : [] as $item )
         {
             if( is_array( $item ) && is_string( $item['url'] ?? null ) && $item['url'] !== '' ) {
-                $files[] = Image::fromUrl( $item['url'] );
+                $files->addUrl( $item['url'], Image::class );
                 $first = $first ?: $item;
             }
         }
 
-        if( empty( $files ) ) {
+        if( $files->empty() ) {
             throw new FailedException( 'No image data found in response' );
         }
 
         $prompt = $first['prompt'] ?? null;
 
-        return FileResponse::fromFiles( $files )
-            ->withDescription( is_string( $prompt ) ? $prompt : null )
+        return $files->withDescription( is_string( $prompt ) ? $prompt : null )
             ->withMeta( $first + ['created' => $result['created'] ?? null] );
     }
 

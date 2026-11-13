@@ -21,13 +21,25 @@ class MurfTest extends TestCase
                 "remaining_character_count": 992150
             }' )
             ->ensure( 'revoice' )
-            ->revoice( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en-US-terrell' );
+            ->revoice( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en-US-terrell', ['format' => 'WAV'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.murf.ai/v1/voice-changer/convert', (string) $request->getUri() );
         } );
 
         $this->assertEquals( 'https://murf.ai/link/to/audio/file', $response->url() );
+        $this->assertEquals( 'audio/wav', $response->mimeType() );
+    }
+
+
+    public function testRevoiceNoUrl() : void
+    {
+        $this->expectException( \Aimeos\Prisma\Exceptions\FailedException::class );
+
+        $this->prisma( 'audio', 'murf', ['api_key' => 'test'] )
+            ->response( '{"audio_length_in_seconds": 8.75}' )
+            ->ensure( 'revoice' )
+            ->revoice( Audio::fromBinary( 'MP3', 'audio/mpeg' ), 'en-US-terrell' );
     }
 
 

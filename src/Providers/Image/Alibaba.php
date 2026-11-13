@@ -123,7 +123,7 @@ class Alibaba extends Base implements Imagine, Vectorize
 
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
-        $files = [];
+        $files = $this->fileResponse();
 
         /** @var array<string, mixed> $output */
         $output = $data['output'] ?? [];
@@ -137,21 +137,20 @@ class Alibaba extends Base implements Imagine, Vectorize
             /** @var array<int, array<string, mixed>> $content */
             $content = $message['content'] ?? [];
 
-            $files = array_merge( $files, array_filter(
-                array_map( function( $part ) {
-                    /** @var string $image */
-                    $image = $part['image'] ?? '';
-                    return !empty( $image ) ? Image::fromUrl( $image ) : null;
-                }, $content )
-            ) );
+            foreach( $content as $part )
+            {
+                if( is_string( $part['image'] ?? null ) && $part['image'] !== '' ) {
+                    $files->addUrl( $part['image'], Image::class );
+                }
+            }
         }
 
-        if( empty( $files ) ) {
+        if( $files->empty() ) {
             throw new PrismaException( 'No image data found in response' );
         }
 
         unset( $data['output'] );
 
-        return FileResponse::fromFiles( $files )->withMeta( $data );
+        return $files->withMeta( $data );
     }
 }

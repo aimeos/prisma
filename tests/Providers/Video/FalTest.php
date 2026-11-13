@@ -371,17 +371,18 @@ class FalTest extends TestCase
     }
 
 
-    public function testForeignDownloadHost() : void
+    public function testPrivateDownloadHost() : void
     {
         $this->prisma( 'video', 'fal', ['api_key' => 'test'] )
             ->response( ['status' => 'COMPLETED'] );
-        $this->response( ['video' => ['url' => 'https://attacker.example/v.mp4']] );
+        $this->response( ['video' => ['url' => 'https://169.254.169.254/v.mp4']] );
 
         $response = $this->provider()->resume( self::URL );
 
         $this->expectException( PrismaException::class );
-        $this->expectExceptionMessage( 'Invalid or unsafe URL' );
-        $response->first()?->binary();
+        $this->expectExceptionMessage( 'does not resolve to a public address' );
+        // the mocked provider allows internal hosts, which its files inherit
+        $response->first()?->withInternalHosts( false )->binary();
     }
 
 

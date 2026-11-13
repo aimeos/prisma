@@ -218,7 +218,7 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $jobId ), 2, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 2, jobId: $jobId );
     }
 
 
@@ -352,8 +352,6 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
                 throw new FailedException( 'No images in Adobe response' );
             }
 
-            $files = [];
-
             foreach( $outputs as $output )
             {
                 $image = $output['image']['url'] ?? null;
@@ -362,11 +360,7 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
                     throw new FailedException( 'Invalid image in Adobe response' );
                 }
 
-                $files[] = Image::fromUrl( $image );
-            }
-
-            foreach( $files as $file ) {
-                $result->add( $file );
+                $result->addUrl( $image, Image::class );
             }
 
             $result->withDescription( is_string( $data['result']['altText'] ?? null ) ? $data['result']['altText'] : null );
@@ -394,7 +388,7 @@ class Adobe extends Base implements Background, Cancel, Imagine, Inpaint, Reloca
             throw new FailedException( 'No status URL in response' );
         }
 
-        return FileResponse::fromAsync( $this->poll( $url, $job ), 2, jobId: $url )
+        return $this->asyncResponse( $this->poll( $url, $job ), 2, jobId: $url )
             ->withMeta( $job )->withRateLimit( $this->getRateLimit( $response ) );
     }
 }
