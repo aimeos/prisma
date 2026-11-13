@@ -385,13 +385,10 @@ guessed from the content when accessed. URL-backed files fetch the first 64 KiB 
 `fromStoragePath()` requires Laravel's storage facade. `fromUrl()` also accepts
 `bool $strict = true` as its third argument.
 
-For URLs of results returned by the API, create the files with `urlFile()` of the
-provider instead, so they are downloaded with the handler and `withInternalHosts()`
-setting of the provider. Client options like the API key are not used for downloads:
-
-```php
-$file = $this->urlFile( $url, Image::class, 'image/png' );
-```
+For URLs of results returned by the API, add them to the response with `addUrl()`
+instead, so they are downloaded with the handler and `withInternalHosts()` setting of
+the provider (see [File response](#file-response)). Neither client options like the
+API key nor middleware of the handler stack are used for downloads.
 
 `fromStream()` retains the supplied resource without reading it. Keep the
 resource open while the file object uses it. Conversion is deferred until another
@@ -554,7 +551,7 @@ $response = FileResponse::fromStream( $stream, 'image/png' );
 $response = FileResponse::fromUrl( '...', 'image/png' );
 
 // URLs returned by the API, downloaded like requests of the provider
-$response = FileResponse::fromFiles( [$this->urlFile( '...', Image::class, 'image/png' )] );
+$response = $this->fileResponse()->addUrl( '...', Image::class, 'image/png' );
 
 $stream = $response->stream(); // close the returned resource after use
 ```
@@ -565,6 +562,23 @@ Add multiple files with *add()*:
 use Aimeos\Prisma\Files\File;
 
 $response->add( File::fromBinary( '...', 'image/png' ) );
+```
+
+`fileResponse()` returns an empty FileResponse with the network of the provider and
+`asyncResponse()` an asynchronous one (see [Async operations](#async-operations)). *addUrl()*
+throws an exception for responses without a network, e.g. those created by
+*FileResponse::fromAsync()* directly. *withMaxSize()* limits the downloads of the added URLs:
+
+```php
+return $this->async( $this->poll( $jobId ), 5, jobId: $jobId )->withMaxSize( 64 * 1024 * 1024 );
+```
+
+Pass the mime type to *addUrl()* if it's known, otherwise the beginning of the file is
+downloaded to detect it. *formatMime()* returns the mime type of the output format sent
+in the request, e.g. "png" or "mp3", or NULL for unknown formats:
+
+```php
+$response->addUrl( $url, Image::class, $this->formatMime( $request['output_format'] ) );
 ```
 
 For asynchronous APIs, see the [Async operations](#async-operations) section.
@@ -1037,7 +1051,9 @@ The closure receives the response object and returns `true` when ready or
 `false` to keep polling. `$retry` is the sleep interval in seconds, which queue
 jobs get from the response's `retryAfter()` method to delay the next poll. `$timeout`
 limits the complete polling lifecycle; zero disables the deadline. `$jobId` is the
-provider job ID returned by the response's `jobId()` method.
+provider job ID returned by the response's `jobId()` method. Providers create async
+file responses with `$this->asyncResponse()`, which takes the same arguments and sets the network
+of the provider, so the closure can add the result URLs with *addUrl()*.
 
 If the API estimates how long the job takes, pass that estimate to
 `$response->withRetry( $seconds )` in the polling closure, so waiting queue jobs and
@@ -1068,7 +1084,7 @@ public function imagine( string $prompt, array $images = [], array $options = []
     $this->validate( $response );
     $data = $this->fromJson( $response );
 
-    return FileResponse::fromAsync( $this->download( $data['polling_url'] ?? '' ), 2 );
+    return $this->async( $this->download( $data['polling_url'] ?? '' ), 2 );
 }
 
 
@@ -1084,7 +1100,7 @@ protected function download( string $url ) : \Closure
             return false;
         }
 
-        $fr->add( $this->urlFile( $data['url'] ?? '', Image::class ) );
+        $fr->addUrl( $data['url'] ?? '', Image::class );
         return true;
     };
 }
@@ -1147,7 +1163,7 @@ public function resume( string $jobId ) : FileResponse
         throw new BadRequestException( 'Invalid job ID' );
     }
 
-    return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+    return $this->async( $this->poll( $jobId ), 5, jobId: $jobId );
 }
 ```
 

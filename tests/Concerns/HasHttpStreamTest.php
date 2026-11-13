@@ -22,7 +22,7 @@ class HasHttpStreamTest extends TestCase
     public function testLimitsStreamDuration() : void
     {
         $object = $this->object();
-        ( new \ReflectionProperty( $object, 'maxStreamDuration' ) )->setValue( $object, -1 );
+        ( new \ReflectionProperty( $object, 'streamMaxDuration' ) )->setValue( $object, -1 );
 
         $this->expectException( PrismaException::class );
         $this->expectExceptionMessage( 'maximum duration' );

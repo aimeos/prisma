@@ -5,6 +5,7 @@ namespace Tests\Providers\Image;
 use Aimeos\Prisma\Exceptions\BadRequestException;
 use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Files\Image;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +40,19 @@ class FalTest extends TestCase
         $this->assertSame( ['image_size' => 'square_hd', 'prompt' => 'a fox'], json_decode( (string) $requests[0]->getBody(), true ) );
         $this->assertSame( self::URL . '/status', (string) $requests[1]->getUri() );
         $this->assertSame( self::URL, (string) $requests[2]->getUri() );
+    }
+
+
+    public function testImagineSizeLimit() : void
+    {
+        $this->prisma( 'image', 'fal', ['api_key' => 'test'] )
+            ->response( ['response_url' => self::URL, 'status' => 'IN_QUEUE'] );
+        $this->response( ['status' => 'COMPLETED'] );
+        $this->response( ['images' => [['url' => 'https://v3.fal.media/files/a.png']]] );
+
+        $response = $this->provider()->ensure( 'imagine' )->imagine( 'a fox' );
+
+        $this->assertSame( 25 * 1024 * 1024, ( new \ReflectionProperty( File::class, 'maxBytes' ) )->getValue( $response->first() ) );
     }
 
 

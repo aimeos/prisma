@@ -4,7 +4,6 @@ namespace Aimeos\Prisma\Providers\Audio;
 
 use Aimeos\Prisma\Contracts\Audio\Speak;
 use Aimeos\Prisma\Exceptions\PrismaException;
-use Aimeos\Prisma\Files\File;
 use Aimeos\Prisma\Providers\Alibaba as Base;
 use Aimeos\Prisma\Responses\FileResponse;
 
@@ -51,7 +50,7 @@ class Alibaba extends Base implements Speak
 
         $used = $usage['input_tokens'] ?? $usage['characters'] ?? 0;
 
-        return FileResponse::fromFiles( [$this->urlFile( $url, File::class, 'audio/mpeg' )] )
+        return $this->fileResponse()->addUrl( $url, mimeType: 'audio/mpeg' )
             ->withUsage( is_numeric( $used ) ? (float) $used : 0, $usage )
             ->withMeta( ['request_id' => $data['request_id'] ?? ''] );
     }

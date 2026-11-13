@@ -28,7 +28,7 @@ use Psr\Http\Message\StreamInterface;
  */
 trait FetchesUrls
 {
-    private Network $network;
+    private Network $fetchNetwork;
 
     private const FETCH_STALL = 30;
     private const FETCH_TIMEOUT = 600;
@@ -43,7 +43,7 @@ trait FetchesUrls
      */
     public function withClientHandler( HandlerStack $stack ) : static
     {
-        $this->network = $this->network()->withHandler( $stack );
+        $this->fetchNetwork = $this->network()->withHandler( $stack );
         return $this;
     }
 
@@ -58,24 +58,25 @@ trait FetchesUrls
      */
     public function withInternalHosts( bool $allow = true ) : static
     {
-        $this->network = $this->network()->withInternalHosts( $allow );
+        $this->fetchNetwork = $this->network()->withInternalHosts( $allow );
         return $this;
     }
 
 
     /**
-     * Uses a copy of the given network access for URL fetches.
+     * Uses the given network access for URL fetches.
      *
-     * Providers pass their own, so result files are fetched with the handler and host restrictions
-     * of the provider. The DNS cache is shared too, so each host is looked up once for the provider
-     * and all of its files.
+     * File responses of providers pass the network of the provider without the middleware of its
+     * handler stack, so result files are fetched with the handler and host restrictions of the
+     * provider. The DNS cache is shared too, so each host is looked up once for the provider and
+     * all of its files.
      *
      * @param Network $network Network access, e.g. of a provider
      * @return static File instance
      */
     public function withNetwork( Network $network ) : static
     {
-        $this->network = clone $network;
+        $this->fetchNetwork = $network;
         return $this;
     }
 
@@ -98,7 +99,7 @@ trait FetchesUrls
      */
     protected function network() : Network
     {
-        return $this->network ??= new Network();
+        return $this->fetchNetwork ??= new Network();
     }
 
 

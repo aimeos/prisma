@@ -55,7 +55,7 @@ abstract class Hydracept extends Base implements Cancel, Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), self::RETRY, $this->pollTimeout, $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), self::RETRY, $this->pollTimeout, $jobId );
     }
 
 

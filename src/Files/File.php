@@ -19,7 +19,7 @@ class File
 
 
     /** Bytes of seekable streams and URLs read for detecting the mime type, enough for the headers of media formats */
-    protected const HEAD_BYTES = 65536;
+    private const HEAD_BYTES = 65536;
 
     /** @var resource|null */
     protected mixed $stream = null;
@@ -66,7 +66,7 @@ class File
             $name = ( $pos = strrpos( $key, "\0" ) ) !== false ? substr( $key, $pos + 1 ) : $key;
 
             if( $name === 'strict' ) {
-                $this->network = ( new Network() )->withInternalHosts( !$value );
+                $this->fetchNetwork = ( new Network() )->withInternalHosts( !$value );
             } elseif( property_exists( self::class, $name ) || property_exists( $this, $name ) ) {
                 $this->$name = $value;
             }
@@ -458,8 +458,8 @@ class File
             return self::resource( $this->stream );
         }
 
-        if( $this->url && $this->binary === null && $this->base64 === null ) {
-            return $this->fetchStream( $this->url, $this->maxBytes );
+        if( $this->urlOnly() ) {
+            return $this->fetchStream( (string) $this->url, $this->maxBytes );
         }
 
         return self::resource( Utils::streamFor( (string) $this->binary() )->detach() );
@@ -517,8 +517,7 @@ class File
      * Returns the beginning of the file content for detecting the mime type.
      *
      * Seekable streams are read partly and set back to their position, so large streams aren't
-     * loaded into memory. The beginning of URL files is fetched once and kept for the mime type and
-     * image size, and files smaller than that are kept as complete content. All other content is
+     * loaded into memory. The beginning of URL files is fetched by urlHead(). All other content is
      * read completely.
      *
      * @return string Beginning or complete file content
@@ -526,20 +525,8 @@ class File
      */
     protected function head() : string
     {
-        if( $this->url && $this->binary === null && $this->base64 === null && $this->stream === null )
-        {
-            if( $this->prefix === null )
-            {
-                $this->prefix = (string) $this->fetchBody( $this->url, -self::HEAD_BYTES );
-
-                // the whole file has been fetched, so binary() doesn't fetch it again
-                if( $this->prefix !== '' && strlen( $this->prefix ) < self::HEAD_BYTES && strlen( $this->prefix ) <= $this->maxBytes ) {
-                    [$this->binary, $this->prefix] = [$this->prefix, null];
-                    return $this->binary;
-                }
-            }
-
-            return $this->prefix;
+        if( $this->urlOnly() ) {
+            return $this->urlHead();
         }
 
         if( $this->binary !== null || $this->base64 !== null || $this->stream === null
@@ -575,5 +562,41 @@ class File
         }
 
         return $stream;
+    }
+
+
+    /**
+     * Tests if the file content is only available from its URL.
+     *
+     * @return bool TRUE if the file has a URL but no content or stream yet
+     */
+    private function urlOnly() : bool
+    {
+        return $this->url && $this->binary === null && $this->base64 === null && $this->stream === null;
+    }
+
+
+    /**
+     * Returns the beginning of a URL file, fetched once.
+     *
+     * The beginning is kept for the mime type and image size. Files smaller than that are kept as
+     * complete content, so binary() doesn't fetch them again.
+     *
+     * @return string Beginning or complete file content
+     * @throws PrismaException If the URL can't be fetched
+     */
+    private function urlHead() : string
+    {
+        if( $this->prefix === null )
+        {
+            $this->prefix = (string) $this->fetchBody( (string) $this->url, -self::HEAD_BYTES );
+
+            if( $this->prefix !== '' && strlen( $this->prefix ) < self::HEAD_BYTES && strlen( $this->prefix ) <= $this->maxBytes ) {
+                [$this->binary, $this->prefix] = [$this->prefix, null];
+                return $this->binary;
+            }
+        }
+
+        return $this->prefix;
     }
 }

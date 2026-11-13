@@ -137,17 +137,17 @@ class Audiopod extends Base implements Demix, Denoise, Resume, Revoice, Speak, T
 
     public function speak( string $text, ?string $voice = null, array $options = [] ) : FileResponse
     {
-        $allowed = $this->allowed( $options, ['audio_format', 'language', 'speed'] );
+        $allowed = $this->allowed( $options, ['audio_format', 'language', 'speed'] ) + ['audio_format' => 'mp3'];
         $selected = $voice ?: 'b76f1226-8170-4902-9482-36bb4fc98085'; // fallback: aura
 
-        $request = $this->payload( ['input_text' => $text] + $allowed + ['audio_format' => 'mp3'] );
+        $request = $this->payload( ['input_text' => $text] + $allowed );
         $response = $this->client()->post( "api/v1/voice/voices/{$selected}/generate", ['multipart' => $request] );
 
         $this->validate( $response );
 
         /** @var string */
         $jobId = $this->toData( $response, 'job_id' )['job_id'];
-        return $this->queued( 'api/v1/voice/tts-jobs/%s/status', $jobId );
+        return $this->queued( 'api/v1/voice/tts-jobs/%s/status', $jobId, $this->formatMime( $allowed['audio_format'] ) );
     }
 
 
@@ -261,12 +261,13 @@ class Audiopod extends Base implements Demix, Denoise, Resume, Revoice, Speak, T
      * @param string $path Status path of the job
      * @param string $key Key of the result URL or URLs in the status data
      * @param string $prefix Prefix of results that are storage keys instead of URLs, e.g. the media host
+     * @param string|null $mimeType Mime type of the results if known from the request
      * @return \Closure Polling closure populating the file response
      * @throws FailedException If the job failed, was canceled or finished without results
      */
-    protected function poll( string $path, string $key, string $prefix = '' ) : \Closure
+    protected function poll( string $path, string $key, string $prefix = '', ?string $mimeType = null ) : \Closure
     {
-        return function( FileResponse $fr ) use ( $path, $key, $prefix ) : bool {
+        return function( FileResponse $fr ) use ( $path, $key, $prefix, $mimeType ) : bool {
 
             $data = $this->toData( $this->getResponse( $path ) );
             $fr->withMeta( $data );
@@ -283,7 +284,7 @@ class Audiopod extends Base implements Demix, Denoise, Resume, Revoice, Speak, T
             }
 
             foreach( $urls as $name => $url ) {
-                $fr->add( $this->urlFile( $prefix . $url, Audio::class ), $name );
+                $fr->addUrl( $prefix . $url, Audio::class, $mimeType, $name );
             }
 
             return true;
@@ -296,12 +297,13 @@ class Audiopod extends Base implements Demix, Denoise, Resume, Revoice, Speak, T
      *
      * @param string $path Status path of the job from JOBS with a placeholder for the ID
      * @param string $id ID of the job returned by the provider, URL encoded here
+     * @param string|null $mimeType Mime type of the results if known from the request, NULL for resumed jobs
      * @return FileResponse Asynchronous audio response
      */
-    protected function queued( string $path, string $id ) : FileResponse
+    protected function queued( string $path, string $id, ?string $mimeType = null ) : FileResponse
     {
         $jobId = sprintf( $path, rawurlencode( $this->jobId( $id ) ) );
-        return FileResponse::fromAsync( $this->poll( $jobId, ...self::JOBS[$path] ), 3, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId, ...self::JOBS[$path], mimeType: $mimeType ), 3, jobId: $jobId );
     }
 
 

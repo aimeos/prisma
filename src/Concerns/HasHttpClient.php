@@ -2,7 +2,7 @@
 
 namespace Aimeos\Prisma\Concerns;
 
-use Aimeos\Prisma\Files\File;
+use Aimeos\Prisma\Responses\FileResponse;
 use Aimeos\Prisma\Http\Network;
 use Closure;
 use GuzzleHttp\Client;
@@ -21,7 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 trait HasHttpClient
 {
     private Client $client;
-    private Network $network;
+    private Network $clientNetwork;
 
     /** @var callable|null */
     private $retryMiddleware = null;
@@ -38,7 +38,7 @@ trait HasHttpClient
      */
     public function withClientHandler( HandlerStack $stack ) : self
     {
-        $this->network = $this->network()->withHandler( $stack );
+        $this->clientNetwork = $this->network()->withHandler( $stack );
         unset( $this->client );
 
         return $this;
@@ -105,21 +105,27 @@ trait HasHttpClient
      * pinned to the checked address, so DNS rebinding can't switch to an internal address
      * between check and request. Requests through a proxy are rejected too because the proxy
      * resolves the host itself. For the same reason, proxies cURL reads from the environment are
-     * disabled and the CURLOPT_CONNECT_TO, CURLOPT_PRE_PROXY, CURLOPT_UNIX_SOCKET_PATH and
-     * CURLOPT_ABSTRACT_UNIX_SOCKET options are removed. Handlers set by withClientHandler() must
-     * be Guzzle's cURL handlers or its StreamHandler, because other handlers get requests to the
-     * IP address, which fail for HTTPS.
+     * disabled and cURL options which connect elsewhere are removed: CURLOPT_CONNECT_TO,
+     * CURLOPT_PRE_PROXY, CURLOPT_UNIX_SOCKET_PATH, CURLOPT_ABSTRACT_UNIX_SOCKET, CURLOPT_URL,
+     * CURLOPT_PORT, CURLOPT_FOLLOWLOCATION and the CURLOPT_(REDIR_)PROTOCOLS(_STR) options.
+     * Handlers set by withClientHandler() must be Guzzle's cURL handlers or its StreamHandler,
+     * because other handlers get requests to the IP address, which fail for HTTPS.
      *
      * Allow internal hosts for local or private endpoints like Ollama, LM Studio or vLLM, API
      * gateways in the own network or if requests must be sent through a proxy. Only do that if
-     * the provider settings can't be changed by untrusted users.
+     * the provider settings can't be changed by untrusted users. If a handler stack is set via
+     * withClientHandler() too, its cURL connections are closed after each request, so other
+     * providers sharing its handler can't reuse a connection to an internal address. Pass a
+     * separate handler stack to providers that allow internal hosts to keep connections open.
+     * Result files the provider returns URLs for are downloaded with the same allowance, so these
+     * URLs can point to internal hosts too.
      *
      * @param bool $allow TRUE to allow internal hosts and proxies, FALSE to allow public hosts only
      * @return self Same instance for fluent chaining
      */
     public function withInternalHosts( bool $allow = true ) : self
     {
-        $this->network = $this->network()->withInternalHosts( $allow );
+        $this->clientNetwork = $this->network()->withInternalHosts( $allow );
         unset( $this->client );
 
         return $this;
@@ -135,6 +141,21 @@ trait HasHttpClient
     protected function apiUrl( string $path ) : string
     {
         return (string) UriResolver::resolve( Utils::uriFor( $this->clientOptions['base_uri'] ?? '' ), new Uri( $path ) );
+    }
+
+
+    /**
+     * Returns an asynchronous file response which adds URL files with the network access of the provider.
+     *
+     * @param Closure $poll Polling closure that populates the response and returns true when done
+     * @param int $retry Seconds between polling attempts
+     * @param int $timeout Maximum polling time in seconds, zero for no limit
+     * @param string|null $jobId Provider job ID for resuming the polling in another process
+     * @return FileResponse Asynchronous file response
+     */
+    protected function asyncResponse( Closure $poll, int $retry = 5, int $timeout = 0, ?string $jobId = null ) : FileResponse
+    {
+        return FileResponse::fromAsync( $poll, $retry, $timeout, $jobId )->withNetwork( $this->network() );
     }
 
 
@@ -177,32 +198,13 @@ trait HasHttpClient
 
 
     /**
-     * Returns the network access of the provider, which files created by urlFile() copy.
+     * Returns an empty file response which adds URL files with the network access of the provider.
      *
-     * @return Network Network access of the provider
+     * @return FileResponse File response for adding the results by add() and addUrl()
      */
-    protected function network() : Network
+    protected function fileResponse() : FileResponse
     {
-        return $this->network ??= new Network();
-    }
-
-
-    /**
-     * Returns a lazy file for a URL returned by the API.
-     *
-     * The file is downloaded with the handler and host restrictions of the provider but neither
-     * its client options nor the middleware of its handler stack, which may add credentials.
-     * Later changes of the provider don't affect the file.
-     *
-     * @template T of File
-     * @param string $url File URL returned by the API
-     * @param class-string<T> $class File class, e.g. Image::class or Video::class
-     * @param string|null $mimeType Content type of the file if known
-     * @return T File downloaded on first access
-     */
-    protected function urlFile( string $url, string $class = File::class, ?string $mimeType = null ) : File
-    {
-        return $class::fromUrl( $url, $mimeType )->withNetwork( $this->network()->withoutMiddleware() );
+        return FileResponse::fromFiles( [] )->withNetwork( $this->network() );
     }
 
 
@@ -250,6 +252,17 @@ trait HasHttpClient
         }
 
         return $uri;
+    }
+
+
+    /**
+     * Returns the network access of the provider, which file responses use for URL files.
+     *
+     * @return Network Network access of the provider
+     */
+    protected function network() : Network
+    {
+        return $this->clientNetwork ??= new Network();
     }
 
 

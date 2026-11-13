@@ -49,7 +49,7 @@ class Xai extends Base implements Extend, Imagine, Repaint, Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -134,7 +134,7 @@ class Xai extends Base implements Extend, Imagine, Repaint, Resume
                 $this->videoFailed();
             }
 
-            $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
+            $result->addUrl( $url, Video::class, 'video/mp4' );
             return true;
         };
     }

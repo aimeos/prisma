@@ -230,7 +230,11 @@ class NetworkTest extends TestCase
     public function testDisablesCurlProxiesAndSockets() : void
     {
         $stack = $this->network( true )->handler();
-        $curl = [CURLOPT_PRE_PROXY => 'http://10.0.0.1', CURLOPT_UNIX_SOCKET_PATH => '/var/run/docker.sock', CURLOPT_ABSTRACT_UNIX_SOCKET => 'sock'];
+        $curl = [
+            CURLOPT_PRE_PROXY => 'http://10.0.0.1', CURLOPT_UNIX_SOCKET_PATH => '/var/run/docker.sock', CURLOPT_ABSTRACT_UNIX_SOCKET => 'sock',
+            CURLOPT_FOLLOWLOCATION => true, CURLOPT_PORT => 8080, CURLOPT_URL => 'http://10.0.0.1/',
+            CURLOPT_PROTOCOLS => CURLPROTO_ALL, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_ALL,
+        ];
 
         $stack( new Request( 'GET', 'https://api.example.com/v1' ), ['curl' => $curl + [CURLOPT_PROXY => 'http://10.0.0.1']] )->wait();
 
@@ -250,13 +254,17 @@ class NetworkTest extends TestCase
     }
 
 
-    public function testCopiesDontShareHandlerStack() : void
+    public function testHandlerChangesAreNotShared() : void
     {
         $network = $this->network();
-        $property = new \ReflectionProperty( Network::class, 'stack' );
+        $copy = $network->withInternalHosts();
 
-        $this->assertNotSame( $property->getValue( $network ), $property->getValue( $network->withInternalHosts() ) );
-        $this->assertNotSame( $property->getValue( $network ), $property->getValue( clone $network ) );
+        $network->handler()->push( fn( callable $next ) => fn( $request, array $options ) => throw new \RuntimeException( 'Changed stack is used' ) );
+
+        $network->handler()( new Request( 'GET', 'https://api.example.com/v1' ), [] )->wait();
+        $copy->handler()( new Request( 'GET', 'https://api.example.com/v1' ), [] )->wait();
+
+        $this->assertCount( 2, $this->sent );
     }
 
 

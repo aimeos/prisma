@@ -115,7 +115,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 5, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 5, jobId: $jobId );
     }
 
 
@@ -254,7 +254,7 @@ class Byteplus extends Base implements Cancel, Describe, Extend, Imagine, Repain
                 $this->videoFailed();
             }
 
-            $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
+            $result->addUrl( $url, Video::class, 'video/mp4' );
             return true;
         };
     }

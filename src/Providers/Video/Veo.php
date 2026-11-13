@@ -39,7 +39,7 @@ class Veo extends Base implements Imagine, Resume
 
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $jobId ), 10, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 10, jobId: $jobId );
     }
 
 
@@ -162,7 +162,7 @@ class Veo extends Base implements Imagine, Resume
                 $url = is_array( $sample ) && is_array( $sample['video'] ?? null ) ? ( $sample['video']['uri'] ?? null ) : null;
 
                 if( is_string( $url ) && $url !== '' ) {
-                    $result->add( $this->urlFile( $url, Video::class, 'video/mp4' ) );
+                    $result->addUrl( $url, Video::class, 'video/mp4' );
                 }
             }
 

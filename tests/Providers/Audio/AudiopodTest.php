@@ -113,6 +113,7 @@ class AudiopodTest extends TestCase
 
         $this->assertFalse( $file->ready() );
         $this->assertEquals( "https://localhost/test.mp3", $file->url() );
+        $this->assertEquals( 'audio/mpeg', $file->mimeType() );
     }
 
 

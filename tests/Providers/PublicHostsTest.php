@@ -335,7 +335,7 @@ class PublicHostsProvider extends Base
 {
     public function __construct( array $config )
     {
-        ( new \ReflectionProperty( Base::class, 'network' ) )->setValue( $this, new Network( new FakeResolver() ) );
+        ( new \ReflectionProperty( Base::class, 'clientNetwork' ) )->setValue( $this, new Network( new FakeResolver() ) );
     }
 
 
@@ -357,7 +357,8 @@ class PublicHostsProvider extends Base
 
     public function file( string $url ) : File
     {
-        return $this->urlFile( $url );
+        /** @var File */
+        return $this->fileResponse()->addUrl( $url )->first();
     }
 
 

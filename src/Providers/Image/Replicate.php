@@ -16,7 +16,7 @@ use GuzzleHttp\Psr7\Uri;
 
 class Replicate extends Base implements Cancel, Imagine, Resume
 {
-    private const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
+    private const MAX_BYTES = 25 * 1024 * 1024;
     private const PREDICTION = '#/v\d+/predictions/\w[\w.-]*$#D';
 
 
@@ -67,7 +67,7 @@ class Replicate extends Base implements Cancel, Imagine, Resume
         /** @var array<string, mixed> $data */
         $data = $this->fromJson( $response );
 
-        return $this->toFileResponse( $data );
+        return $this->toFileResponse( $data, $this->formatMime( $input['output_format'] ?? null ) );
     }
 
 
@@ -80,7 +80,7 @@ class Replicate extends Base implements Cancel, Imagine, Resume
      */
     public function resume( string $jobId ) : FileResponse
     {
-        return FileResponse::fromAsync( $this->poll( $jobId ), 3, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 3, jobId: $jobId )->withMaxSize( self::MAX_BYTES );
     }
 
 
@@ -105,10 +105,12 @@ class Replicate extends Base implements Cancel, Imagine, Resume
      * Builds the output images of a succeeded prediction.
      *
      * @param array<string, mixed> $data Prediction data
-     * @return array<int, Image> Image files
+     * @param FileResponse $files File response to add the images to
+     * @param string|null $mimeType Mime type of the images if known from the request
+     * @return FileResponse File response with the images
      * @throws FailedException If the prediction has no output images
      */
-    protected function images( array $data ) : array
+    protected function images( array $data, FileResponse $files, ?string $mimeType = null ) : FileResponse
     {
         $output = $data['output'] ?? [];
         $output = is_array( $output ) ? $output : [$output];
@@ -118,7 +120,11 @@ class Replicate extends Base implements Cancel, Imagine, Resume
             throw new FailedException( 'No image data found in response' );
         }
 
-        return array_values( array_map( $this->image(...), $urls ) );
+        foreach( $urls as $url ) {
+            $files->addUrl( $url, Image::class, $mimeType );
+        }
+
+        return $files;
     }
 
 
@@ -126,14 +132,15 @@ class Replicate extends Base implements Cancel, Imagine, Resume
      * Returns a polling closure that fetches a running prediction until it succeeds.
      *
      * @param string $url Prediction URL returned by Replicate
+     * @param string|null $mimeType Mime type of the images if known from the request, NULL for resumed jobs
      * @return \Closure Polling closure populating the file response
      * @throws BadRequestException If the URL isn't a prediction URL of Replicate or the configured API host
      */
-    protected function poll( string $url ) : \Closure
+    protected function poll( string $url, ?string $mimeType = null ) : \Closure
     {
         $uri = $this->url( $url );
 
-        return function( FileResponse $fr ) use ( $uri ) : bool {
+        return function( FileResponse $fr ) use ( $uri, $mimeType ) : bool {
 
             $response = $this->client()->get( $uri, ['allow_redirects' => false] );
 
@@ -147,9 +154,7 @@ class Replicate extends Base implements Cancel, Imagine, Resume
                 return false;
             }
 
-            foreach( $this->images( $data ) as $image ) {
-                $fr->add( $image );
-            }
+            $this->images( $data, $fr, $mimeType );
 
             return true;
         };
@@ -160,9 +165,10 @@ class Replicate extends Base implements Cancel, Imagine, Resume
      * Builds the file response from a prediction, polling if it has not finished yet.
      *
      * @param array<string, mixed> $data Prediction data
+     * @param string|null $mimeType Mime type of the images if known from the request
      * @return FileResponse File based response
      */
-    protected function toFileResponse( array $data ) : FileResponse
+    protected function toFileResponse( array $data, ?string $mimeType = null ) : FileResponse
     {
         if( !$this->completed( $data ) )
         {
@@ -173,22 +179,11 @@ class Replicate extends Base implements Cancel, Imagine, Resume
                 throw new FailedException( 'No prediction URL in response' );
             }
 
-            return $this->resume( $url )->withMeta( array_diff_key( $data, ['output' => null] ) );
+            return $this->asyncResponse( $this->poll( $url, $mimeType ), 3, jobId: $url )->withMaxSize( self::MAX_BYTES )
+                ->withMeta( array_diff_key( $data, ['output' => null] ) );
         }
 
-        return FileResponse::fromFiles( $this->images( $data ) )->withMeta( array_diff_key( $data, ['output' => null] ) );
-    }
-
-
-    /**
-     * Builds a lazy image with the size limit of Replicate downloads.
-     */
-    private function image( string $url ) : Image
-    {
-        $image = $this->urlFile( $url, Image::class );
-        $image->maxSize( self::MAX_DOWNLOAD_BYTES );
-
-        return $image;
+        return $this->images( $data, $this->fileResponse()->withMaxSize( self::MAX_BYTES ), $mimeType )->withMeta( array_diff_key( $data, ['output' => null] ) );
     }
 
 

@@ -4,6 +4,7 @@ namespace Tests\Providers\Image;
 
 use Aimeos\Prisma\Exceptions\FailedException;
 use Aimeos\Prisma\Exceptions\PrismaException;
+use Aimeos\Prisma\Files\File;
 use PHPUnit\Framework\TestCase;
 use Tests\MakesPrismaRequests;
 
@@ -38,6 +39,18 @@ class ReplicateTest extends TestCase
     }
 
 
+    public function testImagineOutputFormat() : void
+    {
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['id' => 'p1', 'status' => 'succeeded', 'output' => ['https://replicate.delivery/a.webp']] )
+            ->ensure( 'imagine' )
+            ->imagine( 'a fox', [], ['output_format' => 'webp'] );
+
+        // the requested format is the mime type, so the image isn't fetched to detect it
+        $this->assertSame( 'image/webp', $response->first()?->mimeType() );
+    }
+
+
     public function testImagineFailed() : void
     {
         $this->expectException( PrismaException::class );
@@ -65,12 +78,13 @@ class ReplicateTest extends TestCase
             ->response( ['id' => 'p1', 'status' => 'processing', 'urls' => ['get' => 'https://api.replicate.com/v1/predictions/p1']] );
         $this->response( ['status' => 'succeeded', 'output' => ['https://replicate.delivery/b.png']] );
 
-        $response = $provider->ensure( 'imagine' )->imagine( 'a cat' );
+        $response = $provider->ensure( 'imagine' )->imagine( 'a cat', [], ['output_format' => 'png'] );
 
         // an unfinished prediction is resolved by polling the URL of the provider
         $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', $response->jobId() );
         $this->assertTrue( $response->ready() );
         $this->assertEquals( 'https://replicate.delivery/b.png', $response->first()?->url() );
+        $this->assertSame( 'image/png', $response->first()?->mimeType() );
         $this->assertSame( 'https://api.replicate.com/v1/predictions/p1', (string) $this->requests()[1]->getUri() );
     }
 
@@ -146,6 +160,17 @@ class ReplicateTest extends TestCase
 
         $this->assertEquals( 'image', $response->first()?->binary() );
         $this->assertSame( [], $this->requests()[1]->getHeader( 'Authorization' ) );
+    }
+
+
+    public function testGeneratedImageSizeLimit() : void
+    {
+        $response = $this->prisma( 'image', 'replicate', ['api_key' => 'test'] )
+            ->response( ['status' => 'succeeded', 'output' => 'https://replicate.delivery/a.png'] )
+            ->ensure( 'imagine' )
+            ->imagine( 'x' );
+
+        $this->assertSame( 25 * 1024 * 1024, ( new \ReflectionProperty( File::class, 'maxBytes' ) )->getValue( $response->first() ) );
     }
 
 

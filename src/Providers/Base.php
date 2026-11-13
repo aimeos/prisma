@@ -44,6 +44,12 @@ abstract class Base implements Provider
     /** @var array<string, array<string, mixed>> */
     protected const PROVIDER_TOOL_MAP = [];
 
+    /** Mime types of the output formats requested from providers */
+    private const FORMATS = [
+        'flac' => 'audio/flac', 'jpeg' => 'image/jpeg', 'jpg' => 'image/jpeg', 'mp3' => 'audio/mpeg',
+        'ogg' => 'audio/ogg', 'png' => 'image/png', 'wav' => 'audio/wav', 'webp' => 'image/webp',
+    ];
+
     /** Maximum polling time of asynchronous jobs in seconds, 0 for no limit */
     protected int $pollTimeout = 900;
 
@@ -134,6 +140,20 @@ abstract class Base implements Provider
     protected function config( array $config, string $key, string $default = '' ) : string
     {
         return isset( $config[$key] ) && is_string( $config[$key] ) ? $config[$key] : $default;
+    }
+
+
+    /**
+     * Returns the mime type of an output format requested from the provider.
+     *
+     * Passed to addUrl() for result files, so their mime type doesn't need an extra request.
+     *
+     * @param mixed $format Output format from the request, e.g. "png" or "MP3"
+     * @return string|null Mime type or NULL if the format is unknown
+     */
+    protected function formatMime( mixed $format ) : ?string
+    {
+        return is_string( $format ) ? self::FORMATS[strtolower( $format )] ?? null : null;
     }
 
 

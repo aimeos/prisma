@@ -47,13 +47,13 @@ class Omni extends Base implements Imagine, Repaint
         $data = $this->fromJson( $response );
         $files = $this->files( $data );
 
-        if( empty( $files ) ) {
+        if( $files->empty() ) {
             $this->videoFailed( $data['error']['message'] ?? null );
         }
 
         unset( $data['steps'] );
 
-        return FileResponse::fromFiles( $files )->withMeta( $data );
+        return $files->withMeta( $data );
     }
 
 
@@ -96,11 +96,11 @@ class Omni extends Base implements Imagine, Repaint
      * Extracts generated videos from an Omni response.
      *
      * @param array<string, mixed> $data Response data
-     * @return array<int, Video> Generated videos
+     * @return FileResponse File response with the generated videos
      */
-    protected function files( array $data ) : array
+    protected function files( array $data ) : FileResponse
     {
-        $files = [];
+        $files = $this->fileResponse();
 
         foreach( is_array( $data['steps'] ?? null ) ? $data['steps'] : [] as $step )
         {
@@ -117,9 +117,9 @@ class Omni extends Base implements Imagine, Repaint
                 $mime = is_string( $part['mime_type'] ?? null ) ? $part['mime_type'] : 'video/mp4';
 
                 if( is_string( $part['data'] ?? null ) ) {
-                    $files[] = Video::fromBase64( $part['data'], $mime );
+                    $files->add( Video::fromBase64( $part['data'], $mime ) );
                 } elseif( is_string( $part['uri'] ?? null ) ) {
-                    $files[] = $this->urlFile( $part['uri'], Video::class, $mime );
+                    $files->addUrl( $part['uri'], Video::class, $mime );
                 }
             }
         }

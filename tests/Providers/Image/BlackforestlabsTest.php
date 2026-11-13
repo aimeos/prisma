@@ -42,6 +42,8 @@ class BlackforestlabsTest extends TestCase
 
         $this->assertFalse( $file->ready() );
         $this->assertEquals( 'https://localhost/test.png', $file->url() );
+        // the requested output format, so no request for detecting the mime type
+        $this->assertEquals( 'image/png', $file->mimeType() );
     }
 
 
@@ -145,7 +147,7 @@ class BlackforestlabsTest extends TestCase
                 "status": "Ready",
                 "sample": "https://localhost/test.png"
             }' )->ensure( 'uncrop' )
-            ->uncrop( Image::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0 );
+            ->uncrop( Image::fromBinary( 'PNG', 'image/png' ), 100, 0, 0, 0, ['output_format' => 'jpeg'] );
 
         $this->assertPrismaRequest( function( $request, $options ) {
             $this->assertEquals( 'https://api.bfl.ai/v1/flux-pro-1.0-expand', (string) $request->getUri() );
@@ -153,5 +155,6 @@ class BlackforestlabsTest extends TestCase
 
         $this->assertFalse( $file->ready() );
         $this->assertEquals( 'https://localhost/test.png', $file->url() );
+        $this->assertEquals( 'image/jpeg', $file->mimeType() );
     }
 }

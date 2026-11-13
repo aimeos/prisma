@@ -95,7 +95,7 @@ abstract class Fal extends Base implements Cancel, Resume
     public function resume( string $jobId ) : FileResponse
     {
         $poll = $this->poll( $this->requestUrl( $jobId ), $this->result(...) );
-        return FileResponse::fromAsync( $poll, static::RETRY, $this->pollTimeout, $jobId );
+        return $this->asyncResponse( $poll, static::RETRY, $this->pollTimeout, $jobId )->withMaxSize( static::MAX_BYTES );
     }
 
 
@@ -117,22 +117,6 @@ abstract class Fal extends Base implements Cancel, Resume
 
 
     /**
-     * Builds a lazy file with the size limit of fal downloads.
-     *
-     * @param string $url File URL returned by fal
-     * @param string|null $mimeType Content type of the file if known
-     * @return File Response file
-     */
-    protected function file( string $url, ?string $mimeType ) : File
-    {
-        $file = $this->urlFile( $url, static::FILE, $mimeType );
-        $file->maxSize( static::MAX_BYTES );
-
-        return $file;
-    }
-
-
-    /**
      * Adds the output files of a completed request to the response.
      *
      * fal returns file objects with an "url" property, either as single values whose output
@@ -147,10 +131,10 @@ abstract class Fal extends Base implements Cancel, Resume
         foreach( $data as $key => $value )
         {
             if( $this->isFile( $value ) ) {
-                $result->add( $this->file( $value['url'], $this->mimeType( $value ) ), $key );
+                $result->addUrl( $value['url'], static::FILE, $this->mimeType( $value ), $key );
             } elseif( $this->isFileList( $value ) ) {
                 foreach( $value as $item ) {
-                    $result->add( $this->file( $item['url'], $this->mimeType( $item ) ) );
+                    $result->addUrl( $item['url'], static::FILE, $this->mimeType( $item ) );
                 }
             }
         }

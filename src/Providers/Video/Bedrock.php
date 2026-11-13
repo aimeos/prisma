@@ -70,7 +70,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
     {
         $jobId = $this->jobId( $jobId );
 
-        return FileResponse::fromAsync( $this->poll( $jobId ), 10, jobId: $jobId );
+        return $this->asyncResponse( $this->poll( $jobId ), 10, jobId: $jobId );
     }
 
 
@@ -261,7 +261,7 @@ class Bedrock extends Base implements Describe, Imagine, Resume
                 $this->videoFailed();
             }
 
-            $result->add( $this->urlFile( rtrim( $uri, '/' ) . '/output.mp4', Video::class, 'video/mp4' ) );
+            $result->addUrl( rtrim( $uri, '/' ) . '/output.mp4', Video::class, 'video/mp4' );
             return true;
         };
     }
