@@ -15,6 +15,7 @@ class OllamaTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withInternalHosts()
             ->ensure( 'stream' )
             ->stream( 'Reply with just the word "hello" in lowercase, nothing else.' );
 
@@ -36,6 +37,7 @@ class OllamaTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withInternalHosts()
             ->withTools( [$next, $ahead] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
@@ -68,6 +70,7 @@ class OllamaTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withInternalHosts()
             ->ensure( 'structure' )
             ->structure( 'Extract the person: John is 30 years old.', $schema );
 
@@ -82,6 +85,7 @@ class OllamaTest extends TestCase
 
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withInternalHosts()
             ->withTools( [$next, $ahead, \Aimeos\Prisma\Tools::provider( 'web_search' )] )
             ->withToolChoice( \Aimeos\Prisma\Providers\Base::REQUIRED )
             ->withMaxSteps( 5 )
@@ -98,6 +102,7 @@ class OllamaTest extends TestCase
     {
         $response = Prisma::text()
             ->using( 'ollama', ['url' => $_ENV['OLLAMA_URL']] )
+            ->withInternalHosts()
             ->ensure( 'write' )
             ->write( 'Reply with just the word "hello" in lowercase, nothing else.' );
 
